@@ -989,6 +989,150 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "İşe Alındı": "Hired"
 });
 
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  "Yönetim ve Teknik Detaylar": "Management and Technical Details",
+  "Yeni stage": "New stage",
+  "Neden kodu": "Reason code",
+  "Stage'i Update": "Update Stage",
+  "Referans rapor": "Reference report",
+  "CV Çözümleme": "CV Parsing",
+  "Report Üretimi": "Report Generation",
+  "Recommendation Üretimi": "Recommendation Generation",
+  "Candidate Uyum Skorlama": "Candidate Fit Scoring",
+  "Son AI Raporu": "Latest AI Report",
+  "Report geçmişi": "Report history",
+  "Recommendation geçmişi": "Recommendation history",
+  "Entity bazlı audit logs": "Entity-based audit logs",
+  "Teknik Detay": "Technical Details",
+  "Adayın pozisyona uyumunu gösteren değerlendirme.":
+    "Assessment showing the candidate's fit for the role.",
+  "Uyum Skorunu Hesapla": "Calculate Fit Score",
+  "Skoru Yenile": "Refresh Score",
+  "Skoru Refresh": "Refresh Score",
+  "Adayın başvuruya uygunluğu hakkında AI tavsiyesi.":
+    "AI recommendation about the candidate's suitability for the application.",
+  "Pre-screening Desteği": "Pre-screening Support",
+  "Değerlendirme Paketi": "Review Pack",
+  "Başlat": "Start",
+  "Tamamla": "Complete",
+  "Web Sesli": "Web Voice",
+  "Session iptal edildi.": "Session cancelled.",
+  "Transcript kaydediliyor...": "Saving transcript...",
+  "Uyum skorlama tetiklenemedi.": "Fit scoring could not be triggered.",
+  "Interview planlama yetkiniz yok.": "You do not have permission to schedule interviews.",
+  "Interview tarihi zorunludur.": "Interview date is required.",
+  "Interview yeniden planlama yetkiniz yok.":
+    "You do not have permission to reschedule interviews.",
+  "template mevcut": "template available",
+  "template eksik (degraded)": "template missing (degraded)",
+  CANDIDATE: "Candidate",
+  "Aday uygun gorunmekle birlikte sertifika teyidi sonrasi karar verilmelidir.":
+    "The candidate appears suitable, but a decision should be made after certificate verification.",
+  "Candidate uygun gorunmekle birlikte sertifika teyidi sonrasi karar verilmelidir.":
+    "The candidate appears suitable, but a decision should be made after certificate verification.",
+  "Adayin depo deneyimi mevcut.": "The candidate has warehouse experience.",
+  "Adayin depo ve vardiya deneyimi role uyum sinyali veriyor.":
+    "The candidate's warehouse and shift experience indicates role-fit signals.",
+  "Aday depo operasyonunda 5 yila yakin deneyim sinyali veriyor.":
+    "The candidate shows signals of nearly 5 years of warehouse operations experience.",
+  "Aday role temel uyum sinyali veriyor ancak sertifika teyidi kritik.":
+    "The candidate shows baseline role-fit signals, but certificate verification is critical.",
+  "Adayi recruiter review asamasinda tutup sertifika teyidi sonrasi karar verin.":
+    "Keep the candidate in recruiter review and decide after certificate verification.",
+  "Aday sertifika yenilemesinin devam ettigini belirtti.":
+    "The candidate stated that certificate renewal is still in progress.",
+  "Aday gece vardiyasi deneyimini belirtti.": "The candidate stated night-shift experience.",
+  "Aday gece vardiyasi tecrubesini aktardi.": "The candidate reported night-shift experience.",
+  "Aday vardiya uygunlugu sinyali verdi.": "The candidate showed shift-suitability signals.",
+  "Gece vardiyasinda calisma beyan edildi.": "Night-shift availability was stated.",
+  "Interview transcriptinde vardiya uyumu sinyali var.":
+    "The interview transcript shows shift-compatibility signals.",
+  "Belge teyidi sonrasi candidate yeniden degerlendirilsin.":
+    "Reassess the candidate after document verification.",
+  "Depo deneyimi mevcut.": "Warehouse experience is present.",
+  "Vardiya uyumu sinyali pozitif.": "Shift-compatibility signal is positive.",
+  "Belge teyidi bitmeden final ilerleme onerilmez.":
+    "Final progression is not recommended before document verification.",
+  "Sertifika teyidi tamamlanmadan ilerleme riski bulunuyor.":
+    "There is progression risk before certificate verification is complete.",
+  "Sertifika dokumani teyit adimini tamamla.":
+    "Complete the certificate document verification step.",
+  "Candidate sertifika yenilemesinin devam ettigini belirtti.":
+    "The candidate stated that certificate renewal is still in progress.",
+  "Sertifika dogrulama adimini tamamlayip tekrar degerlendir.":
+    "Complete the certificate verification step and reassess.",
+  "Sertifika teyidi sonrasi recruiter degerlendirmesi ile ilerleyin.":
+    "Proceed with recruiter evaluation after certificate verification.",
+  "Neden Uygun?": "Why Fit?",
+  "Ne Risk Var?": "What Risks Exist?",
+  "Belirsizlik (orta)": "Uncertainty (medium)",
+  "Depo Operations Sesli İlk Interview V1": "Warehouse Operations Voice Initial Interview V1",
+  "Depo Operations Sesli Ilk Interview V1": "Warehouse Operations Voice Initial Interview V1",
+  "Sertifika dogrulamasi tamamlanmadi.": "Certificate verification is not completed.",
+  "Sertifika dogrulamasi tamamlanmadan nihai karar verilmemeli.":
+    "A final decision should not be made before certificate verification is completed.",
+  "Sertifika dogrulamasi eksik": "Certificate verification is missing",
+  "Sertifika dogrulama adimi tamamlanmadan ilerleme karari riskli olabilir.":
+    "Progression decisions may be risky before the certificate verification step is completed.",
+  "Sertifika teyidi henuz tamamlanmadi.": "Certificate verification has not been completed yet.",
+  "Belge teyidi eksik.": "Document verification is missing.",
+  "Belge teyidi tamamlanmadan nihai karar verilmemeli.":
+    "A final decision should not be made before document verification is completed.",
+  "Belge teyidi tamamlanana kadar recruiter review'da tut.":
+    "Keep it in recruiter review until document verification is completed.",
+  "Belgeyi dogrulayip screening notunu guncelleyin.":
+    "Verify the document and update the screening note.",
+  "Sertifika kontrolu sonrasi ilerletme degerlendirilebilir.":
+    "Advancement can be considered after certificate verification.",
+  "Sertifika yenileme sureci devam ediyor.": "Certificate renewal process is ongoing.",
+  "Sertifika yenileme sureci oldugu belirtildi.":
+    "It was stated that the certificate renewal process is ongoing.",
+  "Forklift sertifika dokumaninin guncel kopyasi bekleniyor.":
+    "An up-to-date copy of the forklift certificate document is pending.",
+  "Forklift sertifika teyidi tamamlanmadan kesin ilerleme onerilmez.":
+    "Definitive advancement is not recommended before forklift certificate verification is completed.",
+  "Forklift sertifika belgesinin guncel kopyasi":
+    "Up-to-date copy of the forklift certificate",
+  "Forklift sertifika belgesinin dogrulanmasi": "Verification of the forklift certificate",
+  "Vardiya uyum sinyali": "Shift-compatibility signal",
+  "Vardiya calisma sinyali mevcut.": "Shift-work signal is present.",
+  "Depo operasyon deneyimi": "Warehouse operations experience",
+  "Depo operasyon deneyimi role iliskin temel uyum gosteriyor.":
+    "Warehouse operations experience shows baseline fit for the role.",
+  "Depo operasyonu, stok kontrolu ve sevkiyat hazirlama adimlarinda deneyim mevcut.":
+    "There is experience in warehouse operations, stock control, and shipment preparation steps.",
+  "Depo operasyonunda hizli adapte olma ihtimali yuksek olabilir.":
+    "There may be a high likelihood of fast adaptation in warehouse operations.",
+  "Depo/Lojistik role gecis icin pozitif sinyal":
+    "Positive signal for transition into warehouse/logistics roles",
+  "Perakende ve kasa deneyimi kasiyer rolune temel uyum sinyali veriyor.":
+    "Retail and cashier experience provides baseline fit signals for the cashier role.",
+  "Perakende deneyimi sayesinde role temel uyum sinyali guclu.":
+    "Retail experience provides a strong baseline role-fit signal.",
+  "Musteri iletisim senaryosu sonrasi karar verilmesi uygun.":
+    "It is appropriate to decide after a customer-communication scenario.",
+  "Kisa bir musteri senaryosu gorusmesi sonrasi screening tamamlanabilir.":
+    "Screening can be completed after a short customer-scenario interview.",
+  "Temel screening bilgisi yeterli.": "Basic screening information is sufficient.",
+  "REPORT_GENERATION icin tamamlanmis interview session bulunamadi.":
+    "No completed interview session was found for REPORT_GENERATION.",
+  "REPORT_GENERATION task'i icin interview session baglami bulunamadi.":
+    "No interview session context was found for the REPORT_GENERATION task.",
+  "Mulakat oturumu olmadigi icin rapor uretilemedi.":
+    "The report could not be generated because there is no interview session.",
+  "Basvuru stage bilgisi screening baglami olarak kullanildi.":
+    "Application stage information was used as screening context.",
+  "sertifika dogrulamasi bekleniyor": "certificate verification is pending",
+  "vardiya duzeni": "shift schedule",
+  "Vardiya uyumu": "Shift compatibility",
+  "Vardiya ve operasyon deneyimi metinde yer aliyor.":
+    "Shift and operations experience appears in the text.",
+  "Birden fazla depo rol sinyali bulundu.": "Multiple warehouse role signals were detected.",
+  "kasa islemleri, musteri iletisim, vardiya planina uyum":
+    "checkout operations, customer communication, alignment with shift planning",
+  "2 yil depo deneyimi": "2 years of warehouse experience"
+});
+
 const EN_WORD_TRANSLATIONS: Array<[string, string]> = [
   ["Başvuru", "Application"],
   ["Başvurular", "Applications"],
