@@ -901,6 +901,12 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Yüksek güven": "High confidence",
   "Zayıf": "Weak",
   "Zayıf Eşleşme": "Weak Match",
+  "Planlanan, devam eden ve tamamlanan görüşmeleri takip edin. İnceleme bekleyenlere öncelik verin.":
+    "Track scheduled, ongoing, and completed interviews. Prioritize items awaiting review.",
+  "Planlanan Tarih": "Scheduled Date",
+  "Aday Linki": "Candidate Link",
+  "Aday bekleniyor": "Candidate is waiting",
+  "Sonuçları İncele": "Review Results",
   "Depo Operasyon Personeli": "Warehouse Operations Staff",
   "Market Kasiyeri": "Store Cashier",
   "Müşteri Destek Temsilcisi": "Customer Support Representative",
@@ -1049,6 +1055,17 @@ function applyPhraseMap(value: string, map: Record<string, string>) {
     if (!next.includes(from)) {
       continue;
     }
+
+    const isWordLikeKey = /^[\p{L}\p{N}_]+$/u.test(from);
+    if (isWordLikeKey) {
+      const pattern = new RegExp(
+        `(?<![\\p{L}\\p{N}_])${escapeRegExp(from)}(?![\\p{L}\\p{N}_])`,
+        "gu"
+      );
+      next = next.replace(pattern, to);
+      continue;
+    }
+
     next = next.split(from).join(to);
   }
 
