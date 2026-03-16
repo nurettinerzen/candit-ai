@@ -1344,6 +1344,14 @@ function applyPhraseMap(value: string, map: Record<string, string>) {
   return next;
 }
 
+function applyRegexTranslations(value: string, patterns: Array<[RegExp, string]>) {
+  let next = value;
+  for (const [pattern, replacement] of patterns) {
+    next = next.replace(pattern, replacement);
+  }
+  return next;
+}
+
 const EN_TO_TR_PHRASE_TRANSLATIONS: Record<string, string> = Object.entries(
   EN_PHRASE_TRANSLATIONS
 ).reduce<Record<string, string>>((acc, [tr, en]) => {
@@ -1405,7 +1413,47 @@ export function normalizeTurkishUiText(text: string) {
 }
 
 function translateTurkishUiToEnglish(text: string) {
-  return applyPhraseMap(applyPhraseMap(text, EN_PHRASE_TRANSLATIONS), EN_WORD_TRANSLATION_MAP)
+  const phraseTranslated = applyPhraseMap(applyPhraseMap(text, EN_PHRASE_TRANSLATIONS), EN_WORD_TRANSLATION_MAP);
+  const regexTranslated = applyRegexTranslations(phraseTranslated, [
+    [
+      /Belge teyidi sonras[ıi]\s+candidate yeniden de[ğg]erlendirilsin\.?/giu,
+      "Reassess the candidate after document verification."
+    ],
+    [
+      /Interview transcriptinde vardiya uyumu sinyali var\.?/giu,
+      "The interview transcript shows shift-compatibility signals."
+    ],
+    [
+      /(?:Aday|Candidate)\s+depo operasyonunda\s+5\s+y[ıi]la?\s+yak[ıi]n deneyim sinyali veriyor\.?/giu,
+      "The candidate shows signals of nearly 5 years of warehouse operations experience."
+    ],
+    [
+      /Vardiya\s+ç?al[ıi][şs]ma sinyali mevcut\.?/giu,
+      "Shift-work signal is present."
+    ],
+    [
+      /Forklift sertifika[sıi]\s+yenileme s[üu]reci tamamlanmam[ıi]ş olabilir\.?/giu,
+      "Forklift certificate renewal process may not be completed."
+    ],
+    [
+      /Forklift sertifika[sıi]\s+yenileme s[üu]reci tamamlanmam[ıi]ş\.?/giu,
+      "Forklift certificate renewal process is not completed."
+    ],
+    [
+      /Interview daveti g[öo]nderildi[ğg]inde,\s*candidate e-?posta ile randevu se[çc]im linki al[ıi]r ve kendi uygun oldu[ğg]u zaman[ıi] se[çc]er\.?/giu,
+      "When the interview invitation is sent, the candidate receives an email with an appointment-selection link and chooses a suitable time."
+    ],
+    [
+      /V1 Security Rule:\s*AI ç[ıi]kt[ıi]s[ıi] otomatik karar uygulamaz\.?\s*Stage etkileyen t[üu]m kararlar recruiter\/hiring manager onay[ıi] ve audit izi ile tamamlan[ıi]r\.?/giu,
+      "V1 Security Rule: AI output cannot apply automatic decisions. All stage-impacting decisions require recruiter/hiring manager approval and an audit trail."
+    ],
+    [
+      /AI ç[ıi]kt[ıi]s[ıi] otomatik karar uygulamaz\.?\s*Stage etkileyen t[üu]m kararlar recruiter\/hiring manager onay[ıi] ve audit izi ile tamamlan[ıi]r\.?/giu,
+      "AI output cannot apply automatic decisions. All stage-impacting decisions require recruiter/hiring manager approval and an audit trail."
+    ]
+  ]);
+
+  return regexTranslated
     .replace(/(\d+)\s+gün/giu, "$1 days")
     .replace(/(\d+)\s+segment/giu, "$1 segments")
     .replace(/kuyruğa alındı\./giu, "has been queued.")
