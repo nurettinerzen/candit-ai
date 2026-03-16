@@ -5,38 +5,46 @@ const ROOT = path.resolve(process.cwd());
 const I18N_FILE = path.join(ROOT, "lib", "i18n.ts");
 const SOURCE_DIRS = [path.join(ROOT, "app"), path.join(ROOT, "components")];
 
-function extractObjectBody(source, marker) {
-  const start = source.indexOf(marker);
-  if (start < 0) {
-    return "";
-  }
+function extractObjectBodies(source, marker) {
+  const bodies = [];
+  let cursor = 0;
 
-  const braceStart = source.indexOf("{", start);
-  if (braceStart < 0) {
-    return "";
-  }
+  while (cursor < source.length) {
+    const start = source.indexOf(marker, cursor);
+    if (start < 0) {
+      break;
+    }
 
-  let depth = 0;
-  let end = -1;
+    const braceStart = source.indexOf("{", start);
+    if (braceStart < 0) {
+      break;
+    }
 
-  for (let i = braceStart; i < source.length; i += 1) {
-    const ch = source[i];
-    if (ch === "{") {
-      depth += 1;
-    } else if (ch === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        end = i;
-        break;
+    let depth = 0;
+    let end = -1;
+
+    for (let i = braceStart; i < source.length; i += 1) {
+      const ch = source[i];
+      if (ch === "{") {
+        depth += 1;
+      } else if (ch === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
       }
     }
+
+    if (end < 0) {
+      break;
+    }
+
+    bodies.push(source.slice(braceStart + 1, end));
+    cursor = end + 1;
   }
 
-  if (end < 0) {
-    return "";
-  }
-
-  return source.slice(braceStart + 1, end);
+  return bodies;
 }
 
 function extractQuotedKeys(body) {
@@ -52,11 +60,18 @@ function extractQuotedKeys(body) {
 
 function collectTranslationKeys() {
   const source = fs.readFileSync(I18N_FILE, "utf8");
+  const keys = new Set();
 
-  const baseBody = extractObjectBody(source, "const EN_PHRASE_TRANSLATIONS");
-  const assignBody = extractObjectBody(source, "Object.assign(EN_PHRASE_TRANSLATIONS");
+  const baseBodies = extractObjectBodies(source, "const EN_PHRASE_TRANSLATIONS");
+  const assignBodies = extractObjectBodies(source, "Object.assign(EN_PHRASE_TRANSLATIONS");
 
-  return new Set([...extractQuotedKeys(baseBody), ...extractQuotedKeys(assignBody)]);
+  for (const body of [...baseBodies, ...assignBodies]) {
+    for (const key of extractQuotedKeys(body)) {
+      keys.add(key);
+    }
+  }
+
+  return keys;
 }
 
 function walk(dir, files) {
