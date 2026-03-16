@@ -440,12 +440,16 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Ad Soyad; Telefon; E-posta; Lokasyon; Deneyim (yıl)":
     "Full Name; Phone; Email; Location; Experience (years)",
   "Ad, e-posta veya telefon ile arayın...": "Search by name, email, or phone...",
+  "Aday": "Candidate",
+  "Aday:": "Candidate:",
   "Aday adı en az 2 karakter olmalı.": "Candidate name must be at least 2 characters.",
   "Aday detayı yüklenemedi.": "Candidate details could not be loaded.",
   "Aday detayı yükleniyor...": "Loading candidate details...",
+  "Aday ID:": "Candidate ID:",
   "Aday katılmadı": "Candidate did not attend",
   "Aday listesi yüklenemedi.": "Candidate list could not be loaded.",
   "Aday oluşturulamadı.": "Candidate could not be created.",
+  "Aday Uyum Skoru": "Candidate Fit Score",
   "Aday randevu seçimi bekleniyor.": "Waiting for candidate appointment selection.",
   "Aday vardiya çıkışı sonrası aranacak": "Candidate will be called after shift.",
   "Aday ve ilan seçimi zorunludur.": "Candidate and posting selection are required.",
@@ -521,6 +525,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Başvuru Yönetimi": "Application Management",
   "Başvurular": "Applications",
   "Başvurular yükleniyor...": "Loading applications...",
+  "Bekliyor": "Pending",
   "Belirgin risk kaydı yok.": "No notable risk records.",
   "Bir hata oluştu.": "An error occurred.",
   "Boş cevap gönderilemez.": "Empty answers cannot be submitted.",
@@ -577,6 +582,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Dış Kaynak Adı": "External Source Name",
   "Dosya Seç": "Select File",
   "Düşük güven": "Low confidence",
+  "Ek inceleme gerekli.": "Additional review required.",
   "Eğitim geçmişi eksik": "Education history is missing",
   "Eksik alan işaretlenmedi.": "No missing field was marked.",
   "Eksik bilgi işaretlenmedi.": "No missing information was marked.",
@@ -598,6 +604,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Giriş başarısız.": "Sign in failed.",
   "Giriş yap": "Sign in",
   "Giriş yapılıyor...": "Signing in...",
+  "Google Calendar Bağla": "Connect Google Calendar",
   "Google Calendar Bağlantısı": "Google Calendar Connection",
   "Görev": "Task",
   "Görev ID": "Task ID",
@@ -703,6 +710,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "İyi Eşleşme": "Good Match",
   "Kalite incelemesi için session seçiniz.": "Select a session for quality review.",
   "Kalite skoru sayısal olmalıdır.": "Quality score must be numeric.",
+  "Karar tipi": "Decision type",
   "Kanıt Bağlantıları": "Evidence Links",
   "Kanıt bağlantısı bulunamadı.": "No evidence links found.",
   "Kanıt bağlı recruiter raporu": "Evidence-linked recruiter report",
@@ -789,6 +797,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Pozisyonun temel sorumlulukları, vardiya koşulları ve gerekli beklentiler...":
     "Core responsibilities, shift conditions, and required expectations for the role...",
   "Randevu oluşturulamadı.": "Appointment could not be created.",
+  "Randevu Bekliyor": "Awaiting Appointment",
   "Randevu Seçin": "Select Appointment",
   "Randevunuz oluşturuldu!": "Your appointment has been created!",
   "Randevunuz oluşturulmuş": "Your appointment is already created",
@@ -854,9 +863,14 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Template seçiniz": "Select template",
   "Toplam Başvuru": "Total Applications",
   "Toplam İlan": "Total Job Postings",
+  "Toplu Aday Ekle": "Bulk Add Candidates",
+  "Rol Ailesi": "Role Family",
+  "Rol ailesi zorunludur.": "Role family is required.",
   "Transcript Ekle / Güncelle": "Add / Update Transcript",
   "Transcript için session seçiniz.": "Select a session for transcript.",
   "Transcript kalite durumu güncellendi.": "Transcript quality status updated.",
+  "Transcript kalite inceleme yetkiniz yok.":
+    "You do not have transcript quality review permission.",
   "Transcript Kalite İncelemesi": "Transcript Quality Review",
   "Transcript kalite incelemesi başarısız.": "Transcript quality review failed.",
   "Transcript metni boş olamaz.": "Transcript text cannot be empty.",
@@ -980,6 +994,8 @@ const EN_WORD_TRANSLATIONS: Array<[string, string]> = [
   ["Başvurular", "Applications"],
   ["Aday", "Candidate"],
   ["Adaylar", "Candidates"],
+  ["Rol", "Role"],
+  ["Ailesi", "Family"],
   ["Mülakat", "Interview"],
   ["Görüşme", "Interview"],
   ["Oturum", "Session"],
@@ -995,6 +1011,8 @@ const EN_WORD_TRANSLATIONS: Array<[string, string]> = [
   ["Yenile", "Refresh"],
   ["Yükleniyor", "Loading"],
   ["Yükleme", "Upload"],
+  ["Planlanan", "Scheduled"],
+  ["Bekliyor", "Pending"],
   ["Görev", "Task"],
   ["Görevleri", "Tasks"],
   ["Kayıtları", "Logs"],
@@ -1003,6 +1021,7 @@ const EN_WORD_TRANSLATIONS: Array<[string, string]> = [
   ["Kaydet", "Save"],
   ["Sil", "Delete"],
   ["Aç", "Open"],
+  ["Bağla", "Connect"],
   ["Kapat", "Disable"],
   ["Açık", "Enabled"],
   ["Kapalı", "Disabled"],
@@ -1047,6 +1066,55 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function isWordLikeValue(value: string) {
+  return /^[\p{L}\p{N}_]+$/u.test(value);
+}
+
+function toTitleCaseWord(value: string, locale: string) {
+  if (!value) {
+    return value;
+  }
+
+  const first = value.charAt(0);
+  return first.toLocaleUpperCase(locale) + value.slice(1).toLocaleLowerCase(locale);
+}
+
+function buildSafeWordMap(
+  pairs: Array<[string, string]>,
+  options: { sourceLocale: string; targetLocale: string; minLength: number }
+) {
+  const map: Record<string, string> = {};
+
+  for (const [fromRaw, toRaw] of pairs) {
+    const from = fromRaw.trim();
+    const to = toRaw.trim();
+    if (!from || !to || !isWordLikeValue(from) || from.length < options.minLength) {
+      continue;
+    }
+
+    const variants: Array<[string, string]> = [
+      [from, to],
+      [
+        from.toLocaleLowerCase(options.sourceLocale),
+        to.toLocaleLowerCase(options.targetLocale)
+      ],
+      [
+        from.toLocaleUpperCase(options.sourceLocale),
+        to.toLocaleUpperCase(options.targetLocale)
+      ],
+      [toTitleCaseWord(from, options.sourceLocale), toTitleCaseWord(to, options.targetLocale)]
+    ];
+
+    for (const [variantFrom, variantTo] of variants) {
+      if (!map[variantFrom]) {
+        map[variantFrom] = variantTo;
+      }
+    }
+  }
+
+  return map;
+}
+
 function applyPhraseMap(value: string, map: Record<string, string>) {
   let next = value;
   const entries = Object.entries(map).sort((a, b) => b[0].length - a[0].length);
@@ -1080,6 +1148,18 @@ const EN_TO_TR_PHRASE_TRANSLATIONS: Record<string, string> = Object.entries(
   }
   return acc;
 }, {});
+
+const TURKISH_WORD_FIX_MAP = buildSafeWordMap(TURKISH_WORD_FIXES, {
+  sourceLocale: "tr-TR",
+  targetLocale: "tr-TR",
+  minLength: 4
+});
+
+const EN_WORD_TRANSLATION_MAP = buildSafeWordMap(EN_WORD_TRANSLATIONS, {
+  sourceLocale: "tr-TR",
+  targetLocale: "en-US",
+  minLength: 3
+});
 
 export function normalizeSiteLocale(raw: string | null | undefined): SiteLocale {
   if (!raw) {
@@ -1116,11 +1196,12 @@ export function normalizeTurkishUiText(text: string) {
   }
 
   const canonicalized = applyPhraseMap(text, EN_TO_TR_PHRASE_TRANSLATIONS);
-  return applyPhraseMap(canonicalized, TURKISH_PHRASE_FIXES);
+  const phraseFixed = applyPhraseMap(canonicalized, TURKISH_PHRASE_FIXES);
+  return applyPhraseMap(phraseFixed, TURKISH_WORD_FIX_MAP);
 }
 
 function translateTurkishUiToEnglish(text: string) {
-  return applyPhraseMap(text, EN_PHRASE_TRANSLATIONS)
+  return applyPhraseMap(applyPhraseMap(text, EN_PHRASE_TRANSLATIONS), EN_WORD_TRANSLATION_MAP)
     .replace(/(\d+)\s+gün/giu, "$1 days")
     .replace(/(\d+)\s+segment/giu, "$1 segments")
     .replace(/kuyruğa alındı\./giu, "has been queued.")

@@ -85,6 +85,34 @@ function collectUiPhrases() {
 
   const phraseRefs = new Map();
   const turkishPattern = /[ÇĞİÖŞÜçğıöşü]/;
+  const asciiTurkishTokens = [
+    "aday",
+    "adaylar",
+    "basvuru",
+    "başvuru",
+    "mulakat",
+    "mülakat",
+    "gorusme",
+    "görüşme",
+    "rol",
+    "aile",
+    "ailesi",
+    "bagla",
+    "bağla",
+    "planlanan",
+    "bekliyor",
+    "randevu",
+    "ilan",
+    "karar",
+    "inceleme"
+  ];
+
+  const hasAsciiTurkishToken = (value) => {
+    const normalized = value.toLocaleLowerCase("tr-TR");
+    return asciiTurkishTokens.some((token) =>
+      new RegExp(`(^|[^\\p{L}\\p{N}_])${token}([^\\p{L}\\p{N}_]|$)`, "u").test(normalized)
+    );
+  };
 
   for (const file of files) {
     const lines = fs.readFileSync(file, "utf8").split(/\n/);
@@ -100,7 +128,7 @@ function collectUiPhrases() {
         if (raw.includes("${") || /[{}$`]/.test(raw)) {
           continue;
         }
-        if (!turkishPattern.test(raw)) {
+        if (!turkishPattern.test(raw) && !hasAsciiTurkishToken(raw)) {
           continue;
         }
 
@@ -114,7 +142,7 @@ function collectUiPhrases() {
         if (!raw || raw.length < 2) {
           continue;
         }
-        if (!turkishPattern.test(raw) || /[{}$`]/.test(raw)) {
+        if ((!turkishPattern.test(raw) && !hasAsciiTurkishToken(raw)) || /[{}$`]/.test(raw)) {
           continue;
         }
 
