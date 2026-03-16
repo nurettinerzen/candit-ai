@@ -1,0 +1,27 @@
+{
+  "name": "@ai-interviewer/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "echo 'no lint yet'",
+    "i18n:audit": "node ./scripts/i18n-audit.mjs",
+    "test": "echo 'no tests yet'"
+  },
+  "dependencies": {
+    "@ai-interviewer/domain": "workspace:*",
+    "@ai-interviewer/ui": "workspace:*",
+    "next": "16.0.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "@11labs/client": "^0.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "@types/react": "^19.1.5",
+    "@types/react-dom": "^19.1.5",
+    "typescript": "^5.8.3"
+  }
+}
