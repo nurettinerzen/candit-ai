@@ -936,7 +936,25 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Session başlatıldı.": "Session started.",
   "Session tamamlandı.": "Session completed.",
   "Türkiye odaklı AI destekli recruiter işletim paneli":
-    "Turkey-focused AI-assisted recruiter operations dashboard"
+    "Turkey-focused AI-assisted recruiter operations dashboard",
+  "Bugün dikkat edilmesi gerekenler ve işe alım süreçlerinizin özeti.":
+    "Summary of today’s priorities and your hiring pipeline.",
+  "Mülakat tamamlandı, rapor ve öneri hazır. Recruiter kararı bekleniyor.":
+    "Interview completed; report and recommendation are ready. Waiting for recruiter decision.",
+  "AI ön değerlendirme yapıldı. Recruiter incelemesi bekleniyor.":
+    "AI pre-screening completed. Waiting for recruiter review.",
+  "Yeni başvurular henüz AI tarafından değerlendirilmedi.":
+    "New applications have not yet been evaluated by AI.",
+  "Karar Ver": "Decide",
+  "Başvuruyu Aç": "Open Application",
+  "İnceleme Bekliyor": "Awaiting Review",
+  "Başvurdu": "Applied",
+  "Mülakat Planlandı": "Interview Scheduled",
+  "Mülakat Tamamlandı": "Interview Completed",
+  "Yönetici İncelemesi": "Hiring Manager Review",
+  "Teklif Aşamasında": "Offer Stage",
+  "Reddedildi": "Rejected",
+  "İşe Alındı": "Hired"
 });
 
 const EN_WORD_TRANSLATIONS: Array<[string, string]> = [
