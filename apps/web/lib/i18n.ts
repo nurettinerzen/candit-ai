@@ -1133,6 +1133,66 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "2 yil depo deneyimi": "2 years of warehouse experience"
 });
 
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  Beklet: "Hold",
+  Riskler: "Risks",
+  "Sertifika teyidi sonrası recruiter değerlendirmesi ile ilerleyin.":
+    "Proceed with recruiter evaluation after certificate verification.",
+  "Sertifika teyidi sonrası recruiter değerlendirmesi ile ilerleyin":
+    "Proceed with recruiter evaluation after certificate verification.",
+  "Sertifika teyidi sonrasi recruiter degerlendirmesi ile ilerleyin.":
+    "Proceed with recruiter evaluation after certificate verification.",
+  "Sertifika teyidi sonrasi recruiter degerlendirmesi ile ilerleyin":
+    "Proceed with recruiter evaluation after certificate verification.",
+  "Candidate depo operasyonunda 5 yıla yakın deneyim sinyali veriyor.":
+    "The candidate shows signals of nearly 5 years of warehouse operations experience.",
+  "Candidate depo operasyonunda 5 yıla yakın deneyim sinyali veriyor":
+    "The candidate shows signals of nearly 5 years of warehouse operations experience.",
+  "Candidate depo operasyonunda 5 yila yakin deneyim sinyali veriyor.":
+    "The candidate shows signals of nearly 5 years of warehouse operations experience.",
+  "Candidate depo operasyonunda 5 yila yakin deneyim sinyali veriyor":
+    "The candidate shows signals of nearly 5 years of warehouse operations experience.",
+  "Vardiya çalışma sinyali mevcut.": "Shift-work signal is present.",
+  "Vardiya çalışma sinyali mevcut": "Shift-work signal is present.",
+  "Vardiya calisma sinyali mevcut.": "Shift-work signal is present.",
+  "Vardiya calisma sinyali mevcut": "Shift-work signal is present.",
+  "Forklift sertifikası yenileme süreci tamamlanmamış.":
+    "Forklift certificate renewal process is not completed.",
+  "Forklift sertifikası yenileme süreci tamamlanmamış":
+    "Forklift certificate renewal process is not completed.",
+  "Forklift sertifikası yenileme süreci tamamlanmamış olabilir.":
+    "Forklift certificate renewal process may not be completed.",
+  "Forklift sertifikası yenileme süreci tamamlanmamış olabilir":
+    "Forklift certificate renewal process may not be completed.",
+  "Forklift sertifikasi yenileme sureci tamamlanmamis.":
+    "Forklift certificate renewal process is not completed.",
+  "Forklift sertifikasi yenileme sureci tamamlanmamis olabilir.":
+    "Forklift certificate renewal process may not be completed.",
+  sertifika_dogrulama_dokumani: "certificate_verification_document",
+  "Interview daveti gönderildiğinde, candidate e-posta ile randevu seçim linki alır ve kendi uygun olduğu zamanı seçer.":
+    "When the interview invitation is sent, the candidate receives an email with an appointment-selection link and chooses a suitable time.",
+  "Interview daveti gönderildiğinde, candidate e-posta ile randevu seçim linki alır ve kendi uygun olduğu zamanı seçer":
+    "When the interview invitation is sent, the candidate receives an email with an appointment-selection link and chooses a suitable time.",
+  "Görüşme daveti gönderildiğinde, aday e-posta ile randevu seçim linki alır ve kendi uygun olduğu zamanı seçer.":
+    "When the interview invitation is sent, the candidate receives an email with an appointment-selection link and chooses a suitable time.",
+  "Belge teyidi sonrası candidate yeniden değerlendirilsin.":
+    "Reassess the candidate after document verification.",
+  "Belge teyidi sonrası candidate yeniden değerlendirilsin":
+    "Reassess the candidate after document verification.",
+  "Belge teyidi sonrasi candidate yeniden degerlendirilsin.":
+    "Reassess the candidate after document verification.",
+  "Belge teyidi sonrasi candidate yeniden degerlendirilsin":
+    "Reassess the candidate after document verification.",
+  "Interview transcriptinde vardiya uyumu sinyali var.":
+    "The interview transcript shows shift-compatibility signals.",
+  "Interview transcriptinde vardiya uyumu sinyali var":
+    "The interview transcript shows shift-compatibility signals.",
+  "V1 Security Rule: AI çıktısı otomatik karar uygulamaz. Stage etkileyen tüm kararlar recruiter/hiring manager onayı ve audit izi ile tamamlanır.":
+    "V1 Security Rule: AI output cannot apply automatic decisions. All stage-impacting decisions require recruiter/hiring manager approval and an audit trail.",
+  "AI çıktısı otomatik karar uygulamaz. Stage etkileyen tüm kararlar recruiter/hiring manager onayı ve audit izi ile tamamlanır.":
+    "AI output cannot apply automatic decisions. All stage-impacting decisions require recruiter/hiring manager approval and an audit trail."
+});
+
 const EN_WORD_TRANSLATIONS: Array<[string, string]> = [
   ["Başvuru", "Application"],
   ["Başvurular", "Applications"],
