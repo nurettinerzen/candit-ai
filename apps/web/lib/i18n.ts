@@ -422,7 +422,136 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
     "A parsing task is already running for the same CV.",
   "CV parsing görevi kuyruğa alındı.": "CV parsing task has been queued.",
   "Screening support görevi zaten çalışıyor.": "Screening support task is already running.",
-  "Screening support görevi kuyruğa alındı.": "Screening support task has been queued."
+  "Screening support görevi kuyruğa alındı.": "Screening support task has been queued.",
+
+  // Job detail command center
+  "Toplam Başvuru": "Total Applicants",
+  "Skoru Hazır": "Score Ready",
+  "Ort. Uyum Skoru": "Avg. Fit Score",
+  "İşlem Bekliyor": "Action Required",
+  "Aday Akışı": "Candidate Pipeline",
+  "Teklif / Sonuç": "Offer / Result",
+  "İlan Bilgilerini Göster": "Show Posting Details",
+  "İlan Bilgilerini Gizle": "Hide Posting Details",
+  "Aday ara (ad, e-posta, telefon)...": "Search candidates (name, email, phone)...",
+  "Tüm Kaynaklar": "All Sources",
+  "Toplu Aday Ekle": "Bulk Add Candidates",
+  "CSV Yükle": "Upload CSV",
+  "aday gösteriliyor": "candidates shown",
+  "Aramayla eşleşen aday bulunamadı.": "No candidates matched the search.",
+  "Bu ilana henüz aday başvurusu yok.": "No candidates have applied to this posting yet.",
+  "Uyum Skoru": "Fit Score",
+  "Uyum skoru adayın role tahmini uygunluğunu, güven ise bu skorun eldeki veriyle ne kadar sağlam olduğunu gösterir.":
+    "Fit score shows the candidate's estimated suitability for the role, while confidence shows how solid that score is based on the available data.",
+  "Güven": "Confidence",
+  "Uyarılar": "Warnings",
+  "Sonraki Adım": "Next Step",
+  "İşlem": "Action",
+  "İşlem tamamlandı.": "Action completed.",
+  "Güçlü": "Strong",
+  "İyi": "Good",
+  "Orta": "Average",
+  "Zayıf": "Weak",
+  "Yüksek": "High",
+  "Düşük": "Low",
+  "CV Yok": "No CV",
+  "CV İşlenmedi": "CV Not Parsed",
+  "Eksik Bilgi": "Missing Info",
+  "Risk": "Risk",
+  "Değerlendir": "Evaluate",
+  "Ön Eleme Başlat": "Start Screening",
+  "Ön eleme görevi kuyruğa alındı.": "Screening task has been queued.",
+  "Görüşmeye Davet Et": "Invite to Interview",
+  "Randevu Bekliyor": "Awaiting Appointment",
+  "Görüşme Bekliyor": "Awaiting Interview",
+  "Görüşme Devam": "Interview In Progress",
+  "Sonuçları İncele": "Review Results",
+  "Karar Ver": "Make Decision",
+  "Aday ön değerlendirme aşamasına alındı.": "Candidate moved to the screening stage.",
+  "Aday recruiter inceleme bekleyenler listesine alındı.":
+    "Candidate moved to the recruiter review queue.",
+  "Aday reddedildi.": "Candidate was rejected.",
+  "Uyum skoru hesabı kuyruğa alındı.": "Fit score calculation has been queued.",
+  "Görüşme daveti süreci başlatıldı.": "Interview invitation flow has started.",
+  "Görüşme daveti gönderildi. Aday hemen başlayabilir veya daha sonra planlayabilir.":
+    "Interview invitation sent. The candidate can start immediately or plan for later.",
+
+  // Job creation draft preview
+  "İlan Taslağı": "Posting Draft",
+  "İlan taslağı": "Job posting draft",
+  "Önizleme": "Preview",
+  "Önizlemeyi Gizle": "Hide Preview",
+  "Metni Kopyala": "Copy Text",
+  "Kopyalandı!": "Copied!",
+  "Pozisyon bilgilerini girin. Kaydettikten sonra veya öncesinde ilan taslağını kopyalayarak harici platformlarda yayınlayabilirsiniz.":
+    "Enter position details. You can copy the posting draft for external platforms before or after saving.",
+  "Aşağıdaki taslak metin, girdiğiniz bilgilerden otomatik oluşturulur. Harici platformlarda (Kariyer.net, LinkedIn vb.) ilan yayınlamak için kopyalayıp kullanabilirsiniz.":
+    "The draft below is auto-generated from the information you entered. Copy and use it to publish on external platforms (Kariyer.net, LinkedIn, etc.).",
+  "AI Destekli İlan Taslağı": "AI-Assisted Posting Draft",
+  "Pozisyon bilgilerini girin. İsterseniz kaydetmeden önce AI ile ilan taslağı üretip düzenleyebilir, ardından harici platformlara kopyalayabilirsiniz.":
+    "Enter position details. If you want, you can generate and edit an AI job posting draft before saving, then copy it to external platforms.",
+  "Bilgileri girdikten sonra Taslak Oluştur diyerek modelden ilan metni üretin. Oluşan taslağı burada düzenleyebilir ve harici platformlara kopyalayabilirsiniz.":
+    "After entering the details, click Generate Draft to have the model create a job posting. You can edit the resulting draft here and copy it to external platforms.",
+  "Revizyon Notu": "Revision Note",
+  "İsterseniz beğenmediğiniz taslağı burada vereceğiniz notla yeniden yazdırabilirsiniz.":
+    "If you are not happy with the draft, you can have it rewritten based on the note you provide here.",
+  "Örnek: Daha kurumsal bir ton kullan, vardiya bilgisini daha net vurgula, nitelikleri daha kısa yaz.":
+    "Example: Use a more corporate tone, emphasize the shift details more clearly, and shorten the qualifications.",
+  "Taslak hazırlanıyor...": "Preparing draft...",
+  "Yeniden yazılıyor...": "Rewriting...",
+  "Taslak Oluştur": "Generate Draft",
+  "Yeniden Oluştur": "Regenerate",
+  "Nota Göre Yeniden Yaz": "Rewrite Based on Note",
+  "Taslağı Kopyala": "Copy Draft",
+  "Taslak AI ile oluşturuldu. Dilerseniz düzenleyip kopyalayabilirsiniz.":
+    "The draft was created with AI. You can edit and copy it if you like.",
+  "Taslak güncel değil. Form bilgilerinde değişiklik yaptınız; en doğru metin için yeniden oluşturun.":
+    "The draft is out of date. You changed the form details; regenerate it for the most accurate text.",
+  "Taslak oluşturduğunuzda ilan metni burada görünecek.":
+    "The job posting text will appear here once you generate a draft.",
+  "Taslak oluşturmak için ilan başlığı en az 3 karakter olmalı.":
+    "Job title must be at least 3 characters to generate a draft.",
+  "Taslak oluşturmak için departman, iş tanımı veya en az bir nitelik girin.":
+    "Enter a department, job description, or at least one qualification to generate a draft.",
+  "İlan taslağı oluşturulamadı.": "Job posting draft could not be created.",
+  "AI sağlayıcısı hazır değil; kural tabanlı taslak üretildi.":
+    "AI provider is not ready; a rule-based draft was generated.",
+  "AI yanıtı geçerli bir ilan taslağı üretmedi; kural tabanlı taslak gösteriliyor.":
+    "The AI response did not produce a valid job posting draft; a rule-based draft is being shown.",
+  "AI taslak üretimi başarısız oldu; kural tabanlı taslak gösteriliyor.":
+    "AI draft generation failed; a rule-based draft is being shown.",
+
+  // Raporlar page
+  "İşe alım süreçlerinizin performansını ve dönüşüm oranlarını takip edin.":
+    "Track the performance and conversion rates of your hiring processes.",
+  "İşe Alım Süresi (Ort.)": "Time to Hire (Avg.)",
+  "Ön eleme oranı": "Screening rate",
+  "Mülakata geçiş oranı": "Interview conversion rate",
+  "İşe alım oranı": "Hire rate",
+  "İşe alınan aday sayısı": "Total hired candidates",
+  "Ortalama süre (gün)": "Average duration (days)",
+  "Medyan süre (gün)": "Median duration (days)",
+  "Transkript kalite ortalaması": "Transcript quality average",
+  "Rapor güven ortalaması": "Report confidence average",
+  "İncelenen transkript sayısı": "Transcripts reviewed",
+  "Üretilen rapor sayısı": "Reports generated",
+
+  // Interviews page extras
+  "Planlanan, devam eden ve tamamlanan görüşmeleri takip edin. İnceleme bekleyenlere öncelik verin.":
+    "Track scheduled, in-progress, and completed interviews. Prioritize those awaiting review.",
+  "Voice görüşmelerde açılan bağlantı adayın gerçek mülakat ekranıdır; recruiter tarafında önizleme amacıyla da kullanılabilir.":
+    "In voice interviews, the opened link is the candidate's actual interview screen; recruiters can also use it for preview.",
+  "Aday Görüşme Ekranı": "Candidate Interview Screen",
+  "Önizle": "Preview",
+  "Planlanmış": "Scheduled",
+  "Bugün": "Today",
+  "Aday Havuzuna Dön": "Back to Candidate Pool",
+
+  // Ayarlar page extras
+  "Entegrasyon ve bağlantı durumları, AI yapılandırması, sistem sağlığı ve denetim kayıtları.":
+    "Integration and connection status, AI configuration, system health, and audit logs.",
+  "Google Calendar entegrasyonu ile görüşmeleri otomatik olarak takviminize ekleyebilirsiniz.":
+    "With Google Calendar integration, you can automatically add interviews to your calendar."
 };
 
 Object.assign(EN_PHRASE_TRANSLATIONS, {
@@ -451,6 +580,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Aday oluşturulamadı.": "Candidate could not be created.",
   "Aday Uyum Skoru": "Candidate Fit Score",
   "Aday randevu seçimi bekleniyor.": "Waiting for candidate appointment selection.",
+  "Aday isterse hemen başlayabilir, ister daha sonra planlayabilir.":
+    "The candidate can start immediately or plan for later.",
   "Aday vardiya çıkışı sonrası aranacak": "Candidate will be called after shift.",
   "Aday ve ilan seçimi zorunludur.": "Candidate and posting selection are required.",
   "ADAY: Son iş yerimde depoda ürün toplama yaptım...":
@@ -548,7 +679,6 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "No interview sessions matched this filter.",
   "Bu görüşme randevusu iptal edilmiştir.": "This interview appointment has been cancelled.",
   "Bu ilana henüz aday başvurusu yok.": "There are no candidate applications for this posting yet.",
-  "Bugün": "Today",
   "Cevap gönderilemedi.": "Response could not be submitted.",
   "CODE: açıklama": "CODE: description",
   "CSV Yükle": "Upload CSV",
@@ -581,6 +711,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Devre Dışı": "Disabled",
   "Dış Kaynak Adı": "External Source Name",
   "Dosya Seç": "Select File",
+  "Doğrudan Başvuru": "Direct Application",
   "Düşük güven": "Low confidence",
   "Ek inceleme gerekli.": "Additional review required.",
   "Eğitim geçmişi eksik": "Education history is missing",
@@ -617,6 +748,10 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Görüşme Bekliyor": "Interview Pending",
   "Görüşme daveti gönderildi. Aday randevu seçimi için e-posta alacak.":
     "Interview invitation sent. Candidate will receive an email to choose an appointment slot.",
+  "Görüşme daveti gönderildi. Aday aynı e-postadan hemen başlayabilir veya daha sonra planlayabilir.":
+    "Interview invitation sent. The candidate can start immediately from the same email or plan for later.",
+  "Görüşme daveti gönderildi. Adaya direkt görüşme linki iletildi.":
+    "Interview invitation sent. A direct interview link was delivered to the candidate.",
   "Görüşme daveti gönderilemedi.": "Interview invitation could not be sent.",
   "Görüşme daveti oluşturuldu.": "Interview invitation created.",
   "Görüşme Detayı": "Interview Detail",
@@ -760,6 +895,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Mülakata geçiş oranı": "Interview conversion rate",
   "Nihai kararı her zaman insan verir.": "The final decision is always made by a human.",
   "Nitelik adı (örnek: vardiya_uygunlugu)": "Qualification name (example: shift_eligibility)",
+  "Nitelik adı (örnek: vardiya_uygunluğu)": "Qualification name (example: shift_eligibility)",
   "Oluşturma": "Creation",
   "Oluşturulma": "Created At",
   "Onay Kayıtları": "Approval Records",
@@ -865,7 +1001,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Toplam İlan": "Total Job Postings",
   "Toplu Aday Ekle": "Bulk Add Candidates",
   "Rol Ailesi": "Role Family",
-  "Rol ailesi zorunludur.": "Role family is required.",
+  "Departman": "Department",
+  "Departman zorunludur.": "Department is required.",
   "Transcript Ekle / Güncelle": "Add / Update Transcript",
   "Transcript için session seçiniz.": "Select a session for transcript.",
   "Transcript kalite durumu güncellendi.": "Transcript quality status updated.",
@@ -962,6 +1099,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Öneri Oluşturma": "Recommendation Generation",
   "Örnek: warehouse, retail, call_center":
     "Example: warehouse, retail, call_center",
+  "Örnek: Operasyon, Mağaza, Çağrı Merkezi":
+    "Example: Operations, Store, Call Center",
   "Rapor Oluşturma": "Report Generation",
   "Screening tabanlı": "Screening-based",
   "Sertifika doğrulaması gerekli": "Certificate verification required",
@@ -971,6 +1110,32 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Turkey-focused AI-assisted recruiter operations dashboard",
   "Bugün dikkat edilmesi gerekenler ve işe alım süreçlerinizin özeti.":
     "Summary of today’s priorities and your hiring pipeline.",
+  "Bu ekran aday listesi değil, işe alım operasyonunuzun genel özetidir.":
+    "This screen is not a candidate list; it is your hiring operations overview.",
+  "Bugün Yapılacaklar": "Today's Priorities",
+  "Feedback Bekleyenler": "Awaiting Feedback",
+  "Modül Görünümü": "Module Overview",
+  "İş Kuyruğu": "Work Queue",
+  "İş Kuyruğunu Aç": "Open Work Queue",
+  "Mülakatlara Git": "Go to Interviews",
+  "İlanlara Git": "Go to Jobs",
+  "Raporlara Git": "Go to Reports",
+  "İş Kuyruğu sayfası": "Work Queue page",
+  "Başvuru Karar Merkezi": "Application Decision Center",
+  "Bu ekran iş kuyruğudur. Aday profili ayrı sayfadadır; buradan ilan bazlı karar ekranına girilir.":
+    "This screen is the work queue. Candidate profile is a separate page; from here you open the job-specific decision screen.",
+  "Bu ekran aday profili değil, bu ilana ait başvurunun karar ve takip ekranıdır.":
+    "This screen is not the candidate profile; it is the decision and tracking screen for this application.",
+  "Karar Merkezi": "Decision Center",
+  "Hızlı recruiter aksiyonları burada. Gelişmiş formlar aşağıda kalır.":
+    "Quick recruiter actions live here. Advanced forms stay below.",
+  "Başvuru Özeti": "Application Summary",
+  "Ekip Notları": "Team Notes",
+  "Toplam Kayıt": "Total Records",
+  "Planlı Mülakat": "Scheduled Interviews",
+  "Kişi Profili": "Person Profile",
+  "Notu Kaydet": "Save Note",
+  "Not eklemek için ek yetki gerekiyor.": "Additional permission is required to add notes.",
   "Mülakat tamamlandı, rapor ve öneri hazır. Recruiter kararı bekleniyor.":
     "Interview completed; report and recommendation are ready. Waiting for recruiter decision.",
   "AI ön değerlendirme yapıldı. Recruiter incelemesi bekleniyor.":
@@ -1175,6 +1340,10 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "When the interview invitation is sent, the candidate receives an email with an appointment-selection link and chooses a suitable time.",
   "Görüşme daveti gönderildiğinde, aday e-posta ile randevu seçim linki alır ve kendi uygun olduğu zamanı seçer.":
     "When the interview invitation is sent, the candidate receives an email with an appointment-selection link and chooses a suitable time.",
+  "Aday e-posta ile direkt AI görüşme linki alır. İster hemen katılır, ister aynı e-postadaki planlama linkiyle daha sonraki bir zamanı seçer.":
+    "The candidate receives a direct AI interview link by email. They can join immediately or choose a later time from the planning link in the same email.",
+  "Görüşme daveti gönderildiğinde aday önce direkt AI görüşme linki alır. Uygun değilse aynı e-postadaki planlama linkiyle daha sonraki bir zamanı seçebilir.":
+    "When the interview invitation is sent, the candidate first receives a direct AI interview link. If it is not convenient, they can choose a later time from the planning link in the same email.",
   "Belge teyidi sonrası candidate yeniden değerlendirilsin.":
     "Reassess the candidate after document verification.",
   "Belge teyidi sonrası candidate yeniden değerlendirilsin":

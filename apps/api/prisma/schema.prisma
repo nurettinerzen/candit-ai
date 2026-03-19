@@ -1,0 +1,1251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+enum Role {
+  ADMIN
+  RECRUITER
+  HIRING_MANAGER
+  CANDIDATE
+  AGENCY_RECRUITER
+}
+
+enum JobStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ApplicationStage {
+  APPLIED
+  SCREENING
+  INTERVIEW_SCHEDULED
+  INTERVIEW_COMPLETED
+  RECRUITER_REVIEW
+  HIRING_MANAGER_REVIEW
+  OFFER
+  REJECTED
+  HIRED
+}
+
+enum InterviewMode {
+  MEETING_LINK
+  PHONE
+  ONSITE
+  VOICE
+  VIDEO
+}
+
+enum InterviewSessionStatus {
+  SCHEDULED
+  RUNNING
+  COMPLETED
+  FAILED
+  NO_SHOW
+  CANCELLED
+}
+
+enum Speaker {
+  AI
+  CANDIDATE
+  RECRUITER
+}
+
+enum Recommendation {
+  ADVANCE
+  HOLD
+  REVIEW
+}
+
+enum AiTaskType {
+  CV_PARSING
+  JOB_REQUIREMENT_INTERPRETATION
+  CANDIDATE_FIT_ASSISTANCE
+  SCREENING_SUPPORT
+  INTERVIEW_PREPARATION
+  INTERVIEW_ORCHESTRATION
+  TRANSCRIPT_SUMMARIZATION
+  REPORT_GENERATION
+  RECOMMENDATION_GENERATION
+  APPLICANT_FIT_SCORING
+}
+
+enum AiTaskStatus {
+  PENDING
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  NEEDS_REVIEW
+}
+
+enum AiAutomationLevel {
+  ASSISTED
+  MANUAL_WITH_AI_SUPPORT
+  AUTOMATED
+}
+
+enum ConsentContext {
+  INTERVIEW_RECORDING
+  DATA_PROCESSING
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+  INTEGRATION
+}
+
+enum FeatureFlagType {
+  BOOLEAN
+  MULTIVARIATE
+  KILL_SWITCH
+}
+
+enum IntegrationProvider {
+  CALENDLY
+  GOOGLE_CALENDAR
+  MICROSOFT_CALENDAR
+  ZOOM
+  GOOGLE_MEET
+  ATS_GENERIC
+}
+
+enum CvExtractionStatus {
+  EXTRACTED
+  PARTIAL
+  UNSUPPORTED
+  FAILED
+}
+
+enum CvExtractionMethod {
+  UTF8_PLAIN_TEXT
+  PDF_PARSE
+  DOCX_MAMMOTH
+  DOC_LEGACY
+  DOC_OS_CONVERSION
+  METADATA_ONLY
+}
+
+enum SchedulingWorkflowState {
+  DRAFT
+  COLLECTING_RECRUITER_AVAILABILITY
+  COLLECTING_CANDIDATE_AVAILABILITY
+  SLOT_PROPOSAL_READY
+  SLOT_SELECTED
+  BOOKING_IN_PROGRESS
+  BOOKED
+  RESCHEDULE_PENDING
+  CANCELLED
+  FAILED
+}
+
+enum SchedulingWorkflowStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum WorkflowStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  DEAD_LETTERED
+}
+
+enum DomainEventStatus {
+  PENDING
+  PROCESSING
+  PUBLISHED
+  FAILED
+}
+
+enum AuthSessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum TranscriptQualityStatus {
+  DRAFT
+  REVIEW_REQUIRED
+  VERIFIED
+}
+
+enum IntegrationConnectionStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+enum NotificationDeliveryStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model Tenant {
+  id        String       @id @default(uuid())
+  name      String
+  locale    String       @default("tr-TR")
+  timezone  String       @default("Europe/Istanbul")
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+
+  workspaces               Workspace[]
+  users                    User[]
+  jobs                     Job[]
+  candidates               Candidate[]
+  flags                    FeatureFlag[]
+  audits                   AuditLog[]
+  promptTemplates          AiPromptTemplate[]
+  scoringRubrics           ScoringRubric[]
+  aiTaskRuns               AiTaskRun[]
+  recommendations          ApplicationRecommendation[]
+  humanApprovals           HumanApproval[]
+  domainEvents             DomainEvent[]
+  authSessions             AuthSession[]
+  authRefreshTokens        AuthRefreshToken[]
+  externalIdentityMappings ExternalIdentityMapping[]
+  integrationConnections   IntegrationConnection[]
+  integrationCredentials   IntegrationCredential[]
+  notificationDeliveries   NotificationDelivery[]
+  schedulingWorkflows      SchedulingWorkflow[]
+
+  @@index([createdAt(sort: Desc)])
+}
+
+model Workspace {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobs   Job[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, createdAt(sort: Desc)])
+}
+
+model User {
+  id        String     @id @default(uuid())
+  tenantId  String
+  email     String
+  fullName  String
+  status    UserStatus @default(INVITED)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  roleBindings      UserRoleBinding[]
+  authSessions      AuthSession[]
+  authRefreshTokens AuthRefreshToken[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId, createdAt(sort: Desc)])
+}
+
+model UserRoleBinding {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  role      Role
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId, role])
+  @@index([tenantId, role])
+}
+
+model AuthSession {
+  id            String            @id @default(uuid())
+  tenantId      String
+  userId        String
+  status        AuthSessionStatus @default(ACTIVE)
+  authMode      String
+  expiresAt     DateTime
+  lastSeenAt    DateTime?
+  ipAddress     String?
+  userAgent     String?
+  revokedAt     DateTime?
+  revokedReason String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens AuthRefreshToken[]
+
+  @@index([tenantId, userId, status])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([expiresAt])
+}
+
+model AuthRefreshToken {
+  id                String    @id @default(uuid())
+  sessionId         String
+  tenantId          String
+  userId            String
+  tokenHash         String    @unique
+  parentTokenId     String?
+  replacedByTokenId String?
+  issuedAt          DateTime  @default(now())
+  expiresAt         DateTime
+  lastUsedAt        DateTime?
+  revokedAt         DateTime?
+  revokedReason     String?
+
+  session          AuthSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentToken      AuthRefreshToken?  @relation("RefreshRotation", fields: [parentTokenId], references: [id], onDelete: SetNull)
+  rotationChildren AuthRefreshToken[] @relation("RefreshRotation")
+  replacedByToken  AuthRefreshToken?  @relation("RefreshReplacement", fields: [replacedByTokenId], references: [id], onDelete: SetNull)
+  replacedTokens   AuthRefreshToken[] @relation("RefreshReplacement")
+
+  @@index([sessionId, expiresAt])
+  @@index([tenantId, userId, issuedAt(sort: Desc)])
+  @@index([revokedAt])
+}
+
+model Job {
+  id           String    @id @default(uuid())
+  tenantId     String
+  workspaceId  String?
+  title        String
+  roleFamily   String
+  locationText String?
+  shiftType    String?
+  salaryMin    Decimal?
+  salaryMax    Decimal?
+  status       JobStatus @default(DRAFT)
+  jdText       String?
+  createdBy    String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  archivedAt   DateTime?
+
+  tenant       Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspace    Workspace?             @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  requirements JobRequirement[]
+  applications CandidateApplication[]
+  aiTaskRuns   AiTaskRun[]
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, status])
+}
+
+model JobRequirement {
+  id        String   @id @default(uuid())
+  tenantId  String
+  jobId     String
+  key       String
+  value     String
+  required  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, jobId])
+}
+
+model ScreeningTemplate {
+  id           String   @id @default(uuid())
+  tenantId     String
+  name         String
+  roleFamily   String
+  templateJson Json
+  rubricJson   Json
+  version      Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@unique([tenantId, name, version])
+  @@index([tenantId, createdAt(sort: Desc)])
+}
+
+model InterviewTemplate {
+  id           String   @id @default(uuid())
+  tenantId     String
+  name         String
+  roleFamily   String
+  templateJson Json
+  rubricJson   Json
+  version      Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  sessions InterviewSession[]
+
+  @@unique([tenantId, name, version])
+  @@index([tenantId, createdAt(sort: Desc)])
+}
+
+model Candidate {
+  id                String    @id @default(uuid())
+  tenantId          String
+  fullName          String
+  phone             String?
+  email             String?
+  source            String?
+  locationText      String?
+  yearsOfExperience Decimal?
+  externalRef       String?
+  externalSource    String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  tenant           Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  applications     CandidateApplication[]
+  cvFiles          CVFile[]
+  cvExtractionRuns CVExtractionRun[]
+  consentRecords   ConsentRecord[]
+  aiTaskRuns       AiTaskRun[]
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, email])
+}
+
+model CandidateApplication {
+  id                    String           @id @default(uuid())
+  tenantId              String
+  candidateId           String
+  jobId                 String
+  currentStage          ApplicationStage
+  stageUpdatedAt        DateTime
+  aiRecommendation      Recommendation?
+  humanDecisionRequired Boolean          @default(true)
+  createdAt             DateTime         @default(now())
+
+  candidate           Candidate                   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job                 Job                         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  stageHistory        CandidateStageHistory[]
+  interviewSessions   InterviewSession[]
+  aiReports           AiReport[]
+  aiTaskRuns          AiTaskRun[]
+  recommendations     ApplicationRecommendation[]
+  fitScores           ApplicantFitScore[]
+  recruiterNotes      RecruiterNote[]
+  schedulingWorkflows SchedulingWorkflow[]
+
+  @@unique([tenantId, candidateId, jobId])
+  @@index([tenantId, jobId, currentStage])
+}
+
+model CandidateStageHistory {
+  id            String            @id @default(uuid())
+  tenantId      String
+  applicationId String
+  fromStage     ApplicationStage?
+  toStage       ApplicationStage
+  reasonCode    String?
+  changedBy     String
+  changedAt     DateTime          @default(now())
+
+  application CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, applicationId, changedAt(sort: Desc)])
+}
+
+model CVFile {
+  id              String   @id @default(uuid())
+  tenantId        String
+  candidateId     String
+  storageKey      String
+  originalName    String
+  mimeType        String
+  sizeBytes       Int
+  storageProvider String   @default("local_fs")
+  checksumSha256  String?
+  uploadedBy      String
+  isPrimary       Boolean  @default(false)
+  uploadedAt      DateTime @default(now())
+
+  candidate      Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  parsedProfile  CVParsedProfile?
+  extractionRuns CVExtractionRun[]
+
+  @@index([tenantId, uploadedAt(sort: Desc)])
+  @@index([tenantId, candidateId, uploadedAt(sort: Desc)])
+  @@index([tenantId, candidateId, isPrimary])
+}
+
+model CVParsedProfile {
+  id                   String             @id @default(uuid())
+  tenantId             String
+  cvFileId             String             @unique
+  aiTaskRunId          String?
+  profileJson          Json
+  parseConfidence      Decimal
+  requiresManualReview Boolean            @default(false)
+  providerMode         String             @default("deterministic_fallback")
+  providerKey          String?
+  modelKey             String?
+  extractionStatus     CvExtractionStatus @default(FAILED)
+  extractionMethod     CvExtractionMethod @default(METADATA_ONLY)
+  extractionProvider   String?
+  extractionCharCount  Int                @default(0)
+  extractionQuality    Decimal?
+  extractionNotesJson  Json?
+  uncertaintyJson      Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  cvFile    CVFile     @relation(fields: [cvFileId], references: [id], onDelete: Cascade)
+  aiTaskRun AiTaskRun? @relation(fields: [aiTaskRunId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, aiTaskRunId])
+}
+
+model CVExtractionRun {
+  id           String             @id @default(uuid())
+  tenantId     String
+  candidateId  String
+  cvFileId     String
+  aiTaskRunId  String?
+  status       CvExtractionStatus
+  method       CvExtractionMethod
+  providerKey  String
+  charCount    Int
+  qualityScore Decimal?
+  metadata     Json?
+  errorMessage String?
+  createdAt    DateTime           @default(now())
+
+  candidate Candidate  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  cvFile    CVFile     @relation(fields: [cvFileId], references: [id], onDelete: Cascade)
+  aiTaskRun AiTaskRun? @relation(fields: [aiTaskRunId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, candidateId, createdAt(sort: Desc)])
+  @@index([tenantId, cvFileId, createdAt(sort: Desc)])
+  @@index([tenantId, aiTaskRunId, createdAt(sort: Desc)])
+}
+
+model InterviewSession {
+  id                           String                 @id @default(uuid())
+  tenantId                     String
+  applicationId                String
+  templateId                   String
+  mode                         InterviewMode
+  status                       InterviewSessionStatus
+  scheduledBy                  String?
+  schedulingSource             String                 @default("manual_recruiter")
+  scheduleNote                 String?
+  interviewerName              String?
+  interviewerUserId            String?
+  interviewType                String?
+  modeContextJson              Json?
+  meetingProvider              IntegrationProvider?
+  meetingProviderSource        String?
+  meetingConnectionId          String?
+  meetingJoinUrl               String?
+  meetingExternalRef           String?
+  meetingCalendarEventRef      String?
+  candidateAccessToken         String?                @unique
+  candidateAccessExpiresAt     DateTime?
+  candidateLocale              String                 @default("tr-TR")
+  runtimeMode                  String                 @default("guided_voice_turn_v1")
+  runtimeProviderMode          String                 @default("browser_native")
+  voiceInputProvider           String?
+  voiceOutputProvider          String?
+  currentQuestionIndex         Int                    @default(0)
+  currentFollowUpCount         Int                    @default(0)
+  currentQuestionKey           String?
+  engineStateJson              Json?
+  sessionSummaryJson           Json?
+  lastCandidateActivityAt      DateTime?
+  abandonedAt                  DateTime?
+  completedReasonCode          String?
+  rubricKey                    String?
+  rubricVersion                Int?
+  scheduledAt                  DateTime?
+  startedAt                    DateTime?
+  endedAt                      DateTime?
+  cancelledAt                  DateTime?
+  cancelledBy                  String?
+  cancelReasonCode             String?
+  rescheduleCount              Int                    @default(0)
+  lastRescheduledAt            DateTime?
+  lastRescheduledBy            String?
+  lastRescheduleReasonCode     String?
+  livekitRoomId                String?
+  consentRecordId              String?
+  elevenLabsConversationId     String?
+  elevenLabsAgentId            String?
+  completionAutomationQueuedAt DateTime?
+  completionAutomationRunAt    DateTime?
+  createdAt                    DateTime               @default(now())
+  updatedAt                    DateTime               @updatedAt
+
+  application         CandidateApplication        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  template            InterviewTemplate           @relation(fields: [templateId], references: [id])
+  turns               InterviewTurn[]
+  transcript          Transcript?
+  aiReports           AiReport[]
+  aiTaskRuns          AiTaskRun[]
+  recommendations     ApplicationRecommendation[]
+  schedulingWorkflows SchedulingWorkflow[]
+
+  @@index([tenantId, status, scheduledAt])
+  @@index([tenantId, applicationId, endedAt(sort: Desc)])
+}
+
+model InterviewTurn {
+  id                 String    @id @default(uuid())
+  tenantId           String
+  sessionId          String
+  sequenceNo         Int
+  blockKey           String
+  questionKey        String
+  category           String
+  kind               String    @default("PRIMARY")
+  promptText         String
+  promptAskedAt      DateTime  @default(now())
+  answerText         String?
+  answerConfidence   Decimal?
+  answerLatencyMs    Int?
+  answerDurationMs   Int?
+  answerLanguage     String?
+  answerSource       String?
+  answerSubmittedAt  DateTime?
+  followUpDepth      Int       @default(0)
+  completionStatus   String    @default("ASKED")
+  transitionDecision String?
+  decisionReason     String?
+  promptSegmentId    String?
+  answerSegmentId    String?
+  metadata           Json?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, sequenceNo])
+  @@index([tenantId, sessionId, sequenceNo])
+}
+
+model Transcript {
+  id                String                  @id @default(uuid())
+  tenantId          String
+  sessionId         String                  @unique
+  ownerType         String                  @default("INTERVIEW_SESSION")
+  ownerId           String
+  language          String                  @default("tr")
+  sttModel          String
+  ingestionMethod   String                  @default("stream_segments")
+  ingestionStatus   String                  @default("available")
+  reviewNotes       String?
+  lastIngestedAt    DateTime?
+  qualityStatus     TranscriptQualityStatus @default(DRAFT)
+  qualityScore      Decimal?
+  qualityReviewedAt DateTime?
+  qualityReviewedBy String?
+  finalizedAt       DateTime?
+  version           Int                     @default(1)
+  retentionLocked   Boolean                 @default(false)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  session   InterviewSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  segments  TranscriptSegment[]
+  aiReports AiReport[]
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, ownerType, ownerId])
+  @@index([tenantId, qualityStatus, createdAt(sort: Desc)])
+}
+
+model TranscriptSegment {
+  id           String   @id @default(uuid())
+  tenantId     String
+  transcriptId String
+  speaker      Speaker
+  startMs      Int
+  endMs        Int
+  text         String
+  confidence   Decimal?
+  createdAt    DateTime @default(now())
+
+  transcript    Transcript       @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  evidenceLinks AiEvidenceLink[]
+
+  @@index([transcriptId, startMs])
+}
+
+model AiReport {
+  id             String         @id @default(uuid())
+  tenantId       String
+  applicationId  String
+  sessionId      String
+  transcriptId   String?
+  rubricKey      String?
+  rubricVersion  Int?
+  reportJson     Json
+  overallScore   Decimal?
+  recommendation Recommendation
+  confidence     Decimal
+  modelName      String
+  promptVersion  String
+  createdAt      DateTime       @default(now())
+
+  application   CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  session       InterviewSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  transcript    Transcript?          @relation(fields: [transcriptId], references: [id], onDelete: SetNull)
+  scores        AiScore[]
+  evidenceLinks AiEvidenceLink[]
+  aiRuns        AiRun[]
+  aiTaskRuns    AiTaskRun[]
+
+  @@index([tenantId, applicationId, createdAt(sort: Desc)])
+  @@index([tenantId, sessionId, createdAt(sort: Desc)])
+}
+
+model AiScore {
+  id           String   @id @default(uuid())
+  tenantId     String
+  reportId     String
+  dimensionKey String
+  score        Decimal
+  confidence   Decimal
+  createdAt    DateTime @default(now())
+
+  report AiReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, reportId])
+}
+
+model AiEvidenceLink {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  reportId            String
+  evidenceType        String
+  evidenceRef         String
+  claimText           String
+  transcriptSegmentId String?
+  createdAt           DateTime @default(now())
+
+  report            AiReport           @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  transcriptSegment TranscriptSegment? @relation(fields: [transcriptSegmentId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, reportId])
+}
+
+model AiRun {
+  id              String   @id @default(uuid())
+  tenantId        String
+  reportId        String
+  modelId         String
+  promptVersion   String
+  policyVersion   String
+  inputArtifacts  Json
+  outputArtifacts Json
+  createdAt       DateTime @default(now())
+
+  report AiReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+}
+
+model AiPromptTemplate {
+  id           String     @id @default(uuid())
+  tenantId     String
+  key          String
+  version      Int
+  stage        AiTaskType
+  locale       String     @default("tr")
+  systemPrompt String
+  userPrompt   String?
+  outputSchema Json?
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  aiTaskRuns AiTaskRun[]
+
+  @@unique([tenantId, key, version])
+  @@index([tenantId, stage, isActive])
+}
+
+model ScoringRubric {
+  id         String   @id @default(uuid())
+  tenantId   String
+  key        String
+  version    Int
+  domain     String
+  rubricJson Json
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  aiTaskRuns AiTaskRun[]
+
+  @@unique([tenantId, key, version])
+  @@index([tenantId, domain, isActive])
+}
+
+model AiTaskRun {
+  id               String            @id @default(uuid())
+  tenantId         String
+  taskType         AiTaskType
+  status           AiTaskStatus      @default(PENDING)
+  automationLevel  AiAutomationLevel @default(ASSISTED)
+  candidateId      String?
+  jobId            String?
+  applicationId    String?
+  sessionId        String?
+  aiReportId       String?
+  promptTemplateId String?
+  rubricId         String?
+  workflowJobId    String?
+  inputJson        Json
+  outputJson       Json?
+  uncertaintyJson  Json?
+  guardrailFlags   Json?
+  providerKey      String?
+  modelKey         String?
+  promptVersion    String?
+  policyVersion    String?
+  requestedBy      String
+  humanApprovedBy  String?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  errorMessage     String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  tenant           Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  candidate        Candidate?                  @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  job              Job?                        @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  application      CandidateApplication?       @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  session          InterviewSession?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  aiReport         AiReport?                   @relation(fields: [aiReportId], references: [id], onDelete: SetNull)
+  promptTemplate   AiPromptTemplate?           @relation(fields: [promptTemplateId], references: [id], onDelete: SetNull)
+  rubric           ScoringRubric?              @relation(fields: [rubricId], references: [id], onDelete: SetNull)
+  workflowJob      WorkflowJob?                @relation(fields: [workflowJobId], references: [id], onDelete: SetNull)
+  recommendations  ApplicationRecommendation[]
+  approvals        HumanApproval[]
+  cvParsedProfiles CVParsedProfile[]
+  cvExtractionRuns CVExtractionRun[]
+  fitScores        ApplicantFitScore[]
+
+  @@index([tenantId, taskType, createdAt(sort: Desc)])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([workflowJobId])
+}
+
+model ApplicationRecommendation {
+  id                    String         @id @default(uuid())
+  tenantId              String
+  applicationId         String
+  sessionId             String?
+  aiTaskRunId           String?
+  rubricKey             String?
+  rubricVersion         Int?
+  recommendation        Recommendation
+  confidence            Decimal
+  summaryText           String
+  rationaleJson         Json?
+  uncertaintyJson       Json?
+  evidenceCount         Int            @default(0)
+  requiresHumanApproval Boolean        @default(true)
+  createdBy             String
+  createdAt             DateTime       @default(now())
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  application CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  session     InterviewSession?    @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  aiTaskRun   AiTaskRun?           @relation(fields: [aiTaskRunId], references: [id], onDelete: SetNull)
+  approvals   HumanApproval[]
+
+  @@index([tenantId, applicationId, createdAt(sort: Desc)])
+  @@index([tenantId, sessionId, createdAt(sort: Desc)])
+}
+
+model HumanApproval {
+  id               String   @id @default(uuid())
+  tenantId         String
+  actionType       String
+  entityType       String
+  entityId         String
+  reasonCode       String?
+  requestedBy      String
+  approvedBy       String
+  aiTaskRunId      String?
+  recommendationId String?
+  metadata         Json?
+  approvedAt       DateTime @default(now())
+
+  tenant         Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  aiTaskRun      AiTaskRun?                 @relation(fields: [aiTaskRunId], references: [id], onDelete: SetNull)
+  recommendation ApplicationRecommendation? @relation(fields: [recommendationId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, entityType, entityId, approvedAt(sort: Desc)])
+  @@index([tenantId, actionType, approvedAt(sort: Desc)])
+}
+
+model DomainEvent {
+  id            String            @id @default(uuid())
+  tenantId      String
+  aggregateType String
+  aggregateId   String
+  eventType     String
+  traceId       String?
+  payload       Json
+  status        DomainEventStatus @default(PENDING)
+  errorMessage  String?
+  attempts      Int               @default(0)
+  availableAt   DateTime          @default(now())
+  lastAttemptAt DateTime?
+  lockedAt      DateTime?
+  lockedBy      String?
+  createdAt     DateTime          @default(now())
+  publishedAt   DateTime?
+  processedAt   DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([eventType, createdAt(sort: Desc)])
+  @@index([status, availableAt, createdAt(sort: Desc)])
+  @@index([lockedAt])
+}
+
+model ConsentRecord {
+  id            String         @id @default(uuid())
+  tenantId      String
+  candidateId   String
+  context       ConsentContext
+  consentGiven  Boolean
+  noticeVersion String
+  policyVersion String?
+  capturedAt    DateTime       @default(now())
+  withdrawnAt   DateTime?
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, candidateId, capturedAt(sort: Desc)])
+}
+
+model AuditLog {
+  id          String         @id @default(uuid())
+  tenantId    String
+  actorUserId String?
+  actorType   AuditActorType
+  action      String
+  entityType  String
+  entityId    String?
+  beforeHash  String?
+  afterHash   String?
+  traceId     String?
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, entityType, entityId, createdAt(sort: Desc)])
+}
+
+model FeatureFlag {
+  id          String          @id @default(uuid())
+  tenantId    String?
+  key         String
+  type        FeatureFlagType
+  value       Json
+  description String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  tenant    Tenant?               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  overrides FeatureFlagOverride[]
+
+  @@unique([tenantId, key])
+  @@index([key])
+}
+
+model FeatureFlagOverride {
+  id          String   @id @default(uuid())
+  tenantId    String
+  flagId      String
+  workspaceId String?
+  role        Role?
+  value       Json
+  createdAt   DateTime @default(now())
+
+  flag FeatureFlag @relation(fields: [flagId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, flagId])
+}
+
+model ExternalIdentityMapping {
+  id                 String              @id @default(uuid())
+  tenantId           String
+  provider           IntegrationProvider
+  internalEntityType String
+  internalEntityId   String
+  externalTenantId   String?
+  externalEntityType String
+  externalEntityId   String
+  externalParentId   String?
+  metadata           Json?
+  firstMappedAt      DateTime            @default(now())
+  lastSyncedAt       DateTime            @default(now())
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider, externalEntityType, externalEntityId], map: "ext_idmap_ext_uidx")
+  @@unique([tenantId, provider, internalEntityType, internalEntityId, externalEntityType], map: "ext_idmap_int_uidx")
+  @@index([tenantId, provider, internalEntityType, internalEntityId], map: "ext_idmap_int_idx")
+  @@index([tenantId, provider, externalEntityType, externalEntityId], map: "ext_idmap_ext_idx")
+}
+
+model IntegrationConnection {
+  id              String                      @id @default(uuid())
+  tenantId        String
+  provider        IntegrationProvider
+  status          IntegrationConnectionStatus @default(ACTIVE)
+  displayName     String?
+  configJson      Json
+  credentialsJson Json
+  lastVerifiedAt  DateTime?
+  lastError       String?
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+
+  tenant     Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  credential IntegrationCredential?
+
+  @@unique([tenantId, provider])
+  @@index([tenantId, status])
+}
+
+model IntegrationCredential {
+  id               String              @id @default(uuid())
+  tenantId         String
+  connectionId     String              @unique
+  provider         IntegrationProvider
+  authType         String              @default("oauth2")
+  status           String              @default("MISSING")
+  accessToken      String?
+  refreshToken     String?
+  tokenType        String?
+  scope            String?
+  expiresAt        DateTime?
+  refreshExpiresAt DateTime?
+  idToken          String?
+  metadata         Json?
+  lastRefreshedAt  DateTime?
+  lastError        String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  tenant     Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  connection IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, provider, status])
+  @@index([tenantId, expiresAt])
+}
+
+model IntegrationSyncState {
+  id         String              @id @default(uuid())
+  tenantId   String
+  provider   IntegrationProvider
+  objectType String
+  cursor     String?
+  lastSyncAt DateTime?
+  status     String
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@index([tenantId, provider, objectType])
+}
+
+model WebhookEvent {
+  id             String              @id @default(uuid())
+  tenantId       String
+  provider       IntegrationProvider
+  eventKey       String
+  payload        Json
+  idempotencyKey String
+  receivedAt     DateTime            @default(now())
+  processedAt    DateTime?
+  status         String
+
+  @@unique([provider, idempotencyKey])
+  @@index([tenantId, receivedAt(sort: Desc)])
+}
+
+model NotificationDelivery {
+  id                String                     @id @default(uuid())
+  tenantId          String
+  channel           String
+  toAddress         String
+  subject           String?
+  body              String
+  templateKey       String?
+  eventType         String?
+  providerKey       String?
+  providerMessageId String?
+  status            NotificationDeliveryStatus @default(QUEUED)
+  metadata          Json?
+  requestedBy       String?
+  traceId           String?
+  errorMessage      String?
+  domainEventId     String?
+  queuedAt          DateTime                   @default(now())
+  sentAt            DateTime?
+  failedAt          DateTime?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, queuedAt(sort: Desc)])
+  @@index([tenantId, channel, queuedAt(sort: Desc)])
+  @@index([domainEventId])
+}
+
+model SchedulingWorkflow {
+  id                        String                   @id @default(uuid())
+  tenantId                  String
+  applicationId             String
+  sessionId                 String?
+  provider                  IntegrationProvider?
+  connectionId              String?
+  source                    String                   @default("assistant")
+  state                     SchedulingWorkflowState  @default(DRAFT)
+  status                    SchedulingWorkflowStatus @default(ACTIVE)
+  recruiterConstraintsJson  Json?
+  candidateAvailabilityJson Json?
+  proposedSlotsJson         Json?
+  selectedSlotJson          Json?
+  bookingResultJson         Json?
+  conversationContextJson   Json?
+  lastError                 String?
+  initiatedBy               String
+  updatedBy                 String?
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  application CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  session     InterviewSession?    @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, applicationId, createdAt(sort: Desc)])
+  @@index([tenantId, status, state, updatedAt(sort: Desc)])
+  @@index([tenantId, sessionId, createdAt(sort: Desc)])
+}
+
+model WorkflowJob {
+  id          String         @id @default(uuid())
+  tenantId    String
+  type        String
+  payload     Json
+  status      WorkflowStatus @default(PENDING)
+  runAfter    DateTime?
+  attempts    Int            @default(0)
+  maxAttempts Int            @default(5)
+  traceId     String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  retries    WorkflowRetry[]
+  aiTaskRuns AiTaskRun[]
+
+  @@index([tenantId, status, createdAt(sort: Desc)])
+}
+
+model WorkflowRetry {
+  id            String   @id @default(uuid())
+  tenantId      String
+  workflowJobId String
+  attempt       Int
+  errorMessage  String
+  createdAt     DateTime @default(now())
+
+  workflowJob WorkflowJob @relation(fields: [workflowJobId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, workflowJobId, createdAt(sort: Desc)])
+}
+
+model DeadLetterJob {
+  id            String    @id @default(uuid())
+  tenantId      String
+  originalJobId String
+  type          String
+  payload       Json
+  reason        String
+  replayedAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([tenantId, createdAt(sort: Desc)])
+}
+
+model ApplicantFitScore {
+  id              String   @id @default(uuid())
+  tenantId        String
+  applicationId   String
+  aiTaskRunId     String?
+  overallScore    Decimal
+  confidence      Decimal
+  subScoresJson   Json
+  strengthsJson   Json?
+  risksJson       Json?
+  missingInfoJson Json?
+  reasoningJson   Json?
+  modelKey        String?
+  promptVersion   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  application CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  aiTaskRun   AiTaskRun?           @relation(fields: [aiTaskRunId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, applicationId, createdAt(sort: Desc)])
+  @@index([tenantId, overallScore(sort: Desc)])
+}
+
+model RecruiterNote {
+  id            String   @id @default(uuid())
+  tenantId      String
+  applicationId String
+  authorUserId  String
+  noteText      String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  application CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, applicationId, createdAt(sort: Desc)])
+}

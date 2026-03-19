@@ -1,0 +1,16 @@
+{
+  "name": "ai-interviewer",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.11.0",
+  "scripts": {
+    "dev": "corepack pnpm -r --parallel --if-present dev",
+    "build": "corepack pnpm -r --if-present build",
+    "lint": "corepack pnpm -r --if-present lint",
+    "test": "corepack pnpm -r --if-present test",
+    "format": "corepack pnpm -r --if-present format",
+    "db:generate": "corepack pnpm --filter @ai-interviewer/api prisma:generate",
+    "db:migrate": "corepack pnpm --filter @ai-interviewer/api prisma:migrate:dev",
+    "db:seed": "corepack pnpm --filter @ai-interviewer/api prisma:seed"
+  }
+}

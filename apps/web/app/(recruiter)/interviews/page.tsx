@@ -96,7 +96,7 @@ function renderNextAction(session: InterviewSessionView) {
       return <span style={{ color: "var(--warn-text)" }}>Görüşme devam ediyor</span>;
     case "COMPLETED":
       return (
-        <Link href={`/applications/${session.applicationId}`} className="ghost-button" style={{ padding: "2px 10px", fontSize: 12 }}>
+        <Link href={`/applications/${session.applicationId}`} className="table-action-link">
           Sonuçları İncele
         </Link>
       );
@@ -155,6 +155,9 @@ export default function InterviewsPage() {
           <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}>Mülakatlar</h1>
           <p className="small" style={{ margin: 0 }}>
             Planlanan, devam eden ve tamamlanan görüşmeleri takip edin. İnceleme bekleyenlere öncelik verin.
+          </p>
+          <p className="text-xs text-muted" style={{ margin: "6px 0 0" }}>
+            Voice görüşmelerde açılan bağlantı adayın gerçek mülakat ekranıdır; recruiter tarafında önizleme amacıyla da kullanılabilir.
           </p>
         </div>
         <button type="button" className="ghost-button" onClick={() => void loadSessions()}>
@@ -257,7 +260,7 @@ export default function InterviewsPage() {
                   <th>Planlanan Tarih</th>
                   <th>İlerleme</th>
                   <th>Sonraki Adım</th>
-                  <th>Aday Linki</th>
+                  <th>Aday Görüşme Ekranı</th>
                 </tr>
               </thead>
               <tbody>
@@ -278,8 +281,8 @@ export default function InterviewsPage() {
                     <td>{renderNextAction(session)}</td>
                     <td>
                       {session.candidateInterviewUrl ? (
-                        <a href={session.candidateInterviewUrl} target="_blank" rel="noreferrer" className="ghost-button" style={{ padding: "2px 8px", fontSize: 13 }}>
-                          Aç
+                        <a href={session.candidateInterviewUrl} target="_blank" rel="noreferrer" className="table-action-link">
+                          Önizle
                         </a>
                       ) : (
                         "—"
