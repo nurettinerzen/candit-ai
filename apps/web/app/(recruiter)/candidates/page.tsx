@@ -113,6 +113,7 @@ export default function CandidatesPage() {
                   <th>E-posta</th>
                   <th>Telefon</th>
                   <th>Kaynak</th>
+                  <th>Başvuru Sayısı</th>
                   <th>Kayıt Tarihi</th>
                 </tr>
               </thead>
@@ -124,10 +125,17 @@ export default function CandidatesPage() {
                         {candidate.fullName}
                       </Link>
                     </td>
-                    <td>{candidate.email ?? "-"}</td>
+                    <td style={{ color: "var(--text-secondary)" }}>{candidate.email ?? "-"}</td>
                     <td>{candidate.phone ?? "-"}</td>
-                    <td>{candidate.source ?? "-"}</td>
-                    <td>{formatDate(candidate.createdAt)}</td>
+                    <td>
+                      {candidate.source ? (
+                        <span className="badge">{candidate.source}</span>
+                      ) : "-"}
+                    </td>
+                    <td style={{ textAlign: "center", fontWeight: 600 }}>
+                      {candidate.applicationCount ?? 0}
+                    </td>
+                    <td style={{ color: "var(--text-secondary)" }}>{formatDate(candidate.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İlan Detay — Sağ Slide Panel — UI/UX Öneri v2</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface-hover: #22262f; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af;
+    --primary: #7c73fa; --primary-light: rgba(124,115,250,0.12);
+    --success: #34d399; --warn: #f59e0b; --danger: #f87171; --info: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+  /* Simulated left area (blurred list) */
+  .list-bg { flex: 1; background: var(--bg); opacity: 0.4; padding: 40px; }
+  .list-bg h2 { font-size: 18px; margin-bottom: 16px; }
+  .list-bg .row { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-secondary); }
+
+  /* Slide Panel */
+  .slide-panel {
+    width: 440px; background: var(--surface); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; height: 100vh; position: fixed; right: 0; top: 0;
+    box-shadow: -8px 0 24px rgba(0,0,0,0.3);
+  }
+  .panel-header {
+    padding: 20px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .panel-close { background: none; border: none; color: var(--text-secondary); font-size: 20px; cursor: pointer; padding: 4px 8px; }
+  .panel-body { flex: 1; overflow-y: auto; padding: 20px; }
+  .panel-footer { padding: 16px 20px; border-top: 1px solid var(--border); background: var(--surface); }
+
+  .candidate-name { font-size: 18px; font-weight: 700; }
+  .candidate-meta { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+  .stage-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; margin-top: 8px; }
+  .stage-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .source-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; background: rgba(124,115,250,0.12); color: var(--primary); font-weight: 500; }
+
+  .info-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
+  .info-row .label { color: var(--text-secondary); }
+
+  .section-title { font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 700; letter-spacing: 0.5px; margin: 16px 0 8px; }
+
+  .score-inline { display: flex; align-items: center; gap: 10px; margin: 8px 0 16px; }
+  .score-ring { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; border: 3px solid var(--success); color: var(--success); }
+  .score-text { font-size: 14px; font-weight: 600; }
+  .score-sub { font-size: 12px; color: var(--text-secondary); }
+
+  .tag { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; display: inline-block; margin: 2px; }
+  .tag.missing { background: rgba(245,158,11,0.12); color: var(--warn); }
+  .tag.risk { background: rgba(248,113,113,0.12); color: var(--danger); }
+  .tag.strength { background: rgba(52,211,153,0.12); color: var(--success); }
+
+  .ai-paragraph { font-size: 13px; line-height: 1.7; color: var(--text); margin: 8px 0; }
+
+  .note-area { margin-top: 12px; }
+  .note-input { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text); font-size: 12px; min-height: 60px; resize: vertical; }
+
+  .btn { padding: 7px 16px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface-hover); color: var(--text); font-size: 12px; cursor: pointer; font-weight: 500; }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  .btn-sm { padding: 5px 12px; font-size: 11px; }
+  .action-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  a { color: var(--primary); text-decoration: none; font-weight: 500; }
+
+  .issue-box { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; position: fixed; top: 20px; left: 20px; width: calc(100% - 480px); z-index: 10; }
+  .issue-box strong { color: var(--danger); }
+  .rec-box { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; position: fixed; top: 220px; left: 20px; width: calc(100% - 480px); z-index: 10; }
+  .rec-box strong { color: var(--success); }
+  .rec-box ul, .issue-box ul { margin: 6px 0 0 16px; }
+</style>
+</head>
+<body>
+
+<div class="issue-box">
+  <strong>🔴 Sağ Slide Panel — Mevcut Sorunlar:</strong>
+  <ul>
+    <li><b>Panel çok dar (tahminen ~380px)</b> — İçerik sıkışık. En az 420-450px olmalı.</li>
+    <li><b>Karar butonları panelde yok</b> — Panel'den sadece "Detaylı İncele" ile tam sayfaya gidebilirsin. Hızlı karar vermek için panel içinde İlerlet/Beklet/Reddet olmalı.</li>
+    <li><b>"AI Önerisi: İlerlet" bilgisi çok küçük</b> — AI'ın tavsiyesi panel'de daha belirgin olmalı.</li>
+    <li><b>Güçlü Yönler 10 madde listeleniyor</b> — Panel'de en fazla 3-4 madde gösterilmeli.</li>
+    <li><b>Neden Bu Skor bölümü panel'de çok yer kaplıyor</b> — Sadece AI Karar Özeti paragrafı yeterli.</li>
+  </ul>
+</div>
+
+<div class="rec-box">
+  <strong>✅ Önerilen İyileştirmeler:</strong>
+  <ul>
+    <li>Panel genişliğini 440px yap</li>
+    <li>Panel footer'ına karar butonları koy (sticky)</li>
+    <li>Güçlü yönleri 3 maddeye sınırla, tag formatında göster</li>
+    <li>Panel body: Aday bilgi → Skor → Tag'ler → AI özeti → Not alanı</li>
+  </ul>
+</div>
+
+<!-- Simulated list background -->
+<div class="list-bg">
+  <h2 style="color:var(--text)">← İlan Detay Tablosu (arka plan)</h2>
+  <div class="row">Ahmet Yılmaz — 85 — Karar Bekliyor</div>
+  <div class="row">Merve Kara — 85 — Bekletildi</div>
+  <div class="row">Mustafa Demir — 85 — Karar Bekliyor</div>
+  <div class="row">Elif Aydın — 78 — Bekletildi</div>
+</div>
+
+<!-- ═══ ÖNERİLEN SLIDE PANEL ═══ -->
+<aside class="slide-panel">
+  <div class="panel-header">
+    <div>
+      <div class="candidate-name">Ahmet Yılmaz</div>
+      <div class="candidate-meta">
+        <span class="source-badge">Kariyer.net</span>
+        <span style="margin-left:6px">8 yıl deneyim</span>
+      </div>
+      <span class="stage-badge" style="color:var(--warn)">
+        <span class="dot" style="background:var(--warn)"></span> Karar Bekliyor
+      </span>
+    </div>
+    <button class="panel-close">✕</button>
+  </div>
+
+  <div class="panel-body">
+    <!-- İletişim -->
+    <div class="section-title">İletişim</div>
+    <div class="info-row"><span class="label">E-posta</span><span>ahmet.yilmaz@email.com</span></div>
+    <div class="info-row"><span class="label">Telefon</span><span>+90 532 411 27 84</span></div>
+    <div class="info-row"><span class="label">Lokasyon</span><span>Pendik, İstanbul</span></div>
+
+    <!-- AI Önerisi -->
+    <div class="section-title">AI Önerisi</div>
+    <div style="padding:8px 12px; background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.25); border-radius:8px; font-size:13px; font-weight:600; color:var(--success); margin-bottom:8px">
+      ✓ İlerlet
+    </div>
+
+    <!-- Uyum Skoru -->
+    <div class="section-title">Uyum Skoru</div>
+    <div class="score-inline">
+      <div class="score-ring">85</div>
+      <div>
+        <div class="score-text">Güçlü Uyum</div>
+        <div class="score-sub">Güven: %85</div>
+      </div>
+    </div>
+
+    <!-- Etiketler -->
+    <div class="section-title">Güçlü Yönler</div>
+    <div style="margin-bottom:8px">
+      <span class="tag strength">Depo yönetimi</span>
+      <span class="tag strength">Ekip liderliği</span>
+      <span class="tag strength">WMS bilgisi</span>
+    </div>
+
+    <div class="section-title">Eksik & Uyarı</div>
+    <div style="margin-bottom:8px">
+      <span class="tag missing">3 Eksik Bilgi</span>
+      <span class="tag risk">1 Uyarı</span>
+    </div>
+
+    <!-- AI Özet Paragrafı -->
+    <div class="section-title">AI Karar Özeti</div>
+    <p class="ai-paragraph">
+      Aday, depo operasyonları için güçlü bir uyum sergilemektedir. 8+ yıllık sektör deneyimi ve liderlik geçmişi öne çıkmaktadır. Teknik bilgi seviyesi sorgulanabilir, İngilizce yeterliliği ve WMS detayları takip sorularıyla netleştirilmelidir.
+    </p>
+
+    <!-- Notlar -->
+    <div class="section-title">Notlar (0)</div>
+    <div class="note-area">
+      <textarea class="note-input" placeholder="Kısa karar notu bırakın..."></textarea>
+      <button class="btn btn-sm btn-primary" style="margin-top:6px">Kaydet</button>
+    </div>
+
+    <div style="margin-top:16px">
+      <a href="#" style="font-size:12px">Detaylı İncele →</a>
+    </div>
+  </div>
+
+  <!-- Footer: Karar Butonları -->
+  <div class="panel-footer">
+    <div class="action-row">
+      <button class="btn btn-sm" style="border-color:var(--success); color:var(--success)">✓ İlerlet</button>
+      <button class="btn btn-sm" style="border-color:var(--warn); color:var(--warn)">⏸ Beklet</button>
+      <button class="btn btn-sm" style="border-color:var(--danger); color:var(--danger)">✕ Reddet</button>
+      <button class="btn btn-sm" style="border-color:var(--info); color:var(--info)">📅 Mülakata Davet</button>
+    </div>
+  </div>
+</aside>
+
+</body>
+</html>

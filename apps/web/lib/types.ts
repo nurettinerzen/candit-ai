@@ -18,6 +18,7 @@ export type ApplicationStage =
   | "HIRED";
 
 export type Recommendation = "ADVANCE" | "HOLD" | "REVIEW";
+export type HumanDecision = "advance" | "hold" | "reject";
 
 export type InterviewMode = "MEETING_LINK" | "PHONE" | "ONSITE" | "VOICE" | "VIDEO";
 
@@ -76,6 +77,7 @@ export type Candidate = {
   email: string | null;
   source: string | null;
   createdAt: string;
+  applicationCount?: number;
 };
 
 export type CVFile = {
@@ -123,6 +125,7 @@ export type CandidateWithApplications = Candidate & {
     jobId: string;
     currentStage: ApplicationStage;
     aiRecommendation: Recommendation | null;
+    humanDecision: HumanDecision | null;
     stageUpdatedAt: string;
     createdAt: string;
     job: Job;
@@ -501,6 +504,8 @@ export type InterviewTurnView = {
 export type InterviewSessionView = {
   id: string;
   applicationId: string;
+  candidateName: string | null;
+  jobTitle: string | null;
   templateId: string;
   status: InterviewSessionStatus;
   mode: InterviewMode;
@@ -712,6 +717,7 @@ export type ApplicationDetailReadModel = {
     stageUpdatedAt: string;
     createdAt: string;
     aiRecommendation: Recommendation | null;
+    humanDecision: HumanDecision | null;
     humanDecisionRequired: boolean;
   };
   candidate: {
@@ -756,6 +762,7 @@ export type RecruiterApplicationsReadModel = {
     id: string;
     stage: ApplicationStage;
     aiRecommendation: Recommendation | null;
+    humanDecision: HumanDecision | null;
     stageUpdatedAt: string;
     createdAt: string;
     humanDecisionRequired: boolean;
@@ -803,22 +810,30 @@ export type RecruiterApplicationsReadModel = {
 
 // ── Applicant Inbox Types ──
 
-export type SubScore = {
+export type ApplicantFitScoreCategory = {
+  key: string;
+  label: string;
+  weight: number | null;
   score: number;
-  reason: string;
   confidence: number;
+  deterministicScore: number | null;
+  aiScore: number | null;
+  strengths: string[];
+  risks: string[];
+  reasoning: string;
+};
+
+export type ApplicantFitScoreSubScores = {
+  schemaVersion: string;
+  rubricRoleFamily: string | null;
+  categories: ApplicantFitScoreCategory[];
 };
 
 export type ApplicantFitScoreView = {
   id: string;
   overallScore: number;
   confidence: number;
-  subScores: {
-    experienceFit: SubScore;
-    locationFit: SubScore;
-    shiftFit: SubScore;
-    roleFit: SubScore;
-  };
+  subScores: ApplicantFitScoreSubScores;
   strengths: string[];
   risks: string[];
   missingInfo: string[];
@@ -847,10 +862,11 @@ export type JobInboxApplicant = {
   stage: string;
   stageUpdatedAt: string;
   createdAt: string;
+  aiRecommendation: Recommendation | null;
   fitScore: {
     overallScore: number;
     confidence: number;
-    subScores: Record<string, unknown>;
+    subScores: ApplicantFitScoreSubScores;
     strengths: string[];
     risks: string[];
     missingInfo: string[];
@@ -876,7 +892,7 @@ export type JobInboxApplicant = {
     isParsed: boolean;
     cvFileId: string | null;
   };
-  recruiterDecision: Recommendation | null;
+  humanDecision: HumanDecision | null;
   noteCount: number;
 };
 
@@ -896,12 +912,14 @@ export type JobInboxReadModel = {
 };
 
 export type QuickActionType =
-  | "shortlist"
+  | "advance"
   | "reject"
   | "hold"
+  | "invite_interview"
+  // legacy — kept for backward compatibility
+  | "shortlist"
   | "trigger_screening"
-  | "trigger_fit_score"
-  | "invite_interview";
+  | "trigger_fit_score";
 
 export type QuickActionPayload = {
   action: QuickActionType;

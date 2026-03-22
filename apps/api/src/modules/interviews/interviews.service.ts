@@ -204,6 +204,16 @@ type InterviewSessionRow = Prisma.InterviewSessionGetPayload<{
         templateJson: true;
       };
     };
+    application: {
+      select: {
+        candidate: {
+          select: { fullName: true };
+        };
+        job: {
+          select: { title: true };
+        };
+      };
+    };
     transcript: {
       include: {
         segments: true;
@@ -257,6 +267,16 @@ export class InterviewsService {
             roleFamily: true,
             version: true,
             templateJson: true
+          }
+        },
+        application: {
+          select: {
+            candidate: {
+              select: { fullName: true }
+            },
+            job: {
+              select: { title: true }
+            }
           }
         },
         transcript: {
@@ -3384,6 +3404,8 @@ export class InterviewsService {
       id: session.id,
       tenantId: session.tenantId,
       applicationId: session.applicationId,
+      candidateName: session.application?.candidate?.fullName ?? null,
+      jobTitle: session.application?.job?.title ?? null,
       templateId: session.templateId,
       status: session.status,
       mode: session.mode,

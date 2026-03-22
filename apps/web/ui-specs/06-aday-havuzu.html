@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aday Havuzu + Aday Profili — UI Spec</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af;
+    --primary: #7c73fa; --primary-light: rgba(124,115,250,0.12);
+    --success: #34d399; --warn: #f59e0b; --danger: #f87171;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); padding: 32px 40px; max-width: 1100px; }
+
+  .page-header { display: flex; justify-content: space-between; margin-bottom: 24px; }
+  .page-header h1 { font-size: 24px; font-weight: 700; }
+  .page-header p { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+  .btn { padding: 7px 16px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+
+  .kpi-bar { display: inline-flex; gap: 0; padding: 14px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; }
+  .kpi-item .value { font-size: 24px; font-weight: 800; }
+  .kpi-item .label { font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+
+  .search-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 20px; display: flex; gap: 10px; }
+  .search-panel input { flex: 1; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--text); font-size: 13px; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  a { color: var(--primary); text-decoration: none; }
+
+  .source-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; background: rgba(124,115,250,0.12); color: var(--primary); }
+
+  /* ─── Aday Profili ─── */
+  .profile-section { margin-top: 48px; border-top: 2px solid var(--border); padding-top: 32px; }
+  .profile-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+  .profile-card { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; }
+  .profile-card .fl { font-size: 11px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px; }
+  .profile-card .fv { font-size: 14px; font-weight: 600; }
+
+  .cv-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .cv-panel h3 { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+
+  .stage { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
+  .stage .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .stage.karar-bekliyor { color: var(--warn); }
+  .stage.karar-bekliyor .dot { background: var(--warn); }
+
+  .spec-note { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px 20px; margin-top: 32px; font-size: 13px; line-height: 1.7; color: #94a3b8; }
+  .spec-note strong { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- ADAY HAVUZU — Liste sayfası               -->
+<!-- ══════════════════════════════════════════ -->
+
+<div class="page-header">
+  <div>
+    <h1>Aday Havuzu</h1>
+    <p>Tüm adaylarınızın genel listesi. Geçmiş başvuruları, ilişkili ilanları ve aday geçmişini buradan görüntüleyin.</p>
+  </div>
+  <div style="display: flex; gap: 8px;">
+    <button class="btn">Yenile</button>
+    <button class="btn btn-primary">+ Yeni Aday Ekle</button>
+  </div>
+</div>
+
+<div class="kpi-bar">
+  <div class="kpi-item"><div class="value">24</div><div class="label">Toplam Aday</div></div>
+</div>
+
+<div class="search-panel">
+  <input type="text" placeholder="Ad, e-posta veya telefon ile arayın...">
+  <button class="btn">Ara</button>
+  <button class="btn">Temizle</button>
+</div>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Aday</th>
+        <th>E-posta</th>
+        <th>Telefon</th>
+        <th>Kaynak</th>
+        <th>Başvuru Sayısı</th>
+        <th>Kayıt Tarihi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="#">Ahmet Yılmaz</a></td>
+        <td style="color:var(--text-secondary)">ahmet.yilmaz@email.com</td>
+        <td>+90 532 411 27 84</td>
+        <td><span class="source-badge">kariyer_net</span></td>
+        <td style="text-align:center; font-weight: 600;">1</td>
+        <td style="color:var(--text-secondary)">19 Mar 2026</td>
+      </tr>
+      <tr>
+        <td><a href="#">Elif Aydın</a></td>
+        <td style="color:var(--text-secondary)">elif.aydin@email.com</td>
+        <td>+90 553 870 41 26</td>
+        <td><span class="source-badge">kariyer_net</span></td>
+        <td style="text-align:center; font-weight: 600;">1</td>
+        <td style="color:var(--text-secondary)">19 Mar 2026</td>
+      </tr>
+      <tr>
+        <td><a href="#">Burak Acar</a></td>
+        <td style="color:var(--text-secondary)">burak.acar@email.com</td>
+        <td>05411223344</td>
+        <td><span class="source-badge">manual</span></td>
+        <td style="text-align:center; font-weight: 600;">2</td>
+        <td style="color:var(--text-secondary)">19 Mar 2026</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- ADAY PROFİLİ — Detay sayfası              -->
+<!-- ══════════════════════════════════════════ -->
+
+<div class="profile-section">
+  <div class="profile-header">
+    <div>
+      <h1 style="font-size: 22px;">Aday Profili</h1>
+      <p style="font-size: 13px; color: var(--text-secondary);">Aday bilgileri, CV belgeleri ve bağlı başvurular.</p>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn">Yenile</button>
+      <button class="btn">Aday Havuzu</button>
+    </div>
+  </div>
+
+  <div class="profile-card">
+    <div><div class="fl">Ad Soyad</div><div class="fv">Ahmet Yılmaz</div></div>
+    <div><div class="fl">E-posta</div><div class="fv" style="font-size:13px">ahmet.yilmaz@email.com</div></div>
+    <div><div class="fl">Telefon</div><div class="fv">+90 532 411 27 84</div></div>
+    <div><div class="fl">Kaynak</div><div class="fv"><span class="source-badge">kariyer_net</span></div></div>
+    <div><div class="fl">Kayıt Tarihi</div><div class="fv" style="font-size:13px">19 Mar 2026</div></div>
+    <div><div class="fl">CV İnceleme Güveni</div><div class="fv" style="color:var(--success)">● Yüksek güven</div></div>
+  </div>
+
+  <!-- CV Özeti -->
+  <div class="cv-panel">
+    <h3>CV Özeti</h3>
+    <p style="font-size: 14px; line-height: 1.7; margin-bottom: 12px;">
+      8+ yıllık depo ve lojistik deneyimine sahip, operasyon şefi adayı.
+    </p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 13px;">
+      <div>
+        <div style="font-weight: 600; margin-bottom: 6px;">Güçlü Yönler</div>
+        <div>Depo yönetimi</div>
+        <div>Lojistik süreçler</div>
+        <div>Ekip yönetimi</div>
+      </div>
+      <div>
+        <div style="font-weight: 600; margin-bottom: 6px;">Görüşmede Sorulması Gerekenler</div>
+        <div>Adayın liderlik deneyimi</div>
+        <div>WMS ve SAP EWM bilgisi</div>
+        <div>İngilizce yeterliliği</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Başvurular -->
+  <div class="panel" style="padding: 20px;">
+    <h3 style="font-size: 15px; margin-bottom: 12px;">Başvurular</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>İlan</th>
+          <th>Aşama</th>
+          <th>Son Güncelleme</th>
+          <th>İşlem</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="#">depo operasyon sefi</a></td>
+          <td><span class="stage karar-bekliyor"><span class="dot"></span> Karar Bekliyor</span></td>
+          <td style="color:var(--text-secondary)">21 Mar 2026</td>
+          <td><a href="#" style="font-size: 12px;">Başvuruyu Aç</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="spec-note">
+  <strong>📐 Aday Havuzu + Aday Profili Spec</strong><br><br>
+  <strong>Aday Havuzu (liste):</strong><br>
+  • Bu sayfa global aday havuzu / CRM — günlük operasyon yeri DEĞİL<br>
+  • Tablo: Aday (link), E-posta, Telefon, Kaynak (badge), <strong>Başvuru Sayısı</strong> (yeni sütun), Kayıt Tarihi<br>
+  • "Başvuru Sayısı" sütunu eklenmeli — adayın kaç ilana başvurduğunu gösterir<br>
+  • Arama: ad, e-posta, telefon ile filtreleme<br><br>
+  <strong>Aday Profili (detay):</strong><br>
+  • Aday bilgileri: Ad, E-posta, Telefon, Kaynak, Kayıt Tarihi, CV İnceleme Güveni<br>
+  • CV Özeti: Kısa açıklama + güçlü yönler + görüşmede sorulması gerekenler<br>
+  • <strong>Başvurular tablosu:</strong> İlan (link), Aşama (merkezi stage badge), Son Güncelleme, İşlem (başvuruya link)<br>
+  • Başvuru tablosunda başvuru ID gösterilmemeli — ilan adı gösterilmeli<br>
+  • "Adayı İlana Bağla" dropdown — yeni başvuru açmak için<br>
+  • Stage badge'leri merkezi <code>getRecruiterStageMeta</code> kullanmalı
+</div>
+
+</body>
+</html>

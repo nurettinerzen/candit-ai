@@ -1,13 +1,13 @@
-import { FIT_SCORE_LABELS } from "../lib/constants";
-import type { ApplicantFitScoreView, SubScore } from "../lib/types";
+import { normalizeFitCategories, toConfidencePercent, toFitScorePercent } from "../lib/fit-score";
+import type { ApplicantFitScoreCategory, ApplicantFitScoreView } from "../lib/types";
 import { FitScoreBar } from "./fit-score-bar";
 
-function SubScoreRow({ label, sub }: { label: string; sub: SubScore }) {
+function SubScoreRow({ sub }: { sub: ApplicantFitScoreCategory }) {
   return (
     <div className="fit-sub-row">
-      <span className="fit-sub-label">{label}</span>
+      <span className="fit-sub-label">{sub.label}</span>
       <FitScoreBar score={sub.score} confidence={sub.confidence} size="sm" />
-      <span className="fit-sub-reason">{sub.reason}</span>
+      <span className="fit-sub-reason">{sub.reasoning || "Bu kategori için ek açıklama yok."}</span>
     </div>
   );
 }
@@ -19,25 +19,29 @@ function getConfidenceInterpretation(confidence: number): { text: string; color:
 }
 
 export function FitScoreBreakdown({ fitScore }: { fitScore: ApplicantFitScoreView }) {
-  const subs = fitScore.subScores;
+  const categories = normalizeFitCategories(fitScore.subScores);
+  const overallScore = toFitScorePercent(fitScore.overallScore) ?? 0;
+  const confidence = toConfidencePercent(fitScore.confidence) ?? 0;
   const confidenceInfo = getConfidenceInterpretation(fitScore.confidence);
 
   return (
     <div className="fit-breakdown">
       <div className="fit-breakdown-header">
-        <strong>Genel Uyum Skoru: {Math.round(fitScore.overallScore * 100)}/100</strong>
-        <span className="text-muted"> (Değerlendirme Güvenilirliği: {Math.round(fitScore.confidence * 100)}%)</span>
+        <strong>Genel Uyum Skoru: {overallScore}/100</strong>
+        <span className="text-muted"> (Değerlendirme Güvenilirliği: {confidence}%)</span>
         <div style={{ fontSize: "0.85rem", color: confidenceInfo.color, marginTop: "0.25rem" }}>
           {confidenceInfo.text}
         </div>
       </div>
 
-      <div className="fit-sub-scores">
-        <h4>Detaylı Skorlar</h4>
-        {(Object.keys(subs) as Array<keyof typeof subs>).map((key) => (
-          <SubScoreRow key={key} label={FIT_SCORE_LABELS[key] ?? key} sub={subs[key]} />
-        ))}
-      </div>
+      {categories.length > 0 && (
+        <div className="fit-sub-scores">
+          <h4>Detaylı Skorlar</h4>
+          {categories.map((category) => (
+            <SubScoreRow key={category.key} sub={category} />
+          ))}
+        </div>
+      )}
 
       {fitScore.strengths.length > 0 && (
         <div className="fit-section">
@@ -48,7 +52,7 @@ export function FitScoreBreakdown({ fitScore }: { fitScore: ApplicantFitScoreVie
 
       {fitScore.risks.length > 0 && (
         <div className="fit-section">
-          <h4>Riskler ve Uyarılar</h4>
+          <h4>Uyarılar</h4>
           <ul>{fitScore.risks.map((r, i) => <li key={i}>{r}</li>)}</ul>
         </div>
       )}
@@ -71,15 +75,15 @@ export function FitScoreBreakdown({ fitScore }: { fitScore: ApplicantFitScoreVie
         <div className="fit-section" style={{ borderTop: "1px solid var(--color-border, #e0e0e0)", paddingTop: "0.75rem", marginTop: "0.75rem" }}>
           <h4>Neden bu skor?</h4>
           <p className="text-muted" style={{ fontSize: "0.9rem", lineHeight: 1.5 }}>
-            Bu aday {Math.round(fitScore.overallScore * 100)} puan aldı.
+            Bu aday {overallScore} puan aldı.
             {fitScore.strengths.length > 0 && (
               <> Adayın {fitScore.strengths.length} güçlü yönü tespit edildi.</>
             )}
             {fitScore.risks.length > 0 && (
-              <> Bununla birlikte {fitScore.risks.length} risk veya uyarı bulunuyor.</>
+              <> Bununla birlikte {fitScore.risks.length} dikkat edilmesi gereken uyarı bulunuyor.</>
             )}
             {fitScore.missingInfo.length > 0 && (
-              <> Ayrıca {fitScore.missingInfo.length} eksik bilgi mevcut; bu bilgiler tamamlandığında skor değişebilir.</>
+              <> Ayrıca {fitScore.missingInfo.length} eksik bilgi mevcut; bunlar takip sorularıyla tamamlanabilir.</>
             )}
             {" "}Detaylar için yukarıdaki bölümleri inceleyin.
           </p>

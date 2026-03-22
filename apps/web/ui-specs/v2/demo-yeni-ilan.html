@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yeni İlan Hazırla — Öneri</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface-hover: #22252f;
+    --border: rgba(255,255,255,0.08);
+    --border-focus: rgba(99,102,241,0.5);
+    --text: #e8e9ed;
+    --text-secondary: #9ca3af;
+    --text-dim: #6b7280;
+    --primary: #6366f1;
+    --primary-hover: #5457e5;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --warn: #f59e0b;
+    --radius: 10px;
+  }
+
+  body {
+    font-family: "DM Sans", -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  .back-link {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  .back-link:hover { color: var(--text-secondary); }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .page-desc {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-bottom: 28px;
+  }
+
+  /* ── Form sections ── */
+  .form-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: var(--text);
+  }
+
+  /* ── Fields ── */
+  .field {
+    margin-bottom: 18px;
+  }
+  .field:last-child { margin-bottom: 0; }
+
+  .field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  .field-label .required {
+    color: var(--danger);
+    margin-left: 2px;
+  }
+
+  .field-hint {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  textarea,
+  select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--border-focus);
+  }
+  input::placeholder, textarea::placeholder {
+    color: var(--text-dim);
+  }
+  select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+
+  textarea.small {
+    min-height: 72px;
+    resize: vertical;
+  }
+
+  textarea {
+    min-height: 120px;
+    resize: vertical;
+  }
+
+  /* ── Row layouts ── */
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  /* ── Requirements ── */
+  .req-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .req-item input[type="text"] {
+    flex: 1;
+    border: none;
+    padding: 4px 0;
+    background: transparent;
+  }
+  .req-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .req-badge.required {
+    color: var(--primary);
+    background: rgba(99,102,241,0.12);
+  }
+  .req-badge.optional {
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.05);
+  }
+  .req-remove {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 4px;
+  }
+  .req-remove:hover { color: var(--danger); }
+
+  .add-req-btn {
+    background: none;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    padding: 10px;
+    width: 100%;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .add-req-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  /* ── AI Draft section ── */
+  .ai-section {
+    background: var(--surface);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  .ai-section .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ai-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--primary);
+    background: rgba(99,102,241,0.12);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .ai-draft-preview {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 240px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+
+  .ai-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--primary-hover); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border);
+  }
+  .btn-ghost:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .btn-outline-primary {
+    background: transparent;
+    color: var(--primary);
+    border-color: rgba(99,102,241,0.3);
+  }
+  .btn-outline-primary:hover {
+    background: rgba(99,102,241,0.08);
+  }
+
+  /* ── Footer ── */
+  .form-footer {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  /* ── Status indicator ── */
+  .status-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .status-option:hover { border-color: var(--border-focus); }
+  .status-option.active { border-color: var(--primary); background: rgba(99,102,241,0.06); }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .status-dot.draft { background: var(--text-dim); }
+  .status-dot.published { background: var(--success); }
+  .status-dot.archived { background: var(--warn); }
+  .status-label { font-size: 13px; font-weight: 500; }
+  .status-desc { font-size: 12px; color: var(--text-dim); }
+
+  .status-row {
+    display: flex;
+    gap: 10px;
+  }
+  .status-option { flex: 1; }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <a href="#" class="back-link">← İlan Merkezi</a>
+  <h1>Yeni İlan Hazırla</h1>
+  <p class="page-desc">Pozisyon bilgilerini girin. AI taslak oluşturup harici platformlara kopyalayabilirsiniz.</p>
+
+  <!-- ═══════ SECTION 1: Temel Bilgiler ═══════ -->
+  <div class="form-section">
+    <div class="section-title">Temel Bilgiler</div>
+
+    <div class="field">
+      <label class="field-label">İlan Başlığı <span class="required">*</span></label>
+      <input type="text" placeholder="Örn: Depo Operasyon Personeli">
+    </div>
+
+    <div class="field">
+      <label class="field-label">Departman / Birim <span class="required">*</span></label>
+      <select>
+        <option value="" disabled>Seçiniz</option>
+        <option>Operasyon</option>
+        <option>Satış</option>
+        <option>Pazarlama</option>
+        <option>İnsan Kaynakları</option>
+        <option>Finans</option>
+        <option>Bilgi Teknolojileri</option>
+        <option>Müşteri Hizmetleri</option>
+        <option>Üretim</option>
+        <option>Lojistik</option>
+        <option>Diğer</option>
+      </select>
+      <div class="field-hint">Listede yoksa "Diğer" seçip açıklama alanına yazabilirsiniz.</div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Lokasyon</label>
+      <input type="text" placeholder="Örn: İstanbul, Ankara, Bursa">
+    </div>
+  </div>
+
+  <!-- ═══════ SECTION 2: Çalışma Koşulları ═══════ -->
+  <div class="form-section">
+    <div class="section-title">Çalışma Koşulları</div>
+
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Çalışma Modeli</label>
+        <select>
+          <option value="" disabled selected>Seçiniz</option>
+          <option>Ofisten (On-site)</option>
+          <option>Hibrit</option>
+          <option>Uzaktan</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Çalışma Şekli</label>
+        <select>
+          <option value="" disabled selected>Seçiniz</option>
+          <option>Tam Zamanlı</option>
+          <option>Yarı Zamanlı</option>
+          <option>Vardiyalı</option>
+          <option>Stajyer</option>
+          <option>Sözleşmeli</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Maaş Alt Sınır (₺)</label>
+        <input type="number" placeholder="Örn: 28000">
+      </div>
+      <div class="field">
+        <label class="field-label">Maaş Üst Sınır (₺)</label>
+        <input type="number" placeholder="Örn: 36000">
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ SECTION 3: Aranan Nitelikler ═══════ -->
+  <div class="form-section">
+    <div class="section-title">Aranan Nitelikler</div>
+
+    <div class="req-item">
+      <input type="text" value="Forklift belgesi" readonly>
+      <span class="req-badge required">Zorunlu</span>
+      <button class="req-remove">×</button>
+    </div>
+
+    <div class="req-item">
+      <input type="text" value="En az 2 yıl depo deneyimi" readonly>
+      <span class="req-badge required">Zorunlu</span>
+      <button class="req-remove">×</button>
+    </div>
+
+    <div class="req-item">
+      <input type="text" value="Vardiyalı çalışabilme" readonly>
+      <span class="req-badge optional">Tercih Edilen</span>
+      <button class="req-remove">×</button>
+    </div>
+
+    <button class="add-req-btn">+ Nitelik Ekle</button>
+  </div>
+
+  <!-- ═══════ SECTION 4: İlan Durumu ═══════ -->
+  <div class="form-section">
+    <div class="section-title">İlan Durumu</div>
+
+    <div class="status-row">
+      <div class="status-option">
+        <div class="status-dot draft"></div>
+        <div>
+          <div class="status-label">Taslak</div>
+          <div class="status-desc">Henüz yayınlanmadı</div>
+        </div>
+      </div>
+      <div class="status-option active">
+        <div class="status-dot published"></div>
+        <div>
+          <div class="status-label">Yayında</div>
+          <div class="status-desc">Başvuru kabul ediliyor</div>
+        </div>
+      </div>
+      <div class="status-option">
+        <div class="status-dot archived"></div>
+        <div>
+          <div class="status-label">Arşiv</div>
+          <div class="status-desc">Başvuru kapatıldı</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ SECTION 5: İş Tanımı + AI Taslak (yan yana akış) ═══════ -->
+  <div class="form-section">
+    <div class="section-title">İş Tanımı</div>
+
+    <div class="field">
+      <label class="field-label">Pozisyon Açıklaması</label>
+      <textarea class="small" placeholder="Pozisyonun temel sorumlulukları ve beklentiler (3-5 cümle)..."></textarea>
+      <div class="field-hint">AI taslak oluştururken bu açıklamayı temel alır.</div>
+    </div>
+  </div>
+
+  <div class="ai-section">
+    <div class="section-title">
+      AI ile İlan Taslağı
+      <span class="ai-badge">AI</span>
+    </div>
+
+    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+      Yukarıdaki bilgilere göre profesyonel ilan metni oluşturur. Oluşan taslağı düzenleyip harici platformlara kopyalayabilirsiniz.
+    </p>
+
+    <div class="ai-draft-preview">Taslak oluşturduğunuzda ilan metni burada görünecek.
+
+Bu alan daha büyük çünkü AI tarafından oluşturulan ilan metni uzun olabiliyor — iş tanımı, sorumluluklar, aranan nitelikler, şirket bilgisi gibi bölümler içerir.</div>
+
+    <div class="ai-actions">
+      <button class="btn btn-outline-primary">✨ Taslak Oluştur</button>
+      <button class="btn btn-ghost">📋 Kopyala</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="field">
+      <label class="field-label">Revizyon Notu</label>
+      <input type="text" placeholder="Örn: Daha samimi bir dil kullan, maaş bilgisini vurgula">
+      <div class="field-hint">Taslağı beğenmediyseniz notunuzu yazıp tekrar oluşturun.</div>
+    </div>
+  </div>
+
+  <!-- ═══════ Footer ═══════ -->
+  <div class="form-footer">
+    <button class="btn btn-primary">İlanı Kaydet</button>
+    <button class="btn btn-ghost">Vazgeç</button>
+  </div>
+</div>
+
+</body>
+</html>

@@ -538,55 +538,58 @@ export default function CandidateDetailPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Başvuru</th>
                   <th>İlan</th>
                   <th>Aşama</th>
                   <th>Son Güncelleme</th>
+                  <th>İşlem</th>
                 </tr>
               </thead>
               <tbody>
-                {candidate.applications.map((application) => (
-                  <tr key={application.id}>
-                    <td>
-                      <Link href={`/applications/${application.id}`}>{application.id}</Link>
-                    </td>
-                    <td>
-                      <Link href={`/jobs/${application.jobId}`}>{application.job.title}</Link>
-                    </td>
-                    <td>
-                      {(() => {
+                {candidate.applications.map((application) => {
                         const stageMeta = getRecruiterStageMeta(
                           application.currentStage,
-                          application.aiRecommendation
+                          application.humanDecision
                         );
 
-                        return (
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 8,
-                          color: stageMeta.color,
-                          fontWeight: 600
-                        }}
-                      >
+                  return (
+                    <tr key={application.id}>
+                      <td>
+                        <Link href={`/jobs/${application.jobId}`} style={{ fontWeight: 500 }}>
+                          {application.job.title}
+                        </Link>
+                      </td>
+                      <td>
                         <span
-                          aria-hidden="true"
                           style={{
-                            width: 7,
-                            height: 7,
-                            borderRadius: "50%",
-                            background: stageMeta.color
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            color: stageMeta.color,
+                            fontWeight: 600,
+                            fontSize: 12
                           }}
-                        />
-                        {stageMeta.label}
-                      </span>
-                        );
-                      })()}
-                    </td>
-                    <td>{formatDate(application.stageUpdatedAt)}</td>
-                  </tr>
-                ))}
+                        >
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              background: stageMeta.color
+                            }}
+                          />
+                          {stageMeta.label}
+                        </span>
+                      </td>
+                      <td style={{ color: "var(--text-secondary)" }}>{formatDate(application.stageUpdatedAt)}</td>
+                      <td>
+                        <Link href={`/applications/${application.id}`} className="table-action-link" style={{ fontSize: 12 }}>
+                          Başvuruyu Aç
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

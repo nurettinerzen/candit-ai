@@ -156,9 +156,6 @@ export default function InterviewsPage() {
           <p className="small" style={{ margin: 0 }}>
             Planlanan, devam eden ve tamamlanan görüşmeleri takip edin. İnceleme bekleyenlere öncelik verin.
           </p>
-          <p className="text-xs text-muted" style={{ margin: "6px 0 0" }}>
-            Voice görüşmelerde açılan bağlantı adayın gerçek mülakat ekranıdır; recruiter tarafında önizleme amacıyla da kullanılabilir.
-          </p>
         </div>
         <button type="button" className="ghost-button" onClick={() => void loadSessions()}>
           Yenile
@@ -255,21 +252,24 @@ export default function InterviewsPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Başvuru</th>
+                  <th>Aday</th>
+                  <th>İlan</th>
                   <th>Durum</th>
                   <th>Planlanan Tarih</th>
                   <th>İlerleme</th>
                   <th>Sonraki Adım</th>
-                  <th>Aday Görüşme Ekranı</th>
                 </tr>
               </thead>
               <tbody>
                 {sessions.map((session) => (
                   <tr key={session.id}>
                     <td>
-                      <Link href={`/applications/${session.applicationId}`}>
-                        {session.applicationId.slice(0, 8)}...
+                      <Link href={`/applications/${session.applicationId}`} style={{ fontWeight: 500 }}>
+                        {session.candidateName ?? session.applicationId.slice(0, 8) + "..."}
                       </Link>
+                    </td>
+                    <td style={{ color: "var(--text-secondary)" }}>
+                      {session.jobTitle ?? "—"}
                     </td>
                     <td>
                       <span className={statusBadgeClass(session.status)}>
@@ -279,15 +279,6 @@ export default function InterviewsPage() {
                     <td>{session.scheduledAt ? formatDate(session.scheduledAt) : "—"}</td>
                     <td>{renderProgress(session)}</td>
                     <td>{renderNextAction(session)}</td>
-                    <td>
-                      {session.candidateInterviewUrl ? (
-                        <a href={session.candidateInterviewUrl} target="_blank" rel="noreferrer" className="table-action-link">
-                          Önizle
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
                   </tr>
                 ))}
               </tbody>

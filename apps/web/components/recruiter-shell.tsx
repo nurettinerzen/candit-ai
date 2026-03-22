@@ -7,6 +7,7 @@ import { AUTH_SESSION_MODE, AUTH_TOKEN_TRANSPORT } from "../lib/auth/runtime";
 import { canAccessRoute, canPerformAction, type AppPermission } from "../lib/auth/policy";
 import { resolveActiveSession, resolveSessionFromServer } from "../lib/auth/session";
 import type { WebAuthSession } from "../lib/auth/types";
+import { SiteSettingsSwitcher } from "./site-language-provider";
 
 type NavItem = {
   href:
@@ -24,12 +25,11 @@ type NavItem = {
 
 const primaryNavItems: NavItem[] = [
   { href: "/", label: "Genel Bakış", icon: "📊", permission: "job.read" },
-  { href: "/applications", label: "Başvurular", icon: "🗂️", permission: "candidate.read" },
-  { href: "/jobs", label: "İlanlar", icon: "💼", permission: "job.read" },
-  { href: "/candidates", label: "Adaylar", icon: "👥", permission: "candidate.read" },
+  { href: "/jobs", label: "İlan Merkezi", icon: "💼", permission: "job.read" },
   { href: "/interviews", label: "Mülakatlar", icon: "🎙️", permission: "interview.read" },
+  { href: "/candidates", label: "Aday Havuzu", icon: "👥", permission: "candidate.read" },
   { href: "/raporlar", label: "Raporlar", icon: "📈", permission: "job.read" },
-  { href: "/ayarlar", label: "Ayarlar", icon: "⚙️", permission: "ai.task.read" },
+  { href: "/ayarlar", label: "Ayarlar & Bağlantılar", icon: "⚙️", permission: "ai.task.read" },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -51,6 +51,7 @@ function getInitials(label: string): string {
 
 export function RecruiterShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const isJobDetailPage = pathname.startsWith("/jobs/") && pathname !== "/jobs" && pathname !== "/jobs/new";
   const [session, setSession] = useState<WebAuthSession | null>(() => resolveActiveSession());
   const [checkingCookieSession, setCheckingCookieSession] = useState(
     AUTH_TOKEN_TRANSPORT === "cookie" && (AUTH_SESSION_MODE === "jwt" || AUTH_SESSION_MODE === "hybrid")
@@ -156,7 +157,7 @@ export function RecruiterShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="main-content">
-        <div className="main-content-inner">
+        <div className={`main-content-inner${isJobDetailPage ? " main-content-inner-wide" : ""}`}>
           {children}
         </div>
       </div>
@@ -195,6 +196,10 @@ function SidebarContent({
           </Link>
         ))}
       </nav>
+
+      <div className="sidebar-controls">
+        <SiteSettingsSwitcher variant="sidebar" />
+      </div>
 
       <div className="sidebar-session">
         <div className="sidebar-session-info">

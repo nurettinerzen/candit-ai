@@ -24,6 +24,17 @@ const AI_SUPPORT_FLAG_KEYS = [
   "ai.auto_reject.enabled"
 ] as const;
 
+function readHumanDecision(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const decision = (metadata as Record<string, unknown>).decision;
+  return decision === "advance" || decision === "hold" || decision === "reject"
+    ? decision
+    : null;
+}
+
 @Injectable()
 export class ReadModelsService {
   constructor(
@@ -266,6 +277,28 @@ export class ReadModelsService {
       take: 200
     });
 
+    const applicationIds = applications.map((application) => application.id);
+    const approvals = applicationIds.length > 0
+      ? await this.prisma.humanApproval.findMany({
+          where: {
+            tenantId,
+            actionType: "application.decision",
+            entityType: "CandidateApplication",
+            entityId: { in: applicationIds }
+          },
+          orderBy: {
+            approvedAt: "desc"
+          }
+        })
+      : [];
+    const latestHumanDecisionByApplicationId = new Map<string, "advance" | "hold" | "reject" | null>();
+    for (const approval of approvals) {
+      if (latestHumanDecisionByApplicationId.has(approval.entityId)) {
+        continue;
+      }
+      latestHumanDecisionByApplicationId.set(approval.entityId, readHumanDecision(approval.metadata));
+    }
+
     return {
       total: applications.length,
       items: applications.map((application) => {
@@ -278,6 +311,7 @@ export class ReadModelsService {
           id: application.id,
           stage: application.currentStage,
           aiRecommendation: application.aiRecommendation,
+          humanDecision: latestHumanDecisionByApplicationId.get(application.id) ?? null,
           stageUpdatedAt: application.stageUpdatedAt,
           createdAt: application.createdAt,
           humanDecisionRequired: application.humanDecisionRequired,
@@ -462,6 +496,10 @@ export class ReadModelsService {
       },
       take: 40
     });
+    const latestHumanDecision =
+      humanApprovals
+        .map((approval) => readHumanDecision(approval.metadata))
+        .find((decision) => decision !== null) ?? null;
 
     const mappedSessions = interviewSessions.map((session) => ({
       id: session.id,
@@ -545,6 +583,7 @@ export class ReadModelsService {
         stageUpdatedAt: baseApplication.stageUpdatedAt,
         createdAt: baseApplication.createdAt,
         aiRecommendation: baseApplication.aiRecommendation,
+        humanDecision: latestHumanDecision,
         humanDecisionRequired: baseApplication.humanDecisionRequired
       },
       candidate: {

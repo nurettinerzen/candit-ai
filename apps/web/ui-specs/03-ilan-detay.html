@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İlan Detay / Başvuru Inbox — UI Spec</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface-hover: #22262f; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af;
+    --primary: #7c73fa; --primary-light: rgba(124,115,250,0.12);
+    --success: #34d399; --success-light: rgba(52,211,153,0.15);
+    --warn: #f59e0b; --warn-light: rgba(245,158,11,0.12);
+    --danger: #f87171; --danger-light: rgba(248,113,113,0.12);
+    --info: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); padding: 32px 40px; max-width: 1200px; }
+
+  .breadcrumb { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+  .breadcrumb a { color: var(--primary); text-decoration: none; }
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .job-meta { display: flex; gap: 16px; font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; flex-wrap: wrap; }
+  .job-meta .status { color: var(--success); font-weight: 600; }
+
+  .btn { padding: 7px 16px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .kpi-card .label { font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+  .kpi-card .value { font-size: 28px; font-weight: 800; margin-top: 4px; }
+
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .pill { padding: 6px 16px; border-radius: 18px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
+  .pill.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 600; }
+
+  .search-row { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
+  .search-row input { flex: 1; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; }
+  .search-row select { padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: rgba(255,255,255,0.02); }
+
+  a { color: var(--primary); text-decoration: none; }
+
+  /* Stage badge — merkezi */
+  .stage { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .stage .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .stage.karar-bekliyor { color: var(--warn); }
+  .stage.karar-bekliyor .dot { background: var(--warn); }
+  .stage.bekletildi { color: var(--text-secondary); }
+  .stage.bekletildi .dot { background: var(--text-secondary); }
+  .stage.ilerletildi { color: var(--success); }
+  .stage.ilerletildi .dot { background: var(--success); }
+  .stage.reddedildi { color: var(--danger); }
+  .stage.reddedildi .dot { background: var(--danger); }
+  .stage.mulakat { color: var(--info); }
+  .stage.mulakat .dot { background: var(--info); }
+
+  /* Fit score circle */
+  .fit-score {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; border: 2.5px solid;
+  }
+  .fit-score.strong { border-color: var(--success); color: var(--success); }
+  .fit-score.good { border-color: var(--info); color: var(--info); }
+  .fit-score.weak { border-color: var(--warn); color: var(--warn); }
+  .fit-band { font-size: 11px; font-weight: 600; margin-top: 2px; }
+  .fit-band.strong { color: var(--success); }
+  .fit-band.good { color: var(--info); }
+
+  .risk-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; margin-right: 4px; margin-bottom: 2px; }
+  .risk-tag.missing { background: rgba(245,158,11,0.15); color: var(--warn); }
+  .risk-tag.warn { background: rgba(248,113,113,0.15); color: var(--danger); }
+
+  .action-link { color: var(--primary); font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+
+  .candidate-info .name { font-weight: 600; font-size: 14px; }
+  .candidate-info .location { font-size: 12px; color: var(--text-secondary); }
+  .candidate-info .contact { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+  .spec-note { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px 20px; margin-top: 32px; font-size: 13px; line-height: 1.7; color: #94a3b8; }
+  .spec-note strong { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<div class="breadcrumb"><a href="#">← İlan Merkezi</a></div>
+
+<div class="page-header">
+  <h1>depo operasyon sefi</h1>
+  <div style="display: flex; gap: 8px;">
+    <button class="btn">İlan Bilgilerini Göster</button>
+    <button class="btn">Yenile</button>
+  </div>
+</div>
+<div class="job-meta">
+  <span class="status">● Yayında</span>
+  <span>İstanbul</span>
+  <span>Tam zamanlı</span>
+  <span>₺35.000 – ₺45.000</span>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card"><div class="label">Toplam Başvuru</div><div class="value">10</div></div>
+  <div class="kpi-card"><div class="label">Skoru Hazır</div><div class="value">10</div></div>
+  <div class="kpi-card"><div class="label">Ort. Uyum Skoru</div><div class="value">77%</div></div>
+  <div class="kpi-card"><div class="label">İşlem Bekliyor</div><div class="value" style="color:var(--warn)">5</div></div>
+</div>
+
+<div class="filter-row">
+  <button class="pill active">Tümü</button>
+  <button class="pill">Başvurdu (5)</button>
+  <button class="pill">Ön Eleme</button>
+  <button class="pill">Görüşme</button>
+  <button class="pill">İnceleme (5)</button>
+  <button class="pill">Teklif / Sonuç</button>
+</div>
+
+<div class="search-row">
+  <input type="text" placeholder="Aday adı, e-posta veya telefon ara...">
+  <select><option>Tüm Kaynaklar</option></select>
+  <select><option>Minimum sk.</option></select>
+  <select><option>Sıralama</option></select>
+  <button class="btn-primary" style="padding: 9px 18px;">CV Yükle</button>
+  <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">10 aday gösteriliyor</span>
+</div>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:30px"><input type="checkbox"></th>
+        <th>Aday</th>
+        <th>Kaynak</th>
+        <th style="text-align:center">Uyum Skoru</th>
+        <th>Eksik / Uyarı</th>
+        <th>Durum</th>
+        <th>Sonraki Adım</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><input type="checkbox"></td>
+        <td>
+          <div class="candidate-info">
+            <div class="name"><a href="#">Ahmet Yılmaz</a></div>
+            <div class="location">Pendik, İstanbul</div>
+            <div class="contact">ahmet.yilmaz@email.com · +90 532 411 27 84</div>
+          </div>
+        </td>
+        <td>Kariyer.net</td>
+        <td style="text-align:center">
+          <div class="fit-score strong">85</div>
+          <div class="fit-band strong">Güçlü</div>
+        </td>
+        <td>
+          <span class="risk-tag missing">3 Eksik Bilgi</span>
+          <span class="risk-tag warn">1 Uyarı</span>
+        </td>
+        <td><span class="stage karar-bekliyor"><span class="dot"></span> Karar Bekliyor</span></td>
+        <td><span class="action-link">Karar Ver</span></td>
+        <td><button class="btn" style="font-size:12px; padding: 5px 12px;">İşlem</button></td>
+      </tr>
+      <tr>
+        <td><input type="checkbox"></td>
+        <td>
+          <div class="candidate-info">
+            <div class="name"><a href="#">Merve Kara</a></div>
+            <div class="location">Gebze, Kocaeli</div>
+            <div class="contact">merve.kara@email.com · +90 505 219 64 13</div>
+          </div>
+        </td>
+        <td>Kariyer.net</td>
+        <td style="text-align:center">
+          <div class="fit-score strong">85</div>
+          <div class="fit-band strong">Güçlü</div>
+        </td>
+        <td>
+          <span class="risk-tag missing">2 Eksik Bilgi</span>
+        </td>
+        <td><span class="stage bekletildi"><span class="dot"></span> Bekletildi</span></td>
+        <td><span class="action-link">Karar Ver</span></td>
+        <td><button class="btn" style="font-size:12px; padding: 5px 12px;">İşlem</button></td>
+      </tr>
+      <tr>
+        <td><input type="checkbox"></td>
+        <td>
+          <div class="candidate-info">
+            <div class="name"><a href="#">Elif Aydın</a></div>
+            <div class="location">Bornova, İzmir</div>
+            <div class="contact">elif.aydin@email.com · +90 553 870 41 26</div>
+          </div>
+        </td>
+        <td>Kariyer.net</td>
+        <td style="text-align:center">
+          <div class="fit-score good">78</div>
+          <div class="fit-band good">İyi</div>
+        </td>
+        <td>
+          <span class="risk-tag missing">3 Eksik Bilgi</span>
+          <span class="risk-tag warn">5 Uyarı</span>
+        </td>
+        <td><span class="stage bekletildi"><span class="dot"></span> Bekletildi</span></td>
+        <td><span class="action-link">Karar Ver</span></td>
+        <td><button class="btn" style="font-size:12px; padding: 5px 12px;">İşlem</button></td>
+      </tr>
+      <tr>
+        <td><input type="checkbox"></td>
+        <td>
+          <div class="candidate-info">
+            <div class="name"><a href="#">Burak Çetin</a></div>
+            <div class="location">Etimesgut, Ankara</div>
+            <div class="contact">burak.cetin@email.com · +90 507 612 95 30</div>
+          </div>
+        </td>
+        <td>Kariyer.net</td>
+        <td style="text-align:center">
+          <div class="fit-score good">75</div>
+          <div class="fit-band good">İyi</div>
+        </td>
+        <td>
+          <span class="risk-tag missing">2 Eksik Bilgi</span>
+          <span class="risk-tag warn">3 Uyarı</span>
+        </td>
+        <td><span class="stage karar-bekliyor"><span class="dot"></span> Karar Bekliyor</span></td>
+        <td><span class="action-link">Karar Ver</span></td>
+        <td><button class="btn" style="font-size:12px; padding: 5px 12px;">İşlem</button></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="spec-note">
+  <strong>📐 İlan Detay / Başvuru Inbox Spec</strong><br><br>
+  <strong>Bu sayfa ürünün ağırlık merkezi — command center.</strong><br><br>
+  • Breadcrumb: "← İlan Merkezi"<br>
+  • İlan meta bilgisi: durum badge + lokasyon + çalışma modeli + maaş aralığı<br>
+  • KPI'lar: Toplam Başvuru, Skoru Hazır, Ort. Uyum Skoru, İşlem Bekliyor<br>
+  • Pipeline filtreleri: Tümü / Başvurdu / Ön Eleme / Görüşme / İnceleme / Teklif-Sonuç (tab sayılarıyla)<br>
+  • Arama + kaynak filtre + minimum skor + sıralama + CV Yükle butonu<br><br>
+  <strong>Tablo sütunları (inbox):</strong><br>
+  • ☑ Checkbox (toplu işlem için)<br>
+  • <strong>Aday:</strong> Ad, lokasyon, iletişim bilgisi (e-posta, telefon) — tek sütunda kompakt<br>
+  • <strong>Kaynak:</strong> kariyer.net, manual, csv_import vb.<br>
+  • <strong>Uyum Skoru:</strong> Daire içinde sayı + band etiketi (Güçlü/İyi/Orta/Zayıf)<br>
+  • <strong>Eksik / Uyarı:</strong> Risk tag'leri — "3 Eksik Bilgi", "1 Uyarı" gibi kompakt etiketler<br>
+  • <strong>Durum:</strong> Merkezi stage badge — tüm sayfalarla aynı (Karar Bekliyor / Bekletildi / İlerletildi / Reddedildi / Mülakat Planlandı)<br>
+  • <strong>Sonraki Adım:</strong> Aksiyon linki — "Karar Ver", "İncele", "Değerlendirmede" vb.<br>
+  • <strong>İşlem:</strong> Dropdown menu butonu (İlerlet, Beklet, Reddet, Görüşmeye Davet Et)<br><br>
+  <strong>Önemli:</strong> Aday adına tıklayınca başvuru detay sayfasına gider, ayrı bir aday profil sayfasına DEĞİL.
+</div>
+
+</body>
+</html>

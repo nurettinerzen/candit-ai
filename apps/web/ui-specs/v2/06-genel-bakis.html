@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genel Bakış (Dashboard) — UI/UX Öneri v2</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af;
+    --primary: #7c73fa; --primary-light: rgba(124,115,250,0.12);
+    --success: #34d399; --warn: #f59e0b; --danger: #f87171; --info: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); padding: 28px 36px; max-width: 1100px; }
+
+  .page-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .page-header .subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+  .btn { padding: 7px 16px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+  a { color: var(--primary); text-decoration: none; font-weight: 500; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .kpi-card .value { font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+  .kpi-card .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; }
+  .kpi-card .desc { font-size: 12px; color: var(--text-secondary); margin-top: 6px; line-height: 1.5; }
+  .kpi-card .action-link { display: inline-block; margin-top: 8px; font-size: 12px; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .panel h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .panel .panel-desc { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
+  .panel .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+
+  .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row .stat-value { font-weight: 700; }
+
+  .health-banner { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; font-weight: 600; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: var(--success); }
+  .health-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+
+  .warn-text { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+
+  .issue-box { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+  .issue-box strong { color: var(--danger); }
+  .rec-box { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+  .rec-box strong { color: var(--success); }
+  .rec-box ul, .issue-box ul { margin: 6px 0 0 16px; }
+</style>
+</head>
+<body>
+
+<div class="issue-box">
+  <strong>🔴 Genel Bakış — Mevcut Sorunlar:</strong>
+  <ul>
+    <li><b>KPI kartları çok genel</b> — "İlanlar: 4", "Başvurular: 26", "Mülakatlar: 4" → bunlar sadece sayı, aksiyon çağrısı (CTA) yok.</li>
+    <li><b>"Bugün Yapılacaklar" panelinde 0'lar çok</b> — "Feedback bekleyen mülakatlar: 0", "Bugün planlanan mülakatlar: 0" gibi satırlar çoğu zaman 0 olacak. 0 olanları gizle, sadece dikkat gerektirenleri göster.</li>
+    <li><b>Sistem Durumu İngilizce</b> — "Calendly OAuth env vars are incomplete (ready-after-config state)" → tamamen İngilizce teknik mesaj. Türkçeleştirilmeli.</li>
+    <li><b>"Feedback Bekleyenler" paneli boş</b> — "Son karar bekleyenler: 0", "Bugün planlanan mülakatlar: 0" → Recruiter için actionable değil.</li>
+    <li><b>Dashboard ama aksiyon yönlendirmesi yok</b> — "20 karar bekleyen başvuru var" deyip "Şimdi İncele →" linki koyulmalı.</li>
+    <li><b>KPI kartlarında renk kodu yok</b> — 26 başvuru ve 20 karar bekliyor arasında fark vurgulanmıyor.</li>
+  </ul>
+</div>
+
+<div class="rec-box">
+  <strong>✅ Önerilen İyileştirmeler:</strong>
+  <ul>
+    <li>KPI kartlarını aksiyonel yap: sayı + kısa açıklama + "Git →" linki</li>
+    <li>0 olan satırları gizle, sadece dikkat gerektirenleri göster</li>
+    <li>Sistem durumu mesajlarını Türkçeleştir</li>
+    <li>"Bugün Yapılacaklar" panelini öncelikli kuyruk olarak tasarla — en acil olanlar üstte</li>
+    <li>Karar bekleyen başvuru sayısını kırmızı/turuncu ile vurgula</li>
+  </ul>
+</div>
+
+<!-- ═══ ÖNERİLEN TASARIM ═══ -->
+<div class="page-header">
+  <div>
+    <h1>Genel Bakış</h1>
+    <p class="subtitle">İşe alım operasyonunuzun anlık durumu.</p>
+  </div>
+  <button class="btn">Yenile</button>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="label">Yayındaki İlanlar</div>
+    <div class="value">4</div>
+    <div class="desc">Yayında olan ilanlar ve pipeline girişinizi yönetin.</div>
+    <a href="#" class="action-link">İlanlara Git →</a>
+  </div>
+  <div class="kpi-card">
+    <div class="label">Karar Bekleyen Başvurular</div>
+    <div class="value" style="color:var(--warn)">20</div>
+    <div class="desc">Bu başvurular recruiter kararı bekliyor.</div>
+    <a href="#" class="action-link">Şimdi İncele →</a>
+  </div>
+  <div class="kpi-card">
+    <div class="label">Bugünkü Mülakatlar</div>
+    <div class="value">0</div>
+    <div class="desc">Bugün planlanmış görüşme yok.</div>
+    <a href="#" class="action-link">Mülakatları Gör →</a>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="panel">
+    <div class="header-row">
+      <div>
+        <h3>Öncelikli İşler</h3>
+        <p class="panel-desc">Aksiyon almanız gereken konular.</p>
+      </div>
+    </div>
+    <div class="stat-row">
+      <span style="color:var(--warn)">⚠ Karar bekleyen başvurular</span>
+      <span class="stat-value" style="color:var(--warn)">20</span>
+    </div>
+    <div class="stat-row">
+      <span style="color:var(--danger)">🔴 Sorunlu mülakat oturumu</span>
+      <span class="stat-value" style="color:var(--danger)">1</span>
+    </div>
+    <div class="stat-row">
+      <span style="color:var(--success)">✅ İnceleme bekleyen sonuçlar</span>
+      <span class="stat-value" style="color:var(--success)">1</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="header-row">
+      <div>
+        <h3>Sistem Durumu</h3>
+        <p class="panel-desc">Entegrasyon ve altyapı sağlığı.</p>
+      </div>
+      <a href="#" style="font-size:12px">Detaylar →</a>
+    </div>
+    <div class="health-banner">
+      <span class="health-dot"></span> Tüm sistemler aktif
+    </div>
+    <p class="warn-text">
+      ⚠ Calendly OAuth yapılandırması tamamlanmamış.
+    </p>
+  </div>
+</div>
+
+</body>
+</html>

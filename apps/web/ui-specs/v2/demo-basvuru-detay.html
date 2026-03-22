@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Başvuru Detay — Ahmet Yılmaz</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface-hover: #1f2330; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af; --text-muted: #6b7280;
+    --primary: #7c73fa; --primary-light: rgba(124,115,250,0.12);
+    --success: #34d399; --warn: #f59e0b; --danger: #f87171; --info: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 10; }
+  .sidebar-brand { padding: 0 20px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+  .sidebar-logo { width: 36px; height: 36px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: #fff; flex-shrink: 0; }
+  .sidebar-brand-text h1 { font-size: 15px; font-weight: 700; }
+  .sidebar-brand-text p { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+  .nav-section { flex: 1; padding: 0 10px; }
+  .nav-link { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: 8px; color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+  .nav-link:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .nav-link.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-footer { padding: 14px 16px; border-top: 1px solid var(--border); margin-top: auto; }
+  .user-row { display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 32px; height: 32px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; }
+  .user-name { font-size: 13px; font-weight: 600; }
+  .user-role { font-size: 11px; color: var(--text-secondary); }
+
+  /* ─── MAIN ─── */
+  .main { margin-left: 220px; flex: 1; padding: 24px 32px; }
+  a { color: var(--primary); text-decoration: none; font-weight: 500; }
+  .breadcrumb { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+
+  /* ─── TWO COLUMN LAYOUT ─── */
+  .two-col { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+
+  /* ─── CARDS ─── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .card .card-hint { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+  .card .ai-badge { float: right; font-size: 11px; color: var(--primary); font-weight: 500; opacity: 0.7; }
+
+  /* ─── CANDIDATE HEADER ─── */
+  .ch-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .ch-name { font-size: 22px; font-weight: 700; }
+  .ch-job { font-size: 14px; color: var(--text-secondary); margin-top: 2px; }
+  .ch-status { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; font-weight: 600; }
+  .stage-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .btn { padding: 7px 16px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; font-weight: 500; }
+  .btn:hover { background: var(--surface-hover); }
+
+  .ch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 1px solid var(--border); }
+  .ch-cell { padding: 12px 16px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+  .ch-cell:nth-child(3n) { border-right: none; }
+  .ch-cell .label { font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; letter-spacing: 0.3px; margin-bottom: 3px; }
+  .ch-cell .value { font-size: 13px; font-weight: 600; }
+
+  /* ─── AI SUGGESTION BANNER ─── */
+  .ai-banner { padding: 12px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+  .ai-banner.advance { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); color: var(--success); }
+
+  /* ─── SCORE SECTION ─── */
+  .score-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .score-big { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; flex-shrink: 0; }
+  .score-big.high { border: 3px solid var(--success); color: var(--success); }
+  .score-meta .score-text { font-size: 15px; font-weight: 600; }
+  .score-meta .score-sub { font-size: 12px; color: var(--text-secondary); }
+
+  .subscore-row { display: flex; align-items: center; padding: 8px 0; font-size: 13px; gap: 8px; }
+  .subscore-name { width: 150px; flex-shrink: 0; font-weight: 500; }
+  .subscore-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+  .subscore-fill { height: 100%; border-radius: 3px; }
+  .subscore-val { min-width: 28px; text-align: right; font-weight: 700; font-size: 13px; }
+  .subscore-reason { font-size: 11px; color: var(--text-secondary); min-width: 200px; }
+
+  /* ─── SIGNALS (tags) ─── */
+  .signal-group { margin-bottom: 12px; }
+  .signal-group h4 { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; }
+  .signal-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .signal-tag { font-size: 12px; font-weight: 500; padding: 3px 0; }
+  .signal-tag.strength { color: var(--success); }
+  .signal-tag.warning { color: var(--warn); }
+  .signal-tag.missing { color: var(--danger); }
+  .signal-sep { color: var(--text-muted); }
+
+  /* ─── AI SUMMARY ─── */
+  .ai-paragraph { font-size: 14px; line-height: 1.8; color: var(--text); }
+  .ai-note { font-size: 12px; color: var(--text-muted); margin-top: 8px; font-style: italic; }
+
+  /* ─── INTERVIEW SECTION ─── */
+  .interview-status { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 8px; background: rgba(124,115,250,0.08); border: 1px solid rgba(124,115,250,0.2); font-size: 13px; margin-bottom: 8px; }
+  .interview-detail { font-size: 13px; padding: 6px 0; display: flex; justify-content: space-between; }
+  .interview-detail .il { color: var(--text-secondary); }
+
+  /* ─── TIMELINE ─── */
+  .timeline { position: relative; padding-left: 20px; }
+  .timeline::before { content: ''; position: absolute; left: 5px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+  .tl-item { position: relative; padding-bottom: 16px; }
+  .tl-item:last-child { padding-bottom: 0; }
+  .tl-dot { position: absolute; left: -20px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--border); border: 2px solid var(--surface); }
+  .tl-dot.active { background: var(--primary); }
+  .tl-date { font-size: 11px; color: var(--text-muted); }
+  .tl-text { font-size: 13px; margin-top: 2px; }
+  .tl-actor { font-size: 11px; color: var(--text-secondary); }
+
+  /* ─── RIGHT COLUMN (sticky) ─── */
+  .right-col { position: sticky; top: 24px; }
+
+  .decision-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .decision-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .decision-hint { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+  .decision-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dec-btn { padding: 10px 8px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid; background: transparent; transition: all 0.12s; text-align: center; }
+  .dec-btn:hover { filter: brightness(1.15); }
+  .dec-btn.advance { border-color: var(--success); color: var(--success); }
+  .dec-btn.advance:hover { background: rgba(52,211,153,0.1); }
+  .dec-btn.hold { border-color: var(--warn); color: var(--warn); }
+  .dec-btn.hold:hover { background: rgba(245,158,11,0.1); }
+  .dec-btn.reject { border-color: var(--danger); color: var(--danger); }
+  .dec-btn.reject:hover { background: rgba(248,113,113,0.1); }
+  .dec-btn.interview { border-color: var(--info); color: var(--info); grid-column: span 2; }
+  .dec-btn.interview:hover { background: rgba(96,165,250,0.1); }
+
+  /* ─── NOTE CARD ─── */
+  .note-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .note-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+  .note-input { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text); font-size: 13px; min-height: 70px; resize: vertical; font-family: inherit; }
+  .note-btn { padding: 8px 20px; border-radius: 8px; border: none; background: var(--primary); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 8px; width: 100%; }
+  .note-empty { font-size: 12px; color: var(--text-muted); margin-top: 10px; text-align: center; padding: 10px; border: 1px dashed var(--border); border-radius: 6px; }
+
+  /* ─── CV LINK ─── */
+  .cv-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; }
+  .cv-card h3 { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; }
+  .cv-link { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .cv-icon { font-size: 18px; }
+
+  .back-link { display: inline-block; margin-top: 8px; font-size: 12px; color: var(--text-muted); }
+  .back-link:hover { color: var(--primary); }
+
+  /* ─── COLLAPSIBLE TECH SECTION ─── */
+  .tech-toggle { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px; }
+  .tech-toggle summary { font-size: 12px; color: var(--text-muted); cursor: pointer; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 0; }
+  .tech-toggle summary:hover { color: var(--text-secondary); }
+  .tech-content { margin-top: 12px; }
+  .tech-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tech-table th { text-align: left; padding: 8px 10px; font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; letter-spacing: 0.4px; border-bottom: 1px solid var(--border); }
+  .tech-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-secondary); }
+  .tech-table code { font-family: "SF Mono", monospace; font-size: 11px; background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-logo">AI</div>
+    <div class="sidebar-brand-text"><h1>AI Recruiter</h1><p>İşe alım işletim paneli</p></div>
+  </div>
+  <nav class="nav-section">
+    <a href="#" class="nav-link"><span class="nav-icon">📊</span> Genel Bakış</a>
+    <a href="#" class="nav-link active"><span class="nav-icon">💼</span> İlan Merkezi</a>
+    <a href="#" class="nav-link"><span class="nav-icon">🎙️</span> Mülakatlar</a>
+    <a href="#" class="nav-link"><span class="nav-icon">👥</span> Aday Havuzu</a>
+    <a href="#" class="nav-link"><span class="nav-icon">📈</span> Raporlar</a>
+    <a href="#" class="nav-link"><span class="nav-icon">⚙️</span> Ayarlar & Bağlantılar</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="avatar">Dİ</div>
+      <div><div class="user-name">Demo İşe Alım Uzmanı</div><div class="user-role">recruiter</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+  <div class="breadcrumb"><a href="#">← Depo Operasyon Şefi</a> / Ahmet Yılmaz</div>
+
+  <div class="two-col">
+    <!-- ═══ SOL SÜTUN ═══ -->
+    <div>
+
+      <!-- Aday Kartı -->
+      <div class="card">
+        <div class="ch-top">
+          <div>
+            <div class="ch-name">Ahmet Yılmaz</div>
+            <div class="ch-job">Depo Operasyon Şefi başvurusu</div>
+            <div class="ch-status" style="color: var(--warn)">
+              <span class="stage-dot" style="background: var(--warn)"></span>
+              Karar Bekliyor
+            </div>
+          </div>
+          <div style="display:flex; gap:8px">
+            <button class="btn">Yenile</button>
+          </div>
+        </div>
+        <div class="ch-grid">
+          <div class="ch-cell"><div class="label">E-posta</div><div class="value" style="font-size:12px">ahmet.yilmaz@email.com</div></div>
+          <div class="ch-cell"><div class="label">Telefon</div><div class="value">+90 532 411 27 84</div></div>
+          <div class="ch-cell"><div class="label">Lokasyon</div><div class="value">Pendik, İstanbul</div></div>
+          <div class="ch-cell"><div class="label">Kaynak</div><div class="value" style="color:var(--primary)">Kariyer.net</div></div>
+          <div class="ch-cell"><div class="label">Deneyim</div><div class="value">8 yıl</div></div>
+          <div class="ch-cell"><div class="label">Başvuru Tarihi</div><div class="value">19 Mar 2026</div></div>
+        </div>
+      </div>
+
+      <!-- AI Önerisi Banner -->
+      <div class="ai-banner advance">
+        <span style="font-size:18px">✓</span>
+        <div>
+          <div>AI Önerisi: İlerlet</div>
+          <div style="font-size:12px; font-weight:400; color:var(--text-secondary); margin-top:2px">Güçlü uyum tespit edildi — Detaylar aşağıda</div>
+        </div>
+        <span class="ai-badge" style="margin-left:auto; float:none; opacity:1; color:var(--text-muted); font-size:11px">Sadece öneridir</span>
+      </div>
+
+      <!-- Uyum Skoru -->
+      <div class="card">
+        <h3>Aday Uyum Skoru</h3>
+        <div class="card-hint">AI tarafından otomatik hesaplanan uyum değerlendirmesi.</div>
+
+        <div class="score-header">
+          <div class="score-big high">85</div>
+          <div class="score-meta">
+            <div class="score-text">Güçlü Uyum</div>
+            <div class="score-sub">Güven: %85 · 19 Mar 2026</div>
+          </div>
+        </div>
+
+        <div class="subscore-row">
+          <span class="subscore-name">Deneyim</span>
+          <div class="subscore-bar"><div class="subscore-fill" style="width:90%; background:var(--success)"></div></div>
+          <span class="subscore-val" style="color:var(--success)">90</span>
+          <span class="subscore-reason">8+ yıl depo ve lojistik deneyimi</span>
+        </div>
+        <div class="subscore-row">
+          <span class="subscore-name">Liderlik Yetkinliği</span>
+          <div class="subscore-bar"><div class="subscore-fill" style="width:85%; background:var(--success)"></div></div>
+          <span class="subscore-val" style="color:var(--success)">85</span>
+          <span class="subscore-reason">45 kişilik ekip yönetimi</span>
+        </div>
+        <div class="subscore-row">
+          <span class="subscore-name">Teknik Yetenekler</span>
+          <div class="subscore-bar"><div class="subscore-fill" style="width:80%; background:var(--success)"></div></div>
+          <span class="subscore-val" style="color:var(--success)">80</span>
+          <span class="subscore-reason">WMS ve SAP EWM bilgisi var</span>
+        </div>
+        <div class="subscore-row">
+          <span class="subscore-name">Dil Yetenekleri</span>
+          <div class="subscore-bar"><div class="subscore-fill" style="width:70%; background:var(--warn)"></div></div>
+          <span class="subscore-val" style="color:var(--warn)">70</span>
+          <span class="subscore-reason">İngilizce düzeyi netleştirilmeli</span>
+        </div>
+        <div class="subscore-row">
+          <span class="subscore-name">Lokasyon Uygunluğu</span>
+          <div class="subscore-bar"><div class="subscore-fill" style="width:80%; background:var(--success)"></div></div>
+          <span class="subscore-val" style="color:var(--success)">80</span>
+          <span class="subscore-reason">İstanbul'da ikamet ediyor</span>
+        </div>
+      </div>
+
+      <!-- Güçlü Yönler / Uyarılar / Eksik Bilgiler -->
+      <div class="card">
+        <h3>Değerlendirme Sinyalleri</h3>
+        <div class="card-hint">AI tarafından tespit edilen güçlü yönler, uyarılar ve eksik bilgiler.</div>
+
+        <div class="signal-group">
+          <h4>Güçlü Yönler</h4>
+          <div class="signal-list">
+            <span class="signal-tag strength">8+ yıllık depo deneyimi</span><span class="signal-sep">·</span>
+            <span class="signal-tag strength">Ekip yönetimi ve liderlik</span><span class="signal-sep">·</span>
+            <span class="signal-tag strength">WMS ve SAP EWM bilgisi</span><span class="signal-sep">·</span>
+            <span class="signal-tag strength">45 kişilik ekip yönetimi</span><span class="signal-sep">·</span>
+            <span class="signal-tag strength">Sevkiyat hata oranı %18 azaltma</span>
+          </div>
+        </div>
+
+        <div class="signal-group">
+          <h4>Uyarılar</h4>
+          <div class="signal-list">
+            <span class="signal-tag warning">Teknik bilgi seviyesi sorgulanabilir</span>
+          </div>
+        </div>
+
+        <div class="signal-group">
+          <h4>Eksik Bilgiler</h4>
+          <div class="signal-list">
+            <span class="signal-tag missing">İngilizce yeterliliği düzeyi</span><span class="signal-sep">·</span>
+            <span class="signal-tag missing">WMS ve SAP EWM detayları</span><span class="signal-sep">·</span>
+            <span class="signal-tag missing">Liderlik deneyimi kapsamı</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Karar Özeti -->
+      <div class="card">
+        <h3>AI Karar Özeti</h3>
+        <span class="ai-badge">Sadece öneridir</span>
+        <div class="card-hint">Tüm AI kaynaklarından derlenen bütünsel değerlendirme.</div>
+        <p class="ai-paragraph">
+          Aday, depo operasyonları için uygun bir profil sunuyor. Güçlü yönleri arasında 8+ yıllık depo ve lojistik deneyimi, 45 kişilik ekip yönetme tecrübesi ve WMS sistemleri bilgisi öne çıkıyor. Sevkiyat hata oranını %18 azaltma başarısı somut bir performans göstergesi. Dikkat edilmesi gereken 1 uyarı tespit edildi: teknik bilgi seviyesinin yeterliliği sorgulanabilir. 3 eksik bilgi mevcut (İngilizce yeterliliği, WMS ve SAP EWM detayları, liderlik deneyimi kapsamı); bunlar takip sorularıyla tamamlanabilir.
+        </p>
+        <div class="ai-note">V1 Güvenlik Kuralı: AI çıktısı otomatik karar uygulamaz. Tüm kararlar recruiter onayı ile tamamlanır.</div>
+      </div>
+
+      <!-- Görüşme Durumu -->
+      <div class="card">
+        <h3>Görüşme</h3>
+        <div class="card-hint">Mülakat planlama ve durum takibi.</div>
+        <div class="interview-status">
+          <span style="font-size:16px">📅</span>
+          <span style="font-weight:600; color:var(--primary)">Henüz planlanmadı</span>
+        </div>
+        <p style="font-size:13px; color:var(--text-secondary); margin-top:8px">
+          Görüşme daveti gönderildiğinde aday direkt AI görüşme linki alır. Uygun değilse aynı e-postadaki planlama linkiyle daha sonraki bir zamanı seçebilir.
+        </p>
+      </div>
+
+      <!-- Aşama Geçmişi (Timeline) -->
+      <div class="card">
+        <h3>Aşama Geçmişi</h3>
+        <div class="card-hint">Bu başvurunun aşamalar arası geçiş kaydı.</div>
+
+        <div class="timeline" style="margin-top:12px">
+          <div class="tl-item">
+            <span class="tl-dot active"></span>
+            <div class="tl-date">21 Mar 2026 14:16</div>
+            <div class="tl-text">Recruiter İncelemesi → <strong>Ön Değerlendirme</strong></div>
+            <div class="tl-actor">Recruiter tarafından ilerletildi</div>
+          </div>
+          <div class="tl-item">
+            <span class="tl-dot"></span>
+            <div class="tl-date">21 Mar 2026 12:52</div>
+            <div class="tl-text">Ön Değerlendirme → <strong>Recruiter İncelemesi</strong></div>
+            <div class="tl-actor">Bekletildi</div>
+          </div>
+          <div class="tl-item">
+            <span class="tl-dot"></span>
+            <div class="tl-date">21 Mar 2026 11:42</div>
+            <div class="tl-text">Başvurdu → <strong>Yönetici İncelemesi</strong></div>
+            <div class="tl-actor">Manuel ilerletme</div>
+          </div>
+          <div class="tl-item">
+            <span class="tl-dot"></span>
+            <div class="tl-date">19 Mar 2026 16:11</div>
+            <div class="tl-text"><strong>Başvuru oluşturuldu</strong></div>
+            <div class="tl-actor">Sistem</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Teknik Detaylar (collapsible — admin/geliştirici için) -->
+      <details class="tech-toggle">
+        <summary>Teknik Detaylar (Geliştirici)</summary>
+        <div class="tech-content">
+          <div class="card" style="margin-bottom:12px">
+            <h3 style="font-size:13px">AI Görev Geçmişi</h3>
+            <table class="tech-table">
+              <thead>
+                <tr><th>Tarih</th><th>Görev Tipi</th><th>Durum</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>19 Mar 2026 16:11</td><td>Ön Eleme Desteği</td><td style="color:var(--success)">Başarılı</td></tr>
+                <tr><td>19 Mar 2026 16:11</td><td>CV Çözümleme</td><td style="color:var(--success)">Başarılı</td></tr>
+                <tr><td>19 Mar 2026 16:12</td><td>Uyum Skorlama</td><td style="color:var(--success)">Başarılı</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card" style="margin-bottom:12px">
+            <h3 style="font-size:13px">İnsan Onay Kayıtları</h3>
+            <table class="tech-table">
+              <thead>
+                <tr><th>Tarih</th><th>Aksiyon</th><th>Onaylayan</th><th>Neden</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>21 Mar 2026 14:16</td>
+                  <td><code>basvuru.decision</code></td>
+                  <td><code>usr_recruiter_demo</code></td>
+                  <td><code>manual_recruiter_advance</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- ═══ SAĞ SÜTUN (Sticky) ═══ -->
+    <div class="right-col">
+      <!-- Karar Merkezi -->
+      <div class="decision-card">
+        <h3>Karar Merkezi</h3>
+        <div class="decision-hint">Bu başvuru için kararınızı verin.</div>
+        <div class="decision-grid">
+          <button class="dec-btn advance">✓ İlerlet</button>
+          <button class="dec-btn hold">⏸ Beklet</button>
+          <button class="dec-btn reject">✕ Reddet</button>
+          <button class="dec-btn interview">📅 Mülakata Davet Et</button>
+        </div>
+      </div>
+
+      <!-- Notlar -->
+      <div class="note-card">
+        <h3>Notlar (0)</h3>
+        <textarea class="note-input" placeholder="Bu başvuru için kısa karar notu bırakın..."></textarea>
+        <button class="note-btn">Notu Kaydet</button>
+        <div class="note-empty">Henüz not eklenmemiş.</div>
+      </div>
+
+      <!-- CV -->
+      <div class="cv-card">
+        <h3>Özgeçmiş</h3>
+        <div class="cv-link">
+          <span class="cv-icon">📄</span>
+          <a href="#">CV'yi Görüntüle / İndir</a>
+        </div>
+      </div>
+
+      <a href="#" class="back-link">← Başvuru listesine dön</a>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui-states";
 import { apiClient } from "../../lib/api-client";
-import { getRecruiterStageMeta } from "../../lib/constants";
+import { getRecruiterStageMeta, getRecruiterStatus } from "../../lib/constants";
 import { formatDate } from "../../lib/format";
 import type {
   InterviewSessionView,
@@ -41,8 +41,11 @@ function isSameCalendarDay(value: string | null | undefined) {
 function resolveQueueState(
   application: RecruiterApplicationsReadModel["items"][number]
 ): QueueState {
+  const recruiterStatus = getRecruiterStatus(application.stage, application.humanDecision);
+
   if (
     application.interview?.status === "COMPLETED" &&
+    recruiterStatus !== "ON_HOLD" &&
     application.stage !== "REJECTED" &&
     application.stage !== "HIRED"
   ) {
@@ -53,11 +56,17 @@ function resolveQueueState(
     };
   }
 
+  if (recruiterStatus === "ON_HOLD") {
+    return {
+      key: "in_progress",
+      priority: 3,
+      helper: "Aday bekletildi. Tekrar inceleme için sırada tutuluyor."
+    };
+  }
+
   if (
     (application.ai.hasReport && application.humanDecisionRequired) ||
-    ["APPLIED", "SCREENING", "RECRUITER_REVIEW", "INTERVIEW_COMPLETED"].includes(
-      application.stage
-    )
+    recruiterStatus === "DECISION_PENDING"
   ) {
     return {
       key: "decision",
@@ -421,7 +430,7 @@ export default function RecruiterOverviewPage() {
                 {queueItems.map(({ application, state }) => {
                   const stageMeta = getRecruiterStageMeta(
                     application.stage,
-                    application.aiRecommendation
+                    application.humanDecision
                   );
 
                   return (

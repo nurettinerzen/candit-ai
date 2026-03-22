@@ -3,48 +3,114 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Field, SelectInput, TextArea, TextInput } from "../../../../components/form-controls";
 import { ErrorState } from "../../../../components/ui-states";
 import { apiClient } from "../../../../lib/api-client";
-import { JOB_STATUSES } from "../../../../lib/constants";
 import type { JobStatus } from "../../../../lib/types";
 
+/* ── Types ── */
+
 type RequirementDraft = {
-  key: string;
-  value: string;
+  text: string;
   required: boolean;
 };
 
-const initialRequirement: RequirementDraft = { key: "", value: "", required: true };
+/* ── Department options ── */
 
-function normalizeDraftRequirement(item: RequirementDraft) {
-  const key = item.key.trim();
-  const value = item.value.trim();
+const DEPARTMENTS = [
+  "Operasyon",
+  "Satış",
+  "Pazarlama",
+  "İnsan Kaynakları",
+  "Finans",
+  "Bilgi Teknolojileri",
+  "Müşteri Hizmetleri",
+  "Üretim",
+  "Lojistik",
+  "Diğer",
+];
 
-  if (!key && !value) {
-    return null;
-  }
+const WORK_MODELS = [
+  { value: "", label: "Seçiniz" },
+  { value: "onsite", label: "Ofisten (On-site)" },
+  { value: "hybrid", label: "Hibrit" },
+  { value: "remote", label: "Uzaktan" },
+];
 
-  return {
-    key: key || value,
-    value: value || key,
-    required: item.required
-  };
-}
+const WORK_TYPES = [
+  { value: "", label: "Seçiniz" },
+  { value: "full_time", label: "Tam Zamanlı" },
+  { value: "part_time", label: "Yarı Zamanlı" },
+  { value: "shift", label: "Vardiyalı" },
+  { value: "intern", label: "Stajyer" },
+  { value: "contract", label: "Sözleşmeli" },
+];
+
+/* ── Auto-suggested requirements per department ── */
+
+const DEPARTMENT_REQUIREMENTS: Record<string, RequirementDraft[]> = {
+  Operasyon: [
+    { text: "Vardiyalı çalışma düzenine uyum", required: true },
+    { text: "Depo veya saha operasyonu deneyimi", required: false },
+    { text: "Ağır yük kaldırma kapasitesi", required: false },
+  ],
+  Satış: [
+    { text: "Satış hedeflerine yönelik çalışma deneyimi", required: true },
+    { text: "CRM araçları kullanım bilgisi", required: false },
+    { text: "Aktif müşteri portföyü yönetimi", required: false },
+  ],
+  Pazarlama: [
+    { text: "Dijital pazarlama kampanya yönetimi", required: true },
+    { text: "Sosyal medya platformlarında içerik üretimi", required: false },
+    { text: "Google Analytics veya benzeri araç deneyimi", required: false },
+  ],
+  "İnsan Kaynakları": [
+    { text: "İşe alım süreçleri yönetimi", required: true },
+    { text: "SGK ve bordro mevzuatı bilgisi", required: false },
+    { text: "Çalışan ilişkileri ve oryantasyon deneyimi", required: false },
+  ],
+  Finans: [
+    { text: "Muhasebe ve finans raporlama deneyimi", required: true },
+    { text: "ERP sistemi kullanım bilgisi (SAP, Logo vb.)", required: false },
+    { text: "Bütçe planlama ve maliyet analizi", required: false },
+  ],
+  "Bilgi Teknolojileri": [
+    { text: "Yazılım geliştirme veya sistem yönetimi deneyimi", required: true },
+    { text: "Versiyon kontrol ve CI/CD süreçleri bilgisi", required: false },
+    { text: "Ağ ve sunucu altyapısı yönetimi", required: false },
+  ],
+  "Müşteri Hizmetleri": [
+    { text: "Çağrı merkezi veya müşteri destek deneyimi", required: true },
+    { text: "Şikayet yönetimi ve çözüm odaklı yaklaşım", required: false },
+    { text: "Çoklu iletişim kanallarında hizmet deneyimi", required: false },
+  ],
+  Üretim: [
+    { text: "Üretim hattı operasyon deneyimi", required: true },
+    { text: "İş sağlığı ve güvenliği sertifikası", required: false },
+    { text: "Kalite kontrol süreçleri bilgisi", required: false },
+  ],
+  Lojistik: [
+    { text: "Sevkiyat ve depo yönetimi deneyimi", required: true },
+    { text: "Rota planlama ve filo takibi bilgisi", required: false },
+    { text: "Tedarik zinciri süreçlerine hakimiyet", required: false },
+  ],
+};
+
+/* ── Page ── */
 
 export default function NewJobPage() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [department, setDepartment] = useState("");
   const [status, setStatus] = useState<JobStatus>("PUBLISHED");
-  const [workspaceId, setWorkspaceId] = useState("wrk_demo_ops");
-  const [locationText, setLocationText] = useState("İstanbul");
-  const [shiftType, setShiftType] = useState("vardiyalı");
+  const [locationText, setLocationText] = useState("");
+  const [workModel, setWorkModel] = useState("");
+  const [workType, setWorkType] = useState("");
   const [salaryMin, setSalaryMin] = useState("");
   const [salaryMax, setSalaryMax] = useState("");
   const [jdText, setJdText] = useState("");
-  const [requirements, setRequirements] = useState<RequirementDraft[]>([initialRequirement]);
+  const [requirements, setRequirements] = useState<RequirementDraft[]>([]);
   const [fieldError, setFieldError] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -52,36 +118,40 @@ export default function NewJobPage() {
   const [draftError, setDraftError] = useState("");
   const [draftNotice, setDraftNotice] = useState("");
   const [draftLoading, setDraftLoading] = useState(false);
-  const [draftAction, setDraftAction] = useState<"fresh" | "rewrite" | null>(null);
+  const [draftAction, setDraftAction] = useState<"fresh" | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [rewriteInstruction, setRewriteInstruction] = useState("");
   const [lastDraftInputSnapshot, setLastDraftInputSnapshot] = useState("");
 
+  // Departman değişince otomatik nitelik önerisi
+  useEffect(() => {
+    const suggested = DEPARTMENT_REQUIREMENTS[department];
+    if (suggested) {
+      setRequirements(suggested.map((r) => ({ ...r })));
+    } else {
+      setRequirements([]);
+    }
+  }, [department]);
+
+  // shiftType = workModel + workType birleşimi (backend uyumluluğu)
+  const shiftType = useMemo(() => {
+    const parts: string[] = [];
+    const modelLabel = WORK_MODELS.find((m) => m.value === workModel)?.label;
+    const typeLabel = WORK_TYPES.find((t) => t.value === workType)?.label;
+    if (modelLabel && workModel) parts.push(modelLabel);
+    if (typeLabel && workType) parts.push(typeLabel);
+    return parts.join(", ");
+  }, [workModel, workType]);
+
   const normalizedRequirements = useMemo(
     () =>
       requirements
-        .map((item) => ({
-          key: item.key.trim(),
-          value: item.value.trim(),
-          required: item.required
-        }))
-        .filter((item) => item.key && item.value),
-    [requirements]
-  );
-
-  const draftRequirements = useMemo(
-    () =>
-      requirements
-        .map(normalizeDraftRequirement)
-        .filter(
-          (
-            item
-          ): item is {
-            key: string;
-            value: string;
-            required: boolean;
-          } => Boolean(item)
-        ),
+        .filter((r) => r.text.trim())
+        .map((r) => ({
+          key: r.text.trim(),
+          value: r.text.trim(),
+          required: r.required,
+        })),
     [requirements]
   );
 
@@ -91,13 +161,13 @@ export default function NewJobPage() {
         title: title.trim(),
         department: department.trim(),
         locationText: locationText.trim(),
-        shiftType: shiftType.trim(),
+        shiftType,
         salaryMin: salaryMin.trim(),
         salaryMax: salaryMax.trim(),
         jdText: jdText.trim(),
-        requirements: draftRequirements
+        requirements: normalizedRequirements,
       }),
-    [department, draftRequirements, jdText, locationText, salaryMax, salaryMin, shiftType, title]
+    [department, normalizedRequirements, jdText, locationText, salaryMax, salaryMin, shiftType, title]
   );
 
   const hasDraft = draftText.trim().length > 0;
@@ -105,10 +175,7 @@ export default function NewJobPage() {
     hasDraft && lastDraftInputSnapshot.length > 0 && draftInputSnapshot !== lastDraftInputSnapshot;
 
   const handleCopyDraft = async () => {
-    if (!draftText.trim()) {
-      return;
-    }
-
+    if (!draftText.trim()) return;
     try {
       await navigator.clipboard.writeText(draftText);
       setCopySuccess(true);
@@ -125,7 +192,7 @@ export default function NewJobPage() {
     }
   };
 
-  async function generateDraft(mode: "fresh" | "rewrite") {
+  async function generateDraft() {
     setDraftError("");
     setDraftNotice("");
     setFieldError("");
@@ -135,7 +202,7 @@ export default function NewJobPage() {
       return;
     }
 
-    if (!department.trim() && !jdText.trim() && draftRequirements.length === 0) {
+    if (!department.trim() && !jdText.trim() && normalizedRequirements.length === 0) {
       setDraftError("Taslak oluşturmak için departman, iş tanımı veya en az bir nitelik girin.");
       return;
     }
@@ -146,20 +213,23 @@ export default function NewJobPage() {
     }
 
     setDraftLoading(true);
-    setDraftAction(mode);
+    setDraftAction("fresh");
+
+    // Revizyon notu varsa ve mevcut taslak varsa rewrite modunda çalış
+    const isRewrite = hasDraft && rewriteInstruction.trim().length > 0;
 
     try {
       const response = await apiClient.generateJobDraft({
         title: title.trim(),
         department: department.trim() || undefined,
         locationText: locationText.trim() || undefined,
-        shiftType: shiftType.trim() || undefined,
+        shiftType: shiftType || undefined,
         salaryMin: salaryMin ? Number(salaryMin) : undefined,
         salaryMax: salaryMax ? Number(salaryMax) : undefined,
         jdText: jdText.trim() || undefined,
-        requirements: draftRequirements.length ? draftRequirements : undefined,
-        existingDraft: mode === "rewrite" && draftText.trim() ? draftText.trim() : undefined,
-        rewriteInstruction: mode === "rewrite" ? rewriteInstruction.trim() || undefined : undefined
+        requirements: normalizedRequirements.length ? normalizedRequirements : undefined,
+        existingDraft: isRewrite ? draftText.trim() : undefined,
+        rewriteInstruction: isRewrite ? rewriteInstruction.trim() : undefined,
       });
 
       setDraftText(response.draftText);
@@ -205,13 +275,12 @@ export default function NewJobPage() {
         title: title.trim(),
         department: department.trim(),
         status,
-        workspaceId: workspaceId.trim() || undefined,
         locationText: locationText.trim() || undefined,
-        shiftType: shiftType.trim() || undefined,
+        shiftType: shiftType || undefined,
         salaryMin: salaryMin ? Number(salaryMin) : undefined,
         salaryMax: salaryMax ? Number(salaryMax) : undefined,
         jdText: jdText.trim() || undefined,
-        requirements: normalizedRequirements.length ? normalizedRequirements : undefined
+        requirements: normalizedRequirements.length ? normalizedRequirements : undefined,
       });
       router.push("/jobs");
       router.refresh();
@@ -221,6 +290,26 @@ export default function NewJobPage() {
       setSubmitting(false);
     }
   }
+
+  const addRequirement = () => {
+    setRequirements((prev) => [...prev, { text: "", required: false }]);
+  };
+
+  const removeRequirement = (index: number) => {
+    setRequirements((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateRequirementText = (index: number, text: string) => {
+    setRequirements((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, text } : r))
+    );
+  };
+
+  const toggleRequirementRequired = (index: number) => {
+    setRequirements((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, required: !r.required } : r))
+    );
+  };
 
   return (
     <div className="page-grid">
@@ -232,8 +321,7 @@ export default function NewJobPage() {
             </Link>
             <h2 style={{ marginBottom: 4, marginTop: 8 }}>Yeni İlan Hazırla</h2>
             <p className="small" style={{ marginTop: 0 }}>
-              Pozisyon bilgilerini girin. İsterseniz kaydetmeden önce AI ile ilan taslağı üretip düzenleyebilir,
-              ardından harici platformlara kopyalayabilirsiniz.
+              Pozisyon bilgilerini girin. AI taslak oluşturup harici platformlara kopyalayabilirsiniz.
             </p>
           </div>
         </div>
@@ -242,250 +330,316 @@ export default function NewJobPage() {
         {fieldError ? <ErrorState title="Form doğrulama" error={fieldError} /> : null}
 
         <form onSubmit={handleSubmit} className="form-grid">
-          <Field label="İlan Başlığı" htmlFor="job-title">
-            <TextInput
-              id="job-title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Depo Operasyon Personeli"
-              required
-            />
-          </Field>
+          {/* ── Temel Bilgiler ── */}
+          <div className="panel nested-panel">
+            <strong style={{ display: "block", marginBottom: 12 }}>Temel Bilgiler</strong>
 
-          <Field label="Departman" htmlFor="job-department" hint="Örnek: Operasyon, Mağaza, Çağrı Merkezi">
-            <TextInput
-              id="job-department"
-              value={department}
-              onChange={(event) => setDepartment(event.target.value)}
-              placeholder="Operasyon"
-              required
-            />
-          </Field>
+            <Field label="İlan Başlığı" htmlFor="job-title">
+              <TextInput
+                id="job-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Örn: Depo Operasyon Personeli"
+                required
+              />
+            </Field>
 
-          <Field label="Durum" htmlFor="job-status">
-            <SelectInput
-              id="job-status"
-              value={status}
-              onChange={(event) => setStatus(event.target.value as JobStatus)}
-            >
-              {JOB_STATUSES.map((item) => (
-                <option key={item} value={item}>
-                  {item === "DRAFT" ? "Taslak" : item === "PUBLISHED" ? "Yayında" : "Arşivlendi"}
-                </option>
-              ))}
-            </SelectInput>
-          </Field>
+            <Field label="Departman / Birim" htmlFor="job-department">
+              <SelectInput
+                id="job-department"
+                value={department}
+                onChange={(event) => setDepartment(event.target.value)}
+                required
+              >
+                <option value="" disabled>Seçiniz</option>
+                {DEPARTMENTS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </SelectInput>
+            </Field>
 
-          <Field label="Departman / Birim" htmlFor="job-workspace-id" hint="İlgili çalışma alanı">
-            <TextInput
-              id="job-workspace-id"
-              value={workspaceId}
-              onChange={(event) => setWorkspaceId(event.target.value)}
-              placeholder="wrk_demo_ops"
-            />
-          </Field>
+            <Field label="Lokasyon" htmlFor="job-location">
+              <TextInput
+                id="job-location"
+                value={locationText}
+                onChange={(event) => setLocationText(event.target.value)}
+                placeholder="Örn: İstanbul, Ankara, Bursa"
+              />
+            </Field>
+          </div>
 
-          <Field label="Lokasyon" htmlFor="job-location">
-            <TextInput
-              id="job-location"
-              value={locationText}
-              onChange={(event) => setLocationText(event.target.value)}
-              placeholder="İstanbul"
-            />
-          </Field>
+          {/* ── Çalışma Koşulları ── */}
+          <div className="panel nested-panel">
+            <strong style={{ display: "block", marginBottom: 12 }}>Çalışma Koşulları</strong>
 
-          <Field label="Çalışma Modeli / Vardiya" htmlFor="job-shift">
-            <TextInput
-              id="job-shift"
-              value={shiftType}
-              onChange={(event) => setShiftType(event.target.value)}
-              placeholder="vardiyalı, tam zamanlı, yarı zamanlı..."
-            />
-          </Field>
+            <div className="inline-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <Field label="Çalışma Modeli" htmlFor="job-work-model">
+                <SelectInput
+                  id="job-work-model"
+                  value={workModel}
+                  onChange={(event) => setWorkModel(event.target.value)}
+                >
+                  {WORK_MODELS.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </SelectInput>
+              </Field>
 
-          <Field label="Maaş Alt Sınır (TRY)" htmlFor="job-salary-min">
-            <TextInput
-              id="job-salary-min"
-              type="number"
-              min={0}
-              value={salaryMin}
-              onChange={(event) => setSalaryMin(event.target.value)}
-            />
-          </Field>
+              <Field label="Çalışma Şekli" htmlFor="job-work-type">
+                <SelectInput
+                  id="job-work-type"
+                  value={workType}
+                  onChange={(event) => setWorkType(event.target.value)}
+                >
+                  {WORK_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </SelectInput>
+              </Field>
+            </div>
 
-          <Field label="Maaş Üst Sınır (TRY)" htmlFor="job-salary-max">
-            <TextInput
-              id="job-salary-max"
-              type="number"
-              min={0}
-              value={salaryMax}
-              onChange={(event) => setSalaryMax(event.target.value)}
-            />
-          </Field>
+            <div className="inline-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <Field label="Maaş Alt Sınır (₺)" htmlFor="job-salary-min">
+                <TextInput
+                  id="job-salary-min"
+                  type="number"
+                  min={0}
+                  value={salaryMin}
+                  onChange={(event) => setSalaryMin(event.target.value)}
+                  placeholder="Örn: 28000"
+                />
+              </Field>
 
-          <Field label="İş Tanımı" htmlFor="job-jd-text">
-            <TextArea
-              id="job-jd-text"
-              rows={5}
-              value={jdText}
-              onChange={(event) => setJdText(event.target.value)}
-              placeholder="Pozisyonun temel sorumlulukları, vardiya koşulları ve gerekli beklentiler..."
-            />
-          </Field>
+              <Field label="Maaş Üst Sınır (₺)" htmlFor="job-salary-max">
+                <TextInput
+                  id="job-salary-max"
+                  type="number"
+                  min={0}
+                  value={salaryMax}
+                  onChange={(event) => setSalaryMax(event.target.value)}
+                  placeholder="Örn: 36000"
+                />
+              </Field>
+            </div>
+          </div>
 
+          {/* ── Aranan Nitelikler ── */}
           <div className="panel nested-panel">
             <div className="section-head" style={{ marginBottom: 8 }}>
               <strong>Aranan Nitelikler</strong>
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() =>
-                  setRequirements((prev) => [...prev, { key: "", value: "", required: true }])
-                }
-              >
-                Nitelik Ekle
+              <button type="button" className="ghost-button" onClick={addRequirement}>
+                + Nitelik Ekle
               </button>
             </div>
 
+            {requirements.length === 0 && (
+              <p className="text-xs text-muted" style={{ margin: "8px 0" }}>
+                Departman seçtiğinizde önerilen nitelikler otomatik eklenir. Dilediğiniz gibi düzenleyebilirsiniz.
+              </p>
+            )}
+
             {requirements.map((item, index) => (
-              <div className="inline-grid requirement-grid" key={`req-${index}`}>
-                <TextInput
-                  value={item.key}
-                  onChange={(event) =>
-                    setRequirements((prev) =>
-                      prev.map((requirement, reqIndex) =>
-                        reqIndex === index ? { ...requirement, key: event.target.value } : requirement
-                      )
-                    )
-                  }
-                  placeholder="Nitelik adı (örnek: vardiya_uygunluğu)"
+              <div
+                key={`req-${index}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 12px",
+                  background: "var(--bg-base, #0f1117)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  marginBottom: 8,
+                }}
+              >
+                <input
+                  type="text"
+                  className="input"
+                  value={item.text}
+                  onChange={(e) => updateRequirementText(index, e.target.value)}
+                  placeholder="Nitelik yazın..."
+                  style={{ flex: 1, border: "none", background: "transparent", padding: "4px 0" }}
                 />
-                <TextInput
-                  value={item.value}
-                  onChange={(event) =>
-                    setRequirements((prev) =>
-                      prev.map((requirement, reqIndex) =>
-                        reqIndex === index ? { ...requirement, value: event.target.value } : requirement
-                      )
-                    )
-                  }
-                  placeholder="Açıklama (örnek: gece vardiyası çalışabilmeli)"
-                />
-                <label className="inline-check">
-                  <input
-                    type="checkbox"
-                    checked={item.required}
-                    onChange={(event) =>
-                      setRequirements((prev) =>
-                        prev.map((requirement, reqIndex) =>
-                          reqIndex === index
-                            ? { ...requirement, required: event.target.checked }
-                            : requirement
-                        )
-                      )
-                    }
-                  />
-                  Zorunlu
-                </label>
                 <button
                   type="button"
-                  className="danger-button"
-                  onClick={() =>
-                    setRequirements((prev) => prev.filter((_, reqIndex) => reqIndex !== index))
-                  }
-                  disabled={requirements.length === 1}
+                  onClick={() => toggleRequirementRequired(index)}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: "2px 8px",
+                    borderRadius: 4,
+                    border: "none",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    background: item.required
+                      ? "rgba(99,102,241,0.12)"
+                      : "rgba(255,255,255,0.05)",
+                    color: item.required
+                      ? "var(--primary, #6366f1)"
+                      : "var(--muted, #6b7280)",
+                  }}
                 >
-                  Sil
+                  {item.required ? "Zorunlu" : "Tercih Edilen"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeRequirement(index)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--muted, #6b7280)",
+                    cursor: "pointer",
+                    fontSize: 16,
+                    padding: "2px 4px",
+                  }}
+                >
+                  ×
                 </button>
               </div>
             ))}
           </div>
 
-          <div className="panel nested-panel" style={{ background: "var(--surface-muted, #f9fafb)" }}>
+          {/* ── İlan Durumu ── */}
+          <div className="panel nested-panel">
+            <strong style={{ display: "block", marginBottom: 12 }}>İlan Durumu</strong>
+            <div style={{ display: "flex", gap: 10 }}>
+              {(["DRAFT", "PUBLISHED", "ARCHIVED"] as JobStatus[]).map((s) => {
+                const meta = {
+                  DRAFT: { label: "Taslak", desc: "Henüz yayınlanmadı", color: "var(--muted, #6b7280)" },
+                  PUBLISHED: { label: "Yayında", desc: "Başvuru kabul ediliyor", color: "var(--success, #22c55e)" },
+                  ARCHIVED: { label: "Arşiv", desc: "Başvuru kapatıldı", color: "var(--warn, #f59e0b)" },
+                }[s];
+                const isActive = status === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatus(s)}
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "10px 14px",
+                      background: isActive ? "rgba(99,102,241,0.06)" : "var(--bg-base, #0f1117)",
+                      border: `1px solid ${isActive ? "var(--primary, #6366f1)" : "var(--border)"}`,
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      fontFamily: "inherit",
+                      color: "var(--text)",
+                    }}
+                  >
+                    <span style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: meta.color,
+                      flexShrink: 0,
+                    }} />
+                    <span>
+                      <span style={{ fontSize: 13, fontWeight: 500, display: "block" }}>{meta.label}</span>
+                      <span style={{ fontSize: 12, color: "var(--muted, #6b7280)" }}>{meta.desc}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── İş Tanımı ── */}
+          <div className="panel nested-panel">
+            <strong style={{ display: "block", marginBottom: 12 }}>İş Tanımı</strong>
+            <Field label="Pozisyon Açıklaması" htmlFor="job-jd-text" hint="AI taslak oluştururken bu açıklamayı temel alır.">
+              <TextArea
+                id="job-jd-text"
+                rows={3}
+                value={jdText}
+                onChange={(event) => setJdText(event.target.value)}
+                placeholder="Pozisyonun temel sorumlulukları ve beklentiler..."
+              />
+            </Field>
+          </div>
+
+          {/* ── AI İlan Taslağı ── */}
+          <div className="panel nested-panel" style={{ borderColor: "rgba(99,102,241,0.2)" }}>
             <div className="section-head" style={{ marginBottom: 10 }}>
-              <div>
-                <strong>AI Destekli İlan Taslağı</strong>
-                <p className="text-xs text-muted" style={{ margin: "6px 0 0" }}>
-                  Bilgileri girdikten sonra Taslak Oluştur diyerek modelden ilan metni üretin. Oluşan taslağı
-                  burada düzenleyebilir ve harici platformlara kopyalayabilirsiniz.
-                </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <strong>AI ile İlan Taslağı</strong>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--primary, #6366f1)",
+                  background: "rgba(99,102,241,0.12)",
+                  padding: "2px 8px",
+                  borderRadius: 4,
+                }}>AI</span>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }}>
                 <button
                   type="button"
                   className="ghost-button"
-                  onClick={() => void generateDraft("fresh")}
+                  onClick={() => void generateDraft()}
                   disabled={draftLoading}
                   style={{ fontSize: 13 }}
                 >
-                  {draftLoading && draftAction === "fresh"
+                  {draftLoading
                     ? "Taslak hazırlanıyor..."
                     : hasDraft
                       ? "Yeniden Oluştur"
-                      : "Taslak Oluştur"}
+                      : "✨ Taslak Oluştur"}
                 </button>
-                {hasDraft ? (
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => void generateDraft("rewrite")}
-                    disabled={draftLoading || !rewriteInstruction.trim()}
-                    style={{ fontSize: 13 }}
-                  >
-                    {draftLoading && draftAction === "rewrite"
-                      ? "Yeniden yazılıyor..."
-                      : "Nota Göre Yeniden Yaz"}
-                  </button>
-                ) : null}
                 <button
                   type="button"
                   className="button-link"
                   onClick={() => void handleCopyDraft()}
                   disabled={!hasDraft}
-                  style={{ fontSize: 13, padding: "4px 14px" }}
+                  style={{ fontSize: 13, padding: "4px 14px", minWidth: 90, textAlign: "center" }}
                 >
-                  {copySuccess ? "Kopyalandı!" : "Taslağı Kopyala"}
+                  {copySuccess ? "Kopyalandı!" : "Kopyala"}
                 </button>
               </div>
             </div>
 
-            <Field
-              label="Revizyon Notu"
-              htmlFor="job-draft-instruction"
-              hint="İsterseniz beğenmediğiniz taslağı burada vereceğiniz notla yeniden yazdırabilirsiniz."
-            >
-              <TextArea
-                id="job-draft-instruction"
-                rows={3}
-                value={rewriteInstruction}
-                onChange={(event) => setRewriteInstruction(event.target.value)}
-                placeholder="Örnek: Daha kurumsal bir ton kullan, vardiya bilgisini daha net vurgula, nitelikleri daha kısa yaz."
-              />
-            </Field>
+            <p className="text-xs text-muted" style={{ margin: "0 0 12px" }}>
+              Yukarıdaki bilgilere göre profesyonel ilan metni oluşturur. Taslağı düzenleyip harici platformlara kopyalayabilirsiniz.
+            </p>
 
             {draftError ? <ErrorState title="İlan taslağı" error={draftError} /> : null}
 
-            {draftNotice ? (
+            {draftNotice && (
               <p className="text-xs text-muted" style={{ margin: draftError ? "8px 0 0" : "0 0 8px" }}>
                 {draftNotice}
               </p>
-            ) : null}
+            )}
 
-            {isDraftOutdated ? (
+            {isDraftOutdated && (
               <p className="text-xs text-muted" style={{ margin: "0 0 8px" }}>
                 Taslak güncel değil. Form bilgilerinde değişiklik yaptınız; en doğru metin için yeniden oluşturun.
               </p>
-            ) : null}
+            )}
 
             <TextArea
               id="job-draft-text"
-              rows={16}
+              rows={12}
               value={draftText}
               onChange={(event) => setDraftText(event.target.value)}
               placeholder="Taslak oluşturduğunuzda ilan metni burada görünecek."
             />
+
+            <div style={{ marginTop: 14 }}>
+              <Field label="Revizyon Notu" htmlFor="job-draft-instruction" hint="Taslağı beğenmediyseniz notunuzu yazıp tekrar oluşturun.">
+                <TextInput
+                  id="job-draft-instruction"
+                  value={rewriteInstruction}
+                  onChange={(event) => setRewriteInstruction(event.target.value)}
+                  placeholder="Örn: Daha samimi bir dil kullan, maaş bilgisini vurgula"
+                />
+              </Field>
+            </div>
           </div>
 
+          {/* ── Footer ── */}
           <div className="row-actions">
             <button type="submit" className="button-link" disabled={submitting}>
               {submitting ? "Oluşturuluyor..." : "İlanı Kaydet"}

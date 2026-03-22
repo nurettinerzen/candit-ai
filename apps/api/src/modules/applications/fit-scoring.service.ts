@@ -2,6 +2,13 @@ import { Injectable, NotFoundException, Inject } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditWriterService } from "../audit/audit-writer.service";
+import {
+  normalizeConfidence,
+  normalizeFitScore,
+  normalizeFitScoreSubScores,
+  normalizeFitWarnings,
+  normalizeReasoning
+} from "./fit-score-read-model.util";
 
 @Injectable()
 export class FitScoringService {
@@ -20,13 +27,13 @@ export class FitScoringService {
 
     return {
       id: row.id,
-      overallScore: Number(row.overallScore),
-      confidence: Number(row.confidence),
-      subScores: row.subScoresJson as Record<string, unknown>,
-      strengths: (row.strengthsJson ?? []) as string[],
-      risks: (row.risksJson ?? []) as string[],
-      missingInfo: (row.missingInfoJson ?? []) as string[],
-      reasoning: (row.reasoningJson ?? "") as string,
+      overallScore: normalizeFitScore(row.overallScore),
+      confidence: normalizeConfidence(row.confidence),
+      subScores: normalizeFitScoreSubScores(row.subScoresJson),
+      strengths: normalizeFitWarnings(row.strengthsJson),
+      risks: normalizeFitWarnings(row.risksJson),
+      missingInfo: normalizeFitWarnings(row.missingInfoJson),
+      reasoning: normalizeReasoning(row.reasoningJson),
       createdAt: row.createdAt.toISOString()
     };
   }

@@ -2,6 +2,12 @@ import { Injectable, NotFoundException, Inject } from "@nestjs/common";
 import { ApplicationStage, Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { ApplicationsService } from "../applications/applications.service";
+import {
+  normalizeConfidence,
+  normalizeFitScore,
+  normalizeFitScoreSubScores,
+  normalizeFitWarnings
+} from "../applications/fit-score-read-model.util";
 import { AuditWriterService } from "../audit/audit-writer.service";
 import { CandidatesService } from "../candidates/candidates.service";
 
@@ -20,6 +26,17 @@ function deriveCandidateNameFromFilename(originalName: string) {
   return "Yeni Aday";
 }
 
+function readHumanDecision(metadata: Prisma.JsonValue | null | undefined) {
+  const record =
+    metadata && typeof metadata === "object" && !Array.isArray(metadata)
+      ? (metadata as Record<string, unknown>)
+      : {};
+  const decision = record.decision;
+  return decision === "advance" || decision === "hold" || decision === "reject"
+    ? decision
+    : null;
+}
+
 @Injectable()
 export class ApplicantInboxService {
   constructor(
@@ -33,7 +50,7 @@ export class ApplicantInboxService {
     stage?: ApplicationStage;
     source?: string;
     minFitScore?: number;
-    sortBy?: "fit_score" | "date" | "name";
+    sortBy?: "fit_score" | "date" | "name" | "fitScore_desc" | "fitScore_asc" | "appliedAt_desc" | "appliedAt_asc" | "name_asc" | "name_desc";
   }) {
     const job = await this.prisma.job.findFirst({
       where: { id: jobId, tenantId },
@@ -74,6 +91,26 @@ export class ApplicantInboxService {
       orderBy: { createdAt: "desc" }
     });
 
+    const applicationIds = applications.map((application) => application.id);
+    const approvals = applicationIds.length > 0
+      ? await this.prisma.humanApproval.findMany({
+          where: {
+            tenantId,
+            actionType: "application.decision",
+            entityType: "CandidateApplication",
+            entityId: { in: applicationIds }
+          },
+          orderBy: { approvedAt: "desc" }
+        })
+      : [];
+    const latestHumanDecisionByApplicationId = new Map<string, "advance" | "hold" | "reject" | null>();
+    for (const approval of approvals) {
+      if (latestHumanDecisionByApplicationId.has(approval.entityId)) {
+        continue;
+      }
+      latestHumanDecisionByApplicationId.set(approval.entityId, readHumanDecision(approval.metadata));
+    }
+
     // Collect CV status per candidate
     const candidateIds = [...new Set(applications.map(a => a.candidateId))];
     const cvFiles = await this.prisma.cVFile.findMany({
@@ -112,13 +149,14 @@ export class ApplicantInboxService {
         stage: app.currentStage,
         stageUpdatedAt: app.stageUpdatedAt.toISOString(),
         createdAt: app.createdAt.toISOString(),
+        aiRecommendation: app.aiRecommendation ?? null,
         fitScore: latestFit ? {
-          overallScore: Number(latestFit.overallScore),
-          confidence: Number(latestFit.confidence),
-          subScores: latestFit.subScoresJson as Record<string, unknown>,
-          strengths: (latestFit.strengthsJson ?? []) as string[],
-          risks: (latestFit.risksJson ?? []) as string[],
-          missingInfo: (latestFit.missingInfoJson ?? []) as string[]
+          overallScore: normalizeFitScore(latestFit.overallScore),
+          confidence: normalizeConfidence(latestFit.confidence),
+          subScores: normalizeFitScoreSubScores(latestFit.subScoresJson),
+          strengths: normalizeFitWarnings(latestFit.strengthsJson),
+          risks: normalizeFitWarnings(latestFit.risksJson),
+          missingInfo: normalizeFitWarnings(latestFit.missingInfoJson)
         } : null,
         screening: latestScreening ? {
           status: latestScreening.status,
@@ -137,7 +175,7 @@ export class ApplicantInboxService {
           state: latestScheduling.state,
           status: latestScheduling.status
         } : null,
-        recruiterDecision: app.aiRecommendation ?? null,
+        humanDecision: latestHumanDecisionByApplicationId.get(app.id) ?? null,
         noteCount: app.recruiterNotes.length
       };
     });
@@ -155,10 +193,16 @@ export class ApplicantInboxService {
     }
 
     // Sort
-    if (filters?.sortBy === "fit_score") {
+    if (filters?.sortBy === "fit_score" || filters?.sortBy === "fitScore_desc") {
       applicants.sort((a, b) => (b.fitScore?.overallScore ?? -1) - (a.fitScore?.overallScore ?? -1));
-    } else if (filters?.sortBy === "name") {
+    } else if (filters?.sortBy === "fitScore_asc") {
+      applicants.sort((a, b) => (a.fitScore?.overallScore ?? 101) - (b.fitScore?.overallScore ?? 101));
+    } else if (filters?.sortBy === "name" || filters?.sortBy === "name_asc") {
       applicants.sort((a, b) => a.fullName.localeCompare(b.fullName, "tr"));
+    } else if (filters?.sortBy === "name_desc") {
+      applicants.sort((a, b) => b.fullName.localeCompare(a.fullName, "tr"));
+    } else if (filters?.sortBy === "appliedAt_asc") {
+      applicants.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     }
     // default: by date (already sorted by createdAt desc)
 
@@ -199,7 +243,7 @@ export class ApplicantInboxService {
         totalApplicants: applicants.length,
         byStage: stageCount,
         bySource: sourceCount,
-        avgFitScore: scoredTotal > 0 ? Math.round((scoreSum / scoredTotal) * 100) : null,
+        avgFitScore: scoredTotal > 0 ? Math.round(scoreSum / scoredTotal) : null,
         scoredCount: scoredTotal,
         unscoredCount
       },

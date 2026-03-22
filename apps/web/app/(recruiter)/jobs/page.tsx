@@ -53,6 +53,16 @@ export default function JobsPage() {
     return { total, published, draft, archived, totalApplicants };
   }, [jobs]);
 
+  function buildMetaLine(job: Job): string {
+    const parts: string[] = [];
+    if (job.locationText) parts.push(job.locationText);
+    if (job.salaryMin || job.salaryMax) {
+      parts.push(`${formatCurrencyTry(job.salaryMin)} – ${formatCurrencyTry(job.salaryMax)}`);
+    }
+    if (job.workModel) parts.push(job.workModel);
+    return parts.join(" · ") || "—";
+  }
+
   return (
     <section className="page-grid">
       <div className="section-head" style={{ marginBottom: 0 }}>
@@ -74,40 +84,14 @@ export default function JobsPage() {
         </div>
       </div>
 
-      {/* KPI bar */}
-      {!loading && !error && (
-        <div className="inbox-stats">
-          <div className="inbox-stat">
-            <span className="inbox-stat-value">{stats.total}</span>
-            <span className="inbox-stat-label">Toplam İlan</span>
-          </div>
-          <div className="inbox-stat">
-            <span className="inbox-stat-value">{stats.published}</span>
-            <span className="inbox-stat-label">Yayında</span>
-          </div>
-          <div className="inbox-stat">
-            <span className="inbox-stat-value">{stats.draft}</span>
-            <span className="inbox-stat-label">Taslak</span>
-          </div>
-          <div className="inbox-stat">
-            <span className="inbox-stat-value">{stats.archived}</span>
-            <span className="inbox-stat-label">Arşiv</span>
-          </div>
-          <div className="inbox-stat">
-            <span className="inbox-stat-value">{stats.totalApplicants}</span>
-            <span className="inbox-stat-label">Toplam Başvuru</span>
-          </div>
-        </div>
-      )}
-
-      {/* Status filter pills */}
+      {/* Status filter pills with counts */}
       {!loading && !error && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {([
-            { label: "Tümü", value: "" as StatusFilter },
-            { label: "Yayında", value: "PUBLISHED" as StatusFilter },
-            { label: "Taslak", value: "DRAFT" as StatusFilter },
-            { label: "Arşiv", value: "ARCHIVED" as StatusFilter },
+            { label: `Tümü (${stats.total})`, value: "" as StatusFilter },
+            { label: `Yayında (${stats.published})`, value: "PUBLISHED" as StatusFilter },
+            { label: `Taslak (${stats.draft})`, value: "DRAFT" as StatusFilter },
+            { label: `Arşiv (${stats.archived})`, value: "ARCHIVED" as StatusFilter },
           ]).map((pill) => {
             const isActive = statusFilter === pill.value;
             return (
@@ -123,6 +107,7 @@ export default function JobsPage() {
                   background: isActive ? "var(--primary-light)" : "var(--surface)",
                   color: isActive ? "var(--primary)" : "var(--text-secondary)",
                   borderRadius: 20,
+                  fontFamily: "inherit",
                 }}
                 onClick={() => setStatusFilter(pill.value)}
               >
@@ -159,48 +144,71 @@ export default function JobsPage() {
       ) : null}
 
       {!loading && !error && filteredJobs.length > 0 ? (
-        <section className="panel">
-          <div className="table-responsive">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>İlan Başlığı</th>
-                  <th>Departman</th>
-                  <th>Durum</th>
-                  <th>Lokasyon</th>
-                  <th>Maaş Aralığı</th>
-                  <th>Başvuru</th>
-                  <th>Oluşturulma</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredJobs.map((job) => (
-                  <tr key={job.id}>
-                    <td>
-                      <Link href={`/jobs/${job.id}` as any} style={{ textDecoration: "none", color: "inherit" }}>
-                        <strong style={{ color: "var(--primary)" }}>{job.title}</strong>
-                      </Link>
-                    </td>
-                    <td>{formatDepartment(job.roleFamily)}</td>
-                    <td>
-                      <JobStatusChip status={job.status} />
-                    </td>
-                    <td>{job.locationText ?? "-"}</td>
-                    <td>
-                      {job.salaryMin || job.salaryMax
-                        ? `${formatCurrencyTry(job.salaryMin)} - ${formatCurrencyTry(job.salaryMax)}`
-                        : "-"}
-                    </td>
-                    <td>
-                      <strong>{job._count?.applications ?? 0}</strong>
-                    </td>
-                    <td>{formatDate(job.createdAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+          gap: 14,
+        }}>
+          {filteredJobs.map((job) => (
+            <Link
+              key={job.id}
+              href={`/jobs/${job.id}` as any}
+              style={{
+                textDecoration: "none",
+                color: "inherit",
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                padding: 20,
+                display: "block",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "rgba(99,102,241,0.3)";
+                e.currentTarget.style.background = "var(--surface-hover, #1f222d)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--border)";
+                e.currentTarget.style.background = "var(--surface)";
+              }}
+            >
+              {/* Header: title + status */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 600 }}>{job.title}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 2 }}>
+                    {formatDepartment(job.roleFamily)}
+                  </div>
+                </div>
+                <JobStatusChip status={job.status} />
+              </div>
+
+              {/* Meta line */}
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 14 }}>
+                {buildMetaLine(job)}
+              </div>
+
+              {/* Footer */}
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                paddingTop: 12,
+                borderTop: "1px solid var(--border)",
+              }}>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                  <strong style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginRight: 2 }}>
+                    {job._count?.applications ?? 0}
+                  </strong>
+                  başvuru
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
+                  {formatDate(job.createdAt)}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
       ) : null}
     </section>
   );

@@ -3,13 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiClient } from "../lib/api/recruiter-client";
-import type { ApplicantFitScoreView, JobInboxApplicant, QuickActionType, RecruiterNote } from "../lib/types";
+import type { ApplicantFitScoreView, ApplicationStage, JobInboxApplicant, QuickActionType, RecruiterNote } from "../lib/types";
+import { getStageMeta, getStageActions } from "../lib/constants";
 import { FitScoreBreakdown } from "./fit-score-breakdown";
 import { RecruiterNotesPanel } from "./recruiter-notes-panel";
-import { QuickActionMenu } from "./quick-action-menu";
 import { SourceChip } from "./source-chip";
-import { StageChip } from "./stage-chip";
-import type { ApplicationStage } from "../lib/types";
 
 type ApplicantDrawerProps = {
   applicant: JobInboxApplicant | null;
@@ -19,43 +17,27 @@ type ApplicantDrawerProps = {
 
 /* ── helpers ── */
 
-function interviewStatusLabel(status: string): string {
-  switch (status) {
-    case "SCHEDULED": return "\u{1F4C5} Planlandı";
-    case "RUNNING": return "\u{1F504} Devam Ediyor";
-    case "COMPLETED": return "\u2705 Tamamlandı";
-    case "FAILED": return "\u274C Başarısız";
-    case "NO_SHOW": return "\u26A0\uFE0F Katılmadı";
-    case "CANCELLED": return "\u{1F6AB} İptal Edildi";
-    default: return status;
-  }
-}
-
-function schedulingStateLabel(state: string): string {
-  switch (state) {
-    case "PENDING": return "Beklemede";
-    case "LINK_SENT": return "Bağlantı Gönderildi";
-    case "CONFIRMED": return "Onaylandı";
-    case "EXPIRED": return "Süresi Doldu";
-    case "CANCELLED": return "İptal Edildi";
-    default: return state;
-  }
-}
-
-function recruiterDecisionLabel(decision: string): string {
+function recruiterDecisionLabel(decision: string): { label: string; color: string } {
   switch (decision) {
-    case "ADVANCE": return "\u2705 İlerlet";
-    case "HOLD": return "\u23F8\uFE0F Beklet";
-    case "REVIEW": return "\u{1F50D} İncele";
-    case "REJECT": return "\u274C Reddet";
-    default: return decision;
+    case "ADVANCE": return { label: "✓ İlerlet — Güçlü uyum tespit edildi", color: "var(--success, #22c55e)" };
+    case "HOLD": return { label: "🔍 İncele — Detaylı değerlendirme önerilir", color: "var(--warn, #f59e0b)" };
+    case "REVIEW": return { label: "🔍 İncele — Detaylı değerlendirme önerilir", color: "var(--warn, #f59e0b)" };
+    case "REJECT": return { label: "✕ Reddet — Uyum düşük", color: "var(--danger, #ef4444)" };
+    default: return { label: decision, color: "var(--text-secondary)" };
   }
 }
+
+const ACTION_BTN_CLASSES: Record<string, string> = {
+  invite_interview: "drawer-action-btn drawer-action-interview",
+  reject: "drawer-action-btn drawer-action-reject",
+};
 
 export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantDrawerProps) {
   const [fitScore, setFitScore] = useState<ApplicantFitScoreView | null>(null);
   const [notes, setNotes] = useState<RecruiterNote[]>([]);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<QuickActionType | null>(null);
 
   useEffect(() => {
     if (!applicant) return;
@@ -71,9 +53,25 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
 
   if (!applicant) return null;
 
-  const handleAction = async (action: QuickActionType) => {
-    await apiClient.quickAction(applicant.applicationId, { action });
-    onActionDone();
+  const stage = applicant.stage as ApplicationStage;
+  const stageMeta = getStageMeta(stage);
+  const actions = getStageActions(stage);
+
+  const handleAction = (action: QuickActionType) => {
+    setConfirmAction(action);
+  };
+
+  const executeAction = async () => {
+    if (!confirmAction) return;
+    const action = confirmAction;
+    setConfirmAction(null);
+    setActionLoading(action);
+    try {
+      await apiClient.quickAction(applicant.applicationId, { action });
+      onActionDone();
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleAddNote = async (text: string) => {
@@ -81,14 +79,36 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
     setNotes((prev) => [note, ...prev]);
   };
 
+  const aiRec = applicant.aiRecommendation ? recruiterDecisionLabel(applicant.aiRecommendation) : null;
+
   return (
     <div className="drawer-overlay" onClick={onClose}>
       <div className="drawer-panel" onClick={(e) => e.stopPropagation()}>
+        {/* ── Header ── */}
         <div className="drawer-header">
           <div>
             <h3>{applicant.fullName}</h3>
             <div className="drawer-meta">
-              <StageChip stage={applicant.stage as ApplicationStage} />
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  color: stageMeta.color,
+                  fontWeight: 600
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: stageMeta.color
+                  }}
+                />
+                {stageMeta.label}
+              </span>
               <SourceChip source={applicant.source} />
               {applicant.yearsOfExperience != null && <span>{applicant.yearsOfExperience} yıl deneyim</span>}
             </div>
@@ -96,57 +116,46 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
           <button className="btn-close" onClick={onClose}>&times;</button>
         </div>
 
+        {/* ── Body ── */}
         <div className="drawer-body">
+          {/* İletişim */}
           <div className="drawer-section">
             <h4>İletişim</h4>
-            <p>{applicant.email ?? "-"} &middot; {applicant.phone ?? "-"}</p>
-            {applicant.locationText && <p>{applicant.locationText}</p>}
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
+              <span style={{ color: "var(--text-secondary)" }}>E-posta</span>
+              <span>{applicant.email ?? "—"}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
+              <span style={{ color: "var(--text-secondary)" }}>Telefon</span>
+              <span>{applicant.phone ?? "—"}</span>
+            </div>
+            {applicant.locationText && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
+                <span style={{ color: "var(--text-secondary)" }}>Lokasyon</span>
+                <span>{applicant.locationText}</span>
+              </div>
+            )}
           </div>
 
-          {/* Interview Status */}
-          {applicant.interview && (
-            <div className="drawer-section">
-              <h4>Görüşme Durumu</h4>
-              <p>
-                <strong>Durum:</strong> {interviewStatusLabel(applicant.interview.status)}
-              </p>
-              <p>
-                <strong>Görüşme Formatı:</strong> {applicant.interview.mode}
-              </p>
-              {applicant.interview.scheduledAt && (
-                <p>
-                  <strong>Tarih:</strong> {new Date(applicant.interview.scheduledAt).toLocaleString("tr-TR")}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Scheduling State */}
-          {applicant.scheduling && (
-            <div className="drawer-section">
-              <h4>Planlama Durumu</h4>
-              <p>
-                <strong>Durum:</strong> {schedulingStateLabel(applicant.scheduling.state)}
-              </p>
-              <p>
-                <strong>Süreç:</strong> {applicant.scheduling.status}
-              </p>
-            </div>
-          )}
-
-          {/* AI Recommendation */}
-          {applicant.recruiterDecision && (
+          {/* AI Önerisi */}
+          {aiRec && (
             <div className="drawer-section">
               <h4>AI Önerisi</h4>
-              <p style={{ fontSize: "1.1em" }}>{recruiterDecisionLabel(applicant.recruiterDecision)}</p>
+              <div style={{
+                padding: "10px 14px",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                color: aiRec.color,
+                background: `color-mix(in srgb, ${aiRec.color} 10%, transparent)`,
+                border: `1px solid color-mix(in srgb, ${aiRec.color} 25%, transparent)`,
+              }}>
+                {aiRec.label}
+              </div>
             </div>
           )}
 
-          <div className="drawer-section">
-            <h4>Hızlı İşlemler</h4>
-            <QuickActionMenu onAction={handleAction} />
-          </div>
-
+          {/* Uyum Skoru & Detaylar */}
           {loading ? (
             <p className="text-muted">Yükleniyor...</p>
           ) : (
@@ -162,6 +171,7 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
                 </div>
               )}
 
+              {/* Notlar */}
               <div className="drawer-section">
                 <RecruiterNotesPanel notes={notes} onAdd={handleAddNote} />
               </div>
@@ -169,7 +179,7 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
           )}
 
           {/* Detail Link */}
-          <div className="drawer-section" style={{ paddingTop: 8 }}>
+          <div className="drawer-section" style={{ paddingTop: 8, borderTop: "1px solid var(--border)" }}>
             <Link
               href={`/applications/${applicant.applicationId}`}
               className="btn btn-secondary btn-sm"
@@ -179,6 +189,53 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
             </Link>
           </div>
         </div>
+
+        {/* ── Footer: Karar Butonları (stage'e göre dinamik) ── */}
+        {actions.length > 0 && (
+          <div className="drawer-footer">
+            <div className="drawer-action-row">
+              {actions.map((a) => (
+                <button
+                  key={a.key}
+                  type="button"
+                  className={ACTION_BTN_CLASSES[a.key] ?? "drawer-action-btn"}
+                  onClick={() => void handleAction(a.key as QuickActionType)}
+                  disabled={actionLoading !== null}
+                >
+                  {a.icon} {a.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Onay Diyaloğu */}
+        {confirmAction && (
+          <div className="confirm-overlay" onClick={() => setConfirmAction(null)}>
+            <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+              <p className="confirm-title">
+                {confirmAction === "invite_interview" ? "Mülakata Davet Et" : "Adayı Reddet"}
+              </p>
+              <p className="confirm-body">
+                {confirmAction === "invite_interview"
+                  ? `${applicant.fullName} adayına AI mülakat daveti gönderilecek.`
+                  : `${applicant.fullName} adayı reddedilecek.`}
+              </p>
+              <div className="confirm-actions">
+                <button type="button" className="confirm-btn confirm-btn-cancel" onClick={() => setConfirmAction(null)}>
+                  Vazgeç
+                </button>
+                <button
+                  type="button"
+                  className={`confirm-btn ${confirmAction === "reject" ? "confirm-btn-danger" : "confirm-btn-primary"}`}
+                  onClick={() => void executeAction()}
+                >
+                  {confirmAction === "invite_interview" ? "Evet, Davet Gönder" : "Evet, Reddet"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

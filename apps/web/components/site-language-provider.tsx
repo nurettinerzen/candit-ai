@@ -172,18 +172,23 @@ const TOOLBAR_LABELS: Record<
   }
 };
 
-function ToolbarSwitcher() {
+export function SiteSettingsSwitcher({ variant = "floating" }: { variant?: "floating" | "sidebar" }) {
   const language = useSiteLanguage();
   const theme = useTheme();
   const labels = TOOLBAR_LABELS[language.locale];
+  const selectId = variant === "sidebar" ? "site-language-select-sidebar" : "site-language-select";
 
   return (
-    <div className="language-switcher" role="group" aria-label={labels.settings}>
-      <div className="theme-switcher">
+    <div
+      className={`language-switcher${variant === "sidebar" ? " language-switcher-sidebar" : ""}`}
+      role="group"
+      aria-label={labels.settings}
+    >
+      <div className={`theme-switcher${variant === "sidebar" ? " theme-switcher-sidebar" : ""}`}>
         {THEME_OPTIONS.map((opt) => (
           <button
             key={opt.mode}
-            className="theme-btn"
+            className={`theme-btn${variant === "sidebar" ? " theme-btn-sidebar" : ""}`}
             data-active={theme.mode === opt.mode}
             onClick={() => theme.setMode(opt.mode)}
             title={labels.theme[opt.mode]}
@@ -193,12 +198,12 @@ function ToolbarSwitcher() {
           </button>
         ))}
       </div>
-      <label htmlFor="site-language-select" className="language-switcher-label">
+      <label htmlFor={selectId} className="language-switcher-label">
         {labels.language}
       </label>
       <select
-        id="site-language-select"
-        className="language-switcher-select"
+        id={selectId}
+        className={`language-switcher-select${variant === "sidebar" ? " language-switcher-select-sidebar" : ""}`}
         value={language.locale}
         onChange={(event) => language.setLocale(normalizeSiteLocale(event.target.value))}
       >
@@ -307,7 +312,6 @@ export function SiteLanguageProvider({ children }: { children: ReactNode }) {
   return (
     <SiteLanguageContext.Provider value={contextValue}>
       {children}
-      <ToolbarSwitcher />
     </SiteLanguageContext.Provider>
   );
 }

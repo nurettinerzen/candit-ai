@@ -64,6 +64,12 @@ function simulateWork(payload: WorkerPayload) {
         tenantId: payload.tenantId,
         workflowJobId: payload.workflowJobId
       };
+    case "applicant_fit_scoring":
+      return {
+        status: "queued_for_fit_scoring",
+        tenantId: payload.tenantId,
+        workflowJobId: payload.workflowJobId
+      };
     case "webhook_retry":
       return {
         status: "queued_for_retry",
@@ -88,6 +94,7 @@ export function createTaskRegistry(orchestrator: AiTaskExecutionOrchestrator) {
     "transcript_summarization",
     "report_generation",
     "recommendation_generation",
+    "applicant_fit_scoring",
     "webhook_retry"
   ];
 

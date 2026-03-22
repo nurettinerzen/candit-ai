@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İlan Merkezi — Öneri</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface-hover: #1f222d;
+    --border: rgba(255,255,255,0.08);
+    --text: #e8e9ed;
+    --text-secondary: #9ca3af;
+    --text-dim: #6b7280;
+    --primary: #6366f1;
+    --primary-hover: #5457e5;
+    --success: #22c55e;
+    --radius: 10px;
+  }
+
+  body {
+    font-family: "DM Sans", -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    padding: 32px 40px 80px;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .page-header p {
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border);
+  }
+  .btn-ghost:hover { background: var(--surface-hover); color: var(--text); }
+
+  /* ── KPI Row ── */
+  .kpi-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 20px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .kpi-item {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .kpi-value {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .kpi-label {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .kpi-separator {
+    width: 1px;
+    background: var(--border);
+    align-self: stretch;
+  }
+
+  /* ── Filter pills ── */
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .pill {
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    border-radius: 20px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .pill:hover { border-color: var(--primary); color: var(--text); }
+  .pill.active {
+    background: rgba(99,102,241,0.1);
+    border-color: var(--primary);
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  /* ── Job Cards ── */
+  .job-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px;
+  }
+  .job-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .job-card:hover {
+    border-color: rgba(99,102,241,0.3);
+    background: var(--surface-hover);
+  }
+  .job-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .job-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .job-dept {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .job-status {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    white-space: nowrap;
+    color: var(--success);
+    background: rgba(34,197,94,0.1);
+  }
+  .job-status.draft {
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.05);
+  }
+  .job-status.archived {
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.05);
+  }
+
+  .job-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+  }
+
+  .job-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .job-applicant-count {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .job-applicant-count strong {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin-right: 2px;
+  }
+  .job-date {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════ Header ═══════ -->
+<div class="page-header">
+  <div>
+    <h1>İlan Merkezi</h1>
+    <p>İlan oluşturma, aday yönetimi ve işe alım süreçlerinizin merkezi.</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost">Yenile</button>
+    <a href="#" class="btn btn-primary">+ Yeni İlan Hazırla</a>
+  </div>
+</div>
+
+<!-- ═══════ KPI Row ═══════ -->
+<div class="kpi-row">
+  <div class="kpi-item">
+    <span class="kpi-value">5</span>
+    <span class="kpi-label">ilan</span>
+  </div>
+  <div class="kpi-separator"></div>
+  <div class="kpi-item">
+    <span class="kpi-value">5</span>
+    <span class="kpi-label">yayında</span>
+  </div>
+  <div class="kpi-separator"></div>
+  <div class="kpi-item">
+    <span class="kpi-value">26</span>
+    <span class="kpi-label">başvuru</span>
+  </div>
+  <div class="kpi-separator"></div>
+  <div class="kpi-item">
+    <span class="kpi-value">8</span>
+    <span class="kpi-label">karar bekleyen</span>
+  </div>
+</div>
+
+<!-- ═══════ Filter Pills ═══════ -->
+<div class="filter-row">
+  <button class="pill active">Tümü (5)</button>
+  <button class="pill">Yayında (5)</button>
+  <button class="pill">Taslak (0)</button>
+  <button class="pill">Arşiv (0)</button>
+</div>
+
+<!-- ═══════ Job Cards ═══════ -->
+<div class="job-grid">
+
+  <!-- Card 1 -->
+  <a href="#" class="job-card">
+    <div class="job-card-header">
+      <div>
+        <div class="job-title">Depo Operasyon Personeli</div>
+        <div class="job-dept">Depo / Lojistik</div>
+      </div>
+      <span class="job-status">Yayında</span>
+    </div>
+    <div class="job-meta">İstanbul · ₺28.000 – ₺36.000 · Vardiyalı</div>
+    <div class="job-footer">
+      <div class="job-applicant-count">
+        <strong>11</strong> başvuru
+      </div>
+      <div class="job-date">3 gün önce</div>
+    </div>
+  </a>
+
+  <!-- Card 2 -->
+  <a href="#" class="job-card">
+    <div class="job-card-header">
+      <div>
+        <div class="job-title">Depo Operasyon Şefi</div>
+        <div class="job-dept">Depo</div>
+      </div>
+      <span class="job-status">Yayında</span>
+    </div>
+    <div class="job-meta">İstanbul · ₺35.000 – ₺45.000 · Tam Zamanlı</div>
+    <div class="job-footer">
+      <div class="job-applicant-count">
+        <strong>10</strong> başvuru
+      </div>
+      <div class="job-date">5 gün önce</div>
+    </div>
+  </a>
+
+  <!-- Card 3 -->
+  <a href="#" class="job-card">
+    <div class="job-card-header">
+      <div>
+        <div class="job-title">Sosyal Medya Uzmanı</div>
+        <div class="job-dept">Pazarlama</div>
+      </div>
+      <span class="job-status">Yayında</span>
+    </div>
+    <div class="job-meta">Çekmeköy · ₺15.000 – ₺20.000 · Tam Zamanlı</div>
+    <div class="job-footer">
+      <div class="job-applicant-count">
+        <strong>0</strong> başvuru
+      </div>
+      <div class="job-date">1 hafta önce</div>
+    </div>
+  </a>
+
+  <!-- Card 4 -->
+  <a href="#" class="job-card">
+    <div class="job-card-header">
+      <div>
+        <div class="job-title">Müşteri Destek Temsilcisi</div>
+        <div class="job-dept">Destek / Giriş Seviyesi</div>
+      </div>
+      <span class="job-status">Yayında</span>
+    </div>
+    <div class="job-meta">İzmir · ₺29.000 – ₺38.000</div>
+    <div class="job-footer">
+      <div class="job-applicant-count">
+        <strong>2</strong> başvuru
+      </div>
+      <div class="job-date">2 hafta önce</div>
+    </div>
+  </a>
+
+  <!-- Card 5 -->
+  <a href="#" class="job-card">
+    <div class="job-card-header">
+      <div>
+        <div class="job-title">Market Kasiyeri</div>
+        <div class="job-dept">Mağaza / Perakende</div>
+      </div>
+      <span class="job-status">Yayında</span>
+    </div>
+    <div class="job-meta">Ankara · ₺25.000 – ₺31.000 · Vardiyalı</div>
+    <div class="job-footer">
+      <div class="job-applicant-count">
+        <strong>3</strong> başvuru
+      </div>
+      <div class="job-date">2 hafta önce</div>
+    </div>
+  </a>
+
+</div>
+
+</body>
+</html>

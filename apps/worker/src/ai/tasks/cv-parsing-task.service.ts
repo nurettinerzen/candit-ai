@@ -12,7 +12,10 @@ import { StructuredAiProvider } from "../providers/structured-ai-provider.js";
 import { TaskProcessingError } from "../task-processing-error.js";
 import {
   asJsonObject,
+  toArray,
+  toNumberValue,
   toRecord,
+  toStringValue,
   type TaskExecutionContext,
   type TaskExecutionResult
 } from "../types.js";
@@ -88,20 +91,34 @@ type DeterministicProfileBuild = {
   sections: StructuredTaskSections;
 };
 
+type NormalizedCvParsingOutput = {
+  profile: Omit<ParsedProfileSnapshot, "source" | "aiSections">;
+  sections: StructuredTaskSections;
+};
+
 const TURKISH_CITIES = [
-  "istanbul",
-  "ankara",
-  "izmir",
-  "bursa",
-  "antalya",
-  "adana",
-  "konya",
-  "gaziantep",
-  "kocaeli",
-  "mersin",
-  "samsun",
-  "kayseri"
+  "adana", "adiyaman", "afyonkarahisar", "agri", "aksaray", "amasya", "ankara", "antalya",
+  "ardahan", "artvin", "aydin", "balikesir", "bartin", "batman", "bayburt", "bilecik",
+  "bingol", "bitlis", "bolu", "burdur", "bursa", "canakkale", "cankiri", "corum", "denizli",
+  "diyarbakir", "duzce", "edirne", "elazig", "erzincan", "erzurum", "eskisehir", "gaziantep",
+  "giresun", "gumushane", "hakkari", "hatay", "igdir", "isparta", "istanbul", "izmir",
+  "kahramanmaras", "karabuk", "karaman", "kars", "kastamonu", "kayseri", "kilis", "kirikkale",
+  "kirklareli", "kirsehir", "kocaeli", "konya", "kutahya", "malatya", "manisa", "mardin",
+  "mersin", "mugla", "mus", "nevsehir", "nigde", "ordu", "osmaniye", "rize", "sakarya",
+  "samsun", "sanliurfa", "siirt", "sinop", "sivas", "sirnak", "tekirdag", "tokat", "trabzon",
+  "tunceli", "usak", "van", "yalova", "yozgat", "zonguldak"
 ] as const;
+
+function normalizeTurkishText(value: string) {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ç/g, "c")
+    .replace(/ğ/g, "g")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ü/g, "u");
+}
 
 const LANGUAGE_SIGNALS: Array<{ label: string; pattern: RegExp }> = [
   { label: "Turkce", pattern: /\b(turkce|turkce)\b/i },
@@ -176,6 +193,113 @@ function mapExtractionMethodToPrisma(method: CvExtractionMethod) {
     default:
       return "METADATA_ONLY" as const;
   }
+}
+
+function cvParsingOutputSchema(schemaName: string) {
+  return {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    title: schemaName,
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "profile",
+      "facts",
+      "interpretation",
+      "recommendation",
+      "flags",
+      "missingInformation",
+      "evidenceLinks",
+      "confidence",
+      "uncertainty"
+    ],
+    properties: {
+      profile: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "extractedFacts",
+          "normalizedSummary",
+          "inferredObservations",
+          "missingCriticalInformation",
+          "uncertaintyNotes"
+        ],
+        properties: {
+          extractedFacts: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "fullName",
+              "contacts",
+              "languages",
+              "workHistorySignals",
+              "recentRoles",
+              "sectorSignals",
+              "yearsExperienceEstimate",
+              "educationSummary",
+              "certifications",
+              "skills",
+              "locationSignals"
+            ],
+            properties: {
+              fullName: { type: "string" },
+              contacts: {
+                type: "object",
+                additionalProperties: false,
+                required: ["emails", "phones"],
+                properties: {
+                  emails: { type: "array", items: { type: "string" }, maxItems: 5 },
+                  phones: { type: "array", items: { type: "string" }, maxItems: 5 }
+                }
+              },
+              languages: { type: "array", items: { type: "string" }, maxItems: 8 },
+              workHistorySignals: { type: "array", items: { type: "string" }, maxItems: 10 },
+              recentRoles: { type: "array", items: { type: "string" }, maxItems: 8 },
+              sectorSignals: { type: "array", items: { type: "string" }, maxItems: 8 },
+              yearsExperienceEstimate: { type: ["number", "null"] },
+              educationSummary: { type: "array", items: { type: "string" }, maxItems: 6 },
+              certifications: { type: "array", items: { type: "string" }, maxItems: 6 },
+              skills: { type: "array", items: { type: "string" }, maxItems: 12 },
+              locationSignals: { type: "array", items: { type: "string" }, maxItems: 6 }
+            }
+          },
+          normalizedSummary: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "shortSummary",
+              "coreWorkHistorySummary",
+              "likelyFitSignals",
+              "recruiterFollowUpTopics"
+            ],
+            properties: {
+              shortSummary: { type: "string" },
+              coreWorkHistorySummary: { type: "string" },
+              likelyFitSignals: { type: "array", items: { type: "string" }, maxItems: 8 },
+              recruiterFollowUpTopics: { type: "array", items: { type: "string" }, maxItems: 8 }
+            }
+          },
+          inferredObservations: {
+            type: "array",
+            maxItems: 6,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["observation", "confidence", "rationale", "uncertain"],
+              properties: {
+                observation: { type: "string" },
+                confidence: { type: "number" },
+                rationale: { type: "string" },
+                uncertain: { type: "boolean" }
+              }
+            }
+          },
+          missingCriticalInformation: { type: "array", items: { type: "string" }, maxItems: 10 },
+          uncertaintyNotes: { type: "array", items: { type: "string" }, maxItems: 10 }
+        }
+      },
+      ...defaultOutputSchema(schemaName).properties
+    }
+  };
 }
 
 export class CvParsingTaskService {
@@ -262,16 +386,16 @@ export class CvParsingTaskService {
     const promptTemplate = await this.loadPromptTemplate(context.tenantId, context.taskRun.id);
     const promptVersion = promptTemplate
       ? `${promptTemplate.key}:v${promptTemplate.version}`
-      : "cv_parsing.v1.tr";
+      : "cv_parsing.v2.tr";
 
     const generation = await this.provider.generate({
       taskType: "CV_PARSING",
       schemaName: "cv_parsing_v1_tr",
-      schema: defaultOutputSchema("cv_parsing_v1_tr"),
+      schema: cvParsingOutputSchema("cv_parsing_v1_tr"),
       promptVersion,
       preferProviderKey: context.taskRun.providerKey,
       systemPrompt:
-        "Turkce recruiter destek ciktisi uret. Korunan ozellik cikarimi yapma. Belirsizlikleri acikca belirt. Otomatik red veya nihai karar verme.",
+        "Turkce recruiter destek ciktisi uret. CV'den aday bilgisini cikart, belirsizlikleri acikca belirt, otomatik red veya nihai karar verme.",
       userPrompt: JSON.stringify({
         task: "CV_PARSING",
         locale: "tr-TR",
@@ -296,8 +420,17 @@ export class CvParsingTaskService {
           notes: extraction.notes
         },
         cvTextSnippet: extraction.text ? extraction.text.slice(0, 12000) : null,
-        deterministicSignals: deterministic.profile,
+        existingCandidateProfile: {
+          fullName: candidate.fullName,
+          email: candidate.email,
+          phone: candidate.phone,
+          locationText: candidate.locationText,
+          yearsOfExperience: candidate.yearsOfExperience
+        },
         instructions: [
+          "CV metninden profile.extractedFacts alanlarini cikart",
+          "Emin olmadigin alanlari bos birak veya null don, uydurma yapma",
+          "Isim, email, telefon, lokasyon, rol sinyali, sektor sinyali, beceri, egitim ve belge alanlarini mumkun oldugunca CV'den cikart",
           "facts/interpretation/recommendation ayrimini koru",
           "evidenceLinks alaninda candidate/cv_file referansi kullan",
           "missingInformation alanini recruiter'in tamamlayabilecegi maddelerle doldur"
@@ -305,7 +438,8 @@ export class CvParsingTaskService {
       })
     });
 
-    const sections = normalizeStructuredSections(generation.output, deterministic.sections);
+    const normalized = this.normalizeCvParsingOutput(generation.output, deterministic);
+    const sections = normalized.sections;
     const confidence = this.policy.normalizeConfidence(
       sections.confidence,
       deterministic.sections.confidence
@@ -315,11 +449,11 @@ export class CvParsingTaskService {
       confidence < 0.7 ||
       extraction.status !== "extracted" ||
       (extraction.qualityScore ?? 0) < 0.55 ||
-      deterministic.profile.missingCriticalInformation.length > 0 ||
+      normalized.profile.missingCriticalInformation.length > 0 ||
       generation.mode === "deterministic_fallback";
 
     const parsedProfileSnapshot: ParsedProfileSnapshot = {
-      ...deterministic.profile,
+      ...normalized.profile,
       source: {
         cvFileId: cvFile.id,
         candidateId: candidate.id,
@@ -528,6 +662,95 @@ export class CvParsingTaskService {
         ...(nextYears ? { yearsOfExperience: nextYears } : {})
       }
     });
+  }
+
+  private normalizeCvParsingOutput(
+    value: unknown,
+    fallback: DeterministicProfileBuild
+  ): NormalizedCvParsingOutput {
+    const root = toRecord(value);
+    const profile = toRecord(root.profile);
+    const extractedFacts = toRecord(profile.extractedFacts);
+    const contacts = toRecord(extractedFacts.contacts);
+    const normalizedSummary = toRecord(profile.normalizedSummary);
+
+    const normalizedProfile: Omit<ParsedProfileSnapshot, "source" | "aiSections"> = {
+      schemaVersion: "cv_profile.v1.tr",
+      extractedFacts: {
+        fullName: toStringValue(extractedFacts.fullName, fallback.profile.extractedFacts.fullName),
+        contacts: {
+          emails: this.toTrimmedStringArray(contacts.emails, fallback.profile.extractedFacts.contacts.emails, 5),
+          phones: this.toTrimmedStringArray(contacts.phones, fallback.profile.extractedFacts.contacts.phones, 5)
+        },
+        languages: this.toTrimmedStringArray(extractedFacts.languages, fallback.profile.extractedFacts.languages, 8),
+        workHistorySignals: this.toTrimmedStringArray(
+          extractedFacts.workHistorySignals,
+          fallback.profile.extractedFacts.workHistorySignals,
+          10
+        ),
+        recentRoles: this.toTrimmedStringArray(extractedFacts.recentRoles, fallback.profile.extractedFacts.recentRoles, 8),
+        sectorSignals: this.toTrimmedStringArray(extractedFacts.sectorSignals, fallback.profile.extractedFacts.sectorSignals, 8),
+        yearsExperienceEstimate: this.toNullableNumber(
+          extractedFacts.yearsExperienceEstimate,
+          fallback.profile.extractedFacts.yearsExperienceEstimate
+        ),
+        educationSummary: this.toTrimmedStringArray(
+          extractedFacts.educationSummary,
+          fallback.profile.extractedFacts.educationSummary,
+          6
+        ),
+        certifications: this.toTrimmedStringArray(
+          extractedFacts.certifications,
+          fallback.profile.extractedFacts.certifications,
+          6
+        ),
+        skills: this.toTrimmedStringArray(extractedFacts.skills, fallback.profile.extractedFacts.skills, 12),
+        locationSignals: this.toTrimmedStringArray(
+          extractedFacts.locationSignals,
+          fallback.profile.extractedFacts.locationSignals,
+          6
+        )
+      },
+      normalizedSummary: {
+        shortSummary: toStringValue(
+          normalizedSummary.shortSummary,
+          fallback.profile.normalizedSummary.shortSummary
+        ),
+        coreWorkHistorySummary: toStringValue(
+          normalizedSummary.coreWorkHistorySummary,
+          fallback.profile.normalizedSummary.coreWorkHistorySummary
+        ),
+        likelyFitSignals: this.toTrimmedStringArray(
+          normalizedSummary.likelyFitSignals,
+          fallback.profile.normalizedSummary.likelyFitSignals,
+          8
+        ),
+        recruiterFollowUpTopics: this.toTrimmedStringArray(
+          normalizedSummary.recruiterFollowUpTopics,
+          fallback.profile.normalizedSummary.recruiterFollowUpTopics,
+          8
+        )
+      },
+      inferredObservations: this.normalizeObservations(
+        profile.inferredObservations,
+        fallback.profile.inferredObservations
+      ),
+      missingCriticalInformation: this.toTrimmedStringArray(
+        profile.missingCriticalInformation,
+        fallback.profile.missingCriticalInformation,
+        10
+      ),
+      uncertaintyNotes: this.toTrimmedStringArray(
+        profile.uncertaintyNotes,
+        fallback.profile.uncertaintyNotes,
+        10
+      )
+    };
+
+    return {
+      profile: normalizedProfile,
+      sections: normalizeStructuredSections(root, fallback.sections)
+    };
   }
 
   private async enqueuePostParseTasks(input: {
@@ -819,6 +1042,7 @@ export class CvParsingTaskService {
       : [];
     const text = input.extractionText ?? "";
     const textLower = text.toLowerCase();
+    const normalizedText = normalizeTurkishText(text);
 
     const emails = this.uniqueList([
       ...this.extractEmails(text),
@@ -848,7 +1072,7 @@ export class CvParsingTaskService {
       this.readSectorSignals(textLower, recentRoles)
     );
     const locationSignals = this.uniqueList(
-      TURKISH_CITIES.filter((city) => textLower.includes(city)).map(
+      TURKISH_CITIES.filter((city) => normalizedText.includes(city)).map(
         (city) => city.charAt(0).toUpperCase() + city.slice(1)
       )
     );
@@ -1283,6 +1507,57 @@ export class CvParsingTaskService {
     }
 
     return Math.min(score, 0.9);
+  }
+
+  private toTrimmedStringArray(value: unknown, fallback: string[], maxItems: number) {
+    const items = toArray(value)
+      .map((item) => toStringValue(item, "").trim())
+      .filter(Boolean);
+
+    return this.uniqueList(items.length > 0 ? items : fallback).slice(0, maxItems);
+  }
+
+  private toNullableNumber(value: unknown, fallback: number | null) {
+    if (value === null) {
+      return null;
+    }
+
+    const numeric = toNumberValue(value, Number.NaN);
+    if (Number.isFinite(numeric)) {
+      return numeric;
+    }
+
+    return fallback;
+  }
+
+  private normalizeObservations(
+    value: unknown,
+    fallback: Omit<ParsedProfileSnapshot, "source" | "aiSections">["inferredObservations"]
+  ) {
+    const normalized = toArray(value)
+      .map((item) => {
+        const record = toRecord(item);
+        const observation = toStringValue(record.observation, "").trim();
+        const rationale = toStringValue(record.rationale, "").trim();
+
+        if (!observation || !rationale) {
+          return null;
+        }
+
+        const confidence = Math.min(1, Math.max(0, toNumberValue(record.confidence, 0.5)));
+
+        return {
+          observation,
+          confidence,
+          rationale,
+          uncertain: true as const
+        };
+      })
+      .filter((
+        item
+      ): item is Omit<ParsedProfileSnapshot, "source" | "aiSections">["inferredObservations"][number] => item !== null);
+
+    return (normalized.length > 0 ? normalized : fallback).slice(0, 8);
   }
 
   private pickLines(lines: string[], pattern: RegExp, limit: number) {

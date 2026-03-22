@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mülakatlar — UI Spec</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af;
+    --primary: #7c73fa; --primary-light: rgba(124,115,250,0.12);
+    --success: #34d399; --warn: #f59e0b; --danger: #f87171; --info: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); padding: 32px 40px; max-width: 1100px; }
+
+  .page-header { display: flex; justify-content: space-between; margin-bottom: 24px; }
+  .page-header h1 { font-size: 24px; font-weight: 700; }
+  .page-header p { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+  .btn { padding: 7px 16px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+
+  .kpi-bar { display: flex; gap: 32px; padding: 16px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; }
+  .kpi-item .value { font-size: 24px; font-weight: 800; }
+  .kpi-item .label { font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+
+  .filter-pills { display: flex; gap: 8px; margin-bottom: 20px; }
+  .pill { padding: 6px 16px; border-radius: 18px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
+  .pill.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 600; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  a { color: var(--primary); text-decoration: none; }
+
+  .status-badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .status-badge.planned { background: rgba(96,165,250,0.15); color: var(--info); }
+  .status-badge.completed { background: rgba(52,211,153,0.15); color: var(--success); }
+  .status-badge.failed { background: rgba(248,113,113,0.15); color: var(--danger); }
+  .status-badge.in-progress { background: rgba(245,158,11,0.15); color: var(--warn); }
+
+  .action-link { color: var(--primary); font-size: 12px; font-weight: 500; }
+  .action-link.danger { color: var(--danger); }
+
+  .spec-note { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px 20px; margin-top: 32px; font-size: 13px; line-height: 1.7; color: #94a3b8; }
+  .spec-note strong { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <h1>Mülakatlar</h1>
+    <p>Planlanan, devam eden ve tamamlanan görüşmeleri takip edin. İnceleme bekleyenlere öncelik verin.</p>
+  </div>
+  <button class="btn">Yenile</button>
+</div>
+
+<div class="kpi-bar">
+  <div class="kpi-item"><div class="value">4</div><div class="label">Toplam</div></div>
+  <div class="kpi-item"><div class="value" style="color:var(--success)">1</div><div class="label">İnceleme Bekleyen</div></div>
+  <div class="kpi-item"><div class="value">2</div><div class="label">Planlanmış</div></div>
+  <div class="kpi-item"><div class="value">0</div><div class="label">Bugün</div></div>
+  <div class="kpi-item"><div class="value">0</div><div class="label">Devam Eden</div></div>
+  <div class="kpi-item"><div class="value" style="color:var(--danger)">1</div><div class="label">Sorunlu</div></div>
+</div>
+
+<div class="filter-pills">
+  <button class="pill">İnceleme Bekleyen (1)</button>
+  <button class="pill">Randevu Bekleyen (2)</button>
+  <button class="pill">Bugün (0)</button>
+  <button class="pill">Devam Eden (0)</button>
+  <button class="pill">Sorunlu (1)</button>
+  <button class="pill active">Tümü (4)</button>
+</div>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Aday</th>
+        <th>İlan</th>
+        <th>Durum</th>
+        <th>Planlanan Tarih</th>
+        <th>İlerleme</th>
+        <th>Sonraki Adım</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="#">Ahmet Kaya</a></td>
+        <td style="color:var(--text-secondary)">Depo Operasyon Sefi</td>
+        <td><span class="status-badge completed">● Tamamlandı</span></td>
+        <td>11 Mar 2026 20:17</td>
+        <td>Tamamlandı</td>
+        <td><a href="#" class="action-link">Sonuçları İncele</a></td>
+      </tr>
+      <tr>
+        <td><a href="#">Burak Acar</a></td>
+        <td style="color:var(--text-secondary)">Depo Operasyon Sefi</td>
+        <td><span class="status-badge planned">● Planlandı</span></td>
+        <td>17 Mar 2026 16:31</td>
+        <td>—</td>
+        <td style="color:var(--text-secondary)">Aday bekleniyor</td>
+      </tr>
+      <tr>
+        <td><a href="#">Merve Kara</a></td>
+        <td style="color:var(--text-secondary)">Depo Operasyon Sefi</td>
+        <td><span class="status-badge planned">● Planlandı</span></td>
+        <td>13 Mar 2026 13:17</td>
+        <td>—</td>
+        <td style="color:var(--text-secondary)">Aday bekleniyor</td>
+      </tr>
+      <tr>
+        <td><a href="#">Elif Aydın</a></td>
+        <td style="color:var(--text-secondary)">Depo Operasyon Sefi</td>
+        <td><span class="status-badge failed">● Başarısız</span></td>
+        <td>12 Mar 2026 13:17</td>
+        <td>—</td>
+        <td><a href="#" class="action-link danger">Yeniden planlanmalı</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="spec-note">
+  <strong>📐 Mülakatlar Spec</strong><br><br>
+  • Bu sayfa operasyonel bir kuyruk — teknik session listesi DEĞİL<br>
+  • KPI bar: Toplam, İnceleme Bekleyen (yeşil), Planlanmış, Bugün, Devam Eden, Sorunlu (kırmızı)<br>
+  • Tab'lar: <strong>İnceleme Bekleyen</strong> (tamamlanmış ama recruiter henüz incelememiş), <strong>Randevu Bekleyen</strong> (aday henüz saat seçmemiş), <strong>Bugün</strong>, <strong>Devam Eden</strong>, <strong>Sorunlu</strong> (başarısız/yarım), <strong>Tümü</strong><br>
+  • Tablo: Aday, İlan, Durum badge, Planlanan Tarih, İlerleme, Sonraki Adım (aksiyon link)<br>
+  • "İnceleme Bekleyen" tab'ında "Sonuçları İncele" butonu öne çıkar<br>
+  • Sorunlu oturumlar kırmızı "Yeniden planlanmalı" linki gösterir<br>
+  • Başvuru ID (app_demo...) yerine aday adı ve ilan adı gösterilmeli<br>
+  • "Aday Görüşme Ekranı" sütunu kaldırılmalı — teknik
+</div>
+
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İlan Merkezi — UI Spec</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af;
+    --primary: #7c73fa; --primary-light: rgba(124,115,250,0.12);
+    --success: #34d399; --warn: #f59e0b; --danger: #f87171;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); padding: 32px 40px; max-width: 1100px; }
+
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+  .page-header h1 { font-size: 24px; font-weight: 700; }
+  .page-header p { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+  .btn { padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+
+  .kpi-bar { display: flex; gap: 32px; padding: 16px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; }
+  .kpi-item .value { font-size: 24px; font-weight: 800; }
+  .kpi-item .label { font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+
+  .filter-pills { display: flex; gap: 8px; margin-bottom: 20px; }
+  .pill {
+    padding: 7px 18px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-secondary); font-size: 13px; cursor: pointer;
+  }
+  .pill.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 600; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  td { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: rgba(255,255,255,0.02); }
+
+  a { color: var(--primary); text-decoration: none; }
+  .status-badge { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .status-badge.published { background: rgba(52,211,153,0.15); color: var(--success); }
+  .status-badge.draft { background: rgba(156,163,175,0.15); color: var(--text-secondary); }
+
+  .spec-note { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px 20px; margin-top: 32px; font-size: 13px; line-height: 1.7; color: #94a3b8; }
+  .spec-note strong { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <h1>İlan Merkezi</h1>
+    <p>İlan oluşturma, aday yönetimi ve işe alım süreçlerinizin merkezi.</p>
+  </div>
+  <div style="display: flex; gap: 8px;">
+    <button class="btn">Yenile</button>
+    <button class="btn btn-primary">+ Yeni İlan Hazırla</button>
+  </div>
+</div>
+
+<div class="kpi-bar">
+  <div class="kpi-item"><div class="value">4</div><div class="label">Toplam İlan</div></div>
+  <div class="kpi-item"><div class="value" style="color:var(--success)">3</div><div class="label">Yayında</div></div>
+  <div class="kpi-item"><div class="value">1</div><div class="label">Taslak</div></div>
+  <div class="kpi-item"><div class="value">0</div><div class="label">Arşiv</div></div>
+  <div class="kpi-item"><div class="value">26</div><div class="label">Toplam Başvuru</div></div>
+</div>
+
+<div class="filter-pills">
+  <button class="pill active">Tümü</button>
+  <button class="pill">Yayında</button>
+  <button class="pill">Taslak</button>
+  <button class="pill">Arşiv</button>
+</div>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>İlan Başlığı</th>
+        <th>Departman</th>
+        <th>Durum</th>
+        <th>Lokasyon</th>
+        <th>Maaş Aralığı</th>
+        <th style="text-align:center">Başvuru</th>
+        <th>Oluşturulma</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="#">Depo Operasyon Sefi</a></td>
+        <td>Depo</td>
+        <td><span class="status-badge published">● Yayında</span></td>
+        <td>İstanbul</td>
+        <td>₺35.000 – ₺45.000</td>
+        <td style="text-align:center; font-weight:700">10</td>
+        <td style="color:var(--text-secondary)">17 Mar 2026</td>
+      </tr>
+      <tr>
+        <td><a href="#">Müşteri Destek Temsilcisi</a></td>
+        <td>Destek / Giriş Seviyesi</td>
+        <td><span class="status-badge published">● Yayında</span></td>
+        <td>İzmir</td>
+        <td>₺29.000 – ₺38.000</td>
+        <td style="text-align:center; font-weight:700">2</td>
+        <td style="color:var(--text-secondary)">11 Mar 2026</td>
+      </tr>
+      <tr>
+        <td><a href="#">Market Kasiyeri</a></td>
+        <td>Mağaza / Perakende</td>
+        <td><span class="status-badge published">● Yayında</span></td>
+        <td>Ankara</td>
+        <td>₺25.000 – ₺31.000</td>
+        <td style="text-align:center; font-weight:700">3</td>
+        <td style="color:var(--text-secondary)">11 Mar 2026</td>
+      </tr>
+      <tr>
+        <td><a href="#">Depo Operasyon Personeli</a></td>
+        <td>Depo / Lojistik</td>
+        <td><span class="status-badge draft">● Taslak</span></td>
+        <td>İstanbul</td>
+        <td>₺28.000 – ₺36.000</td>
+        <td style="text-align:center; font-weight:700">11</td>
+        <td style="color:var(--text-secondary)">10 Mar 2026</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="spec-note">
+  <strong>📐 İlan Merkezi Spec</strong><br><br>
+  • KPI bar: toplam, yayında, taslak, arşiv, toplam başvuru<br>
+  • Filtre pilleri: Tümü / Yayında / Taslak / Arşiv<br>
+  • Tablo sütunları: İlan Başlığı (link), Departman, Durum (badge), Lokasyon, Maaş Aralığı, Başvuru (sayı), Oluşturulma<br>
+  • Ham job ID tablodan kaldırılmış — başlığa tıklayınca ilan detayına gider<br>
+  • "Yeni İlan Hazırla" butonu sağ üstte primary renk<br>
+  • Tablo satırlarında hover efekti
+</div>
+
+</body>
+</html>

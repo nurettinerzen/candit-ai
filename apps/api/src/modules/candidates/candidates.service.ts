@@ -91,6 +91,17 @@ function readCvFileIdFromTaskRun(taskRun: {
   return null;
 }
 
+function readHumanDecision(metadata: Prisma.JsonValue | null | undefined) {
+  const record =
+    metadata && typeof metadata === "object" && !Array.isArray(metadata)
+      ? (metadata as Record<string, unknown>)
+      : {};
+  const decision = record.decision;
+  return decision === "advance" || decision === "hold" || decision === "reject"
+    ? decision
+    : null;
+}
+
 @Injectable()
 export class CandidatesService {
   constructor(
@@ -102,7 +113,7 @@ export class CandidatesService {
   ) {}
 
   async list(tenantId: string, query?: string) {
-    return this.prisma.candidate.findMany({
+    const rows = await this.prisma.candidate.findMany({
       where: {
         tenantId,
         deletedAt: null,
@@ -116,8 +127,23 @@ export class CandidatesService {
             }
           : {})
       },
+      include: {
+        _count: {
+          select: { applications: true }
+        }
+      },
       orderBy: { createdAt: "desc" }
     });
+
+    return rows.map((row) => ({
+      id: row.id,
+      fullName: row.fullName,
+      email: row.email,
+      phone: row.phone,
+      source: row.source,
+      createdAt: row.createdAt,
+      applicationCount: row._count.applications
+    }));
   }
 
   async create(input: CandidateInput) {
@@ -220,10 +246,36 @@ export class CandidatesService {
       throw new NotFoundException("Aday bulunamadi.");
     }
 
+    const applicationIds = candidate.applications.map((application) => application.id);
+    const approvals = applicationIds.length > 0
+      ? await this.prisma.humanApproval.findMany({
+          where: {
+            tenantId,
+            actionType: "application.decision",
+            entityType: "CandidateApplication",
+            entityId: { in: applicationIds }
+          },
+          orderBy: {
+            approvedAt: "desc"
+          }
+        })
+      : [];
+    const latestHumanDecisionByApplicationId = new Map<string, "advance" | "hold" | "reject" | null>();
+    for (const approval of approvals) {
+      if (latestHumanDecisionByApplicationId.has(approval.entityId)) {
+        continue;
+      }
+      latestHumanDecisionByApplicationId.set(approval.entityId, readHumanDecision(approval.metadata));
+    }
+
     const cvData = await this.loadCvData(tenantId, candidate.id);
 
     return {
       ...candidate,
+      applications: candidate.applications.map((application) => ({
+        ...application,
+        humanDecision: latestHumanDecisionByApplicationId.get(application.id) ?? null
+      })),
       ...cvData
     };
   }

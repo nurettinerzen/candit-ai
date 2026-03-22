@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Başvuru Detay / Karar Merkezi — UI Spec</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af; --text-muted: #6b7280;
+    --primary: #7c73fa; --primary-light: rgba(124,115,250,0.12);
+    --success: #34d399; --success-light: rgba(52,211,153,0.12);
+    --warn: #f59e0b; --warn-light: rgba(245,158,11,0.12);
+    --danger: #f87171;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); padding: 32px 40px; max-width: 900px; }
+  a { color: var(--primary); text-decoration: none; }
+
+  .breadcrumb { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
+  .page-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .page-header p { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+  .btn { padding: 7px 16px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  .btn-success { background: var(--success); border-color: var(--success); color: #fff; font-weight: 600; }
+  .btn-warn { background: var(--warn); border-color: var(--warn); color: #000; font-weight: 600; }
+  .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+
+  /* Aday özet kartı — sticky'e benzer */
+  .candidate-card {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;
+    padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 16px;
+  }
+  .candidate-card .field-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .candidate-card .field-value { font-size: 15px; font-weight: 600; }
+
+  .stage { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 700; }
+  .stage .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .stage.karar-bekliyor { color: var(--warn); }
+  .stage.karar-bekliyor .dot { background: var(--warn); }
+  .stage.bekletildi { color: var(--text-secondary); }
+  .stage.bekletildi .dot { background: var(--text-secondary); }
+
+  /* Karar butonları */
+  .decision-bar {
+    display: flex; gap: 10px; padding: 16px 20px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 16px; align-items: center;
+  }
+  .decision-bar h3 { font-size: 14px; font-weight: 700; margin-right: auto; }
+
+  /* AI Karar Özeti */
+  .ai-summary {
+    border-left: 3px solid var(--primary);
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+  .ai-summary h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .ai-summary .disclaimer { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
+  .ai-summary .badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; background: var(--warn-light); color: var(--warn); }
+  .ai-recommendation {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; background: rgba(255,255,255,0.04); border-radius: 6px; margin-bottom: 12px;
+  }
+  .ai-recommendation .emoji { font-size: 20px; }
+  .ai-recommendation .label { font-size: 15px; font-weight: 700; }
+  .ai-paragraph {
+    padding: 12px 14px; background: rgba(255,255,255,0.04); border-radius: 6px;
+    font-size: 14px; line-height: 1.7; margin-bottom: 12px;
+  }
+  .suggested-action {
+    padding: 10px 14px; background: var(--success-light);
+    border-left: 3px solid var(--success); border-radius: 6px;
+  }
+  .suggested-action .label { font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px; }
+
+  /* Not alanı */
+  .notes-section textarea {
+    width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04); color: var(--text); font-size: 13px; resize: vertical; min-height: 70px;
+  }
+
+  .spec-note { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px 20px; margin-top: 32px; font-size: 13px; line-height: 1.7; color: #94a3b8; }
+  .spec-note strong { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<div class="breadcrumb"><a href="#">← İlan Merkezi</a> / depo operasyon sefi</div>
+
+<div class="page-header">
+  <div>
+    <h1>Başvuru Karar Merkezi</h1>
+    <p>Bu ekran aday profili değil, bu ilana ait başvurunun karar ve takip ekranıdır.</p>
+  </div>
+  <div style="display: flex; gap: 8px;">
+    <button class="btn">Yenile</button>
+  </div>
+</div>
+
+<!-- Aday Özet Kartı -->
+<div class="candidate-card">
+  <div>
+    <div class="field-label">Aday</div>
+    <div class="field-value"><a href="#">Elif Aydın</a></div>
+    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">elif.aydin@email.com · +90 553 870 41 26</div>
+  </div>
+  <div>
+    <div class="field-label">Mevcut Aşama</div>
+    <span class="stage bekletildi"><span class="dot"></span> Bekletildi</span>
+  </div>
+  <div>
+    <div class="field-label">İlan</div>
+    <div class="field-value" style="font-size: 14px;"><a href="#">depo operasyon sefi</a></div>
+    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Kaynak: kariyer_net · Depo</div>
+  </div>
+</div>
+
+<!-- Karar Butonları — her zaman görünür -->
+<div class="decision-bar">
+  <h3>Karar</h3>
+  <button class="btn-success">✓ İlerlet</button>
+  <button class="btn-warn">⏸ Beklet</button>
+  <button class="btn-danger">✕ Reddet</button>
+  <button class="btn-primary">📅 Görüşmeye Davet Et</button>
+</div>
+
+<!-- AI Karar Özeti — paragraf formatında -->
+<div class="ai-summary">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+    <h3>AI Karar Özeti</h3>
+    <span class="badge">Sadece öneridir</span>
+  </div>
+  <div class="disclaimer">AI değerlendirmesi — nihai kararı her zaman insan verir.</div>
+
+  <div class="ai-recommendation">
+    <span class="emoji">⏸️</span>
+    <span class="label">AI Önerisi: Beklet</span>
+  </div>
+
+  <div class="ai-paragraph">
+    Aday, depo operasyonları ve e-ticaret alanında deneyime sahip. Güçlü yönleri arasında 5 yıllık depo operasyonu deneyimi, B sınıfı ehliyet ve İzmir'de ikamet etmesi sayılabilir. Dikkat edilmesi gereken 5 uyarı tespit edildi: liderlik pozisyonuna geçiş sürecinde yeterli deneyim olmayabilir; İngilizce yeterliliği orta seviyede. 3 eksik bilgi alanı mevcut. Genel uyum skoru: 78/100.
+  </div>
+
+  <div class="suggested-action">
+    <div class="label">Önerilen Aksiyon</div>
+    <div style="font-size: 14px;">Liderlik deneyimi hakkında ek bilgi talep edilmeli, ardından değerlendirme yenilenmelidir.</div>
+  </div>
+</div>
+
+<!-- Notlar -->
+<div class="panel notes-section">
+  <h3 style="font-size: 15px; margin-bottom: 10px;">Notlar (0)</h3>
+  <textarea placeholder="Bu başvuru için kısa karar notu bırakın..."></textarea>
+  <button class="btn-primary" style="margin-top: 8px;">Notu Kaydet</button>
+</div>
+
+<!-- Görüşme Planlama -->
+<div class="panel">
+  <h3 style="font-size: 15px; margin-bottom: 4px;">Görüşme Planlama</h3>
+  <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Görüşme daveti gönderildiğinde aday önce direkt AI görüşme linki alır.</p>
+  <button class="btn-primary">📅 Görüşmeye Davet Et</button>
+</div>
+
+<!-- CV ve Uyum Skoru — detaylar -->
+<div class="panel">
+  <h3 style="font-size: 15px; margin-bottom: 4px;">CV Bilgileri</h3>
+  <p style="font-size: 13px; margin-top: 8px;">CV_Elif_Aydin.docx · 37.1 KB · ● İncelendi</p>
+</div>
+
+<div class="panel">
+  <h3 style="font-size: 15px; margin-bottom: 4px;">Aday Uyum Skoru</h3>
+  <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">Adayın pozisyona uyumunu gösteren değerlendirme.</p>
+  <div style="display: flex; gap: 20px; align-items: center;">
+    <div style="font-size: 32px; font-weight: 800; color: var(--success);">78/100</div>
+    <div style="font-size: 13px;">
+      <div>● 6 güçlü yön</div>
+      <div>● 5 uyarı</div>
+      <div>● 3 eksik bilgi</div>
+    </div>
+  </div>
+</div>
+
+<div class="spec-note">
+  <strong>📐 Başvuru Detay / Karar Merkezi Spec</strong><br><br>
+  <strong>Sayfa yapısı (yukarıdan aşağıya):</strong><br>
+  1. <strong>Breadcrumb:</strong> ← İlan Merkezi / ilan adı<br>
+  2. <strong>Aday Özet Kartı:</strong> Ad (aday profil linki), e-posta, telefon, mevcut aşama (merkezi badge), ilan, kaynak, departman — 3 sütunlu kompakt grid<br>
+  3. <strong>Karar Butonları:</strong> İlerlet / Beklet / Reddet / Görüşmeye Davet Et — her zaman görünür, sticky olabilir<br>
+  4. <strong>AI Karar Özeti:</strong> Öneri rozeti + 3-5 cümlelik paragraf özeti + önerilen aksiyon — DETAYLI LİSTE YOK, sadece paragraf<br>
+  5. <strong>Notlar:</strong> Recruiter karar notu alanı<br>
+  6. <strong>Görüşme Planlama:</strong> Davet butonu ve durum<br>
+  7. <strong>CV Bilgileri:</strong> Dosya bilgisi ve inceleme durumu<br>
+  8. <strong>Uyum Skoru:</strong> Skor + özet sayılar<br>
+  9. <strong>Teknik Detaylar:</strong> Karar/aşama yönetimi, geçmiş — details/summary ile gizli<br><br>
+  <strong>Kaldırılan bölümler:</strong><br>
+  • "Ön Değerlendirme" (Neden Uygun / Ne Uyarı Var / Görüşmede Ne Sorulmalı) — tamamen kaldırıldı, bilgiler AI Karar Özetine aktarıldı<br>
+  • STAGE_LABELS alt metni — kaldırıldı, sadece merkezi stage badge gösterilir<br><br>
+  <strong>Merkezi Stage Kuralı:</strong> Tüm sayfalarda aynı <code>getRecruiterStageMeta(stage, aiRecommendation)</code> fonksiyonu kullanılır. Asla <code>STAGE_LABELS[stage]</code> doğrudan gösterilmez.
+</div>
+
+</body>
+</html>

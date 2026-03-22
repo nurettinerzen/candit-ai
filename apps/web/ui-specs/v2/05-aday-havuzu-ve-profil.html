@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aday Havuzu + Aday Profili — UI/UX Öneri v2</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af;
+    --primary: #7c73fa; --primary-light: rgba(124,115,250,0.12);
+    --success: #34d399; --warn: #f59e0b; --danger: #f87171; --info: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); padding: 28px 36px; max-width: 1100px; }
+
+  .page-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .page-header .subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+  .btn { padding: 7px 16px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  a { color: var(--primary); text-decoration: none; font-weight: 500; }
+
+  .kpi-inline { display: inline-flex; padding: 12px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; }
+  .kpi-inline .value { font-size: 24px; font-weight: 800; }
+  .kpi-inline .label { font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+
+  .search-row { display: flex; gap: 10px; margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; }
+  .search-row input { flex: 1; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--text); font-size: 13px; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: rgba(255,255,255,0.02); }
+
+  .source-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; background: rgba(124,115,250,0.12); color: var(--primary); }
+
+  /* Profile section */
+  .profile-section { margin-top: 48px; border-top: 2px solid var(--border); padding-top: 28px; }
+  .profile-card { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; }
+  .profile-card .fl { font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; margin-bottom: 3px; }
+  .profile-card .fv { font-size: 14px; font-weight: 600; }
+  .cv-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .cv-panel h3 { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+  .stage-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
+  .stage-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .issue-box { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+  .issue-box strong { color: var(--danger); }
+  .rec-box { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+  .rec-box strong { color: var(--success); }
+  .rec-box ul, .issue-box ul { margin: 6px 0 0 16px; }
+
+  .mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- ADAY HAVUZU (LİSTE)                            -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<div class="issue-box">
+  <strong>🔴 Aday Havuzu — Mevcut Sorunlar:</strong>
+  <ul>
+    <li><b>Kaynak sütununda badge yok</b> — Düz metin olarak "kariyer_net", "manual" yazıyor. Badge ile renklendirilmeli (mevcut kodda eklendi ama teknik key gösteriliyor "kariyer_net" yerine "Kariyer.net").</li>
+    <li><b>"Toplam Aday: 24" KPI kartı gereksiz büyük</b> — Tek bir KPI için koca bir kart yerine inline gösterilebilir.</li>
+    <li><b>Arama kutusu panel içinde</b> — Tablo ile arama arasında görsel ayrım yok, arama ayrı bir satırda olmalı.</li>
+    <li><b>"Yeni Aday Ekle" butonu daha belirgin olabilir</b> — Primary renk ama küçük, dikkat çekmiyor.</li>
+    <li><b>Başvuru Sayısı sütunu eklendi ✓</b> — Bu zaten yapıldı, iyi.</li>
+  </ul>
+</div>
+
+<div class="rec-box">
+  <strong>✅ Önerilen İyileştirmeler:</strong>
+  <ul>
+    <li>Kaynak'ta teknik key yerine okunabilir isim: "kariyer_net" → "Kariyer.net", "manual" → "Manuel", "csv_import" → "CSV"</li>
+    <li>Arama satırını tablodan ayır, kendi paneline koy</li>
+    <li>Başvuru Sayısı sütununu tıklanabilir yap — tıklanınca o adayın başvurularına git</li>
+    <li>Tabloya "Son Aktivite" sütunu ekle (en son başvuru güncelleme tarihi)</li>
+  </ul>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>Aday Havuzu</h1>
+    <p class="subtitle">Tüm adaylarınızın genel listesi.</p>
+  </div>
+  <div style="display:flex; gap:8px">
+    <button class="btn">Yenile</button>
+    <button class="btn btn-primary">+ Yeni Aday Ekle</button>
+  </div>
+</div>
+
+<div class="kpi-inline"><div><div class="value">24</div><div class="label">Toplam Aday</div></div></div>
+
+<div class="search-row">
+  <input type="text" placeholder="Ad, e-posta veya telefon ile arayın...">
+  <button class="btn">Ara</button>
+  <button class="btn">Temizle</button>
+</div>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>Aday</th>
+        <th>E-posta</th>
+        <th>Telefon</th>
+        <th>Kaynak</th>
+        <th style="text-align:center">Başvuru</th>
+        <th>Kayıt Tarihi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="#">Ahmet Yılmaz</a></td>
+        <td style="color:var(--text-secondary)">ahmet.yilmaz@email.com</td>
+        <td>+90 532 411 27 84</td>
+        <td><span class="source-badge">Kariyer.net</span></td>
+        <td style="text-align:center; font-weight:700">1</td>
+        <td style="color:var(--text-secondary)">19 Mar 2026</td>
+      </tr>
+      <tr>
+        <td><a href="#">Burak Acar</a></td>
+        <td style="color:var(--text-secondary)">burak.acar@email.com</td>
+        <td>05411223344</td>
+        <td><span class="source-badge" style="background:rgba(156,163,175,0.12); color:var(--text-secondary)">Manuel</span></td>
+        <td style="text-align:center; font-weight:700"><a href="#">3</a></td>
+        <td style="color:var(--text-secondary)">19 Mar 2026</td>
+      </tr>
+      <tr>
+        <td><a href="#">Hasan Çelik</a></td>
+        <td style="color:var(--text-secondary)">hasan.celik@email.com</td>
+        <td>05401112233</td>
+        <td><span class="source-badge" style="background:rgba(96,165,250,0.12); color:var(--info)">CSV</span></td>
+        <td style="text-align:center; font-weight:700">1</td>
+        <td style="color:var(--text-secondary)">11 Mar 2026</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- ADAY PROFİLİ (DETAY)                           -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<div class="profile-section">
+
+<div class="issue-box">
+  <strong>🔴 Aday Profili — Mevcut Sorunlar:</strong>
+  <ul>
+    <li><b>CV Belgeleri bölümü çok yer kaplıyor</b> — File upload formu, desteklenen formatlar, CV tablosu... Tüm bunlar sadece 1 dosya varsa bile koca bir alan kaplıyor. CV varsa sadece dosya adı + durum göster, yoksa upload alanı göster.</li>
+    <li><b>"CV Ekle" butonu mor/primary renkte ama form submit butonu</b> — Çok büyük ve dikkat dağıtıyor. Secondary/ghost buton olmalı.</li>
+    <li><b>CV Özeti bölümü iyi yapılmış ✓</b> — Güçlü yönler, Görüşmede Sorulması Gerekenler düzgün.</li>
+    <li><b>"Teknik Bilgi" ve "Teknik Detay (JSON)" collapse'ları recruiter'ı ilgilendirmiyor</b> — Varsayılan olarak gizli, iyi. Ama labeller teknik.</li>
+    <li><b>Başvurular tablosu düzeltildi ✓</b> — İlan/Aşama/Son Güncelleme/İşlem sütunları artık doğru.</li>
+    <li><b>"Adayı İlana Bağla" bölümü çok aşağıda</b> — Yeni başvuru açma işlemi daha erişilebilir olmalı.</li>
+  </ul>
+</div>
+
+<div class="rec-box">
+  <strong>✅ Önerilen İyileştirmeler:</strong>
+  <ul>
+    <li>CV Belgeleri'ni sadelikle: CV varsa → dosya adı + badge + "Yeniden İncele" butonu. CV yoksa → upload alanı.</li>
+    <li>"CV Ekle" butonunu ghost/secondary yap</li>
+    <li>"Adayı İlana Bağla" bölümünü sayfa üstüne taşı veya başvurular tablosunun hemen altına ekle</li>
+    <li>Aday bilgi kartına "Toplam Başvuru" sayısı ekle</li>
+  </ul>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1 style="font-size:20px">Aday Profili</h1>
+    <p class="subtitle">Aday bilgileri, CV belgeleri ve bağlı başvurular.</p>
+  </div>
+  <div style="display:flex;gap:8px"><button class="btn">Yenile</button><button class="btn">← Aday Havuzu</button></div>
+</div>
+
+<div class="profile-card">
+  <div><div class="fl">Ad Soyad</div><div class="fv">Ahmet Yılmaz</div></div>
+  <div><div class="fl">E-posta</div><div class="fv" style="font-size:13px">ahmet.yilmaz@email.com</div></div>
+  <div><div class="fl">Telefon</div><div class="fv">+90 532 411 27 84</div></div>
+  <div><div class="fl">Kaynak</div><div class="fv"><span class="source-badge">Kariyer.net</span></div></div>
+  <div><div class="fl">Kayıt Tarihi</div><div class="fv" style="font-size:13px">19 Mar 2026</div></div>
+  <div><div class="fl">CV İnceleme Güveni</div><div class="fv" style="color:var(--success)">● Yüksek güven</div></div>
+</div>
+
+<!-- CV Özeti (sade versiyon) -->
+<div class="cv-panel">
+  <h3>CV Özeti</h3>
+  <p style="font-size:14px; line-height:1.7; margin-bottom:12px">
+    8+ yıllık depo ve lojistik deneyimine sahip, operasyon şefi adayı.
+  </p>
+  <div class="mini-grid">
+    <div>
+      <div style="font-weight:600; margin-bottom:6px; font-size:13px">Güçlü Yönler</div>
+      <div style="font-size:13px; color:var(--text-secondary)">• Depo yönetimi</div>
+      <div style="font-size:13px; color:var(--text-secondary)">• Lojistik süreçler</div>
+      <div style="font-size:13px; color:var(--text-secondary)">• Ekip yönetimi</div>
+    </div>
+    <div>
+      <div style="font-weight:600; margin-bottom:6px; font-size:13px">Görüşmede Sorulması Gerekenler</div>
+      <div style="font-size:13px; color:var(--text-secondary)">• Adayın liderlik deneyimi</div>
+      <div style="font-size:13px; color:var(--text-secondary)">• WMS ve SAP EWM bilgisi</div>
+      <div style="font-size:13px; color:var(--text-secondary)">• İngilizce yeterliliği</div>
+    </div>
+  </div>
+</div>
+
+<!-- Başvurular -->
+<div class="panel" style="padding:20px">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+    <h3 style="font-size:15px; font-weight:700">Başvurular (1)</h3>
+    <select style="padding:6px 12px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:12px">
+      <option>+ Adayı İlana Bağla</option>
+      <option>Market Kasiyeri</option>
+      <option>Müşteri Destek Temsilcisi</option>
+    </select>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>İlan</th>
+        <th>Aşama</th>
+        <th>Son Güncelleme</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="#">Depo Operasyon Şefi</a></td>
+        <td>
+          <span class="stage-badge" style="color:var(--warn)">
+            <span class="dot" style="background:var(--warn)"></span> Karar Bekliyor
+          </span>
+        </td>
+        <td style="color:var(--text-secondary)">21 Mar 2026</td>
+        <td><a href="#" style="font-size:12px">Başvuruyu Aç →</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+
+</body>
+</html>

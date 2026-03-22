@@ -8,7 +8,11 @@ import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-sta
 import { canPerformAction } from "../../../lib/auth/policy";
 import { resolveActiveSession } from "../../../lib/auth/session";
 import { apiClient } from "../../../lib/api-client";
-import { APPLICATION_STAGES, STAGE_LABELS, getRecruiterStageMeta } from "../../../lib/constants";
+import {
+  RECRUITER_STATUS_FILTERS,
+  getRecruiterStageMeta,
+  getRecruiterStatus
+} from "../../../lib/constants";
 import { formatDate } from "../../../lib/format";
 import type {
   Candidate,
@@ -42,8 +46,11 @@ function isSameCalendarDay(value: string | null | undefined) {
 }
 
 function resolveQueueState(application: RecruiterApplicationsReadModel["items"][number]): QueueState {
+  const recruiterStatus = getRecruiterStatus(application.stage, application.humanDecision);
+
   if (
     application.interview?.status === "COMPLETED" &&
+    recruiterStatus !== "ON_HOLD" &&
     application.stage !== "REJECTED" &&
     application.stage !== "HIRED"
   ) {
@@ -54,11 +61,17 @@ function resolveQueueState(application: RecruiterApplicationsReadModel["items"][
     };
   }
 
+  if (recruiterStatus === "ON_HOLD") {
+    return {
+      key: "in_progress",
+      helper: "Aday bekletildi. Tekrar değerlendirme için sırada tutuluyor.",
+      priority: 3
+    };
+  }
+
   if (
     (application.ai.hasReport && application.humanDecisionRequired) ||
-    ["APPLIED", "SCREENING", "RECRUITER_REVIEW", "INTERVIEW_COMPLETED"].includes(
-      application.stage
-    )
+    recruiterStatus === "DECISION_PENDING"
   ) {
     return {
       key: "decision",
@@ -110,8 +123,7 @@ export default function ApplicationsPage() {
         apiClient.listJobs(),
         apiClient.listCandidates(),
         apiClient.recruiterApplicationsReadModel({
-          stage: stageFilter || undefined,
-          jobId: jobFilter || undefined
+          jobId: undefined
         })
       ]);
 
@@ -123,7 +135,7 @@ export default function ApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [jobFilter, stageFilter]);
+  }, []);
 
   useEffect(() => {
     void loadPageData();
@@ -156,7 +168,25 @@ export default function ApplicationsPage() {
   }
 
   const prioritizedApplications = useMemo(() => {
-    return [...applications].sort((left, right) => {
+    const filtered = applications.filter((application) => {
+      if (jobFilter && application.job.id !== jobFilter) {
+        return false;
+      }
+
+      if (stageFilter) {
+        const status = getRecruiterStatus(
+          application.stage,
+          application.humanDecision
+        );
+        if (status !== stageFilter) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    return [...filtered].sort((left, right) => {
       const leftState = resolveQueueState(left);
       const rightState = resolveQueueState(right);
 
@@ -166,7 +196,7 @@ export default function ApplicationsPage() {
 
       return new Date(right.stageUpdatedAt).getTime() - new Date(left.stageUpdatedAt).getTime();
     });
-  }, [applications]);
+  }, [applications, jobFilter, stageFilter]);
 
   const decisionWaitingCount = useMemo(
     () => applications.filter((application) => resolveQueueState(application).key === "decision").length,
@@ -225,10 +255,10 @@ export default function ApplicationsPage() {
           }}
         >
           <select className="select" value={stageFilter} onChange={(event) => setStageFilter(event.target.value)}>
-            <option value="">Tüm stage'ler</option>
-            {APPLICATION_STAGES.map((stage) => (
-              <option key={stage} value={stage}>
-                {STAGE_LABELS[stage]}
+            <option value="">Tüm durumlar</option>
+            {RECRUITER_STATUS_FILTERS.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
               </option>
             ))}
           </select>
@@ -268,7 +298,7 @@ export default function ApplicationsPage() {
                 <tr>
                   <th>Aday</th>
                   <th>İlan</th>
-                  <th>Aşama</th>
+                  <th>Durum</th>
                   <th>Son Güncelleme</th>
                   <th>İşlem</th>
                 </tr>
@@ -277,7 +307,7 @@ export default function ApplicationsPage() {
                 {prioritizedApplications.map((application) => {
                   const stageMeta = getRecruiterStageMeta(
                     application.stage,
-                    application.aiRecommendation
+                    application.humanDecision
                   );
 
                   return (

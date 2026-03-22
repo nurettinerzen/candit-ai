@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raporlar — UI Spec</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af;
+    --primary: #7c73fa; --success: #34d399; --warn: #f59e0b; --danger: #f87171;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); padding: 32px 40px; max-width: 1100px; }
+
+  .page-header { display: flex; justify-content: space-between; margin-bottom: 24px; }
+  .page-header h1 { font-size: 24px; font-weight: 700; }
+  .page-header p { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+  .btn { padding: 7px 16px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .kpi-card .label { font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px; }
+  .kpi-card .value { font-size: 32px; font-weight: 800; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .panel h3 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+
+  .stat-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row .stat-value { font-weight: 700; }
+
+  .stage-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+
+  .spec-note { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px 20px; margin-top: 32px; font-size: 13px; line-height: 1.7; color: #94a3b8; }
+  .spec-note strong { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <h1>Raporlar</h1>
+    <p>İşe alım süreçlerinizin performansını ve dönüşüm oranlarını takip edin.</p>
+  </div>
+  <button class="btn">Yenile</button>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card"><div class="label">Aktif İlanlar</div><div class="value">4</div></div>
+  <div class="kpi-card"><div class="label">Toplam Başvuru</div><div class="value">26</div></div>
+  <div class="kpi-card"><div class="label">İşe Alım Süresi (Ort.)</div><div class="value">—</div></div>
+  <div class="kpi-card"><div class="label">Değerlendirme Güveni</div><div class="value">%80</div></div>
+</div>
+
+<div class="two-col">
+  <div class="panel">
+    <h3>Aşama Dağılımı</h3>
+    <div class="stat-row"><span><span class="stage-dot" style="background:var(--primary)"></span>Başvurdu</span><span class="stat-value">8</span></div>
+    <div class="stat-row"><span><span class="stage-dot" style="background:var(--info, #60a5fa)"></span>Mülakat Planlandı</span><span class="stat-value">5</span></div>
+    <div class="stat-row"><span><span class="stage-dot" style="background:var(--warn)"></span>İnceleme Bekliyor</span><span class="stat-value">7</span></div>
+    <div class="stat-row"><span><span class="stage-dot" style="background:var(--danger)"></span>Reddedildi</span><span class="stat-value">2</span></div>
+    <div class="stat-row"><span><span class="stage-dot" style="background:var(--text-secondary)"></span>Ön Değerlendirme</span><span class="stat-value">4</span></div>
+  </div>
+  <div class="panel">
+    <h3>Dönüşüm Oranları</h3>
+    <div class="stat-row"><span>Ön eleme oranı</span><span class="stat-value">62%</span></div>
+    <div class="stat-row"><span>Mülakata geçiş oranı</span><span class="stat-value">46%</span></div>
+    <div class="stat-row"><span>İşe alım oranı</span><span class="stat-value">0%</span></div>
+    <div class="stat-row"><span>Reddedilenler</span><span class="stat-value">2</span></div>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="panel">
+    <h3>İşe Alım Süresi</h3>
+    <div class="stat-row"><span>İşe alınan aday sayısı</span><span class="stat-value">0</span></div>
+    <div class="stat-row"><span>Ortalama süre</span><span class="stat-value">—</span></div>
+    <div class="stat-row"><span>Medyan süre</span><span class="stat-value">—</span></div>
+  </div>
+  <div class="panel">
+    <h3>Görüşme Kalitesi</h3>
+    <div class="stat-row"><span>Transkript kalitesi (ort.)</span><span class="stat-value">%87</span></div>
+    <div class="stat-row"><span>Rapor güveni (ort.)</span><span class="stat-value">%80</span></div>
+    <div class="stat-row"><span>Transkript örneklemi</span><span class="stat-value">1</span></div>
+    <div class="stat-row"><span>Rapor örneklemi</span><span class="stat-value">2</span></div>
+  </div>
+</div>
+
+<div class="spec-note">
+  <strong>📐 Raporlar Spec</strong><br><br>
+  • KPI'lar: Aktif İlanlar, Toplam Başvuru, İşe Alım Süresi, Değerlendirme Güveni<br>
+  • 4 panel: Aşama Dağılımı, Dönüşüm Oranları, İşe Alım Süresi, Görüşme Kalitesi<br>
+  • Basit ve operasyonel — enterprise BI değil<br>
+  • Veri yoksa placeholder (— veya 0) göster, boş bırakma<br>
+  • İleride eklenebilir: İlan bazlı filtreleme, tarih aralığı, kaynak bazlı dönüşüm
+</div>
+
+</body>
+</html>

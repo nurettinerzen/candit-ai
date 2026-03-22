@@ -155,6 +155,12 @@ export const apiClient = {
       body: payload
     });
   },
+  updateJobStatus(jobId: string, status: string) {
+    return request<Job>(`jobs/${jobId}`, {
+      method: "PATCH",
+      body: { status }
+    });
+  },
   generateJobDraft(payload: GenerateJobDraftPayload) {
     return request<JobPostingDraftResponse>("jobs/draft", {
       method: "POST",

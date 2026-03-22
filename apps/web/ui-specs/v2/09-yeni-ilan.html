@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yeni İlan Hazırla — UI/UX Öneri v2</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af;
+    --primary: #7c73fa; --primary-light: rgba(124,115,250,0.12);
+    --success: #34d399; --warn: #f59e0b; --danger: #f87171;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); padding: 28px 36px; max-width: 800px; }
+
+  .breadcrumb { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+  .breadcrumb a { color: var(--primary); text-decoration: none; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .page-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .form-group .hint { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 14px;
+  }
+  .form-group textarea { min-height: 90px; resize: vertical; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .btn { padding: 9px 20px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; font-weight: 500; }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  .btn-success { background: var(--success); border-color: var(--success); color: #fff; font-weight: 600; }
+
+  .nitelik-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .nitelik-row input { flex: 1; }
+  .nitelik-row .remove { color: var(--text-secondary); cursor: pointer; font-size: 18px; padding: 0 6px; }
+
+  .draft-section { margin-top: 28px; border-top: 1px solid var(--border); padding-top: 20px; }
+  .draft-section h2 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .draft-section .desc { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
+  .draft-actions { display: flex; gap: 8px; margin-bottom: 14px; }
+  .draft-output { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; min-height: 160px; font-size: 14px; line-height: 1.7; white-space: pre-wrap; }
+  .draft-output .placeholder { color: var(--text-secondary); font-style: italic; }
+  .form-actions { display: flex; gap: 8px; margin-top: 28px; }
+
+  .issue-box { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+  .issue-box strong { color: var(--danger); }
+  .rec-box { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+  .rec-box strong { color: var(--success); }
+  .rec-box ul, .issue-box ul { margin: 6px 0 0 16px; }
+</style>
+</head>
+<body>
+
+<div class="issue-box">
+  <strong>🔴 Yeni İlan Hazırla — Mevcut Sorunlar:</strong>
+  <ul>
+    <li><b>Form yapısı genel olarak iyi ✓</b> — İlan Başlığı, Departman, Durum, Lokasyon, Maaş, İş Tanımı alanları mevcut.</li>
+    <li><b>"Departman / Birim" alanı teknik</b> — "wrk_demo_ops" placeholder'ı recruiter için anlamsız. "İlgili çalışma alanı" hint'i yeterli değil. Bu alan ya otomatik dolsun ya da dropdown olsun.</li>
+    <li><b>"Nitelik Ekle" bölümü görsel olarak zayıf</b> — Input'lar yan yana sıkışık. Nitelik adı için placeholder "vardiya_uygunlugu" gibi teknik bir key var. "Gece vardiyası uygunluğu" gibi okunabilir örnekler olmalı.</li>
+    <li><b>AI Destekli İlan Taslağı bölümü iyi ✓</b> — Taslak Oluştur + Kopyala + Revizyon Notu akışı doğru.</li>
+    <li><b>"Sil" butonu nitelik satırında kırmızı küçük buton</b> — × yerine çöp kutusu ikonu veya daha belirgin bir kaldırma mekanizması olmalı.</li>
+    <li><b>"Taslağı Kopyala" butonu, taslak yokken bile aktif görünüyor</b> — Taslak oluşturulmadan kopyala butonu disabled olmalı.</li>
+    <li><b>Form validation feedback yok</b> — Boş alanla kaydetmeye çalışınca ne olacağı belirsiz.</li>
+  </ul>
+</div>
+
+<div class="rec-box">
+  <strong>✅ Önerilen İyileştirmeler:</strong>
+  <ul>
+    <li>"Departman / Birim" alanını dropdown veya auto-suggest yap</li>
+    <li>Nitelik placeholder'larını Türkçe okunabilir yap: "Gece vardiyası çalışabilmeli" gibi</li>
+    <li>"Taslağı Kopyala" butonunu taslak oluşturulana kadar disabled tut</li>
+    <li>Form zorunlu alanlarını (*) ile işaretle</li>
+    <li>İlan Başlığı alanında title case uyarısı göster</li>
+  </ul>
+</div>
+
+<!-- ═══ ÖNERİLEN TASARIM ═══ -->
+<div class="breadcrumb"><a href="#">← İlan Merkezi</a></div>
+<h1>Yeni İlan Hazırla</h1>
+<p class="page-desc">Pozisyon bilgilerini girin. AI ile ilan taslağı üretip harici platformlara kopyalayabilirsiniz.</p>
+
+<div class="form-group">
+  <label>İlan Başlığı *</label>
+  <input type="text" placeholder="Depo Operasyon Personeli">
+</div>
+
+<div class="form-group">
+  <label>Departman</label>
+  <input type="text" placeholder="Operasyon">
+  <div class="hint">Örnek: Operasyon, Mağaza, Çağrı Merkezi</div>
+</div>
+
+<div class="form-row">
+  <div class="form-group">
+    <label>Durum</label>
+    <select>
+      <option>Taslak</option>
+      <option>Yayında</option>
+      <option>Arşivlendi</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label>Lokasyon</label>
+    <input type="text" placeholder="İstanbul">
+  </div>
+</div>
+
+<div class="form-row">
+  <div class="form-group">
+    <label>Çalışma Modeli</label>
+    <select>
+      <option>Tam Zamanlı</option>
+      <option>Yarı Zamanlı</option>
+      <option>Vardiyalı</option>
+      <option>Staj</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label>Vardiya Bilgisi</label>
+    <input type="text" placeholder="Gece/gündüz rotasyon">
+  </div>
+</div>
+
+<div class="form-row">
+  <div class="form-group">
+    <label>Maaş Alt Sınır (TRY)</label>
+    <input type="number" placeholder="28000">
+  </div>
+  <div class="form-group">
+    <label>Maaş Üst Sınır (TRY)</label>
+    <input type="number" placeholder="36000">
+  </div>
+</div>
+
+<div class="form-group">
+  <label>İş Tanımı</label>
+  <textarea placeholder="Pozisyonun temel sorumlulukları, beklentiler..."></textarea>
+</div>
+
+<div class="form-group">
+  <label>Aranan Nitelikler</label>
+  <div class="nitelik-row">
+    <input type="text" placeholder="Nitelik (örn: Gece vardiyası uygunluğu)">
+    <input type="text" placeholder="Açıklama (örn: Gece vardiyası çalışabilmeli)">
+    <label style="font-size:11px; white-space:nowrap"><input type="checkbox" checked> Zorunlu</label>
+    <span class="remove">✕</span>
+  </div>
+  <button class="btn" style="font-size:12px; padding:4px 12px">+ Nitelik Ekle</button>
+</div>
+
+<div class="draft-section">
+  <h2>AI Destekli İlan Taslağı</h2>
+  <p class="desc">Form bilgilerine göre AI ilan metni üretir. Kopyalayıp harici platformlara yapıştırabilirsiniz.</p>
+  <div class="draft-actions">
+    <button class="btn-primary">Taslak Oluştur</button>
+    <button class="btn" disabled style="opacity:0.5">Taslağı Kopyala</button>
+  </div>
+  <div class="form-group" style="margin-top:8px">
+    <label style="font-size:12px">Revizyon Notu</label>
+    <textarea style="min-height:50px" placeholder="Beğenmediyseniz: 'Daha kurumsal ton kullan' gibi bir not yazıp yeniden oluşturun."></textarea>
+  </div>
+  <div class="draft-output">
+    <span class="placeholder">Taslak oluşturduğunuzda ilan metni burada görünecek.</span>
+  </div>
+</div>
+
+<div class="form-actions">
+  <button class="btn-primary">İlanı Kaydet</button>
+  <button class="btn">Vazgeç</button>
+</div>
+
+</body>
+</html>

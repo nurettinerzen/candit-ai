@@ -7,6 +7,7 @@ import {
   Post,
   Query
 , Inject} from "@nestjs/common";
+import { ApplicationStage } from "@prisma/client";
 import { Transform } from "class-transformer";
 import { IsArray, IsIn, IsOptional, IsString, MinLength } from "class-validator";
 import { Permissions } from "../../common/decorators/permissions.decorator";
@@ -80,7 +81,7 @@ class BulkApproveInterviewBody {
 }
 
 class QuickActionBody {
-  @IsIn(["shortlist", "reject", "hold", "trigger_screening", "trigger_fit_score", "invite_interview"])
+  @IsIn(["shortlist", "reject", "hold", "trigger_screening", "trigger_fit_score", "invite_interview", "advance"])
   action!: string;
 
   @IsString()
@@ -220,46 +221,33 @@ export class ApplicationsController {
     }
 
     switch (body.action) {
-      case "shortlist":
-        return this.applicationsService.stageTransition({
-          tenantId, applicationId, toStage: "SCREENING", reasonCode: body.reasonCode ?? "shortlisted", changedBy: user.userId, traceId
+      // ── Mülakata Davet Et: Ön Eleme Tamamlandı → AI Mülakat ──
+      case "invite_interview":
+      case "advance":
+      case "shortlist": {
+        const app = await this.applicationsService.getById(tenantId, applicationId);
+        const result = await this.applicationAutomationService.onRecruiterApprovedForInterview({
+          tenantId,
+          applicationId,
+          candidateId: app.candidateId,
+          jobId: app.jobId,
+          requestedBy: user.userId,
+          traceId
         });
+        return { action: body.action, ...result };
+      }
+
+      // ── Reddet: Herhangi bir aşamadan reddedilebilir ──
       case "reject":
         return this.applicationsService.stageTransition({
           tenantId, applicationId, toStage: "REJECTED", reasonCode: body.reasonCode ?? "rejected_by_recruiter", changedBy: user.userId, traceId
         });
-      case "hold": {
-        const app = await this.applicationsService.getById(tenantId, applicationId);
 
-        if (app.currentStage === "RECRUITER_REVIEW") {
-          return { status: "held", action: body.action, applicationId };
-        }
-
-        const transition = await this.applicationsService.stageTransition({
-          tenantId,
-          applicationId,
-          toStage: "RECRUITER_REVIEW",
-          reasonCode: body.reasonCode ?? "held_by_recruiter",
-          changedBy: user.userId,
-          traceId
-        });
-
-        return { status: "held", action: body.action, applicationId, transition };
-      }
+      // ── Legacy actions — backward compatibility ──
+      case "hold":
+        return { status: "ok", action: body.action, applicationId, message: "Beklet aksiyonu kaldırıldı." };
       case "trigger_screening": {
         const app = await this.applicationsService.getById(tenantId, applicationId);
-
-        if (app.currentStage === "APPLIED") {
-          await this.applicationsService.stageTransition({
-            tenantId,
-            applicationId,
-            toStage: "SCREENING",
-            reasonCode: body.reasonCode ?? "screening_triggered_by_recruiter",
-            changedBy: user.userId,
-            traceId
-          });
-        }
-
         const taskRun = await this.aiOrchestrationService.createTaskRun({
           tenantId,
           requestedBy: user.userId,
@@ -272,7 +260,6 @@ export class ApplicationsController {
           traceId,
           input: { triggerSource: "manual" }
         });
-
         return { status: "queued", action: body.action, applicationId, taskRunId: taskRun.taskRunId };
       }
       case "trigger_fit_score": {
@@ -290,18 +277,6 @@ export class ApplicationsController {
           input: { triggerSource: "manual" }
         });
         return { status: "queued", action: body.action, applicationId, taskRunId: taskRun.taskRunId };
-      }
-      case "invite_interview": {
-        const app = await this.applicationsService.getById(tenantId, applicationId);
-        const result = await this.applicationAutomationService.onRecruiterApprovedForInterview({
-          tenantId,
-          applicationId,
-          candidateId: app.candidateId,
-          jobId: app.jobId,
-          requestedBy: user.userId,
-          traceId
-        });
-        return { action: body.action, ...result };
       }
       default:
         return { status: "ok", action: body.action, applicationId };

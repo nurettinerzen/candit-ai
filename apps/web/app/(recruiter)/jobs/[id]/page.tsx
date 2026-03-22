@@ -1,18 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiClient } from "../../../../lib/api-client";
-import { SOURCE_LABELS, STAGE_LABELS, getRecruiterStageMeta } from "../../../../lib/constants";
+import {
+  SOURCE_LABELS,
+  PIPELINE_STAGE_FILTERS,
+  getStageMeta,
+  getStageActions
+} from "../../../../lib/constants";
 import { formatCurrencyTry } from "../../../../lib/format";
-import type { JobInboxReadModel, JobInboxApplicant, QuickActionType, BulkImportCandidate, ApplicationStage } from "../../../../lib/types";
+import type { JobInboxReadModel, JobInboxApplicant, QuickActionType, ApplicationStage } from "../../../../lib/types";
+import { toFitScorePercent } from "../../../../lib/fit-score";
 import { JobStatusChip } from "../../../../components/stage-chip";
 import { QuickActionMenu } from "../../../../components/quick-action-menu";
 import { ApplicantDrawer } from "../../../../components/applicant-drawer";
-import { BulkImportModal } from "../../../../components/bulk-import-modal";
 import { BulkCvUploadModal } from "../../../../components/bulk-cv-upload-modal";
-import { CsvUploadModal } from "../../../../components/csv-upload-modal";
 import { useSiteLanguage } from "../../../../components/site-language-provider";
 import { LoadingState, ErrorState, EmptyState } from "../../../../components/ui-states";
 import type { SiteLocale } from "../../../../lib/i18n";
@@ -41,72 +45,19 @@ function sourceLabel(source: string | null | undefined): string {
   return SOURCE_LABELS[source] ?? source;
 }
 
-function stageTextStyle(
-  stage: ApplicationStage,
-  recruiterDecision?: JobInboxApplicant["recruiterDecision"]
-): { label: string; color: string } {
-  if (stage === "RECRUITER_REVIEW") {
-    return getRecruiterStageMeta(stage, recruiterDecision);
-  }
-
-  switch (stage) {
-    case "APPLIED":
-      return { label: STAGE_LABELS[stage], color: "var(--info-text, #1d4ed8)" };
-    case "SCREENING":
-      return { label: STAGE_LABELS[stage], color: "var(--primary, #5046e5)" };
-    case "INTERVIEW_SCHEDULED":
-      return { label: STAGE_LABELS[stage], color: "var(--warn-text, #92400e)" };
-    case "INTERVIEW_COMPLETED":
-      return { label: STAGE_LABELS[stage], color: "var(--success, #22c55e)" };
-    case "HIRING_MANAGER_REVIEW":
-      return { label: STAGE_LABELS[stage], color: "var(--warn-text, #92400e)" };
-    case "OFFER":
-    case "HIRED":
-      return { label: STAGE_LABELS[stage], color: "var(--success, #22c55e)" };
-    case "REJECTED":
-      return { label: STAGE_LABELS[stage], color: "var(--danger, #ef4444)" };
-    default:
-      return { label: STAGE_LABELS[stage], color: "var(--text-secondary)" };
-  }
+/** Merkezi stage label — her yerde aynı sonucu verir */
+function stageTextStyle(stage: ApplicationStage): { label: string; color: string } {
+  return getStageMeta(stage);
 }
 
-function buildQuickActionMessage(action: QuickActionType, locale: SiteLocale) {
-  const labels =
-    locale === "en"
-      ? {
-          shortlist: "Candidate moved to the screening stage.",
-          reject: "Candidate was rejected.",
-          hold: "Candidate was moved to the hold queue.",
-          triggerScreening: "Screening task has been queued.",
-          triggerFitScore: "Fit score calculation has been queued.",
-          inviteInterview: "Interview invite sent. The candidate can start now or schedule for later.",
-          fallback: "Action completed."
-        }
-      : {
-          shortlist: "Aday ön değerlendirme aşamasına alındı.",
-          reject: "Aday reddedildi.",
-          hold: "Aday recruiter inceleme bekleyenler listesine alındı.",
-          triggerScreening: "Ön eleme görevi kuyruğa alındı.",
-          triggerFitScore: "Uyum skoru hesabı kuyruğa alındı.",
-          inviteInterview: "Görüşme daveti gönderildi. Aday hemen başlayabilir veya daha sonra planlayabilir.",
-          fallback: "İşlem tamamlandı."
-        };
-
+function buildQuickActionMessage(action: QuickActionType) {
   switch (action) {
-    case "shortlist":
-      return labels.shortlist;
-    case "reject":
-      return labels.reject;
-    case "hold":
-      return labels.hold;
-    case "trigger_screening":
-      return labels.triggerScreening;
-    case "trigger_fit_score":
-      return labels.triggerFitScore;
     case "invite_interview":
-      return labels.inviteInterview;
+      return "AI mülakat daveti gönderildi.";
+    case "reject":
+      return "Aday reddedildi.";
     default:
-      return labels.fallback;
+      return "İşlem tamamlandı.";
   }
 }
 
@@ -120,17 +71,48 @@ function buildBulkCvUploadMessage(locale: SiteLocale, queued: number, failedCoun
     (failedCount > 0 ? ` ${failedCount} dosyada hata var.` : "");
 }
 
-function interviewStatusLabel(interview: JobInboxApplicant["interview"]): { text: string; color: string } {
-  if (!interview) return { text: "—", color: "var(--text-secondary)" };
-  switch (interview.status) {
-    case "SCHEDULED": return { text: "📅 Planlandı", color: "var(--primary, #5046e5)" };
-    case "RUNNING": return { text: "🔄 Devam Ediyor", color: "var(--warn, #f59e0b)" };
-    case "COMPLETED": return { text: "✅ Tamamlandı", color: "var(--success, #22c55e)" };
-    case "FAILED": return { text: "❌ Başarısız", color: "var(--danger, #ef4444)" };
-    case "NO_SHOW": return { text: "⚠️ Katılmadı", color: "var(--warn, #f59e0b)" };
-    case "CANCELLED": return { text: "🚫 İptal", color: "var(--text-secondary)" };
-    default: return { text: "—", color: "var(--text-secondary)" };
+function normalizeSignalText(text: string) {
+  return text.replace(/\s+/g, " ").replace(/[.:;,]+$/g, "").trim();
+}
+
+function signalTokens(text: string) {
+  const ignored = new Set([
+    "aday",
+    "bilgi",
+    "bilgisi",
+    "eksik",
+    "risk",
+    "uyari",
+    "uyarisi",
+    "kritik",
+    "durumu",
+    "ve",
+    "ile",
+    "icin",
+    "olan",
+    "yok",
+    "teyit",
+    "gerekiyor"
+  ]);
+
+  return [...new Set(
+    text
+      .toLocaleLowerCase("tr-TR")
+      .split(/[^a-z0-9çğıöşü]+/i)
+      .filter((token) => token.length > 2 && !ignored.has(token))
+  )];
+}
+
+function overlapsMissingInformation(risk: string, missingInfo: string[]) {
+  const riskWords = signalTokens(risk);
+  if (riskWords.length === 0) {
+    return false;
   }
+
+  return missingInfo.some((item) => {
+    const overlap = riskWords.filter((token) => signalTokens(item).includes(token));
+    return overlap.length >= Math.min(2, riskWords.length);
+  });
 }
 
 function riskSummary(applicant: JobInboxApplicant): { count: number; tags: string[] } {
@@ -138,122 +120,33 @@ function riskSummary(applicant: JobInboxApplicant): { count: number; tags: strin
   if (!applicant.cvStatus.hasCv) tags.push("CV Yok");
   else if (!applicant.cvStatus.isParsed) tags.push("CV İşlenmedi");
   if (applicant.fitScore) {
-    if (applicant.fitScore.missingInfo.length > 0) tags.push(`${applicant.fitScore.missingInfo.length} Eksik Bilgi`);
-    if (applicant.fitScore.risks.length > 0) tags.push(`${applicant.fitScore.risks.length} Risk`);
+    const missingInfo = [...new Set(applicant.fitScore.missingInfo.map(normalizeSignalText).filter(Boolean))];
+    const risks = [...new Set(applicant.fitScore.risks.map(normalizeSignalText).filter(Boolean))]
+      .filter((item) => !overlapsMissingInformation(item, missingInfo));
+    if (missingInfo.length > 0) tags.push(`${missingInfo.length} Eksik Bilgi`);
+    if (risks.length > 0) tags.push(`${risks.length} Uyarı`);
   }
   return { count: tags.length, tags };
 }
 
-function nextAction(a: JobInboxApplicant): { label: string; urgency: "high" | "medium" | "low" | "done" } {
-  const stage = a.stage as ApplicationStage;
-  switch (stage) {
-    case "APPLIED":
-      return a.screening
-        ? { label: "Değerlendir", urgency: "medium" }
-        : { label: "Ön Eleme Başlat", urgency: "high" };
-    case "SCREENING":
-      return { label: "Görüşmeye Davet Et", urgency: "medium" };
-    case "INTERVIEW_SCHEDULED":
-      if (!a.interview) return { label: "Randevu Bekliyor", urgency: "low" };
-      if (a.interview.status === "SCHEDULED") return { label: "Görüşme Bekliyor", urgency: "low" };
-      if (a.interview.status === "RUNNING") return { label: "Görüşme Devam", urgency: "low" };
-      return { label: "—", urgency: "low" };
-    case "INTERVIEW_COMPLETED":
-      return { label: "Sonuçları İncele", urgency: "high" };
-    case "RECRUITER_REVIEW":
-      return { label: "Karar Ver", urgency: "high" };
-    case "OFFER":
-    case "HIRED":
-    case "REJECTED":
-      return { label: "Tamamlandı", urgency: "done" };
-    default:
-      return { label: "—", urgency: "low" };
-  }
+/** Ön eleme tamamlanmış, recruiter'ın karar vermesi beklenen adaylar */
+function needsAttention(a: JobInboxApplicant): boolean {
+  return a.stage === "RECRUITER_REVIEW";
 }
 
 /* ── stage pills ── */
 
-type StagePill = { label: string; value: string; icon?: string };
+type StagePill = { label: string; value: string };
 
 const STAGE_PILLS: StagePill[] = [
   { label: "Tümü", value: "" },
-  { label: "Başvurdu", value: "APPLIED", icon: "📥" },
-  { label: "Ön Eleme", value: "SCREENING", icon: "🔍" },
-  { label: "Görüşme", value: "INTERVIEW_SCHEDULED", icon: "🎙️" },
-  { label: "İnceleme", value: "RECRUITER_REVIEW", icon: "📋" },
-  { label: "Teklif / Sonuç", value: "OFFER", icon: "✅" },
+  ...PIPELINE_STAGE_FILTERS.map((status) => ({
+    label: status.label,
+    value: status.value
+  }))
 ];
 
-/* ── pipeline mini chart ── */
-
-function PipelineBar({ stats }: { stats: JobInboxReadModel["stats"] }) {
-  const stages: { key: string; label: string; color: string }[] = [
-    { key: "APPLIED", label: "Başvuru", color: "var(--text-secondary)" },
-    { key: "SCREENING", label: "Ön Eleme", color: "var(--primary, #5046e5)" },
-    { key: "INTERVIEW_SCHEDULED", label: "Görüşme", color: "var(--warn, #f59e0b)" },
-    { key: "INTERVIEW_COMPLETED", label: "Tamamlandı", color: "var(--success, #22c55e)" },
-    { key: "RECRUITER_REVIEW", label: "İnceleme", color: "var(--primary, #5046e5)" },
-    { key: "OFFER", label: "Teklif", color: "var(--success, #22c55e)" },
-    { key: "HIRED", label: "İşe Alım", color: "var(--success, #22c55e)" },
-    { key: "REJECTED", label: "Red", color: "var(--danger, #ef4444)" },
-  ];
-
-  const total = stats.totalApplicants || 1;
-
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", gap: 1 }}>
-        {stages.map((s) => {
-          const count = stats.byStage?.[s.key] ?? 0;
-          if (count === 0) return null;
-          const pct = (count / total) * 100;
-          return (
-            <div
-              key={s.key}
-              title={`${s.label}: ${count}`}
-              style={{ width: `${pct}%`, minWidth: count > 0 ? 4 : 0, background: s.color, borderRadius: 2 }}
-            />
-          );
-        })}
-      </div>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
-        {stages.map((s) => {
-          const count = stats.byStage?.[s.key] ?? 0;
-          if (count === 0) return null;
-          return (
-            <span key={s.key} className="text-xs" style={{ color: "var(--text-secondary)" }}>
-              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: s.color, marginRight: 4, verticalAlign: "middle" }} />
-              {s.label} {count}
-            </span>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 /* ── urgency badge ── */
-
-function UrgencyBadge({ urgency }: { urgency: "high" | "medium" | "low" | "done" }) {
-  const styles = {
-    high: { bg: "var(--danger-light, #fef2f2)", color: "var(--danger, #ef4444)" },
-    medium: { bg: "var(--warn-light, #fffbeb)", color: "var(--warn-text, #92400e)" },
-    low: { bg: "var(--surface-muted, #f3f4f6)", color: "var(--text-secondary)" },
-    done: { bg: "var(--success-light, #f0fdf4)", color: "var(--success, #22c55e)" },
-  };
-  const s = styles[urgency];
-  return (
-    <span style={{
-      display: "inline-block",
-      width: 8,
-      height: 8,
-      borderRadius: "50%",
-      background: s.color,
-      marginRight: 6,
-      verticalAlign: "middle",
-    }} />
-  );
-}
 
 /* ── page ── */
 
@@ -275,9 +168,7 @@ export default function JobDetailPage() {
 
   // Modals & drawers
   const [selectedApplicant, setSelectedApplicant] = useState<JobInboxApplicant | null>(null);
-  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [bulkCvUploadOpen, setBulkCvUploadOpen] = useState(false);
-  const [csvUploadOpen, setCsvUploadOpen] = useState(false);
 
   // Bulk selection for interview approval
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -286,72 +177,182 @@ export default function JobDetailPage() {
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ applicant: JobInboxApplicant; action: QuickActionType } | null>(null);
+  const [pendingAutomationIds, setPendingAutomationIds] = useState<string[]>([]);
+  const hasLoadedInboxRef = useRef(false);
 
   // Job info panel toggle
   const [showJobInfo, setShowJobInfo] = useState(false);
 
-  const loadInbox = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const fetchInbox = useCallback(async (options?: {
+    silent?: boolean;
+    bypassFilters?: boolean;
+    updateState?: boolean;
+  }) => {
+    if (!options?.silent) {
+      setLoading(true);
+      setError("");
+    }
+
     try {
       const result = await apiClient.getJobInbox(jobId, {
-        stage: stageFilter || undefined,
-        source: sourceFilter || undefined,
-        minFitScore: minFitScore ? Number(minFitScore) / 100 : undefined,
-        sortBy: sortBy || undefined
+        source: options?.bypassFilters ? undefined : sourceFilter || undefined,
+        minFitScore: options?.bypassFilters ? undefined : minFitScore ? Number(minFitScore) : undefined,
+        sortBy: options?.bypassFilters ? undefined : sortBy || undefined
       });
-      setData(result);
+      if (options?.updateState !== false) {
+        setData(result);
+      }
+      return result;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Veri yüklenemedi.");
+      if (!options?.silent) {
+        setError(e instanceof Error ? e.message : "Veri yüklenemedi.");
+      }
+      return null;
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
-  }, [jobId, stageFilter, sourceFilter, minFitScore, sortBy]);
+  }, [jobId, sourceFilter, minFitScore, sortBy]);
+
+  const loadInbox = useCallback(async (options?: { silent?: boolean }) => {
+    return fetchInbox({
+      silent: options?.silent,
+      updateState: true
+    });
+  }, [fetchInbox]);
 
   useEffect(() => {
-    void loadInbox();
+    const silent = hasLoadedInboxRef.current;
+    void loadInbox({ silent });
+    hasLoadedInboxRef.current = true;
   }, [loadInbox]);
+
+  useEffect(() => {
+    if (pendingAutomationIds.length === 0) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+    let timeoutId: number | undefined;
+    const maxAttempts = 120;
+
+    const poll = async () => {
+      const progressSnapshot = await fetchInbox({
+        silent: true,
+        bypassFilters: true,
+        updateState: false
+      });
+
+      if (cancelled) {
+        return;
+      }
+
+      attempts += 1;
+
+      if (!progressSnapshot) {
+        if (attempts >= maxAttempts) {
+          setPendingAutomationIds([]);
+          setActionError("Otomatik güncelleme zaman aşımına uğradı. Süreç arka planda devam ediyor olabilir.");
+          return;
+        }
+
+        timeoutId = window.setTimeout(poll, 3000);
+        return;
+      }
+
+      const unresolved = pendingAutomationIds.filter((applicationId) => {
+        const applicant = progressSnapshot.applicants.find((item) => item.applicationId === applicationId);
+        if (!applicant) {
+          return true;
+        }
+
+        return !applicant.cvStatus.isParsed || !applicant.screening || applicant.screening.status !== "SUCCEEDED" || !applicant.fitScore;
+      });
+
+      await loadInbox({ silent: true });
+
+      if (cancelled) {
+        return;
+      }
+
+      if (unresolved.length === 0) {
+        setPendingAutomationIds([]);
+        setActionError("");
+        setActionMessage((current) =>
+          current
+            ? `${current} Otomatik değerlendirme sonuçları da güncellendi.`
+            : "Otomatik değerlendirme sonuçları güncellendi."
+        );
+        return;
+      }
+
+      if (attempts >= maxAttempts) {
+        setPendingAutomationIds([]);
+        setActionError("Bazı adayların son durumu ekrana geç yansıdı. Sayfa arka planda tekrar güncellenebilir.");
+        return;
+      }
+
+      timeoutId = window.setTimeout(poll, 3000);
+    };
+
+    timeoutId = window.setTimeout(poll, 2500);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [pendingAutomationIds, fetchInbox, loadInbox]);
 
   // Client-side search filter
   const filteredApplicants = useMemo(() => {
     const all = data?.applicants ?? [];
-    if (!searchQuery.trim()) return all;
-    const q = searchQuery.toLowerCase();
-    return all.filter((a) =>
-      a.fullName.toLowerCase().includes(q) ||
-      (a.email && a.email.toLowerCase().includes(q)) ||
-      (a.phone && a.phone.includes(q))
-    );
-  }, [data?.applicants, searchQuery]);
+    return all.filter((a) => {
+      if (stageFilter) {
+        if (a.stage !== stageFilter) {
+          return false;
+        }
+      }
 
-  const handleQuickAction = async (applicant: JobInboxApplicant, action: QuickActionType) => {
+      if (!searchQuery.trim()) {
+        return true;
+      }
+
+      const q = searchQuery.toLowerCase();
+      return (
+        a.fullName.toLowerCase().includes(q) ||
+        (a.email && a.email.toLowerCase().includes(q)) ||
+        (a.phone && a.phone.includes(q))
+      );
+    });
+  }, [data?.applicants, searchQuery, stageFilter]);
+
+  const handleQuickAction = (applicant: JobInboxApplicant, action: QuickActionType) => {
+    // Her aksiyon onay gerektirir
+    setConfirmDialog({ applicant, action });
+  };
+
+  const executeAction = async () => {
+    if (!confirmDialog) return;
+    const { applicant, action } = confirmDialog;
+    setConfirmDialog(null);
     setActionMessage("");
     setActionError("");
     setActionLoadingId(applicant.applicationId);
 
     try {
       await apiClient.quickAction(applicant.applicationId, { action });
-      setActionMessage(buildQuickActionMessage(action, locale));
-      void loadInbox();
-
-      if (action === "trigger_screening" || action === "trigger_fit_score") {
-        setTimeout(() => void loadInbox(), 4000);
-      }
+      setActionMessage(buildQuickActionMessage(action));
+      await loadInbox({ silent: true });
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "İşlem tamamlanamadı.");
     } finally {
       setActionLoadingId(null);
     }
-  };
-
-  const handleBulkImport = async (candidates: BulkImportCandidate[], source: string, externalSource?: string) => {
-    await apiClient.bulkImportApplicants(jobId, { candidates, source, externalSource });
-    void loadInbox();
-  };
-
-  const handleCsvImport = async (candidates: BulkImportCandidate[], source: string) => {
-    await apiClient.bulkImportApplicants(jobId, { candidates, source });
-    void loadInbox();
   };
 
   const handleBulkCvUpload = async (files: File[], source: string, externalSource?: string) => {
@@ -374,8 +375,11 @@ export default function JobDetailPage() {
     );
     setActionMessage(buildBulkCvUploadMessage(locale, queued, failed.length));
     void loadInbox();
-    setTimeout(() => void loadInbox(), 4000);
-    setTimeout(() => void loadInbox(), 10000);
+    setPendingAutomationIds(
+      result.items
+        .map((item) => item.applicationId)
+        .filter((applicationId): applicationId is string => Boolean(applicationId))
+    );
   };
 
   const toggleSelect = (appId: string) => {
@@ -415,25 +419,34 @@ export default function JobDetailPage() {
   const job = data?.job;
   const stats = data?.stats;
 
-  // Counts for urgent items
-  const urgentCount = useMemo(() => {
+  // Recruiter'ın karar vermesi gereken adaylar (Ön Eleme Tamamlandı)
+  const attentionCount = useMemo(() => {
     const all = data?.applicants ?? [];
-    return all.filter((a) => nextAction(a).urgency === "high").length;
+    return all.filter((a) => needsAttention(a)).length;
+  }, [data?.applicants]);
+
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const applicant of data?.applicants ?? []) {
+      const stage = applicant.stage as string;
+      counts[stage] = (counts[stage] ?? 0) + 1;
+    }
+    return counts;
   }, [data?.applicants]);
 
   return (
     <div className="page-grid">
       {/* ── Command Center Header ── */}
-      <section className="panel">
-        <div className="section-head">
-          <div>
-            <Link href="/jobs" className="text-muted text-sm" style={{ textDecoration: "none" }}>
+      <section className="panel job-detail-hero">
+        <div className="section-head job-detail-hero-head">
+          <div className="job-detail-hero-main">
+            <Link href="/jobs" className="text-muted text-sm job-detail-backlink" style={{ textDecoration: "none" }}>
               ← İlan Merkezi
             </Link>
             {job && (
               <>
-                <h2 style={{ marginBottom: 4, marginTop: 8 }}>{job.title}</h2>
-                <div className="drawer-meta" style={{ gap: 8 }}>
+                <h2 className="job-detail-title">{job.title}</h2>
+                <div className="drawer-meta job-detail-meta-row" style={{ gap: 8 }}>
                   <JobStatusChip status={job.status} />
                   {job.locationText && <span className="text-sm">{job.locationText}</span>}
                   {job.shiftType && <span className="text-sm">{job.shiftType}</span>}
@@ -452,8 +465,48 @@ export default function JobDetailPage() {
               </>
             )}
           </div>
-          <div className="row-actions">
-            <button type="button" className="ghost-button" onClick={() => void loadInbox()}>Yenile</button>
+          <div className="row-actions job-detail-hero-actions" style={{ gap: 8 }}>
+            {job && job.status === "PUBLISHED" && (
+              <button
+                type="button"
+                className="ghost-button"
+                style={{ fontSize: 12, color: "var(--warn, #f59e0b)" }}
+                onClick={async () => {
+                  if (!confirm("İlan arşivlenecek ve yeni başvuru kabul edilmeyecek. Onaylıyor musunuz?")) return;
+                  await apiClient.updateJobStatus(jobId, "ARCHIVED");
+                  void loadInbox({ silent: true });
+                }}
+              >
+                Arşivle
+              </button>
+            )}
+            {job && job.status === "ARCHIVED" && (
+              <button
+                type="button"
+                className="ghost-button"
+                style={{ fontSize: 12, color: "var(--success, #22c55e)" }}
+                onClick={async () => {
+                  await apiClient.updateJobStatus(jobId, "PUBLISHED");
+                  void loadInbox({ silent: true });
+                }}
+              >
+                Tekrar Yayınla
+              </button>
+            )}
+            {job && job.status === "DRAFT" && (
+              <button
+                type="button"
+                className="ghost-button"
+                style={{ fontSize: 12, color: "var(--success, #22c55e)" }}
+                onClick={async () => {
+                  await apiClient.updateJobStatus(jobId, "PUBLISHED");
+                  void loadInbox({ silent: true });
+                }}
+              >
+                Yayınla
+              </button>
+            )}
+            <button type="button" className="ghost-button job-detail-refresh-button" onClick={() => void loadInbox({ silent: true })}>Yenile</button>
           </div>
         </div>
 
@@ -510,30 +563,22 @@ export default function JobDetailPage() {
             </article>
             <article className="kpi-card">
               <p className="small">Ort. Uyum Skoru</p>
-              <p className="kpi-value">{stats.avgFitScore != null ? `%${stats.avgFitScore}` : "—"}</p>
+              <p className="kpi-value">{stats.avgFitScore != null ? `${stats.avgFitScore}%` : "—"}</p>
             </article>
             <article className="kpi-card">
-              <p className="small" style={{ color: urgentCount > 0 ? "var(--danger, #ef4444)" : undefined }}>
-                İşlem Bekliyor
+              <p className="small" style={{ color: attentionCount > 0 ? "var(--warn, #f59e0b)" : undefined }}>
+                Karar Bekleyen
               </p>
-              <p className="kpi-value" style={{ color: urgentCount > 0 ? "var(--danger, #ef4444)" : undefined }}>
-                {urgentCount}
+              <p className="kpi-value" style={{ color: attentionCount > 0 ? "var(--warn, #f59e0b)" : undefined }}>
+                {attentionCount}
               </p>
             </article>
           </div>
 
-          {/* ── Pipeline Bar ── */}
-          <section className="panel">
-            <div className="section-head">
-              <strong style={{ fontSize: 14 }}>Aday Akışı</strong>
-            </div>
-            <PipelineBar stats={stats} />
-          </section>
-
           {/* ── Toolbar: Search + Filters + Actions ── */}
-          <section className="panel">
+          <section className="panel applicant-toolbar-panel">
             {/* Stage pills */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+            <div className="stage-filter-row">
               {STAGE_PILLS.map((pill) => {
                 const isActive = stageFilter === pill.value;
                 return (
@@ -541,21 +586,11 @@ export default function JobDetailPage() {
                     key={pill.value}
                     type="button"
                     onClick={() => setStageFilter(pill.value)}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: 999,
-                      fontSize: 13,
-                      fontWeight: isActive ? 600 : 400,
-                      cursor: "pointer",
-                      border: isActive ? "1px solid var(--primary-border)" : "1px solid var(--border)",
-                      background: isActive ? "var(--primary-light)" : "var(--surface)",
-                      color: isActive ? "var(--primary)" : "var(--text-secondary)",
-                    }}
+                    className={`stage-filter-pill${isActive ? " is-active" : ""}`}
                   >
-                    {pill.icon && <span style={{ marginRight: 4 }}>{pill.icon}</span>}
                     {pill.label}
-                    {pill.value && stats.byStage?.[pill.value] != null && (
-                      <span style={{ marginLeft: 6, opacity: 0.7 }}>({stats.byStage[pill.value]})</span>
+                    {pill.value && stageCounts[pill.value] != null && (
+                      <span style={{ marginLeft: 6, opacity: 0.7 }}>({stageCounts[pill.value]})</span>
                     )}
                   </button>
                 );
@@ -563,53 +598,40 @@ export default function JobDetailPage() {
             </div>
 
             {/* Search + filter row */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+            <div className="applicant-filter-compact-row">
               <input
-                className="form-input"
+                className="form-input applicant-filter-search"
                 type="text"
-                placeholder="Aday ara (ad, e-posta, telefon)..."
+                placeholder="Aday adı, e-posta veya telefon ara"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ flex: 1, minWidth: 200, maxWidth: 320, fontSize: 13 }}
               />
-              <select className="form-select" value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} style={{ fontSize: 13 }}>
+              <select className="form-select applicant-filter-source" value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}>
                 <option value="">Tüm Kaynaklar</option>
                 {Object.entries(SOURCE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
               <input
-                className="form-input"
+                className="form-input applicant-filter-score"
                 type="number"
-                placeholder="Min skor"
+                placeholder="Minimum skor"
                 min={0}
                 max={100}
                 value={minFitScore}
                 onChange={(e) => setMinFitScore(e.target.value)}
-                style={{ width: 90, fontSize: 13 }}
               />
-              <select className="form-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ fontSize: 13 }}>
+              <select className="form-select applicant-filter-sort" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
                 <option value="">Sıralama</option>
                 <option value="fitScore_desc">Skor ↓</option>
                 <option value="fitScore_asc">Skor ↑</option>
                 <option value="appliedAt_desc">Tarih (Yeni)</option>
                 <option value="appliedAt_asc">Tarih (Eski)</option>
               </select>
-            </div>
-
-            {/* Action bar */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <button className="button-link" style={{ fontSize: 13, padding: "6px 16px" }} onClick={() => setBulkCvUploadOpen(true)}>
+              <button className="button-link applicant-filter-upload-btn" onClick={() => setBulkCvUploadOpen(true)}>
                 {locale === "en" ? "Upload CV" : "CV Yükle"}
-              </button>
-              <button className="button-link" style={{ fontSize: 13, padding: "6px 16px" }} onClick={() => setBulkImportOpen(true)}>
-                Toplu Aday Ekle
-              </button>
-              <button className="ghost-button" style={{ fontSize: 13, padding: "6px 16px" }} onClick={() => setCsvUploadOpen(true)}>
-                CSV Yükle
               </button>
               {selectedIds.size > 0 && (
                 <button
-                  className="button-link"
-                  style={{ fontSize: 13, padding: "6px 16px" }}
+                  className="button-link applicant-filter-bulk-btn"
                   onClick={() => void handleBulkApproveInterview()}
                   disabled={bulkApproving}
                 >
@@ -621,7 +643,7 @@ export default function JobDetailPage() {
                   {bulkResult.ok} başarılı{bulkResult.fail > 0 ? `, ${bulkResult.fail} hata` : ""}
                 </span>
               )}
-              <span className="text-xs text-muted" style={{ marginLeft: "auto" }}>
+              <span className="text-xs text-muted applicant-toolbar-count compact">
                 {filteredApplicants.length !== stats.totalApplicants
                   ? `${filteredApplicants.length} / ${stats.totalApplicants} aday gösteriliyor`
                   : `${filteredApplicants.length} aday gösteriliyor`}
@@ -646,137 +668,142 @@ export default function JobDetailPage() {
           </section>
 
           {/* ── Applicant Inbox Table ── */}
-          <section className="panel">
-            {filteredApplicants.length === 0 ? (
-              <EmptyState message={searchQuery ? "Aramayla eşleşen aday bulunamadı." : "Bu ilana henüz aday başvurusu yok."} />
-            ) : (
-              <div className="table-responsive">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 32 }} onClick={(e) => e.stopPropagation()}>
-                        <input type="checkbox" checked={selectedIds.size === filteredApplicants.length && filteredApplicants.length > 0} onChange={toggleSelectAll} />
-                      </th>
-                      <th>Aday</th>
-                      <th>Kaynak</th>
-                      <th>Uyum Skoru</th>
-                      <th>Uyarılar</th>
-                      <th>Durum</th>
-                      <th>Görüşme</th>
-                      <th>Sonraki Adım</th>
-                      <th>İşlem</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredApplicants.map((a) => {
-                      const fit = a.fitScore;
-                      const fitPct = fit ? Math.round(fit.overallScore * 100) : null;
-                      const band = fitPct != null ? fitBandLabel(fitPct) : null;
-                      const risk = riskSummary(a);
-                      const action = nextAction(a);
-                      const iv = interviewStatusLabel(a.interview);
+          <section className="panel applicant-table-panel">
+            <div className="applicant-table-shell">
+              {filteredApplicants.length === 0 ? (
+                <EmptyState message={searchQuery ? "Aramayla eşleşen aday bulunamadı." : "Bu ilana henüz aday başvurusu yok."} />
+              ) : (
+                <div className="table-responsive applicant-table-responsive">
+                  <table className="table applicant-inbox-table">
+                    <colgroup>
+                      <col style={{ width: 40 }} />
+                      <col style={{ width: 240 }} />
+                      <col style={{ width: 92 }} />
+                      <col style={{ width: 132 }} />
+                      <col style={{ width: 138 }} />
+                      <col style={{ width: 120 }} />
+                      <col style={{ width: 74 }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 40 }} onClick={(e) => e.stopPropagation()}>
+                          <input type="checkbox" checked={selectedIds.size === filteredApplicants.length && filteredApplicants.length > 0} onChange={toggleSelectAll} />
+                        </th>
+                        <th>Aday</th>
+                        <th>Kaynak</th>
+                        <th>Uyum Skoru</th>
+                        <th>Eksik / Uyarı</th>
+                        <th>Aşama</th>
+                        <th>İşlem</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredApplicants.map((a) => {
+                        const fit = a.fitScore;
+                        const fitPct = toFitScorePercent(fit?.overallScore);
+                        const band = fitPct != null ? fitBandLabel(fitPct) : null;
+                        const risk = riskSummary(a);
+                        const attention = needsAttention(a);
 
-                      return (
-                        <tr
-                          key={a.applicationId}
-                          className="clickable-row"
-                          onClick={() => setSelectedApplicant(a)}
-                          style={{
-                            borderLeft: action.urgency === "high" ? "3px solid var(--danger, #ef4444)" : undefined,
-                          }}
-                        >
-                          <td onClick={(e) => e.stopPropagation()}>
-                            <input type="checkbox" checked={selectedIds.has(a.applicationId)} onChange={() => toggleSelect(a.applicationId)} />
-                          </td>
-                          <td>
-                            <div>
-                              <strong style={{ fontSize: 14 }}>{a.fullName}</strong>
-                              {a.locationText && <span className="text-muted text-xs" style={{ marginLeft: 6 }}>{a.locationText}</span>}
-                            </div>
-                            <div className="text-xs text-muted" style={{ marginTop: 2 }}>
-                              {a.email ?? ""}{a.email && a.phone ? " · " : ""}{a.phone ?? ""}
-                            </div>
-                          </td>
-                          <td>
-                            <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                              {sourceLabel(a.source)}
-                            </span>
-                          </td>
-                          <td>
-                            {fitPct != null && band ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <div style={{
-                                  width: 40, height: 40, borderRadius: "50%",
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                  fontWeight: 700, fontSize: 13,
-                                  background: `color-mix(in srgb, ${fitBandColor(fitPct)} 15%, transparent)`,
-                                  color: fitBandColor(fitPct),
-                                  border: `2px solid ${fitBandColor(fitPct)}`,
-                                }}>
-                                  {fitPct}
+                        return (
+                          <tr
+                            key={a.applicationId}
+                            className="clickable-row"
+                            onClick={() => setSelectedApplicant(a)}
+                            style={{
+                              borderLeft: attention ? "3px solid var(--warn, #f59e0b)" : undefined,
+                            }}
+                          >
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <input type="checkbox" checked={selectedIds.has(a.applicationId)} onChange={() => toggleSelect(a.applicationId)} />
+                            </td>
+                            <td>
+                              <div className="candidate-identity">
+                                <div className="candidate-name-row">
+                                  <strong style={{ fontSize: 14 }}>{a.fullName}</strong>
+                                  {a.locationText && <span className="candidate-location">{a.locationText}</span>}
                                 </div>
-                                <span className="text-xs" style={{ fontWeight: 600, color: fitBandColor(fitPct) }}>
-                                  {band.text}
-                                </span>
+                                <div className="candidate-contact-line">
+                                  {a.email ?? "—"}
+                                </div>
+                                <div className="candidate-contact-line">
+                                  {a.phone ?? "—"}
+                                </div>
                               </div>
-                            ) : (
-                              <span className="text-muted text-sm">—</span>
-                            )}
-                          </td>
-                          <td>
-                            {risk.count > 0 ? (
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                            {risk.tags.map((tag, index) => (
-                                  <span
-                                    key={tag}
-                                    style={{
-                                      color: "var(--danger, #ef4444)",
-                                      fontSize: 12,
-                                      fontWeight: 600,
-                                      whiteSpace: "nowrap",
-                                    }}
-                                  >
-                                    {tag}{index < risk.tags.length - 1 ? " ·" : ""}
+                            </td>
+                            <td>
+                              <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                                {sourceLabel(a.source)}
+                              </span>
+                            </td>
+                            <td>
+                              {fitPct != null && band ? (
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <div style={{
+                                    width: 40, height: 40, borderRadius: "50%",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    fontWeight: 700, fontSize: 13,
+                                    background: `color-mix(in srgb, ${fitBandColor(fitPct)} 15%, transparent)`,
+                                    color: fitBandColor(fitPct),
+                                    border: `2px solid ${fitBandColor(fitPct)}`,
+                                  }}>
+                                    {fitPct}
+                                  </div>
+                                  <span className="text-xs" style={{ fontWeight: 600, color: fitBandColor(fitPct) }}>
+                                    {band.text}
                                   </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-muted text-sm">—</span>
-                            )}
-                          </td>
-                          <td>
-                            <span
-                              className="text-sm"
-                              style={{
-                                color: stageTextStyle(a.stage as ApplicationStage, a.recruiterDecision).color,
-                                fontWeight: 600
-                              }}
-                            >
-                              {stageTextStyle(a.stage as ApplicationStage, a.recruiterDecision).label}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="text-sm" style={{ color: iv.color }}>{iv.text}</span>
-                          </td>
-                          <td>
-                            <span className="text-sm" style={{ whiteSpace: "nowrap" }}>
-                              <UrgencyBadge urgency={action.urgency} />
-                              {action.label}
-                            </span>
-                          </td>
-                          <td onClick={(e) => e.stopPropagation()}>
-                            <QuickActionMenu
-                              onAction={(act) => handleQuickAction(a, act)}
-                              disabled={actionLoadingId === a.applicationId}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                                </div>
+                              ) : (
+                                <span className="text-muted text-sm">—</span>
+                              )}
+                            </td>
+                            <td>
+                              {risk.count > 0 ? (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                  {risk.tags.map((tag, index) => (
+                                    <span
+                                      key={tag}
+                                      style={{
+                                        color: "var(--danger, #ef4444)",
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        whiteSpace: "nowrap",
+                                      }}
+                                    >
+                                      {tag}{index < risk.tags.length - 1 ? " ·" : ""}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-muted text-sm">—</span>
+                              )}
+                            </td>
+                            <td>
+                              <span
+                                className="text-sm"
+                                style={{
+                                  color: stageTextStyle(a.stage as ApplicationStage).color,
+                                  fontWeight: 600
+                                }}
+                              >
+                                {stageTextStyle(a.stage as ApplicationStage).label}
+                              </span>
+                            </td>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <QuickActionMenu
+                                stage={a.stage as ApplicationStage}
+                                onAction={(act) => handleQuickAction(a, act)}
+                                disabled={actionLoadingId === a.applicationId}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </section>
         </>
       )}
@@ -792,21 +819,45 @@ export default function JobDetailPage() {
       />
 
       {/* Modals */}
-      <BulkImportModal
-        open={bulkImportOpen}
-        onClose={() => setBulkImportOpen(false)}
-        onSubmit={handleBulkImport}
-      />
       <BulkCvUploadModal
         open={bulkCvUploadOpen}
         onClose={() => setBulkCvUploadOpen(false)}
         onSubmit={handleBulkCvUpload}
       />
-      <CsvUploadModal
-        open={csvUploadOpen}
-        onClose={() => setCsvUploadOpen(false)}
-        onSubmit={handleCsvImport}
-      />
+
+      {/* Onay Diyaloğu */}
+      {confirmDialog && (
+        <div className="confirm-overlay" onClick={() => setConfirmDialog(null)}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <p className="confirm-title">
+              {confirmDialog.action === "invite_interview"
+                ? "Mülakata Davet Et"
+                : "Adayı Reddet"}
+            </p>
+            <p className="confirm-body">
+              {confirmDialog.action === "invite_interview"
+                ? `${confirmDialog.applicant.fullName} adayına AI mülakat daveti gönderilecek.`
+                : `${confirmDialog.applicant.fullName} adayı reddedilecek.`}
+            </p>
+            <div className="confirm-actions">
+              <button
+                type="button"
+                className="confirm-btn confirm-btn-cancel"
+                onClick={() => setConfirmDialog(null)}
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                className={`confirm-btn ${confirmDialog.action === "reject" ? "confirm-btn-danger" : "confirm-btn-primary"}`}
+                onClick={() => void executeAction()}
+              >
+                {confirmDialog.action === "invite_interview" ? "Evet, Davet Gönder" : "Evet, Reddet"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

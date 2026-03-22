@@ -96,7 +96,7 @@ export class ScreeningSupportTaskService {
       promptVersion,
       preferProviderKey: context.taskRun.providerKey,
       systemPrompt:
-        "Turkce ve denetlenebilir recruiter screening destegi uret. Nihai karar verme, sadece destekleyici not, flag ve eksik bilgi cikar.",
+        "Turkce ve denetlenebilir recruiter screening destegi uret. Nihai karar verme, sadece destekleyici not, flag, risk ve eksik bilgi cikar. Eksik bilgiyi risk diye tekrar yazma.",
       userPrompt: JSON.stringify({
         task: "SCREENING_SUPPORT",
         locale: "tr-TR",
@@ -128,6 +128,7 @@ export class ScreeningSupportTaskService {
         instructions: [
           "facts/interpretation/recommendation ayrimini koru",
           "missingInformation, recruiter'in tamamlayabilecegi acik maddeler olsun",
+          "Risk yalnizca somut uyumsuzluk veya negatif sinyal olsun; belirsizlik ve eksik bilgiyi risk listesine tasima",
           "recommendedOutcome alaninda REJECT kullanma"
         ]
       })
@@ -364,10 +365,13 @@ export class ScreeningSupportTaskService {
     const strengths = input.sections.facts.slice(0, 5);
     const risks = [
       ...input.sections.flags
-        .filter((flag) => flag.severity !== "low")
+        .filter((flag) =>
+          flag.severity === "high"
+          || /uyumsuz|yetersiz|risk|sinirli|tutarsiz/i.test(flag.note)
+        )
         .map((flag) => `${flag.code}: ${flag.note}`),
       ...input.sections.interpretation
-        .filter((line) => /risk|eksik|belirsiz|teyit|dogrula/i.test(line))
+        .filter((line) => /uyumsuz|yetersiz|sinirli|zayif|risk|kritik|tutarsiz/i.test(line))
         .slice(0, 4)
     ].slice(0, 6);
     const likelyFitObservations = input.sections.interpretation

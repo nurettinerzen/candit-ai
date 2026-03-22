@@ -1,4 +1,4 @@
-import type { ApplicationStage, JobStatus, Recommendation } from "./types";
+import type { ApplicationStage, HumanDecision, JobStatus } from "./types";
 import type { AiTaskType } from "./types";
 
 export const JOB_STATUSES: JobStatus[] = ["DRAFT", "PUBLISHED", "ARCHIVED"];
@@ -6,79 +6,146 @@ export const JOB_STATUSES: JobStatus[] = ["DRAFT", "PUBLISHED", "ARCHIVED"];
 export const APPLICATION_STAGES: ApplicationStage[] = [
   "APPLIED",
   "SCREENING",
+  "RECRUITER_REVIEW",
   "INTERVIEW_SCHEDULED",
   "INTERVIEW_COMPLETED",
-  "RECRUITER_REVIEW",
-  "HIRING_MANAGER_REVIEW",
-  "OFFER",
-  "REJECTED",
-  "HIRED"
+  "REJECTED"
 ];
 
 export const STAGE_LABELS: Record<ApplicationStage, string> = {
-  APPLIED: "Başvurdu",
-  SCREENING: "Ön Değerlendirme",
-  INTERVIEW_SCHEDULED: "Mülakat Planlandı",
-  INTERVIEW_COMPLETED: "Mülakat Tamamlandı",
-  RECRUITER_REVIEW: "İnceleme Bekliyor",
-  HIRING_MANAGER_REVIEW: "Yönetici İncelemesi",
-  OFFER: "Teklif Aşamasında",
+  APPLIED: "Başvuru Geldi",
+  SCREENING: "AI Ön Eleme",
+  INTERVIEW_SCHEDULED: "AI Mülakat",
+  INTERVIEW_COMPLETED: "Değerlendirme Hazır",
+  RECRUITER_REVIEW: "Ön Eleme Tamamlandı",
+  HIRING_MANAGER_REVIEW: "İK Mülakatı",
+  OFFER: "Teklif",
   REJECTED: "Reddedildi",
   HIRED: "İşe Alındı"
 };
 
+/* ── Pipeline stage display ── */
+
+export type PipelineStage =
+  | "APPLIED"          // Başvuru Geldi
+  | "SCREENING"        // AI Ön Eleme (otomatik)
+  | "RECRUITER_REVIEW" // Ön Eleme Tamamlandı (recruiter karar verir)
+  | "AI_INTERVIEW"     // AI Mülakat (otomatik)
+  | "EVALUATION_READY" // Değerlendirme Hazır (recruiter inceler)
+  | "REJECTED";        // Reddedildi
+
+export const PIPELINE_STAGE_META: Record<string, { label: string; color: string }> = {
+  APPLIED: {
+    label: "Başvuru Geldi",
+    color: "var(--text-secondary, #94a3b8)"
+  },
+  SCREENING: {
+    label: "AI Ön Eleme",
+    color: "var(--info, #60a5fa)"
+  },
+  RECRUITER_REVIEW: {
+    label: "Ön Eleme Tamamlandı",
+    color: "var(--warn, #f59e0b)"
+  },
+  INTERVIEW_SCHEDULED: {
+    label: "AI Mülakat",
+    color: "var(--info, #60a5fa)"
+  },
+  INTERVIEW_COMPLETED: {
+    label: "Değerlendirme Hazır",
+    color: "var(--success, #22c55e)"
+  },
+  REJECTED: {
+    label: "Reddedildi",
+    color: "var(--danger, #f87171)"
+  },
+  // Legacy stages — kept for backward compatibility
+  HIRING_MANAGER_REVIEW: {
+    label: "İK Mülakatı",
+    color: "var(--accent-primary, #8b5cf6)"
+  },
+  OFFER: {
+    label: "Teklif",
+    color: "var(--accent-primary, #8b5cf6)"
+  },
+  HIRED: {
+    label: "İşe Alındı",
+    color: "var(--success, #34d399)"
+  }
+};
+
+export const PIPELINE_STAGE_FILTERS: Array<{ value: string; label: string }> = [
+  { value: "APPLIED", label: "Başvuru Geldi" },
+  { value: "SCREENING", label: "AI Ön Eleme" },
+  { value: "RECRUITER_REVIEW", label: "Ön Eleme Tamamlandı" },
+  { value: "INTERVIEW_SCHEDULED", label: "AI Mülakat" },
+  { value: "INTERVIEW_COMPLETED", label: "Değerlendirme Hazır" },
+  { value: "REJECTED", label: "Reddedildi" }
+];
+
+// Legacy aliases — kept for backward compatibility
+export type RecruiterStatus = string;
+export const RECRUITER_STATUS_FILTERS = PIPELINE_STAGE_FILTERS;
+
+export function getStageMeta(stage: ApplicationStage): { label: string; color: string } {
+  return PIPELINE_STAGE_META[stage] ?? { label: stage, color: "var(--text-secondary)" };
+}
+
+/** @deprecated — use getStageMeta instead */
+export function getRecruiterStatus(
+  stage: ApplicationStage,
+  _humanDecision?: HumanDecision | null
+): string {
+  return stage;
+}
+
+/** @deprecated — use getStageMeta instead */
 export function getRecruiterStageMeta(
   stage: ApplicationStage,
-  recommendation?: Recommendation | null
+  _humanDecision?: HumanDecision | null
 ) {
+  return getStageMeta(stage);
+}
+
+/**
+ * Returns available actions for a given stage.
+ * Only 2 decision points exist in the pipeline:
+ * 1. RECRUITER_REVIEW → Mülakata Davet Et / Reddet
+ * 2. INTERVIEW_COMPLETED → Reddet (recruiter just reviews the report)
+ * All other stages allow early rejection only via APPLIED/SCREENING.
+ */
+export type StageAction = {
+  key: string;
+  label: string;
+  icon: string;
+  color: string;
+};
+
+/**
+ * Pipeline aksiyon butonları (aşamaya göre dinamik).
+ *
+ * "Mülakata Davet Et" → AI mülakat davetini tetikler.
+ * "Reddet" → Adayı reddeder.
+ */
+export function getStageActions(stage: ApplicationStage): StageAction[] {
   switch (stage) {
     case "APPLIED":
     case "SCREENING":
-    case "INTERVIEW_COMPLETED":
-      return {
-        label: "Karar Bekliyor",
-        color: "var(--warn, #f59e0b)"
-      };
     case "RECRUITER_REVIEW":
-      return recommendation === "HOLD"
-        ? {
-            label: "Bekletildi",
-            color: "var(--text-secondary, #94a3b8)"
-          }
-        : {
-            label: "Karar Bekliyor",
-            color: "var(--warn, #f59e0b)"
-          };
+      return [
+        { key: "invite_interview", label: "Mülakata Davet Et", icon: "📅", color: "var(--info, #60a5fa)" },
+        { key: "reject", label: "Reddet", icon: "✕", color: "var(--danger, #ef4444)" }
+      ];
+    case "INTERVIEW_COMPLETED":
+      return [
+        { key: "reject", label: "Reddet", icon: "✕", color: "var(--danger, #ef4444)" }
+      ];
     case "INTERVIEW_SCHEDULED":
-      return {
-        label: "Mülakat Planlandı",
-        color: "var(--info, #60a5fa)"
-      };
-    case "HIRING_MANAGER_REVIEW":
-      return {
-        label: "İlerletildi",
-        color: "var(--success, #34d399)"
-      };
-    case "OFFER":
-      return {
-        label: "Teklife Geçti",
-        color: "var(--accent-primary, #8b5cf6)"
-      };
-    case "REJECTED":
-      return {
-        label: "Reddedildi",
-        color: "var(--danger, #f87171)"
-      };
-    case "HIRED":
-      return {
-        label: "İşe Alındı",
-        color: "var(--success, #34d399)"
-      };
+      return [
+        { key: "reject", label: "Reddet", icon: "✕", color: "var(--danger, #ef4444)" }
+      ];
     default:
-      return {
-        label: STAGE_LABELS[stage],
-        color: "var(--text-secondary, #94a3b8)"
-      };
+      return [];
   }
 }
 

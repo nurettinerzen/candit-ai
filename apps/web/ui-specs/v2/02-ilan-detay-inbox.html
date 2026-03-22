@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İlan Detay / Başvuru Inbox — UI/UX Öneri v2</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af;
+    --primary: #7c73fa; --primary-light: rgba(124,115,250,0.12);
+    --success: #34d399; --warn: #f59e0b; --danger: #f87171; --info: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); padding: 28px 36px; max-width: 1200px; }
+
+  .breadcrumb { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+  .breadcrumb a { color: var(--primary); text-decoration: none; }
+  .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .btn { padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+  .meta-row { display: flex; gap: 16px; align-items: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; flex-wrap: wrap; }
+  .meta-row .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); display: inline-block; margin-right: 4px; }
+  .meta-tag { padding: 2px 10px; background: rgba(255,255,255,0.06); border-radius: 4px; font-size: 12px; }
+
+  .kpi-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+  .kpi-card .value { font-size: 28px; font-weight: 800; }
+  .kpi-card .label { font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; margin-bottom: 2px; }
+
+  .filter-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .pill { padding: 5px 14px; border-radius: 18px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
+  .pill.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 600; }
+
+  .search-row { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; }
+  .search-row input { flex: 1; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; }
+  .search-row select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; }
+  .count-text { font-size: 12px; color: var(--text-secondary); margin-left: auto; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: rgba(255,255,255,0.02); cursor: pointer; }
+  a { color: var(--primary); text-decoration: none; }
+
+  .candidate-cell .name { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+  .candidate-cell .location { font-size: 11px; color: var(--text-secondary); }
+  .candidate-cell .contact { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+  .score-ring { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; }
+  .score-ring.high { border: 3px solid var(--success); color: var(--success); }
+  .score-ring.mid { border: 3px solid var(--warn); color: var(--warn); }
+  .score-ring.low { border: 3px solid var(--danger); color: var(--danger); }
+  .score-label { font-size: 10px; font-weight: 600; margin-top: 2px; }
+
+  .tag { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; display: inline-block; margin: 1px 2px; }
+  .tag.missing { background: rgba(245,158,11,0.12); color: var(--warn); }
+  .tag.risk { background: rgba(248,113,113,0.12); color: var(--danger); }
+
+  .stage-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
+  .stage-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .action-link { font-size: 12px; color: var(--primary); font-weight: 500; }
+  .action-link.danger { color: var(--danger); }
+
+  .issue-box { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+  .issue-box strong { color: var(--danger); }
+  .rec-box { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+  .rec-box strong { color: var(--success); }
+  .rec-box ul, .issue-box ul { margin: 6px 0 0 16px; }
+</style>
+</head>
+<body>
+
+<div class="issue-box">
+  <strong>🔴 Mevcut Durumda Tespit Edilen Sorunlar:</strong>
+  <ul>
+    <li><b>İlan başlığı küçük harfle</b> — "depo operasyon sefi" title case olmalı: "Depo Operasyon Şefi"</li>
+    <li><b>Aday hücresinde çok fazla bilgi</b> — Ad, lokasyon, e-posta, telefon hepsi bir hücrede sıkışık. E-posta adreslerinin tamamı uzun ve satırı geniğletiyor.</li>
+    <li><b>"Sonraki Adım" sütunu ile "İşlem" sütunu karışık</b> — "Karar Ver" metni sonraki adımda, "İşlem" dropdown olarak ayrı. Bunları birleştir.</li>
+    <li><b>Tüm uyum skorları 85 "Güçlü"</b> — Gerçek veriyse sorun değil, ama güven skoru her zaman %85 — investigate edilmeli.</li>
+    <li><b>Checkbox sütunu var ama toplu işlem butonu yok</b> — Select all checkbox var, ama seçilince ne yapılacak belli değil. Toplu aksiyon bar'ı eklenmeli.</li>
+    <li><b>"İlan Bilgilerini Göster" butonu gizli bilgi gibi</b> — İlan detayları toggle ile gizli. Recruiter ilk bakışta ilanın ne olduğunu görmek isteyebilir.</li>
+    <li><b>Filtre pill'lerde sayı yok (bazılarında)</b> — "Mülakat Planlandı", "İlerletildi" gibi pill'lerde sayı gösterilmeli.</li>
+    <li><b>Sağ slide panel çok dar</b> — Başvuru detayı sağ panel'de açılıyor. "Güçlü Yönler" ve "Neden Bu Skor" gibi bölümler sıkışık.</li>
+  </ul>
+</div>
+
+<div class="rec-box">
+  <strong>✅ Önerilen İyileştirmeler:</strong>
+  <ul>
+    <li>Aday hücresini sadeleştir: Ad + lokasyon (e-posta/telefon hover tooltip'te)</li>
+    <li>"Sonraki Adım" ve "İşlem" sütunlarını birleştir — tek aksiyon sütunu yap</li>
+    <li>Checkbox seçimi sonrası toplu aksiyon bar'ı göster (Toplu Reddet, Toplu İlerlet)</li>
+    <li>İlan bilgisini sayfa üstünde kısa özet olarak göster (toggle yerine)</li>
+    <li>Tüm pill'lerde sayıları göster</li>
+    <li>Sağ panel'i genişlet veya tam sayfa detay'a geçiş yap</li>
+    <li>Kaynak sütununda badge kullan (Kariyer.net yeşil, Manuel gri, LinkedIn mavi)</li>
+  </ul>
+</div>
+
+<!-- ═══ ÖNERİLEN TASARIM ═══ -->
+<div class="breadcrumb"><a href="#">← İlan Merkezi</a></div>
+<div class="page-header">
+  <div>
+    <h1>Depo Operasyon Şefi</h1>
+  </div>
+  <button class="btn">Yenile</button>
+</div>
+<div class="meta-row">
+  <span><span class="dot"></span> Yayında</span>
+  <span class="meta-tag">İstanbul</span>
+  <span class="meta-tag">Tam zamanlı</span>
+  <span>₺35.000 – ₺45.000</span>
+  <span class="meta-tag">Depo</span>
+</div>
+
+<div class="kpi-bar">
+  <div class="kpi-card"><div class="label">Toplam Başvuru</div><div class="value">10</div></div>
+  <div class="kpi-card"><div class="label">Skoru Hazır</div><div class="value">10</div></div>
+  <div class="kpi-card"><div class="label">Ort. Uyum Skoru</div><div class="value">77%</div></div>
+  <div class="kpi-card"><div class="label">Karar Bekleyen</div><div class="value" style="color:var(--warn)">8</div></div>
+</div>
+
+<div class="filter-row">
+  <button class="pill active">Tümü (10)</button>
+  <button class="pill">Karar Bekliyor (8)</button>
+  <button class="pill">Bekletildi (2)</button>
+  <button class="pill">Mülakat Planlandı (0)</button>
+  <button class="pill">İlerletildi (0)</button>
+  <button class="pill">Reddedildi (0)</button>
+</div>
+
+<div class="search-row">
+  <input type="text" placeholder="Aday adı veya lokasyon ara...">
+  <select><option>Tüm Kaynaklar</option></select>
+  <select><option>Skor ↓</option><option>Skor ↑</option><option>Tarih</option></select>
+  <span class="count-text">10 aday gösteriliyor</span>
+</div>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:30px"><input type="checkbox"></th>
+        <th>Aday</th>
+        <th>Kaynak</th>
+        <th>Uyum Skoru</th>
+        <th>Eksik / Uyarı</th>
+        <th>Aşama</th>
+        <th>Aksiyon</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><input type="checkbox"></td>
+        <td>
+          <div class="candidate-cell">
+            <div class="name">Ahmet Yılmaz</div>
+            <div class="location">Pendik, İstanbul</div>
+          </div>
+        </td>
+        <td><span class="tag" style="background:rgba(124,115,250,0.12); color:var(--primary)">Kariyer.net</span></td>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px">
+            <div class="score-ring high">85</div>
+            <span class="score-label" style="color:var(--success)">Güçlü</span>
+          </div>
+        </td>
+        <td>
+          <span class="tag missing">3 Eksik</span>
+          <span class="tag risk">1 Uyarı</span>
+        </td>
+        <td>
+          <span class="stage-badge" style="color:var(--warn)">
+            <span class="dot" style="background:var(--warn)"></span> Karar Bekliyor
+          </span>
+        </td>
+        <td><a href="#" class="action-link">Karar Ver →</a></td>
+      </tr>
+      <tr>
+        <td><input type="checkbox"></td>
+        <td>
+          <div class="candidate-cell">
+            <div class="name">Merve Kara</div>
+            <div class="location">Gebze, Kocaeli</div>
+          </div>
+        </td>
+        <td><span class="tag" style="background:rgba(124,115,250,0.12); color:var(--primary)">Kariyer.net</span></td>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px">
+            <div class="score-ring high">85</div>
+            <span class="score-label" style="color:var(--success)">Güçlü</span>
+          </div>
+        </td>
+        <td>
+          <span class="tag missing">2 Eksik</span>
+        </td>
+        <td>
+          <span class="stage-badge" style="color:var(--text-secondary)">
+            <span class="dot" style="background:var(--text-secondary)"></span> Bekletildi
+          </span>
+        </td>
+        <td><a href="#" class="action-link">İncele →</a></td>
+      </tr>
+      <tr>
+        <td><input type="checkbox"></td>
+        <td>
+          <div class="candidate-cell">
+            <div class="name">Elif Aydın</div>
+            <div class="location">Bornova, İzmir</div>
+          </div>
+        </td>
+        <td><span class="tag" style="background:rgba(124,115,250,0.12); color:var(--primary)">Kariyer.net</span></td>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px">
+            <div class="score-ring mid">78</div>
+            <span class="score-label" style="color:var(--warn)">İyi</span>
+          </div>
+        </td>
+        <td>
+          <span class="tag missing">3 Eksik</span>
+          <span class="tag risk">5 Uyarı</span>
+        </td>
+        <td>
+          <span class="stage-badge" style="color:var(--text-secondary)">
+            <span class="dot" style="background:var(--text-secondary)"></span> Bekletildi
+          </span>
+        </td>
+        <td><a href="#" class="action-link">İncele →</a></td>
+      </tr>
+      <tr>
+        <td><input type="checkbox"></td>
+        <td>
+          <div class="candidate-cell">
+            <div class="name">Emre Koç</div>
+            <div class="location">Şanlıurfa</div>
+          </div>
+        </td>
+        <td><span class="tag" style="background:rgba(124,115,250,0.12); color:var(--primary)">Kariyer.net</span></td>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px">
+            <div class="score-ring low">65</div>
+            <span class="score-label" style="color:var(--danger)">Zayıf</span>
+          </div>
+        </td>
+        <td>
+          <span class="tag missing">5 Eksik</span>
+        </td>
+        <td>
+          <span class="stage-badge" style="color:var(--warn)">
+            <span class="dot" style="background:var(--warn)"></span> Karar Bekliyor
+          </span>
+        </td>
+        <td><a href="#" class="action-link">Karar Ver →</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

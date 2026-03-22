@@ -856,6 +856,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Karar hatası": "Decision error",
   "Karar için neden kodu zorunludur.": "Reason code is required for a decision.",
   "Karar ve Aşama Yönetimi": "Decision and Stage Management",
+  "Karar ve Teknik Aşama Yönetimi": "Decision and Technical Stage Management",
   "Kararı Kaydet": "Save Decision",
   "Kayıt": "Record",
   "Kayıt ID": "Record ID",
@@ -875,6 +876,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Metin okunamadı": "Text could not be read",
   "Metin tutarlılığı kontrol edildi": "Text consistency checked",
   "Mevcut Aşama": "Current Stage",
+  "Mevcut Durum": "Current Status",
   "Mikrofon başlatılamadı. Yazılı yanıt verebilirsiniz.":
     "Microphone could not be started. You can answer in text.",
   "Mikrofon izni verilmedi. Yazılı yanıt verebilirsiniz.":
@@ -983,10 +985,13 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Stage değişimi başarısız.": "Stage change failed.",
   "Stage değişimi için neden kodu zorunludur.": "Reason code is required for stage change.",
   "Stage Geçişi": "Stage Transition",
+  "Aşama Geçişi": "Stage Transition",
   "Stage Güncelleme": "Stage Update",
   "Stage hatası": "Stage error",
+  "Aşama hatası": "Stage error",
   "Stage ve Karar İşlemleri": "Stage and Decision Actions",
   "Stage'i Güncelle": "Update Stage",
+  "Aşamayı Güncelle": "Update Stage",
   "Süreç:": "Process:",
   "Süresi Doldu": "Expired",
   "Şifre": "Password",
@@ -1148,10 +1153,17 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Başvurdu": "Applied",
   "Mülakat Planlandı": "Interview Scheduled",
   "Mülakat Tamamlandı": "Interview Completed",
+  "Karar Bekliyor": "Decision Pending",
+  "Bekletildi": "On Hold",
+  "İlerletildi": "Advanced",
   "Yönetici İncelemesi": "Hiring Manager Review",
+  "Recruiter İncelemesi": "Recruiter Review",
+  "Teklif": "Offer",
+  "Teklife Geçti": "Moved to Offer",
   "Teklif Aşamasında": "Offer Stage",
   "Reddedildi": "Rejected",
-  "İşe Alındı": "Hired"
+  "İşe Alındı": "Hired",
+  "Yeni Aşama": "New Stage"
 });
 
 Object.assign(EN_PHRASE_TRANSLATIONS, {

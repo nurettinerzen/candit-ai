@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İlan Merkezi — UI/UX Öneri v2</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af;
+    --primary: #7c73fa; --primary-light: rgba(124,115,250,0.12);
+    --success: #34d399; --warn: #f59e0b; --danger: #f87171; --info: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; }
+  .sidebar-brand { padding: 0 20px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .sidebar-brand .logo { width: 36px; height: 36px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: #fff; margin-bottom: 8px; }
+  .sidebar-brand h1 { font-size: 15px; font-weight: 700; }
+  .sidebar-brand p { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+  .nav-section { flex: 1; padding: 0 10px; }
+  .nav-link { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: 8px; color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+  .nav-link:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .nav-link.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); margin-top: auto; }
+  .sidebar-footer .avatar { width: 32px; height: 32px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; }
+  .sidebar-footer .user-row { display: flex; align-items: center; gap: 10px; }
+  .sidebar-footer .user-name { font-size: 13px; font-weight: 600; }
+  .sidebar-footer .user-role { font-size: 11px; color: var(--text-secondary); }
+
+  /* Main */
+  .main { margin-left: 220px; flex: 1; padding: 28px 36px; }
+
+  /* Page header */
+  .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .page-header .subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+  .btn { padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; font-weight: 500; }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  .header-actions { display: flex; gap: 8px; }
+
+  /* KPI bar */
+  .kpi-bar { display: flex; gap: 14px; margin-bottom: 20px; }
+  .kpi-card { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+  .kpi-card .value { font-size: 28px; font-weight: 800; }
+  .kpi-card .label { font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; margin-bottom: 2px; }
+
+  /* Filter pills */
+  .filter-pills { display: flex; gap: 6px; margin-bottom: 16px; }
+  .pill { padding: 6px 16px; border-radius: 18px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; font-weight: 500; }
+  .pill.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 600; }
+
+  /* Table */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: rgba(255,255,255,0.02); }
+  a { color: var(--primary); text-decoration: none; font-weight: 500; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+
+  /* Issue / Recommendation callouts */
+  .issue-box { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+  .issue-box strong { color: var(--danger); }
+  .rec-box { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+  .rec-box strong { color: var(--success); }
+  .rec-box ul, .issue-box ul { margin: 6px 0 0 16px; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo">AI</div>
+    <h1>AI Recruiter</h1>
+    <p>İşe alım işletim paneli</p>
+  </div>
+  <nav class="nav-section">
+    <a href="#" class="nav-link"><span class="nav-icon">📊</span> Genel Bakış</a>
+    <a href="#" class="nav-link active"><span class="nav-icon">💼</span> İlan Merkezi</a>
+    <a href="#" class="nav-link"><span class="nav-icon">🎙️</span> Mülakatlar</a>
+    <a href="#" class="nav-link"><span class="nav-icon">👥</span> Aday Havuzu</a>
+    <a href="#" class="nav-link"><span class="nav-icon">📈</span> Raporlar</a>
+    <a href="#" class="nav-link"><span class="nav-icon">⚙️</span> Ayarlar & Bağlantılar</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="avatar">Dİ</div>
+      <div><div class="user-name">Demo İşe Alım Uzmanı</div><div class="user-role">recruiter</div></div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+
+<!-- ═══ MEVCUT DURUM & SORUNLAR ═══ -->
+<div class="issue-box">
+  <strong>🔴 Mevcut Durumda Tespit Edilen Sorunlar:</strong>
+  <ul>
+    <li><b>KPI kartları arasında boşluk dengesiz</b> — "ARŞİV" ve "TOPLAM BAŞVURU" kartları diğerlerinden daha dar, eşit genişlikte olmalı.</li>
+    <li><b>Tablo "OLUŞTURULMA" sütunu gereksiz</b> — Recruiter için ilan oluşturulma tarihi operasyonel bilgi değil. Yerine "Son Aktivite" veya tamamen kaldırılmalı.</li>
+    <li><b>Durum sütunundaki yeşil dot her satırda aynı</b> — Tüm ilanlar "Yayında" olunca renk farklılığı yok, ama Taslak/Arşiv olduğunda renk ayrımı yapılmalı.</li>
+    <li><b>Başvuru sayısı tıklanabilir olmalı</b> — Rakama tıklayınca direkt o ilanın başvuru inbox'ına gitmeli.</li>
+    <li><b>Maaş aralığı formatı tutarsız</b> — "₺35.000 - ₺45.000" ile "₺28.000 - ₺36.000" tutarlı ama bin ayracı nokta, TL sembolü başta — doğru.</li>
+    <li><b>Boş tablo durumu (empty state) yok</b> — Filtreleme sonucu 0 ilan çıkarsa kullanıcı ne görür?</li>
+  </ul>
+</div>
+
+<!-- ═══ ÖNERİLEN TASARIM ═══ -->
+<div class="rec-box">
+  <strong>✅ Önerilen İyileştirmeler:</strong>
+  <ul>
+    <li>KPI kartlarını eşit genişlikte grid layout'a al (grid-template-columns: repeat(5, 1fr))</li>
+    <li>"Oluşturulma" sütununu kaldır veya "Son Aktivite" ile değiştir</li>
+    <li>Başvuru sayısını tıklanabilir link yap</li>
+    <li>Durum badge'lerine renk kodu ekle (Yayında=yeşil, Taslak=sarı, Arşiv=gri)</li>
+    <li>Boş durum (empty state) ekle</li>
+    <li>İlan başlığını büyük harfle düzelt — "depo operasyon sefi" → "Depo Operasyon Şefi" (title case)</li>
+  </ul>
+</div>
+
+<!-- ═══ ÖNERİLEN SAYFA ═══ -->
+<div class="page-header">
+  <div>
+    <h1>İlan Merkezi</h1>
+    <p class="subtitle">İlan oluşturma, aday yönetimi ve işe alım süreçlerinizin merkezi.</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn">Yenile</button>
+    <button class="btn-primary">+ Yeni İlan Hazırla</button>
+  </div>
+</div>
+
+<div class="kpi-bar">
+  <div class="kpi-card"><div class="label">Toplam İlan</div><div class="value">4</div></div>
+  <div class="kpi-card"><div class="label">Yayında</div><div class="value" style="color:var(--success)">4</div></div>
+  <div class="kpi-card"><div class="label">Taslak</div><div class="value">0</div></div>
+  <div class="kpi-card"><div class="label">Arşiv</div><div class="value">0</div></div>
+  <div class="kpi-card"><div class="label">Toplam Başvuru</div><div class="value">26</div></div>
+</div>
+
+<div class="filter-pills">
+  <button class="pill active">Tümü (4)</button>
+  <button class="pill">Yayında (4)</button>
+  <button class="pill">Taslak (0)</button>
+  <button class="pill">Arşiv (0)</button>
+</div>
+
+<div class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>İlan Başlığı</th>
+        <th>Departman</th>
+        <th>Durum</th>
+        <th>Lokasyon</th>
+        <th>Maaş Aralığı</th>
+        <th style="text-align:center">Başvuru</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><a href="#">Depo Operasyon Şefi</a></td>
+        <td style="color:var(--text-secondary)">Depo</td>
+        <td><span class="status-dot" style="background:var(--success)"></span><span style="color:var(--success); font-weight:600; font-size:12px">Yayında</span></td>
+        <td>İstanbul</td>
+        <td style="color:var(--text-secondary)">₺35.000 – ₺45.000</td>
+        <td style="text-align:center"><a href="#" style="font-weight:700">10</a></td>
+      </tr>
+      <tr>
+        <td><a href="#">Müşteri Destek Temsilcisi</a></td>
+        <td style="color:var(--text-secondary)">Destek / Giriş Seviyesi</td>
+        <td><span class="status-dot" style="background:var(--success)"></span><span style="color:var(--success); font-weight:600; font-size:12px">Yayında</span></td>
+        <td>İzmir</td>
+        <td style="color:var(--text-secondary)">₺29.000 – ₺38.000</td>
+        <td style="text-align:center"><a href="#" style="font-weight:700">2</a></td>
+      </tr>
+      <tr>
+        <td><a href="#">Market Kasiyeri</a></td>
+        <td style="color:var(--text-secondary)">Mağaza / Perakende</td>
+        <td><span class="status-dot" style="background:var(--success)"></span><span style="color:var(--success); font-weight:600; font-size:12px">Yayında</span></td>
+        <td>Ankara</td>
+        <td style="color:var(--text-secondary)">₺25.000 – ₺31.000</td>
+        <td style="text-align:center"><a href="#" style="font-weight:700">3</a></td>
+      </tr>
+      <tr>
+        <td><a href="#">Depo Operasyon Personeli</a></td>
+        <td style="color:var(--text-secondary)">Depo / Lojistik</td>
+        <td><span class="status-dot" style="background:var(--success)"></span><span style="color:var(--success); font-weight:600; font-size:12px">Yayında</span></td>
+        <td>İstanbul</td>
+        <td style="color:var(--text-secondary)">₺28.000 – ₺36.000</td>
+        <td style="text-align:center"><a href="#" style="font-weight:700">11</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</main>
+</body>
+</html>

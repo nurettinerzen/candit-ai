@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raporlar — UI/UX Öneri v2</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2e3a;
+    --text: #e4e4e7; --text-secondary: #9ca3af;
+    --primary: #7c73fa; --success: #34d399; --warn: #f59e0b; --danger: #f87171; --info: #60a5fa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); padding: 28px 36px; max-width: 1100px; }
+
+  .page-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .page-header .subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+  .btn { padding: 7px 16px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+  .kpi-card .label { font-size: 10px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; margin-bottom: 2px; }
+  .kpi-card .value { font-size: 28px; font-weight: 800; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .panel h3 { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+
+  .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row .stat-value { font-weight: 700; }
+
+  .stage-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+
+  .issue-box { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+  .issue-box strong { color: var(--danger); }
+  .rec-box { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.7; }
+  .rec-box strong { color: var(--success); }
+  .rec-box ul, .issue-box ul { margin: 6px 0 0 16px; }
+</style>
+</head>
+<body>
+
+<div class="issue-box">
+  <strong>🔴 Raporlar — Mevcut Sorunlar:</strong>
+  <ul>
+    <li><b>Raporlar sayfası genel olarak iyi yapılandırılmış ✓</b> — 4 KPI + 4 panel layout temiz.</li>
+    <li><b>Aşama Dağılımı'nda ham stage adları var</b> — "Başvurdu", "Mülakat Planlandı", "Recruiter İncelemesi", "Ön Değerlendirme" — bunlar merkezi label'larla uyumsuz. "Karar Bekliyor", "Mülakat Planlandı", "Bekletildi" gibi recruiter-friendly terimler kullanılmalı.</li>
+    <li><b>"İşe Alım Süresi" ve "Görüşme Kalitesi" panellerinde veri yok</b> — Henüz işe alınan aday olmadığı için "—" ve "0" gösteriliyor. Veri yoksa açıklayıcı bir mesaj gösterilmeli.</li>
+    <li><b>Grafiksel görselleştirme yok</b> — Sadece sayılar var. Basit bir bar chart veya donut chart, verinin kavranmasını çok kolaylaştırır.</li>
+    <li><b>"Değerlendirme Güveni: %80" KPI'ı ne anlama geliyor net değil</b> — Tooltip veya alt açıklama eklenmeli.</li>
+    <li><b>Filtre yok</b> — İlan bazında, tarih aralığında, kaynak bazında filtreleme yapılamıyor.</li>
+  </ul>
+</div>
+
+<div class="rec-box">
+  <strong>✅ Önerilen İyileştirmeler:</strong>
+  <ul>
+    <li>Aşama Dağılımı'nda merkezi label'ları kullan (getRecruiterStageMeta ile tutarlı)</li>
+    <li>Veri olmadığında "Henüz veri yok" mesajı göster, "—" değil</li>
+    <li>İlan bazlı filtreleme dropdown'ı ekle</li>
+    <li>KPI'lara kısa açıklama/tooltip ekle</li>
+    <li>İleride basit bar chart eklenebilir (ama şimdilik sayısal gösterim yeterli)</li>
+  </ul>
+</div>
+
+<!-- ═══ ÖNERİLEN TASARIM ═══ -->
+<div class="page-header">
+  <div>
+    <h1>Raporlar</h1>
+    <p class="subtitle">İşe alım süreçlerinizin performansını ve dönüşüm oranlarını takip edin.</p>
+  </div>
+  <button class="btn">Yenile</button>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card"><div class="label">Aktif İlanlar</div><div class="value">4</div></div>
+  <div class="kpi-card"><div class="label">Toplam Başvuru</div><div class="value">26</div></div>
+  <div class="kpi-card"><div class="label">İşe Alım Süresi (Ort.)</div><div class="value">—</div></div>
+  <div class="kpi-card"><div class="label">Değerlendirme Güveni</div><div class="value">%80</div></div>
+</div>
+
+<div class="two-col">
+  <div class="panel">
+    <h3>Aşama Dağılımı</h3>
+    <div class="stat-row"><span><span class="stage-dot" style="background:var(--warn)"></span>Karar Bekliyor</span><span class="stat-value">20</span></div>
+    <div class="stat-row"><span><span class="stage-dot" style="background:var(--info)"></span>Mülakat Planlandı</span><span class="stat-value">2</span></div>
+    <div class="stat-row"><span><span class="stage-dot" style="background:var(--text-secondary)"></span>Bekletildi</span><span class="stat-value">2</span></div>
+    <div class="stat-row"><span><span class="stage-dot" style="background:var(--danger)"></span>Reddedildi</span><span class="stat-value">0</span></div>
+    <div class="stat-row"><span><span class="stage-dot" style="background:var(--success)"></span>İşe Alındı</span><span class="stat-value">0</span></div>
+  </div>
+  <div class="panel">
+    <h3>Dönüşüm Oranları</h3>
+    <div class="stat-row"><span>Ön eleme oranı</span><span class="stat-value">62%</span></div>
+    <div class="stat-row"><span>Mülakata geçiş oranı</span><span class="stat-value">46%</span></div>
+    <div class="stat-row"><span>İşe alım oranı</span><span class="stat-value">0%</span></div>
+    <div class="stat-row"><span>Reddedilenler</span><span class="stat-value">0</span></div>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="panel">
+    <h3>İşe Alım Süresi</h3>
+    <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px; font-style:italic">Henüz işe alınan aday olmadığı için süre verisi bulunmuyor.</p>
+    <div class="stat-row"><span>İşe alınan aday sayısı</span><span class="stat-value">0</span></div>
+    <div class="stat-row"><span>Ortalama süre</span><span class="stat-value">—</span></div>
+  </div>
+  <div class="panel">
+    <h3>Görüşme Kalitesi</h3>
+    <div class="stat-row"><span>Transkript kalitesi (ort.)</span><span class="stat-value">%87</span></div>
+    <div class="stat-row"><span>Rapor güveni (ort.)</span><span class="stat-value">%80</span></div>
+    <div class="stat-row"><span>Tamamlanan görüşme</span><span class="stat-value">1</span></div>
+  </div>
+</div>
+
+</body>
+</html>
