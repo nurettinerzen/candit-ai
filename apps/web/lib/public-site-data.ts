@@ -217,7 +217,7 @@ export const PUBLIC_FEATURE_GROUPS: PublicCard[] = [
   },
   {
     title: "Entegrasyonlar",
-    body: "Pilot kapsamındaki takvim ve API entegrasyonlarını kontrollü şekilde devreye alın.",
+    body: "Takvim ve API bağlantılarını ekip ihtiyacına göre kademeli şekilde devreye alın.",
     bullets: ["Google Calendar bağlantısı", "Google kimliği ile planlama akışı", "ATS REST API / webhook", "Özel entegrasyon keşfi"]
   }
 ];
@@ -282,7 +282,7 @@ export const PUBLIC_SOLUTIONS: PublicSolution[] = [
     title: "Perakende Sektörü İçin AI İşe Alım",
     shortDescription: "Yüksek hacimli mağaza ve depo personeli alımını hızlandırın.",
     intro:
-      "Sezonluk kampanya dönemlerinde yüzlerce başvuruyu AI ile tarayın, uygun adayları dakikalar içinde belirleyin.",
+      "Sezonluk kampanya dönemlerinde yüksek hacimli başvuruları AI ile tarayın ve öncelikli adayları daha hızlı görünür hale getirin.",
     useCases: [
       "Mağaza personeli toplu alımı ve hızlı ön eleme",
       "Sezonluk kampanya dönemi işe alım otomasyonu",
@@ -313,7 +313,7 @@ export const PUBLIC_SOLUTIONS: PublicSolution[] = [
     highlights: [
       "Sektöre özel yetkinlik soru setleri",
       "Sertifika ve belge doğrulama desteği",
-      "KVKK uyumlu hassas veri yönetimi",
+      "Hassas veri yönetimi için operasyonel kontrol yaklaşımı",
       "Acil pozisyonlar için hızlandırılmış süreç"
     ],
     channels: ["AI Mülakat", "Ön Eleme", "Analitik"],

@@ -263,7 +263,7 @@ export function SiteLanguageProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<SiteLocale>(getInitialLocale);
   const textSourceCacheRef = useRef<WeakMap<Text, string>>(new WeakMap());
   const attributeSourceCacheRef = useRef<WeakMap<Element, AttributeCache>>(new WeakMap());
-  const previousLocaleRef = useRef<SiteLocale>(getInitialLocale);
+  const previousLocaleRef = useRef<SiteLocale>(getInitialLocale());
   const isApplyingLocaleRef = useRef(false);
   const rafRef = useRef<number | null>(null);
 

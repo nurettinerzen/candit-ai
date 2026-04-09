@@ -3622,6 +3622,141 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "When missing information, ambiguous signals, or role-fit risks are visible upfront, the discussion becomes more concrete. This reduces the abstract comments that prolong meetings."
 });
 
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  "Tüm başvuruları tek panelden takip edin. Durum güncellemelerini ve işe alım notlarını aynı akışta yönetin.":
+    "Track all applications from a single panel. Manage status updates and hiring notes in the same flow.",
+  "İşe alım süreci metriklerini tek panelde izleyin. Darboğazları görünür hale getirip akışı iyileştirin.":
+    "Track hiring process metrics in one panel. Make bottlenecks visible and improve the flow.",
+  "Uygun senaryolarda adaylar davet edilen bağlantı üzerinden süreci kendi zamanlarında tamamlayabilir.":
+    "In suitable scenarios, candidates can complete the process in their own time through the invitation link.",
+  "En güçlü adayları öne çıkarın": "Highlight the strongest candidates",
+  "Karşılaştırmalı raporlarla sonraki görüşme veya teklif adımı için en uygun adayları belirleyin.":
+    "Use comparative reports to identify the best candidates for the next interview or offer step.",
+  "Adaylarla sesli veya yazılı AI mülakat akışlarını otomatik yürütün.":
+    "Automatically run voice or text AI interview flows with candidates.",
+  "Takvim ve API bağlantılarını ekip ihtiyacına göre kademeli şekilde devreye alın.":
+    "Enable calendar and API connections gradually based on team needs.",
+  "Sesli ve yazılı mülakat desteği": "Voice and text interview support",
+  "Paylaşılabilir başvuru akışları": "Shareable application flows",
+  "Google Calendar bağlantısı": "Google Calendar connection",
+  "Google kimliği ile planlama akışı": "Scheduling flow with Google identity",
+  "ATS REST API / webhook": "ATS REST API / webhook",
+  "Özel entegrasyon keşfi": "Custom integration discovery",
+  "Güvenlik ve veri yönetişimi": "Security and data governance",
+  "Aday verilerini erişim kontrolü, denetim izi ve veri yaşam döngüsü süreçleriyle yönetin.":
+    "Manage candidate data with access control, audit visibility, and data lifecycle processes.",
+  "Audit log ve yönetim görünürlüğü": "Audit log and admin visibility",
+  "Veri saklama ve silme süreçleri için operasyonel temel":
+    "Operational foundation for data retention and deletion processes",
+  "REST API ve webhook ile kontrollü ATS entegrasyon senaryoları planlanabilir. Takvim ve planlama bağlantıları ekip ihtiyacına göre kademeli açılır; tüm entegrasyonlar varsayılan olarak aktif gelmez.":
+    "Controlled ATS integration scenarios can be planned with REST APIs and webhooks. Calendar and scheduling connections are enabled gradually according to team needs; integrations do not come active by default.",
+  "Google takvim akışıyla eşleştirin": "Match it with the Google Calendar flow",
+  "Mülakat planlarını Google takvim akışıyla eşleştirin":
+    "Match interview plans with the Google Calendar flow",
+  "Planlama akışlarında Google Meet bağlantı senaryolarını yönetin":
+    "Manage Google Meet connection scenarios in scheduling flows",
+  "Pilot kurulum": "Pilot setup",
+  Değerlendirme: "Evaluation",
+  "Talep olduğunda değerlendirilen planlama seçeneği":
+    "A scheduling option evaluated when there is demand",
+  "Aday ve başvuru verisi için REST tabanlı entegrasyon senaryoları planlayın":
+    "Plan REST-based integration scenarios for candidate and application data",
+  "Başvuru ve mülakat olaylarını kendi sistemlerinize aktarmak için webhook akışları tanımlayın":
+    "Define webhook flows to send application and interview events to your own systems",
+  "Kontrollü erişim": "Controlled access",
+  "Veri güvenliği, erişim kontrolleri ve süreç yönetişimi":
+    "Data security, access controls, and process governance",
+  "Erişim ve Yetkilendirme": "Access and Authorization",
+  "Çalışma alanı, oturum ve rol bazlı erişim sınırlarıyla ekip içi görünürlüğü kontrol altında tutun.":
+    "Keep team visibility under control with workspace, session, and role-based access boundaries.",
+  "Rol bazlı erişim sınırları": "Role-based access boundaries",
+  "JWT tabanlı oturum akışı": "JWT-based session flow",
+  "Kritik yönetim aksiyonları için denetim izi":
+    "Audit trail for critical administrative actions",
+  "Veri Yönetişimi": "Data Governance",
+  "Aday verilerinin saklanması, görünürlüğü ve yaşam döngüsü için operasyonel kontroller oluşturun.":
+    "Create operational controls for candidate data retention, visibility, and lifecycle.",
+  "Saklama ve silme politikalarını ekip bazında tanımlama":
+    "Define retention and deletion policies at the team level",
+  "Hassas veri alanları için görünürlük kararları":
+    "Visibility decisions for sensitive data fields",
+  "KVKK ve GDPR süreçleri için iç operasyon sahipliği":
+    "Internal operational ownership for KVKK and GDPR processes",
+  "AI Güvenlik Yaklaşımı": "AI Security Approach",
+  "AI çıktıları karar desteği olarak konumlanır; nihai karar ve hassas süreçler insan onayıyla ilerler.":
+    "AI output is positioned as decision support; final decisions and sensitive processes move forward with human approval.",
+  "AI çıktıları recruiter kararının yerine geçmez":
+    "AI outputs do not replace recruiter decisions",
+  "Eksik bilgi ve risk sinyalleri görünür hale getirilir":
+    "Missing information and risk signals are made visible",
+  "Politika, fallback ve gözden geçirme katmanlarıyla akış sertleştirilir":
+    "The flow is hardened with policy, fallback, and review layers",
+  "Operasyonel İzleme": "Operational Monitoring",
+  "Sistem durumu, kritik olaylar ve temel audit görünürlüğüyle launch öncesi sertleştirme desteklenir.":
+    "Pre-launch hardening is supported through system status, critical events, and core audit visibility.",
+  "Sağlık kontrolleri ve runtime görünürlüğü": "Health checks and runtime visibility",
+  "Kritik olay kaydı ve yönetim takibi": "Critical event logging and admin tracking",
+  "Kademeli launch için checklist odaklı ilerleme":
+    "Checklist-driven progress for a staged launch",
+  "Sezonluk kampanya dönemlerinde yüksek hacimli başvuruları AI ile tarayın ve öncelikli adayları daha hızlı görünür hale getirin.":
+    "Use AI to review high-volume applications during seasonal campaigns and surface priority candidates faster.",
+  "Hassas veri yönetimi için operasyonel kontrol yaklaşımı":
+    "An operational control approach for sensitive data management",
+  "Nasıl Çalışıyoruz": "How We Work",
+  "Candit ekibi ürün, mühendislik ve işe alım deneyimini bir araya getiren dağıtık bir çalışma modeliyle ilerler. Önceliğimiz Türkiye odaklı pilot ekiplerle gerçek kullanım üzerinden hızlı öğrenmek ve ürünü buna göre geliştirmektir.":
+    "The Candit team works in a distributed model that combines product, engineering, and hiring experience. Our priority is to learn quickly from real usage with Turkey-focused pilot teams and shape the product accordingly.",
+  "Takvim ve Planlama Hazırlıkları": "Calendar and Scheduling Preparation",
+  "Mülakat planlama tarafında Google ekosistemi odaklı bağlantı hazırlıkları ve yedek akışlar güçlendirildi.":
+    "Connection preparation focused on the Google ecosystem and fallback flows for interview scheduling were strengthened.",
+  "Google Meet planlama bağlamı netleştirildi":
+    "Google Meet scheduling context was clarified",
+  "Pilot planlama ihtiyaçları için entegrasyon hazırlıkları sertleştirildi":
+    "Integration readiness for pilot scheduling needs was hardened",
+  "Pilot API Yüzeyi": "Pilot API Surface",
+  "Kontrollü entegrasyonlar için temel uç noktalar":
+    "Core endpoints for controlled integrations",
+  "Servis durumu ve temel çalışma zamanı hazırlığını doğrular.":
+    "Verifies service status and baseline runtime readiness.",
+  "Etkin giriş sağlayıcılarını ve auth seçeneklerini listeler.":
+    "Lists enabled sign-in providers and auth options.",
+  "Pilot ve demo taleplerini public lead kuyruğuna kaydeder.":
+    "Stores pilot and demo requests in the public lead queue.",
+  "Desteklenen entegrasyon sağlayıcıları için gelen webhook olaylarını işler.":
+    "Processes incoming webhook events for supported integration providers.",
+  "Pilot ortam": "Pilot environment",
+  "Pilot hazır": "Pilot-ready",
+  "temel işe alım akışı": "core hiring flow",
+  "Akış görünürlüğü": "Flow visibility",
+  "Tek panel": "Single pane",
+  operasyon: "operations",
+  "Tek panelde izlenebilir işe alım akışı.": "A traceable hiring flow in one panel.",
+  "Ön eleme, mülakat ve değerlendirme adımları aynı operasyon görünümü içinde takip edilir.":
+    "Pre-screening, interviews, and evaluation steps are tracked within the same operational view.",
+  "Ön eleme görünürlüğü": "Pre-screening visibility",
+  "Mülakat akışı": "Interview flow",
+  "Rapor ve karar desteği": "Reports and decision support",
+  "Pozisyonu tanımlayın, adayları yönlendirin ve AI mülakat akışını başlatın. Süreç aynı panelde görünür kalır.":
+    "Define the role, guide candidates, and start the AI interview flow. The process remains visible in the same panel.",
+  "Takvim, ATS ve webhook bağlantılarını ekip ihtiyacına göre kademeli planlayın.":
+    "Plan calendar, ATS, and webhook connections gradually based on team needs.",
+  "Yeni içerikler ve ürün notları için bağlantıda kalın":
+    "Stay connected for new content and product notes",
+  "Şimdilik e-posta aboneliği yerine blog ve iletişim kanalı üzerinden güncellemeleri paylaşıyoruz.":
+    "For now, we share updates through the blog and contact channel instead of an email subscription.",
+  "Blog yazılarını inceleyin": "Browse blog posts",
+  "Güncelleme talebi bırakın": "Leave an update request",
+  "REST API ve webhook senaryolarıyla Candit'i mevcut İK sistemlerinize kontrollü biçimde bağlayın.":
+    "Connect Candit to your existing HR systems in a controlled way with REST API and webhook scenarios.",
+  "JWT ve provider tabanlı auth akışlarıyla korumalı uç noktalara erişin.":
+    "Access protected endpoints with JWT and provider-based auth flows.",
+  "Mülakat, değerlendirme, başvuru ve süreç olaylarını provider bazında takip edin.":
+    "Track interview, evaluation, application, and process events by provider.",
+  "Pilot stabilitesini korumak için istek limitleri ve kontrollü erişim uygulanır.":
+    "Rate limits and controlled access are applied to protect pilot stability.",
+  "Erişim, denetim izi ve veri yönetişimi kontrollerini kademeli olarak güçlendiren bir güvenlik yaklaşımı benimsiyoruz.":
+    "We follow a security approach that gradually strengthens access, audit trail, and data governance controls."
+});
+
 const EN_TO_TR_PHRASE_TRANSLATIONS: Record<string, string> = Object.entries(
   EN_PHRASE_TRANSLATIONS
 ).reduce<Record<string, string>>((acc, [tr, en]) => {

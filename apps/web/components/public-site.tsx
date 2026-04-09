@@ -244,7 +244,7 @@ function ProductStage() {
         </div>
         <span className={styles.livePill}>
           <i />
-          {t("Sistem aktif")}
+          {t("Pilot ortam")}
         </span>
       </div>
 
@@ -254,8 +254,8 @@ function ProductStage() {
           <h2>{t("Tüm işe alım süreçleri tek panelde buluşur.")}</h2>
         </div>
         <div className={styles.stageScore}>
-          <strong>%87</strong>
-          <span>{t("daha hızlı işe alım")}</span>
+          <strong>{t("Pilot hazır")}</strong>
+          <span>{t("temel işe alım akışı")}</span>
         </div>
       </div>
 
@@ -286,35 +286,35 @@ function ProductStage() {
         </article>
 
         <article className={cn(styles.stagePanel, styles.stagePanelWide)}>
-          <div className={styles.stagePanelLabel}>{t("Performans metrikleri")}</div>
+          <div className={styles.stagePanelLabel}>{t("Akış görünürlüğü")}</div>
           <div className={styles.signalPanel}>
             <div className={styles.signalRing}>
-              <span>7/24</span>
-              <small>{t("mülakat")}</small>
+              <span>{t("Tek panel")}</span>
+              <small>{t("operasyon")}</small>
             </div>
 
             <div className={styles.signalBody}>
-              <h3>{t("Tek platform ile daha hızlı, daha doğru işe alım.")}</h3>
+              <h3>{t("Tek panelde izlenebilir işe alım akışı.")}</h3>
               <p>
-                {t("Ön eleme, AI mülakat ve değerlendirme süreçleri aynı akış içinde otomatik yönetilir.")}
+                {t("Ön eleme, mülakat ve değerlendirme adımları aynı operasyon görünümü içinde takip edilir.")}
               </p>
               <div className={styles.progressList}>
                 <div>
-                  <span>{t("Değerlendirme doğruluğu")}</span>
+                  <span>{t("Ön eleme görünürlüğü")}</span>
                   <i>
-                    <b style={{ width: "82%" }} />
+                    <b style={{ width: "78%" }} />
                   </i>
                 </div>
                 <div>
-                  <span>{t("Süreç hızı")}</span>
+                  <span>{t("Mülakat akışı")}</span>
                   <i>
-                    <b style={{ width: "91%" }} />
+                    <b style={{ width: "84%" }} />
                   </i>
                 </div>
                 <div>
-                  <span>{t("Aday memnuniyeti")}</span>
+                  <span>{t("Rapor ve karar desteği")}</span>
                   <i>
-                    <b style={{ width: "96%" }} />
+                    <b style={{ width: "88%" }} />
                   </i>
                 </div>
               </div>
@@ -447,38 +447,42 @@ function LegalSections({ sections }: { sections: PublicLegalSection[] }) {
 
 function DocsEndpoints() {
   const { t } = useUiText();
-  const exampleMessage = t("Siparişim nerede?");
   const endpoints = [
     {
-      method: "POST",
-      path: "/v1/messages",
-      body: "Kanallardan gelen mesajı işler ve AI yanıt akışını başlatır."
+      method: "GET",
+      path: "/v1/health",
+      body: "Servis durumu ve temel çalışma zamanı hazırlığını doğrular."
     },
     {
       method: "GET",
-      path: "/v1/conversations",
-      body: "Mülakatları, durumları ve değerlendirme bilgilerini listeler."
+      path: "/v1/auth/providers",
+      body: "Etkin giriş sağlayıcılarını ve auth seçeneklerini listeler."
     },
     {
       method: "POST",
-      path: "/v1/webhooks",
-      body: "Harici sistem olaylarını alıp operasyon akışını tetikler."
+      path: "/v1/public/contact",
+      body: "Pilot ve demo taleplerini public lead kuyruğuna kaydeder."
+    },
+    {
+      method: "POST",
+      path: "/v1/integrations/webhooks/:provider",
+      body: "Desteklenen entegrasyon sağlayıcıları için gelen webhook olaylarını işler."
     }
   ];
 
   return (
     <div className={styles.docsGrid}>
       <div className={styles.codeCard}>
-        <span className={styles.cardEyebrow}>{t("Hızlı Başlangıç")}</span>
-        <h3>{t("API anahtarıyla dakikalar içinde bağlanın.")}</h3>
+        <span className={styles.cardEyebrow}>{t("Pilot API Yüzeyi")}</span>
+        <h3>{t("Kontrollü entegrasyonlar için temel uç noktalar")}</h3>
         <pre className={styles.codeBlock}>
-          <code>{`curl -X POST https://api.candit.ai/v1/messages \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
+          <code>{`curl -X POST https://your-api-host/v1/public/contact \\
   -H "Content-Type: application/json" \\
   -d '{
-    "channel": "whatsapp",
-    "customerId": "cus_123",
-    "message": "${exampleMessage}"
+    "fullName": "Jane Recruiter",
+    "email": "jane@example.com",
+    "company": "Candit Pilot",
+    "message": "Pilot entegrasyon detaylarini paylasmak istiyorum."
   }'`}</code>
         </pre>
       </div>
@@ -983,7 +987,7 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
           <SectionHeader
             eyebrow={t("Nasıl Çalışır?")}
             title={t(`${solution.label} operasyonuna uygun kurulum akışı`)}
-            subtitle={t("Pozisyonu tanımlayın, adayları yönlendirin ve AI mülakatı başlatın. Her adım otomatik yönetilir.")}
+            subtitle={t("Pozisyonu tanımlayın, adayları yönlendirin ve AI mülakat akışını başlatın. Süreç aynı panelde görünür kalır.")}
           />
           <SolutionWorkflow solution={solution} />
         </div>
@@ -1310,7 +1314,7 @@ export function PublicIntegrationsPage() {
           <SectionHeader
             eyebrow="Entegrasyonlar"
             title="Pilot kapsamındaki entegrasyonlar"
-            subtitle="Takvim, ATS ve webhook odaklı bağlantıları kontrollü şekilde devreye alın."
+            subtitle="Takvim, ATS ve webhook bağlantılarını ekip ihtiyacına göre kademeli planlayın."
             align="center"
           />
         </div>
@@ -1366,16 +1370,17 @@ export function PublicBlogIndexPage() {
         <div className={cn(styles.shell, styles.newsletterBand)}>
           <div>
             <span className={styles.eyebrow}>{t("Yeni içeriklerden haberdar olun")}</span>
-            <h2 className={styles.ctaTitle}>{t("AI ve işe alım dünyasındaki gelişmeleri takip edin")}</h2>
+            <h2 className={styles.ctaTitle}>{t("Yeni içerikler ve ürün notları için bağlantıda kalın")}</h2>
             <p className={styles.ctaBody}>
-              {t("Sektör trendleri, ürün güncellemeleri ve en iyi uygulamaları doğrudan e-posta adresinize alın.")}
+              {t("Şimdilik e-posta aboneliği yerine blog ve iletişim kanalı üzerinden güncellemeleri paylaşıyoruz.")}
             </p>
           </div>
-          <div className={styles.newsletterForm}>
-            <input type="email" placeholder={t("E-posta adresiniz")} />
-            <button type="button" className={cn(styles.button, styles.buttonPrimary)}>
-              <span>{t("Abone Ol")}</span>
-            </button>
+          <div className={styles.ctaActions}>
+            <ActionLink action={{ label: t("Blog yazılarını inceleyin"), href: "/blog" }} />
+            <ActionLink
+              action={{ label: t("Güncelleme talebi bırakın"), href: "/contact", tone: "secondary" }}
+              tone="secondary"
+            />
           </div>
         </div>
       </section>
@@ -1521,7 +1526,7 @@ export function PublicDocsApiPage() {
           <SectionHeader
             eyebrow="API Dokümantasyonu"
             title="Candit API ile entegre olun"
-            subtitle="REST API ve webhook desteği ile Candit'i mevcut İK sistemlerinize kolayca bağlayın."
+            subtitle="REST API ve webhook senaryolarıyla Candit'i mevcut İK sistemlerinize kontrollü biçimde bağlayın."
             align="center"
           />
         </div>
@@ -1539,15 +1544,15 @@ export function PublicDocsApiPage() {
             cards={[
               {
                 title: "Kimlik Doğrulama",
-                body: "Bearer token ile API isteklerini güvenli şekilde yetkilendirin."
+                body: "JWT ve provider tabanlı auth akışlarıyla korumalı uç noktalara erişin."
               },
               {
                 title: "Webhook Bildirimleri",
-                body: "Mülakat, değerlendirme, başvuru ve süreç olaylarını anlık takip edin."
+                body: "Mülakat, değerlendirme, başvuru ve süreç olaylarını provider bazında takip edin."
               },
               {
                 title: "Hız Limitleri",
-                body: "Sistem kararlılığını korumak için dakikalık ve saatlik istek limitleri uygulanır."
+                body: "Pilot stabilitesini korumak için istek limitleri ve kontrollü erişim uygulanır."
               }
             ]}
           />
@@ -1570,7 +1575,7 @@ export function PublicSecurityPage() {
           <SectionHeader
             eyebrow="Verileriniz Güvende"
             title="Kurumsal düzeyde veri güvenliği"
-            subtitle="Aday verileriniz KVKK ve GDPR standartlarında, endüstri lideri güvenlik protokolleriyle korunur."
+            subtitle="Erişim, denetim izi ve veri yönetişimi kontrollerini kademeli olarak güçlendiren bir güvenlik yaklaşımı benimsiyoruz."
             align="center"
           />
         </div>
