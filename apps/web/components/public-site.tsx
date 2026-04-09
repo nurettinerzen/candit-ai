@@ -1312,8 +1312,8 @@ export function PublicPricingPage() {
                 </tr>
               </thead>
               <tbody>
-                {OVERAGE_ROWS.map((row) => (
-                  <tr key={row.channel}>
+                {OVERAGE_ROWS.map((row, idx) => (
+                  <tr key={`${row.channel}-${idx}`}>
                     <td className={styles.prTableBold}>{row.channel}</td>
                     <td>{row.unit}</td>
                     <td>{row.rate}</td>
