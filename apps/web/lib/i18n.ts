@@ -2342,6 +2342,131 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Tabi, sayfa hızındaki iyileşme sayesinde dönüşüm oranı %18 arttı ve aylık 200 bin TL ek gelir sağladık. Ayrıca bounce rate %35 düştü.": "Sure, thanks to the page speed improvement, conversion rate increased by 18% and we generated an additional 200K TL monthly revenue. Also, bounce rate dropped by 35%."
 });
 
+// ── Landing page (landing-hero.tsx) translations ──
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  // Hero
+  "Ön Eleme.": "Pre-screening.",
+  "Kaynak Bulma.": "Sourcing.",
+  "Mülakat.": "Interview.",
+  "Yapay zekâ destekli işe alım platformu.": "AI-powered hiring platform.",
+
+  // Manifesto
+  "Her gün yüzlerce CV inceleniyor ama doğru adayı bulmak imkansız hissettiriyor. Candit bunu değiştiriyor.":
+    "Hundreds of CVs reviewed every day, yet finding the right candidate feels impossible. Candit changes that.",
+
+  // Hero sub / buttons
+  "Adaylarınızı hangi kanaldan ulaşırsa ulaşsın aynı hız, aynı kalite ve aynı profesyonellikle değerlendirin.":
+    "Evaluate your candidates with the same speed, quality, and professionalism — no matter how they apply.",
+  "Ücretsiz Deneyin": "Try Free",
+  "Nasıl çalışır?": "How it works?",
+
+  // Dashboard mockup
+  "İşe Alım Paneli": "Hiring Dashboard",
+  "Bugün": "Today",
+  "Bu Hafta": "This Week",
+  "Bu Ay": "This Month",
+  "Toplam Aday": "Total Candidates",
+  "+186 bu hafta": "+186 this week",
+  "Aktif Pozisyon": "Active Positions",
+  "12 departmanda": "across 12 departments",
+  "Tamamlanan Mülakat": "Completed Interviews",
+  "+23% önceki haftaya göre": "+23% vs last week",
+  "İşe Alım Oranı": "Hire Rate",
+  "+3.2% artış": "+3.2% increase",
+
+  // Channel bars
+  "AI Mülakat": "AI Interview",
+  "Ön Eleme": "Pre-screening",
+  "CV Analizi": "CV Analysis",
+  "Değerlendirme": "Assessment",
+
+  // Activity feed
+  "Yeni aday mülakata başladı": "New candidate started interview",
+  "AI değerlendirme tamamlandı": "AI assessment completed",
+  "3 yeni başvuru alındı": "3 new applications received",
+  "Aday raporu oluşturuldu": "Candidate report generated",
+  "2dk önce": "2m ago",
+  "5dk önce": "5m ago",
+  "12dk önce": "12m ago",
+  "18dk önce": "18m ago",
+
+  // Modules section
+  "Modüller": "Modules",
+  "Her adımda aynı kalite": "Consistent quality at every step",
+  "İş ilanı, başvuru toplama, ön eleme ve AI mülakat süreçlerinin hepsi tek platformda yönetilir.":
+    "Job posting, application collection, pre-screening, and AI interviews are all managed on one platform.",
+  "Adaylara otomatik sesli veya yazılı mülakat uygulayın. AI, yanıtları anlık analiz eder ve puanlar.":
+    "Conduct automatic voice or text interviews with candidates. AI analyzes and scores responses in real time.",
+  "Aday Değerlendirme": "Candidate Assessment",
+  "Yetkinlik bazlı AI puanlaması ile adayları objektif şekilde karşılaştırın ve sıralayın.":
+    "Compare and rank candidates objectively with competency-based AI scoring.",
+  "Aday Yönetimi": "Candidate Management",
+  "Tüm başvuruları tek panelden takip edin. Durum güncellemeleri ve iletişim otomatik yönetilir.":
+    "Track all applications from a single dashboard. Status updates and communication are managed automatically.",
+  "Analitik": "Analytics",
+  "İşe alım süreci metriklerini gerçek zamanlı izleyin. Darboğazları tespit edip süreci optimize edin.":
+    "Monitor hiring process metrics in real time. Identify bottlenecks and optimize your workflow.",
+
+  // Interview demo section
+  "Canlı Mülakat": "Live Interview",
+  "AI asistanımız adayla birebir görüşme yapar, yanıtları anında analiz eder. Siz sadece sonuçları değerlendirin.":
+    "Our AI assistant conducts one-on-one interviews with candidates and analyzes responses instantly. You just review the results.",
+  "Candit Asistan": "Candit Assistant",
+  "Selen Yılmaz": "Selen Yilmaz",
+
+  // Chat messages (interview Q&A)
+  "Selen Hanım, son pozisyonunuzdaki en büyük teknik zorluğu anlatır mısınız?":
+    "Selen, could you tell us about the biggest technical challenge in your last role?",
+  "Yüksek trafikli bir e-ticaret sitesinde performans sorunları yaşadık. React memo ve code splitting ile sayfa yüklenme süresini 3 saniyeden 800 milisaniyeye düşürdüm.":
+    "We had performance issues on a high-traffic e-commerce site. Using React memo and code splitting, I reduced page load time from 3 seconds to 800 milliseconds.",
+
+  // Proof stats
+  "Daha Hızlı İşe Alım": "Faster Hiring",
+  "İşe alım sürecini otomatikleştirerek ortalama kapanma süresini %87 kısaltın.":
+    "Automate your hiring process and reduce average time-to-fill by 87%.",
+  "Kesintisiz Mülakat": "Non-stop Interviews",
+  "AI mülakat 7 gün 24 saat aktif. Adaylar istedikleri zaman mülakata girebilir.":
+    "AI interviews are available 24/7. Candidates can interview whenever they want.",
+  "Verimlilik Artışı": "Efficiency Boost",
+  "İnsan kaynakları ekibinizin verimliliği ortalama 12 kat artar.":
+    "Your HR team's productivity increases by an average of 12x.",
+
+  // Workflow section
+  "Nasıl Çalışır": "How It Works",
+  "Dört adımda işe alıma başlayın": "Start hiring in four steps",
+  "Pozisyonu tanımlayın, adayları analiz edin, AI mülakat yaptırın, en iyi adayı seçin.":
+    "Define the position, analyze candidates, run AI interviews, and pick the best candidate.",
+  "Pozisyonu Tanımlayın": "Define the Position",
+  "İş ilanını oluşturun, mülakat sorularını ve değerlendirme kriterlerini belirleyin.":
+    "Create the job posting and set interview questions and evaluation criteria.",
+  "Adayları Analiz Edin": "Analyze Candidates",
+  "CV'leri otomatik analiz edin, ön eleme kriterleriyle adayları filtreleyin.":
+    "Automatically analyze CVs and filter candidates with pre-screening criteria.",
+  "AI Mülakat Yaptırın": "Run AI Interviews",
+  "Adaylar sizin belirlediğiniz sorularla mülakata girer. AI yanıtları analiz eder, yetkinlik raporu oluşturur.":
+    "Candidates are interviewed with questions you define. AI analyzes responses and generates a competency report.",
+  "En İyi Adayı Seçin": "Pick the Best Candidate",
+  "Karşılaştırmalı raporlarla en uygun adayı belirleyin ve teklifinizi iletin.":
+    "Identify the best-fit candidate with comparative reports and send your offer.",
+
+  // Security section
+  "Güvenlik": "Security",
+  "Aday verileri KVKK ve GDPR standartlarında korunur. Şifreli depolama, rol bazlı erişim ve otomatik veri yaşam döngüsü yönetimi.":
+    "Candidate data is protected to KVKK and GDPR standards. Encrypted storage, role-based access, and automatic data lifecycle management.",
+  "Güvenlik Katmanları": "Security Layers",
+  "Kimlik Doğrulama": "Authentication",
+  "Çok faktörlü güvenli giriş": "Multi-factor secure login",
+  "AI Koruma": "AI Protection",
+  "Uygunsuz içerik filtreleme": "Inappropriate content filtering",
+  "Veri Şifreleme": "Data Encryption",
+  "AES-256 şifreleme": "AES-256 encryption",
+  "KVKK Uyumu": "KVKK Compliance",
+  "Tam uyumlu veri işleme": "Fully compliant data processing",
+
+  // CTA section
+  "Başlayalım": "Get Started",
+});
+
 const EN_WORD_TRANSLATIONS: Array<[string, string]> = [
   ["Başvuru", "Application"],
   ["Başvurular", "Applications"],

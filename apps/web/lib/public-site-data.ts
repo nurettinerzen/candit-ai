@@ -144,9 +144,9 @@ export const PUBLIC_HOME_CHANNELS: PublicCard[] = [
 
 export const PUBLIC_HOME_PROOF: PublicStat[] = [
   {
-    value: "%87",
-    label: "Daha Hızlı İşe Alım",
-    detail: "İşe alım sürecini otomatikleştirerek ortalama kapanma süresini %87 kısaltın."
+    value: "Tutarlı",
+    label: "Değerlendirme Çıktıları",
+    detail: "Yapılandırılmış screening, mülakat ve rapor çıktıları ile ekip içinde ortak karar zemini oluşturun."
   },
   {
     value: "7/24",
@@ -154,9 +154,9 @@ export const PUBLIC_HOME_PROOF: PublicStat[] = [
     detail: "AI mülakat 7 gün 24 saat aktif. Adaylar istedikleri zaman mülakata girebilir."
   },
   {
-    value: "12x",
-    label: "Verimlilik Artışı",
-    detail: "İnsan kaynakları ekibinizin verimliliği ortalama 12 kat artar."
+    value: "Daha az",
+    label: "Manuel Tekrar",
+    detail: "Tekrarlayan ön eleme, özet ve raporlama adımlarını otomatikleştirerek recruiter ekibinin odağını koruyun."
   }
 ];
 
@@ -366,16 +366,16 @@ export const PUBLIC_SOLUTIONS: PublicSolution[] = [
 ];
 
 export const PUBLIC_SOLUTIONS_STATS: PublicStat[] = [
-  { value: "%70", label: "Daha Hızlı İşe Alım" },
-  { value: "5K+", label: "Aylık AI Mülakat" },
-  { value: "%85", label: "Ön Eleme Doğruluğu" },
-  { value: "3x", label: "Daha Fazla Aday Kapasitesi" }
+  { value: "Daha hızlı", label: "İşe alım akışı" },
+  { value: "Çoklu rol", label: "Desteklenen senaryolar" },
+  { value: "Tutarlı", label: "Ön eleme çıktıları" },
+  { value: "Ölçeklenebilir", label: "Aday kapasitesi" }
 ];
 
 export const PUBLIC_SOLUTIONS_ADVANTAGES: PublicCard[] = [
   {
     title: "Hızlı İşe Alım Döngüsü",
-    body: "AI ön eleme ve mülakat ile işe alım sürenizi %70'e kadar kısaltın."
+    body: "AI ön eleme ve mülakat ile işe alım döngüsündeki tekrarları azaltın ve ekip hızını artırın."
   },
   {
     title: "Objektif Aday Değerlendirme",
@@ -386,8 +386,8 @@ export const PUBLIC_SOLUTIONS_ADVANTAGES: PublicCard[] = [
     body: "Tek pozisyondan toplu alıma kadar her ölçekte AI mülakat gerçekleştirin."
   },
   {
-    title: "KVKK Uyumlu",
-    body: "Aday verileri Türkiye'de, KVKK ve GDPR standartlarına tam uyumlu."
+    title: "Uyum Odaklı",
+    body: "Aday verilerini rol bazlı erişim, denetim izi ve yaşam döngüsü kontrolleriyle yönetin."
   }
 ];
 
@@ -410,7 +410,7 @@ export const PUBLIC_FAQ: PublicFaq[] = [
   {
     question: "KVKK ve veri güvenliği nasıl sağlanıyor?",
     answer:
-      "Aday verileri Türkiye'de, KVKK ve GDPR standartlarına tam uyumlu şekilde saklanır. Rol bazlı erişim, veri maskeleme ve otomatik silme politikaları uygulanır."
+      "Platform; rol bazlı erişim, veri maskeleme, audit log ve yaşam döngüsü kontrolleriyle güvenli kullanım için tasarlanmıştır. KVKK ve GDPR süreçleri için gerekli operasyonel kontroller ekip bazında yapılandırılmalıdır."
   },
   {
     question: "Mevcut ATS sistemimle entegre olabilir mi?",
@@ -508,7 +508,7 @@ export const PUBLIC_INTEGRATION_GROUPS: Array<{ title: string; items: PublicCard
     items: [
       { title: "Google Calendar", body: "Mülakat planlarını takvime bağlayın ve etkinlik oluşturun", badge: "Pilotta aktif", href: "/settings", actionLabel: "Panelde aç" },
       { title: "Google Meet", body: "Uygun akışlarda görüşme linklerini Google ekosistemiyle yönetin", badge: "Pilotta aktif", href: "/settings", actionLabel: "Panelde aç" },
-      { title: "Calendly", body: "Uygun ekipler için aday-randevu akışını Calendly ile eşleyin", badge: "Pilotta aktif", href: "/settings", actionLabel: "Panelde aç" }
+      { title: "Calendly", body: "Aday planlama akışları için kurulum aşamasında, talep bazlı devreye alınır", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" }
     ]
   },
   {
@@ -761,7 +761,7 @@ export const PUBLIC_HELP_TOPICS: PublicCard[] = [
 export const PUBLIC_SECURITY_GROUPS: PublicCard[] = [
   {
     title: "Veri Güvenliği",
-    body: "Verileriniz endüstri lideri güvenlik protokolleriyle korunur.",
+    body: "Verileriniz katmanlı güvenlik kontrolleriyle korunur.",
     bullets: [
       "AES-256 ve TLS 1.3 ile uçtan uca şifreleme",
       "RBAC, MFA ve gelişmiş oturum yönetimi",
@@ -770,7 +770,7 @@ export const PUBLIC_SECURITY_GROUPS: PublicCard[] = [
   },
   {
     title: "Yasal Uyumluluk",
-    body: "Türkiye ve Avrupa veri koruma düzenlemelerine tam uyum.",
+    body: "KVKK ve GDPR gereksinimlerine yönelik süreçler ve kontroller desteklenir.",
     bullets: [
       "KVKK için VİS, açık rıza, saklama ve silme politikaları",
       "GDPR için veri taşınabilirliği, silme talebi ve DPA desteği",
@@ -788,7 +788,7 @@ export const PUBLIC_SECURITY_GROUPS: PublicCard[] = [
   },
   {
     title: "Operasyonel Güvenlik",
-    body: "Sistemler 7/24 izlenir ve korunur.",
+    body: "Sistemler düzenli izleme, kayıt ve müdahale akışlarıyla korunur.",
     bullets: [
       "Anomali tespitli sürekli izleme",
       "Kim, ne zaman, ne yaptı görünürlüğü için audit log",
@@ -799,9 +799,9 @@ export const PUBLIC_SECURITY_GROUPS: PublicCard[] = [
 
 export const PUBLIC_ABOUT_STATS: PublicStat[] = [
   { value: "2024", label: "Kuruluş Yılı" },
-  { value: "50.000+", label: "Mülakat Tamamlandı" },
-  { value: "200+", label: "Şirket Kullanıyor" },
-  { value: "120.000+", label: "Aday Değerlendirildi" }
+  { value: "B2B SaaS", label: "Ürün Modeli" },
+  { value: "TR / EN", label: "Ürün Dili" },
+  { value: "AI + Human", label: "Karar Yaklaşımı" }
 ];
 
 export const PUBLIC_ABOUT_STORY: PublicCard[] = [
@@ -844,15 +844,15 @@ export const PUBLIC_TEAM: PublicCard[] = [
 export const PUBLIC_CONTACT_TRUST: PublicCard[] = [
   { title: "Dakikalar İçinde Kurulum", body: "İlk AI mülakatınızı hemen oluşturun, teknik bilgi gerektirmez." },
   { title: "AI Destekli Mülakat", body: "Yapay zeka ile tutarlı ve objektif aday değerlendirmesi." },
-  { title: "Kurumsal Güvenlik", body: "KVKK uyumlu, aday verileriniz güvende." },
+  { title: "Kurumsal Güvenlik", body: "Rol bazlı erişim, audit görünürlüğü ve güvenli veri akışlarıyla tasarlandı." },
   { title: "Özel Destek", body: "Kurulum, ATS entegrasyonu ve eğitimde yanınızdayız." }
 ];
 
 export const PUBLIC_CONTACT_METRICS: PublicStat[] = [
-  { value: "%70", label: "Daha hızlı ön eleme" },
+  { value: "Daha hızlı", label: "Ön eleme akışı" },
   { value: "7/24", label: "Kesintisiz mülakat" },
-  { value: "3 dk", label: "Ort. değerlendirme süresi" },
-  { value: "5x", label: "Daha fazla aday kapasitesi" }
+  { value: "Dakikalar", label: "İlk shortlist görünürlüğü" },
+  { value: "Tek panel", label: "Recruiter operasyonu" }
 ];
 
 export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [

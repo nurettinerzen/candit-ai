@@ -50,38 +50,72 @@ Ilgili arka plan notlari icin:
 - [x] Public blog / integrations / changelog copy tarafinda Telyx destek/e-ticaret referanslarini temizleyen local degisiklikler repo workspace'inde mevcut.
   - Ana kaynak:
     - `/Users/nurettinerzen/Desktop/ai-interviewer/apps/web/lib/public-site-data.ts`
+- [x] Public claim cleanup icin launch-riskli metinler local olarak yumusatildi.
+  - Temizlenen riskler:
+    - kanitsiz performans yuzdeleri
+    - dogrulanmamis buyuk hacim sayilari
+    - `Turkiye'de` veri lokasyonu iddiasi
+    - `tam uyumlu` gibi kesin compliance dili
+- [x] Header tabanli staging auth smoke basarili.
+  - Test edilen akıs:
+    - `POST /v1/auth/signup`
+    - `GET /v1/auth/session`
+    - `POST /v1/auth/refresh`
+    - `POST /v1/auth/logout`
+  - Sonuc:
+    - Signup session mode: `jwt`
+    - Session: `200`
+    - Refresh: `201`
+    - Logout: `201`
 
 ### Tespit edilen blocker / misconfiguration
 
-- [ ] Gecici staging mimarisinde auth runtime modu netlestirilmeli.
-  - Mevcut durum:
-    - `APP_RUNTIME_MODE=production` + `AUTH_TOKEN_TRANSPORT=header` Render API'yi dusuruyor.
-    - Backend production modda yalnizca `cookie` transport kabul ediyor.
-    - Frontend de production modda token transport'u zorla `cookie`'ye ceviriyor.
+- [x] Gecici staging auth runtime modu stabilize edildi.
+  - Uygulanan gecici ayar:
+    - Render: `APP_RUNTIME_MODE=development`, `AUTH_SESSION_MODE=jwt`, `AUTH_TOKEN_TRANSPORT=header`
+    - Vercel: `NEXT_PUBLIC_APP_RUNTIME_MODE=development`, `NEXT_PUBLIC_AUTH_SESSION_MODE=jwt`, `NEXT_PUBLIC_AUTH_TOKEN_TRANSPORT=header`
   - Kanit:
     - `/Users/nurettinerzen/Desktop/ai-interviewer/apps/api/src/config/runtime-config.service.ts`
     - `/Users/nurettinerzen/Desktop/ai-interviewer/apps/web/lib/auth/runtime.ts`
-  - Gecici staging onerisi:
-    - Render: `APP_RUNTIME_MODE=development`, `AUTH_SESSION_MODE=jwt`, `AUTH_TOKEN_TRANSPORT=header`
-    - Vercel: `NEXT_PUBLIC_APP_RUNTIME_MODE=development`, `NEXT_PUBLIC_AUTH_SESSION_MODE=jwt`, `NEXT_PUBLIC_AUTH_TOKEN_TRANSPORT=header`
   - Launch notu:
     - Gercek domain/proxy hazir oldugunda tekrar `production + cookie` moduna gecilecek.
-- [ ] Google auth public login redirect'i hala localhost callback'e gidiyor.
-  - Mevcut durum:
-    - `/v1/auth/google/authorize` -> `redirect_uri=http://localhost:4000/v1/auth/google/callback`
-  - Gereken staging degeri:
-    - `GOOGLE_AUTH_REDIRECT_URI=https://candit.onrender.com/v1/auth/google/callback`
-- [ ] Integrations tarafindaki Google callback env'i de staging/prod URL ile gozden gecirilmeli.
+- [x] Google auth public login redirect'i staging callback'e donuyor.
+  - Mevcut dogrulama:
+    - `/v1/auth/google/authorize` -> `redirect_uri=https://candit.onrender.com/v1/auth/google/callback`
+- [x] Integrations tarafindaki Google callback env'i staging/prod formatina getirildi.
   - Beklenen format:
     - `GOOGLE_OAUTH_REDIRECT_URI=https://candit.onrender.com/v1/integrations/google/callback`
-- [ ] Worker queue'nin gercek bir job ile end-to-end dogrulamasi henuz yapilmadi.
+- [ ] Public contact intake endpoint'i ilk gercek smoke testte `500` donuyor.
+  - Test:
+    - `POST /v1/public/contact`
+  - Yuksek olasilikli neden:
+    - Son eklenen public lead inbox migration'lari DB'ye uygulanmamis olabilir.
+  - Kontrol edilmesi gereken migration'lar:
+    - `20260409170000_public_contact_inbox`
+    - `20260409193000_security_incident_backbone`
+- [ ] Public integrations copy'sinde Calendly hazirlik seviyesi runtime readiness ile tekrar hizalanmali.
+  - Canli risk:
+    - `/integrations` sayfasi Calendly'i fazla hazir gosterebilir.
+- [ ] Worker queue end-to-end smoke su anda fail durumda.
+  - Test edilen akis:
+    - owner test kullanicisi ile `POST /v1/async-jobs`
+    - type: `webhook_retry`
+  - Sonuc:
+    - Job create: `201`
+    - 3-12 sn sonra job status: `PENDING`
+    - `attempts=0`
+  - Yorum:
+    - API job kaydini olusturuyor ama worker kuyrugu tuketmuyor gibi gorunuyor.
+  - Worker log'unda aranacak satir:
+    - `worker.started`
+    - `worker.bullmq.completed`
+    - `worker.bullmq.failed`
 - [ ] Browser tabanli interaktif smoke testi icin local `agent-browser` araci ortamda mevcut degil; ilk tur HTTP smoke + deploy/log dogrulamasi ile yapildi.
 
 ### Bir sonraki faz
 
 - [ ] P0/P1 icinde kalan blocker'lari kapat:
-  - staging auth runtime modunu sabitle
-  - Google auth redirect env duzeltmeleri
+  - public contact migration drift'ini kapat
   - Worker queue end-to-end smoke
 - [ ] Ardindan P2'ye gec:
   - landing page claim/copy/dogruluk kontrolu
