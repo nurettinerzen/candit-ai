@@ -51,7 +51,7 @@
 }
 
 /* ── Dark mode ── */
-:is(.dark) .lp-landing-page {
+:is([data-theme="dark"]) .lp-landing-page {
   --lp-primary-light: #a78bfa;
   --lp-primary-400: #7c3aed;
   --lp-purple: #c4b5fd;
@@ -99,7 +99,7 @@
     linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-mid) 34%, var(--bg-deep) 100%);
   overflow: clip;
 }
-:is(.dark) .lp-page {
+:is([data-theme="dark"]) .lp-page {
   background:
     radial-gradient(ellipse 80% 50% at 20% 0%, rgba(124,58,237,0.18), transparent),
     radial-gradient(ellipse 60% 40% at 80% 10%, rgba(139,92,246,0.15), transparent),
@@ -371,7 +371,7 @@
   box-shadow: 0 40px 100px rgba(0,0,0,0.08);
   overflow: hidden;
 }
-:is(.dark) .lp-chat-window {
+:is([data-theme="dark"]) .lp-chat-window {
   background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)), rgba(4,12,18,0.75);
   box-shadow: 0 40px 100px rgba(0,0,0,0.4);
 }
@@ -480,7 +480,7 @@
   padding: 28px; min-height: 280px;
   display: flex; flex-direction: column; justify-content: center;
 }
-:is(.dark) .lp-feature-visual {
+:is([data-theme="dark"]) .lp-feature-visual {
   background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)), rgba(4,12,18,0.65);
   box-shadow: 0 32px 80px rgba(0,0,0,0.35);
 }
@@ -521,7 +521,7 @@
     var(--card-bg);
   text-align: center;
 }
-:is(.dark) .lp-cta-panel {
+:is([data-theme="dark"]) .lp-cta-panel {
   background:
     radial-gradient(circle at 15% 20%, rgba(124,58,237,0.12), transparent 24%),
     radial-gradient(circle at 82% 28%, rgba(139,92,246,0.12), transparent 20%),

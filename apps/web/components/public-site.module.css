@@ -59,6 +59,9 @@
 .main {
   position: relative;
   z-index: 1;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 
 .header {
