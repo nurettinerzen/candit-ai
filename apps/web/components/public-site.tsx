@@ -482,11 +482,11 @@ function MockContactForm({
         </label>
         <label className={styles.field}>
           <span>Rol / Ekip</span>
-          <input type="text" placeholder="Operasyon, destek, kurucu..." />
+          <input type="text" placeholder="İK, yönetici, kurucu..." />
         </label>
         <label className={cn(styles.field, styles.fieldWide)}>
           <span>Mesaj</span>
-          <textarea rows={5} placeholder="İhtiyacınızı ve bağlamak istediğiniz kanalları yazın." />
+          <textarea rows={5} placeholder="İşe alım süreçleriniz ve ihtiyaçlarınız hakkında bilgi verin." />
         </label>
       </div>
 
@@ -786,9 +786,9 @@ export function PublicFeaturesPage() {
         <section className={styles.ftSection}>
           <div className={styles.shell}>
             <div className={styles.ftSectionHeader}>
-              <h2 className={styles.ftSectionTitle}>Her sektöre özel hazır AI akışları</h2>
+              <h2 className={styles.ftSectionTitle}>Her sektöre özel AI işe alım çözümleri</h2>
               <p className={styles.ftSectionSubtitle}>
-                E-ticaret, restoran, salon ve müşteri desteği için optimize edilmiş çözümler.
+                Teknoloji, perakende, sağlık, finans ve üretim sektörlerine özel mülakat akışları.
               </p>
             </div>
             <div className={styles.ftSolutionGrid}>
@@ -884,7 +884,7 @@ export function PublicSolutionsPage() {
               Sektörünüze özel AI mülakat asistanı
             </h1>
             <p className={styles.solHeroSubtitle}>
-              E-ticaret, restoran, salon ve müşteri desteği için özel olarak tasarlanmış hazır AI akışları ile hemen başlayabilirsiniz.
+              Teknoloji, perakende, sağlık, finans ve üretim sektörlerine özel AI mülakat ve ön eleme akışları ile hemen başlayın.
             </p>
             <div className={styles.solHeroActions}>
               <a href="#solutions-grid" className={cn(styles.solGlowBtn, styles.solGlowBtnPrimary)}>
@@ -917,7 +917,7 @@ export function PublicSolutionsPage() {
             <div className={styles.solSectionHeader}>
               <h2 className={styles.solSectionTitle}>Sektörünüzü seçin, hemen başlayın</h2>
               <p className={styles.solSectionSubtitle}>
-                Her çözüm, sektörün ihtiyaçlarına özel AI akışları, entegrasyonlar ve kanal desteğiyle donatıldı.
+                Her çözüm, sektörün ihtiyaçlarına özel AI mülakat akışları, ön eleme kriterleri ve değerlendirme metrikleriyle donatıldı.
               </p>
             </div>
             <div className={styles.solGrid}>
@@ -953,7 +953,7 @@ export function PublicSolutionsPage() {
             <div className={styles.solSectionHeader}>
               <h2 className={styles.solSectionTitle}>Neden Candit.ai?</h2>
               <p className={styles.solSectionSubtitle}>
-                Sektörden bağımsız olarak her işletmeye değer katan temel avantajlar.
+                Sektörden bağımsız olarak her işe alım ekibine değer katan temel avantajlar.
               </p>
             </div>
             <div className={styles.solBentoGrid}>
@@ -988,9 +988,9 @@ export function PublicSolutionsPage() {
           <div className={styles.shell}>
             <div className={styles.solCta}>
               <div className={styles.solCtaInner}>
-                <h2 className={styles.solCtaTitle}>Sektörünüze özel AI çözümünü hemen deneyin</h2>
+                <h2 className={styles.solCtaTitle}>Sektörünüze özel AI işe alım çözümünü deneyin</h2>
                 <p className={styles.solCtaSubtitle}>
-                  Listede olsun ya da olmasın, işletmenize uygun AI akışını birlikte tasarlayalım.
+                  Listede olsun ya da olmasın, sektörünüze uygun mülakat ve ön eleme akışını birlikte tasarlayalım.
                 </p>
                 <div className={styles.solCtaActions}>
                   <a href="/contact" className={styles.solCtaBtnWhite}>
@@ -1078,7 +1078,7 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
           <SectionHeader
             eyebrow="Kullanım Senaryoları"
             title="Saha gerçeğine yakın örnek akışlar"
-            subtitle="Telyx solution detaylarındaki use-case bölümünü bullet kartlarla yeniden kurduk."
+            subtitle="Sektörünüze özel AI mülakat ve ön eleme senaryolarını inceleyin."
           />
           <CardGrid
             cards={solution.useCases.map((item, index) => ({
@@ -1095,12 +1095,12 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
           <SectionHeader
             eyebrow={`${solution.label} İçin Öne Çıkanlar`}
             title="Operasyonun kritik avantajları"
-            subtitle="Highlight listesini landing sayfasındaki premium kart sistemine yerleştirdik."
+            subtitle="Bu sektördeki işe alım sürecinizi hızlandıran temel avantajlar."
           />
           <CardGrid
             cards={solution.highlights.map((item) => ({
               title: item,
-              body: `${solution.label} ekibinin karar hızını ve kanal tutarlılığını yükselten temel avantajı temsil eder.`
+              body: `${solution.label} sektöründe işe alım kalitesini ve hızını artıran temel avantajı temsil eder.`
             }))}
             columns={2}
           />
@@ -1110,14 +1110,14 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Tüm Kanallardan Erişim"
-            title="Aynı ürün dili tüm temas noktalarına yayılıyor"
-            subtitle="Channel cards her solution detail sayfasında tekrarlanacak şekilde reusable kuruldu."
+            eyebrow="Kullanılan Araçlar"
+            title="İşe alım sürecinin her adımında AI desteği"
+            subtitle="Candit'in temel araçları bu sektör çözümünde nasıl kullanılıyor?"
           />
           <CardGrid
             cards={solution.channels.map((channel) => ({
               title: channel,
-              body: `${solution.label} akışı ${channel} kanalında aynı operasyon mantığı ile çalışır.`
+              body: `${solution.label} sektöründe ${channel} aracı ile işe alım sürecinizi güçlendirin.`
             }))}
             columns={4}
           />
@@ -1132,16 +1132,16 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
 export function PublicPricingPage() {
   const OVERAGE_ROWS = [
     {
-      channel: "Destek etkileşimi",
-      unit: "1 etkileşim",
-      rate: "2,5\u20BA/etkileşim",
-      note: "PAYG bakiyesinden düşer. Aylık planlarda önce dahil kullanım, sonra ek paket, ardından yazılı kullanım aşımı uygulanır."
+      channel: "Ek AI mülakat",
+      unit: "25 mülakat",
+      rate: "$79/paket",
+      note: "Mevcut planınızdaki AI mülakat kotası dolduğunda ek paket satın alabilirsiniz."
     },
     {
-      channel: "Ses dakikası",
-      unit: "1 dk",
-      rate: "23\u20BA/dk",
-      note: "PAYG cüzdanından düşer. Pro ve Enterprise planlarında dahil dakikalar bittiğinde ses aşımı devreye girer."
+      channel: "Ek aday işleme",
+      unit: "100 aday",
+      rate: "$59/paket",
+      note: "Aday ön eleme kotası dolduğunda ek aday işleme hakkı satın alabilirsiniz."
     }
   ];
 
@@ -1674,8 +1674,8 @@ export function PublicAboutPage() {
         <div className={styles.shell}>
           <SectionHeader
             eyebrow="Hakkımızda"
-            title="Yapay zekayı işletmelerin hizmetine sunuyoruz"
-            subtitle="Her büyüklükteki işletmenin 7/24 profesyonel ve tutarlı müşteri hizmeti sunabilmesini sağlıyoruz."
+            title="İşe alımı yapay zeka ile yeniden tanımlıyoruz"
+            subtitle="Her büyüklükteki şirketin en doğru adayı en hızlı şekilde bulabilmesi için AI destekli mülakat ve ön eleme çözümleri sunuyoruz."
             align="center"
           />
         </div>
@@ -1694,7 +1694,7 @@ export function PublicAboutPage() {
           <SectionHeader
             eyebrow="Hikayemiz"
             title="Nereden geldik, nereye gidiyoruz"
-            subtitle="Farklı sektörlerde edinilen deneyim, yapay zeka ile birleşerek Telyx'i ortaya çıkardı."
+            subtitle="İşe alım süreçlerindeki deneyim, yapay zeka ile birleşerek Candit'i ortaya çıkardı."
             align="center"
           />
           <CardGrid cards={PUBLIC_ABOUT_STORY} columns={2} />
@@ -1707,7 +1707,7 @@ export function PublicAboutPage() {
           <SectionHeader
             eyebrow="Ekibimiz"
             title="Küçük ama tutkulu bir ekip"
-            subtitle="Her ürün kararı, her entegrasyon ve her iyileştirme müşteri ihtiyaçlarından hareketle geliştiriliyor."
+            subtitle="Her ürün kararı, her özellik ve her iyileştirme İK ekiplerinin ve adayların ihtiyaçlarından hareketle geliştiriliyor."
             align="center"
           />
           <CardGrid cards={PUBLIC_TEAM} columns={3} />
@@ -1717,7 +1717,7 @@ export function PublicAboutPage() {
       {/* ═══ CTA ═══ */}
       <CTASection
         title="Hikayemizin bir parçası olun"
-        body="İşletmenizi AI ile dönüştürerek müşterilerinize hak ettikleri deneyimi sunun."
+        body="İşe alım süreçlerinizi AI ile dönüştürerek en doğru adayları en hızlı şekilde bulun."
         primary={{ label: "Demo Talep Edin", href: "/waitlist" }}
         secondary={{ label: "İletişime Geçin", href: "/contact", tone: "secondary" }}
       />
@@ -1734,7 +1734,7 @@ export function PublicContactPage() {
           <SectionHeader
             eyebrow="İletişim"
             title="Size nasıl yardımcı olabiliriz?"
-            subtitle="Sorularınızı iletin, ekibimiz en kısa sürede size dönecektir. Kurulum desteğinden entegrasyon danışmanlığına kadar yanınızdayız."
+            subtitle="İşe alım süreçlerinizi AI ile dönüştürmek mi istiyorsunuz? Sorularınızı iletin, ekibimiz en kısa sürede size dönecektir."
             align="center"
           />
         </div>

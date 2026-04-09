@@ -96,10 +96,11 @@ export const PUBLIC_FOOTER_COLUMNS: Array<{ title: string; links: PublicNavLink[
   {
     title: "Çözümler",
     links: [
-      { label: "E-ticaret", href: "/solutions/ecommerce" },
-      { label: "Restoran", href: "/solutions/restaurant" },
-      { label: "Güzellik Salonu", href: "/solutions/salon" },
-      { label: "Müşteri Desteği", href: "/solutions/support" }
+      { label: "Teknoloji", href: "/solutions/teknoloji" },
+      { label: "Perakende", href: "/solutions/perakende" },
+      { label: "Sağlık", href: "/solutions/saglik" },
+      { label: "Finans", href: "/solutions/finans" },
+      { label: "Üretim ve Lojistik", href: "/solutions/uretim-lojistik" }
     ]
   },
   {
@@ -193,182 +194,204 @@ export const PUBLIC_FEATURE_HERO_ACTIONS: PublicAction[] = [
 
 export const PUBLIC_FEATURE_GROUPS: PublicCard[] = [
   {
-    title: "Çok Kanallı Destek",
-    body: "Tüm iletişim kanallarınızı tek platformda yönetin.",
-    bullets: ["WhatsApp Business entegrasyonu", "AI telefon görüşmeleri", "Web chat widget", "Email otomasyonu"]
+    title: "AI Mülakat",
+    body: "Adaylarla sesli veya görüntülü AI mülakatları otomatik gerçekleştirin.",
+    bullets: ["Pozisyona özel soru setleri", "Sesli ve görüntülü mülakat desteği", "Gerçek zamanlı değerlendirme", "Otomatik transkript ve özet"]
   },
   {
-    title: "AI Asistan",
-    body: "GPT-4 tabanlı akıllı müşteri hizmeti.",
-    bullets: ["Doğal dil işleme", "Bağlam anlayışı", "Çoklu dil desteği", "Sürekli öğrenme"]
+    title: "Ön Eleme (Screening)",
+    body: "Başvuruları AI ile hızlıca tarayın, uygun adayları öne çıkarın.",
+    bullets: ["CV ve başvuru formu analizi", "Pozisyon-aday uyum skoru", "Otomatik kısa liste oluşturma", "Özelleştirilebilir eleme kriterleri"]
   },
   {
-    title: "E-ticaret Entegrasyonları",
-    body: "Popüler e-ticaret platformları ile entegre çalışın.",
-    bullets: ["ikas entegrasyonu", "Shopify entegrasyonu", "IdeaSoft entegrasyonu", "Ticimax entegrasyonu"]
+    title: "Aday Değerlendirme",
+    body: "Her adayı yapılandırılmış puanlama ile objektif değerlendirin.",
+    bullets: ["Yetkinlik bazlı skorlama", "Teknik ve davranışsal analiz", "Karşılaştırmalı aday raporu", "Önyargı azaltma metrikleri"]
   },
   {
-    title: "Takvim Entegrasyonu",
-    body: "Randevu ve rezervasyonları otomatik yönetin.",
-    bullets: ["Google Calendar senkronizasyonu", "Otomatik randevu oluşturma", "Hatırlatma bildirimleri"]
+    title: "İş İlanı Yönetimi",
+    body: "İlanlarınızı oluşturun, yayınlayın ve başvuruları tek yerden takip edin.",
+    bullets: ["Hızlı ilan oluşturma şablonları", "Çoklu pozisyon yönetimi", "Başvuru havuzu takibi", "Kariyer sayfası entegrasyonu"]
   },
   {
-    title: "Çoklu Dil Desteği",
-    body: "16 farklı dilde müşteri hizmeti sunun.",
-    bullets: ["Türkçe ve İngilizce", "Arapça, Almanca, Fransızca", "Ve daha fazlası..."]
+    title: "Analitik ve Raporlama",
+    body: "İşe alım sürecinizin her adımını ölçün ve optimize edin.",
+    bullets: ["Mülakat performans metrikleri", "Aday dönüşüm hunisi", "Pozisyon bazlı süre analizi", "Ekip verimliliği raporları"]
   },
   {
-    title: "Gerçek Zamanlı Dashboard",
-    body: "Performansınızı anlık takip edin.",
-    bullets: ["Arama istatistikleri", "Müşteri memnuniyeti", "Detaylı raporlar"]
+    title: "Entegrasyonlar",
+    body: "Mevcut İK araçlarınız ve takvimlerinizle sorunsuz çalışın.",
+    bullets: ["Google Calendar senkronizasyonu", "ATS entegrasyonları", "Webhook ve API desteği", "Kaynak Bulma (beta)"]
   }
 ];
 
 export const PUBLIC_FEATURE_OPERATIONS: PublicCard[] = [
   {
-    title: "Dashboard ve KPI",
-    body: "Günlük operasyon kararlarını destekleyen metrikleri takip edin.",
+    title: "İşe Alım Dashboard'u",
+    body: "Tüm işe alım sürecinizi tek ekrandan takip edin ve yönetin.",
     bullets: [
-      "Kanal ve niyet bazlı çözüm oranı",
-      "Deflection ve handoff trendleri",
-      "Geciken yanıtlar için SLA risk uyarıları",
-      "Kanallar arası dağılım analizi"
+      "Pozisyon bazlı ilerleme ve doluluk oranları",
+      "Mülakat tamamlanma ve değerlendirme metrikleri",
+      "Aday havuzu ve pipeline görünürlüğü",
+      "Ekip performansı ve SLA takibi"
     ]
   },
   {
     title: "Güvenlik ve KVKK",
-    body: "Veri süreçlerinde ölçülebilir ve denetlenebilir yaklaşım.",
+    body: "Aday verilerini güvenle saklayın, KVKK ve GDPR uyumlu çalışın.",
     bullets: [
-      "Hassas işlemler için rol bazlı yetkilendirme",
-      "Kritik işlemler için audit log takibi",
-      "Veri minimizasyonu ve kontrollü saklama prensibi"
+      "Rol bazlı erişim ve yetkilendirme",
+      "Aday verisi maskeleme ve anonimleştirme",
+      "Veri saklama süresi politikaları ve otomatik silme"
     ]
   },
   {
-    title: "Entegrasyonlar",
-    body: "İş verisini sisteme bağlayın, yanıtları güncel tutun.",
+    title: "Aday Yönetimi",
+    body: "Tüm adaylarınızı tek havuzda yönetin, geçmiş verilere kolayca erişin.",
     bullets: [
-      "ERP/CRM ve e-ticaret sistemlerinden veri akışı",
-      "Webhook ile harici platform senkronizasyonu",
-      "Hafif operasyonlar için Sheets/Takvim desteği"
+      "Merkezi aday veritabanı ve arama",
+      "Aday etiketleme ve segmentasyon",
+      "Geçmiş mülakat ve değerlendirme kayıtları"
     ]
   }
 ];
 
 export const PUBLIC_SOLUTIONS: PublicSolution[] = [
   {
-    slug: "ecommerce",
-    label: "E-ticaret",
-    title: "E-ticaret için AI Asistan",
-    shortDescription: "Sipariş durumu, iade ve kargo süreçleri için 7/24 otomatik destek.",
+    slug: "teknoloji",
+    label: "Teknoloji",
+    title: "Teknoloji Sektörü İçin AI İşe Alım",
+    shortDescription: "Yazılımcı, mühendis ve teknik pozisyonlarda hızlı ve doğru işe alım.",
     intro:
-      "Sipariş durumu, iade, kargo soruları ve satış öncesi destek otomasyonu ile müşterilerinize tüm kanallardan kesintisiz hizmet verin.",
+      "Teknik yetkinlik değerlendirmesi, kodlama becerisi analizi ve kültür uyumu skorlaması ile teknoloji sektöründe doğru adayı bulun.",
     useCases: [
-      "Sipariş sorgu, ERP, Shopify veya ikas benzeri sistemlerle yanıt üretimi",
-      "İade talebi toplama, form ve etiketleme akışı",
-      "Kargo takip bağlantısı ve otomatik durum güncellemesi"
+      "Yazılım geliştirici teknik mülakat ve değerlendirme",
+      "Mühendislik pozisyonları için yetkinlik bazlı ön eleme",
+      "Toplu stajyer ve yeni mezun alımı"
     ],
     highlights: [
-      "Sipariş doğrulama ve güncel veri erişimi",
-      "İnsan onaylı kritik işlem akışları",
-      "Canlı temsilciye kontrollü handoff",
-      "Çözüm oranı, handoff oranı ve SLA görünürlüğü"
+      "Teknik soru setleri ile derinlemesine değerlendirme",
+      "Kod analizi ve problem çözme becerisi ölçümü",
+      "Hızlı işe alım döngüsü ile yetenek kaybını önleme",
+      "Çoklu pozisyon ve ekip bazlı pipeline yönetimi"
     ],
-    channels: ["Telefon", "WhatsApp", "Web Chat", "Email"],
-    ctaTitle: "E-ticaret müşterilerinize 7/24 destek sunun",
-    ctaBody: "İade, sipariş ve kargo süreçlerini tek bir AI asistanla yönetin."
+    channels: ["AI Mülakat", "Ön Eleme", "Analitik"],
+    ctaTitle: "Teknik ekibinizi AI ile güçlendirin",
+    ctaBody: "Doğru yazılımcıyı bulmak artık günler değil, saatler sürüyor."
   },
   {
-    slug: "restaurant",
-    label: "Restoran",
-    title: "Restoranlar için AI Asistan",
-    shortDescription: "Rezervasyon alma, menü bilgisi ve müşteri soruları için akıllı asistan.",
+    slug: "perakende",
+    label: "Perakende",
+    title: "Perakende Sektörü İçin AI İşe Alım",
+    shortDescription: "Yüksek hacimli mağaza ve depo personeli alımını hızlandırın.",
     intro:
-      "Rezervasyon, menü ve çalışma saatleri gibi yoğun tekrar eden soruları tek merkezde çözen restoran odaklı AI deneyimi.",
+      "Sezonluk kampanya dönemlerinde yüzlerce başvuruyu AI ile tarayın, uygun adayları dakikalar içinde belirleyin.",
     useCases: [
-      "Masa rezervasyonu alma ve teyit etme",
-      "Menü, fiyat ve alerjen bilgisi paylaşma",
-      "Çalışma saatleri ve lokasyon yönlendirmesi"
+      "Mağaza personeli toplu alımı ve hızlı ön eleme",
+      "Sezonluk kampanya dönemi işe alım otomasyonu",
+      "Bölge bazlı aday havuzu yönetimi"
     ],
     highlights: [
-      "Yoğun servis saatlerinde yük dengeleme",
-      "Telefon ve WhatsApp rezervasyon akışı",
-      "Kanal bağımsız tutarlı yanıt tonu",
-      "Operasyon ekipleri için görünür handoff noktaları"
+      "Yüksek hacimli başvurularda otomatik filtreleme",
+      "Vardiya ve lokasyon uyumu kontrolü",
+      "Hızlı onboarding için standart mülakat akışları",
+      "Bölge müdürleri için özel raporlama"
     ],
-    channels: ["Telefon", "WhatsApp", "Web Chat", "Email"],
-    ctaTitle: "Restoran rezervasyonlarınızı otomatikleştirin",
-    ctaBody: "Rezervasyon ve müşteri sorularını kesintisiz biçimde AI ile yönetin."
+    channels: ["AI Mülakat", "Ön Eleme", "Aday Yönetimi"],
+    ctaTitle: "Perakende alımlarınızı hızlandırın",
+    ctaBody: "Sezonluk işe alımları AI ile yönetin, mağazalarınız zamanında açılsın."
   },
   {
-    slug: "salon",
-    label: "Kuaför/Salon",
-    title: "Kuaför ve Salonlar için AI Asistan",
-    shortDescription: "Randevu planlama ve hizmet bilgileri için 7/24 asistan.",
+    slug: "saglik",
+    label: "Sağlık",
+    title: "Sağlık Sektörü İçin AI İşe Alım",
+    shortDescription: "Hemşire, teknisyen ve sağlık personeli alımında hız ve uyum.",
     intro:
-      "Online randevu, hizmet bilgisi ve hatırlatma mesajları ile salon operasyonunu hafifleten AI asistan kurgusu.",
+      "Sertifika doğrulama, vardiya uyumu ve yetkinlik değerlendirmesi ile sağlık sektörüne özel işe alım çözümleri.",
     useCases: [
-      "Online randevu oluşturma ve güncelleme",
-      "Hizmet, fiyat ve uygunluk bilgisi paylaşma",
-      "Hatırlatma ve iptal süreçlerini yönetme"
+      "Hemşire ve sağlık teknisyeni alımı",
+      "Sertifika ve lisans uygunluk kontrolü",
+      "Vardiya bazlı uygunluk değerlendirmesi"
     ],
     highlights: [
-      "Takvim senkronizasyonu ile çakışma önleme",
-      "WhatsApp'tan hızlı randevu deneyimi",
-      "Müşteri geçmişine göre kişiselleştirilmiş yanıtlar",
-      "Hizmet yoğunluğu için planlama görünürlüğü"
+      "Sektöre özel yetkinlik soru setleri",
+      "Sertifika ve belge doğrulama desteği",
+      "KVKK uyumlu hassas veri yönetimi",
+      "Acil pozisyonlar için hızlandırılmış süreç"
     ],
-    channels: ["Telefon", "WhatsApp", "Web Chat", "Email"],
-    ctaTitle: "Salon randevularınızı kolaylaştırın",
-    ctaBody: "Randevu alma, hatırlatma ve hizmet bilgilendirmesini tek akışta toplayın."
+    channels: ["AI Mülakat", "Ön Eleme", "Analitik"],
+    ctaTitle: "Sağlık ekibinizi doğru adaylarla tamamlayın",
+    ctaBody: "Kritik sağlık pozisyonlarını AI destekli süreçle hızla doldurun."
   },
   {
-    slug: "support",
-    label: "Müşteri Desteği",
-    title: "Müşteri Desteği için AI Asistan",
-    shortDescription: "Genel sorular ve SSS yanıtlama için akıllı destek.",
+    slug: "finans",
+    label: "Finans",
+    title: "Finans Sektörü İçin AI İşe Alım",
+    shortDescription: "Bankacılık, sigorta ve fintek pozisyonlarında nitelikli aday seçimi.",
     intro:
-      "SSS otomasyonu, talep oluşturma ve temsilciye kontrollü aktarım ile destek operasyonunuzu tek ekrana toplayın.",
+      "Analitik düşünme, risk değerlendirme ve mevzuat bilgisi gibi kritik yetkinlikleri AI mülakat ile ölçün.",
     useCases: [
-      "SSS yanıtlarını bağlamsal olarak üretme",
-      "Talep açma ve önceliklendirme",
-      "Yüksek güven gerektiren konularda canlı destek handoff"
+      "Bankacılık ve sigorta pozisyonları için ön eleme",
+      "Fintek startup'ları için hızlı teknik değerlendirme",
+      "Uyum ve mevzuat bilgisi kontrolü"
     ],
     highlights: [
-      "Dağınık kanal operasyonunu tek listede toplama",
-      "Bekliyor, canlıda ve AI yönetiyor durum görünürlüğü",
-      "Audit ve sahiplenme takibi",
-      "Operasyon yöneticileri için okunabilir metrikler"
+      "Finansal yetkinlik ve analitik düşünme ölçümü",
+      "Mevzuat ve uyum bilgisi değerlendirmesi",
+      "Gizlilik odaklı aday veri yönetimi",
+      "Kurumsal onay akışları ve rol bazlı erişim"
     ],
-    channels: ["Telefon", "WhatsApp", "Web Chat", "Email"],
-    ctaTitle: "Müşteri desteğinizi güçlendirin",
-    ctaBody: "Tüm destek süreçlerini daha hızlı ve daha kontrollü hale getirin."
+    channels: ["AI Mülakat", "Ön Eleme", "Analitik"],
+    ctaTitle: "Finansal yetenekleri AI ile keşfedin",
+    ctaBody: "Doğru finans profesyonelini bulmak için yapılandırılmış AI mülakatları kullanın."
+  },
+  {
+    slug: "uretim-lojistik",
+    label: "Üretim ve Lojistik",
+    title: "Üretim ve Lojistik İçin AI İşe Alım",
+    shortDescription: "Fabrika, depo ve saha personeli alımında ölçeklenebilir çözüm.",
+    intro:
+      "Yüksek hacimli mavi yaka alımlarını AI ön eleme ve standart mülakat akışlarıyla hızlandırın.",
+    useCases: [
+      "Üretim hattı operatörü ve teknisyen alımı",
+      "Depo ve lojistik personeli toplu işe alımı",
+      "Saha ekibi için bölge bazlı aday yönetimi"
+    ],
+    highlights: [
+      "Mavi yaka pozisyonlarına özel soru setleri",
+      "Fiziksel uygunluk ve vardiya tercihi kontrolü",
+      "Toplu alımlarda ölçeklenebilir AI mülakat",
+      "Fabrika ve depo bazlı raporlama"
+    ],
+    channels: ["AI Mülakat", "Ön Eleme", "Aday Yönetimi"],
+    ctaTitle: "Üretim ve lojistik alımlarınızı ölçeklendirin",
+    ctaBody: "Yüzlerce başvuruyu AI ile tarayın, doğru adayları saatler içinde belirleyin."
   }
 ];
 
 export const PUBLIC_SOLUTIONS_STATS: PublicStat[] = [
-  { value: "10K+", label: "Aylık Konuşma" },
-  { value: "%90", label: "Otomatik Çözüm" },
-  { value: "<3sn", label: "Ort. Yanıt Süresi" },
-  { value: "%95", label: "Müşteri Memnuniyeti" }
+  { value: "%70", label: "Daha Hızlı İşe Alım" },
+  { value: "5K+", label: "Aylık AI Mülakat" },
+  { value: "%85", label: "Ön Eleme Doğruluğu" },
+  { value: "3x", label: "Daha Fazla Aday Kapasitesi" }
 ];
 
 export const PUBLIC_SOLUTIONS_ADVANTAGES: PublicCard[] = [
   {
-    title: "5 Dakikada Kurulum",
-    body: "Kod yazmadan, sektörünüze özel hazır şablonlarla hemen başlayın."
+    title: "Hızlı İşe Alım Döngüsü",
+    body: "AI ön eleme ve mülakat ile işe alım sürenizi %70'e kadar kısaltın."
   },
   {
-    title: "Çok Kanallı İletişim",
-    body: "WhatsApp, web chat, e-posta ve sesli arama, tek panelden yönetin."
+    title: "Objektif Aday Değerlendirme",
+    body: "Yapılandırılmış skorlama ile önyargıyı azaltın, tutarlı kararlar verin."
   },
   {
-    title: "Akıllı Entegrasyonlar",
-    body: "ikas, Shopify, Google Calendar ve daha fazlasıyla sorunsuz entegrasyon."
+    title: "Ölçeklenebilir Alım",
+    body: "Tek pozisyondan toplu alıma kadar her ölçekte AI mülakat gerçekleştirin."
   },
   {
     title: "KVKK Uyumlu",
-    body: "Verileriniz Türkiye'de, KVKK ve GDPR standartlarına tam uyumlu."
+    body: "Aday verileri Türkiye'de, KVKK ve GDPR standartlarına tam uyumlu."
   }
 ];
 
@@ -402,63 +425,48 @@ export const PUBLIC_FAQ: PublicFaq[] = [
 
 export const PUBLIC_PRICING_PLANS: PublicCard[] = [
   {
-    badge: "15 dakika ücretsiz deneme — Kredi kartı gerekmez",
+    badge: "14 gün ücretsiz — Kredi kartı gerekmez",
     title: "Deneme",
-    body: "7 gün boyunca sınırlı yazılı kullanım ve telefon denemesi",
+    body: "Platformu keşfedin. 14 gün boyunca temel özellikleri deneyin.",
     meta: "Ücretsiz",
     bullets: [
-      "50 yazılı etkileşim",
-      "15 dk telefon görüşmesi",
-      "1 eşzamanlı çağrı",
-      "1 asistan",
-      "Telefon",
-      "WhatsApp",
-      "Webchat",
-      "E-posta",
-      "E-ticaret entegrasyonu",
-      "Google Takvim",
-      "Analitik",
-      "Toplu arama"
+      "2 kullanıcı",
+      "1 aktif ilan",
+      "50 aday ön eleme",
+      "5 AI mülakat",
+      "Temel raporlama",
+      "E-posta desteği"
     ],
     href: "/auth/signup",
     actionLabel: "Ücretsiz Deneyin"
   },
   {
-    title: "Başlangıç",
-    body: "Yalnızca yazılı kanallar için aylık başlangıç paketi",
-    meta: "2.499₺/ay",
+    title: "Starter",
+    body: "Küçük ekipler için. Temel işe alım operasyonu.",
+    meta: "$149/ay (~4.500₺)",
     bullets: [
-      "500 yazılı etkileşim",
-      "5 asistan",
-      "WhatsApp",
-      "Webchat",
-      "E-posta",
-      "E-ticaret entegrasyonu",
-      "Google Takvim",
-      "Analitik"
+      "3 kullanıcı",
+      "3 aktif ilan",
+      "150 aday işleme",
+      "30 AI mülakat",
+      "Temel raporlama",
+      "E-posta desteği"
     ],
     href: "/auth/signup",
     actionLabel: "Hemen Başlayın"
   },
   {
     badge: "En Popüler",
-    title: "Profesyonel",
-    body: "Yazılı kullanım havuzu ve ses dakikalarını birlikte sunar",
-    meta: "7.499₺/ay • Aşım: 23₺/dk",
+    title: "Growth",
+    body: "Büyüyen ekipler için. Yüksek hacimli işe alım.",
+    meta: "$499/ay (~15.000₺)",
     bullets: [
-      "2000 yazılı etkileşim",
-      "500 dk görüşme",
-      "2 eşzamanlı çağrı",
-      "10 asistan",
-      "Telefon",
-      "WhatsApp",
-      "Webchat",
-      "E-posta",
-      "E-ticaret entegrasyonu",
-      "Google Takvim",
-      "Analitik",
-      "Toplu arama",
-      "Özel CRM webhook entegrasyonu",
+      "8 kullanıcı",
+      "10 aktif ilan",
+      "500 aday işleme",
+      "100 AI mülakat",
+      "Takvim entegrasyonları",
+      "Gelişmiş raporlama",
       "Öncelikli destek"
     ],
     href: "/auth/signup",
@@ -466,27 +474,16 @@ export const PUBLIC_PRICING_PLANS: PublicCard[] = [
   },
   {
     title: "Kurumsal",
-    body: "Özel yazılı etkileşim, ses dakikası ve eşzamanlı çağrı limitleri",
-    meta: "İletişime Geçin • Aşım: 23₺/dk",
+    body: "Büyük ekipler için özel kota, branded deneyim, SLA ve entegrasyonlar.",
+    meta: "Özel Teklif",
     bullets: [
-      "Özel yazılı etkileşim limiti",
-      "Özel ses dakikası limiti",
-      "5+ eşzamanlı çağrı",
-      "Özel asistan limiti",
-      "Telefon",
-      "WhatsApp",
-      "Webchat",
-      "E-posta",
-      "E-ticaret entegrasyonu",
-      "Google Takvim",
-      "Analitik",
-      "Toplu arama",
-      "Özel CRM webhook entegrasyonu",
-      "Öncelikli destek",
-      "API erişimi",
-      "Özel kurulum ve destek",
-      "Özel entegrasyonlar",
-      "SLA garantisi"
+      "Özel kullanıcı limiti",
+      "Özel aktif ilan",
+      "Özel aday işleme",
+      "Özel AI mülakat",
+      "Takvim entegrasyonları",
+      "Gelişmiş raporlama",
+      "Özel onboarding + SLA"
     ],
     href: "/contact",
     actionLabel: "Bize Ulaşın"
@@ -494,18 +491,18 @@ export const PUBLIC_PRICING_PLANS: PublicCard[] = [
 ];
 
 export const PUBLIC_PAY_AS_YOU_GO: PublicCard = {
-  eyebrow: "Esnek Kullanım",
-  title: "Kullandıkça Öde",
-  body: "Aylık taahhüt yok. Ses dakikaları ve yazılı etkileşimler kullanım bakiyesinden düşer.",
-  meta: "23₺/dk • Minimum 4 dk yükleme (92₺)",
+  eyebrow: "Ek Paketler",
+  title: "İhtiyaç Duyduğunuzda Ekleyin",
+  body: "Mevcut planınıza ek kullanım hakkı satın alın. Dönem içinde kotanız bittiğinde devreye girer.",
+  meta: "Ek AI mülakat paketi: $79 / 25 mülakat",
   bullets: [
-    "Telefon + yazılı kanallar dahil",
-    "5 asistan",
-    "2,5₺/etkileşim",
-    "Bakiye süresi dolmaz"
+    "Ek aday işleme: $59 / 100 aday",
+    "Ek AI mülakat: $79 / 25 mülakat",
+    "Profesyonel onboarding: $249",
+    "Mevcut plana eklenir, anında aktif"
   ],
-  href: "/auth/signup",
-  actionLabel: "Hemen Başlayın"
+  href: "/subscription",
+  actionLabel: "Plana Ekle"
 };
 
 export const PUBLIC_INTEGRATION_GROUPS: Array<{ title: string; items: PublicCard[] }> = [
@@ -817,61 +814,61 @@ export const PUBLIC_SECURITY_GROUPS: PublicCard[] = [
 ];
 
 export const PUBLIC_ABOUT_STATS: PublicStat[] = [
-  { value: "2023", label: "Kuruluş Yılı" },
-  { value: "15+", label: "Yıl İş Deneyimi" },
-  { value: "4", label: "İletişim Kanalı" },
-  { value: "16", label: "Desteklenen Dil" }
+  { value: "2024", label: "Kuruluş Yılı" },
+  { value: "50.000+", label: "Mülakat Tamamlandı" },
+  { value: "200+", label: "Şirket Kullanıyor" },
+  { value: "120.000+", label: "Aday Değerlendirildi" }
 ];
 
 export const PUBLIC_ABOUT_STORY: PublicCard[] = [
   {
     title: "Nereden Geldik",
     body:
-      "2010'dan bu yana farklı sektörlerde yazılım, e-ticaret ve dijital pazarlama alanlarında deneyim edinildi. 2023'te bu deneyim yapay zeka ile birleşerek Candit kuruldu."
+      "Yıllarca işe alım süreçlerindeki verimsizlikleri ve önyargıları gözlemledik. 2024'te yapay zeka teknolojisini işe alım süreçleriyle birleştirerek Candit'i kurduk."
   },
   {
     title: "Neden Los Angeles",
     body:
-      "Candit, yapay zeka ve teknoloji ekosisteminin kalbinde, Los Angeles'ta kuruldu. Türk kuruculara sahip ekip önce Türkiye'deki KOBİ pazarında değer üretmeyi hedefledi."
+      "Candit, yapay zeka ve teknoloji ekosisteminin kalbinde, Los Angeles'ta kuruldu. Türk kuruculara sahip ekip önce Türkiye pazarında işe alım süreçlerini dönüştürmeyi hedefledi."
   },
   {
     title: "Misyonumuz",
     body:
-      "Her işletmenin büyüklüğünden bağımsız olarak 7/24 profesyonel, tutarlı ve kişiselleştirilmiş müşteri hizmeti sunabilmesini sağlamak."
+      "Her şirketin büyüklüğünden bağımsız olarak adaylarını yapay zeka destekli mülakatlarla objektif, hızlı ve tutarlı şekilde değerlendirebilmesini sağlamak."
   },
   {
     title: "Vizyonumuz",
     body:
-      "Müşteri iletişiminin yapay zeka ile tamamen dönüştüğü, her işletmenin kurumsal kalitede hizmet verebildiği bir dünya inşa etmek."
+      "İşe alım süreçlerinin yapay zeka ile tamamen dönüştüğü, her şirketin en doğru adayı en kısa sürede bulabildiği bir dünya inşa etmek."
   },
   {
     title: "Kültürümüz",
     body:
-      "Küçük ama tutkulu bir ekip. Her entegrasyon, her iyileştirme ve her ürün kararı müşteri ihtiyaçlarından hareketle geliştiriliyor."
+      "Küçük ama tutkulu bir ekip. Her özellik, her iyileştirme ve her ürün kararı İK ekiplerinin ve adayların ihtiyaçlarından hareketle geliştiriliyor."
   }
 ];
 
 export const PUBLIC_TEAM: PublicCard[] = [
-  { title: "Nurettin Erzen", body: "Kurucu & CEO. Ürün vizyonu, iş stratejisi ve ortaklıkları yönetir." },
-  { title: "Miraç Öztürk", body: "CTO. Teknik altyapı, backend mimarisi, AI pipeline ve sistem güvenliğini yönetir." },
-  { title: "Davut Pehlivanlı", body: "Türkiye Operasyonları Danışmanı. Büyüme stratejisi ve satış süreçlerinde yön verir." },
-  { title: "Eyüp Yorulmaz", body: "Yazılım Geliştirici. Frontend ve backend geliştirme süreçlerinde aktif rol alır." },
-  { title: "Ramazan Badeli", body: "Yazılım Geliştirici. Entegrasyon geliştirme ve test süreçlerinde görev alır." },
-  { title: "Merve Çınar", body: "Pazarlama & İçerik. Dijital pazarlama stratejileri ve marka iletişimini yönetir." }
+  { title: "Nurettin Erzen", body: "Kurucu & CEO. Ürün vizyonu, iş stratejisi ve İK teknoloji ortaklıklarını yönetir." },
+  { title: "Miraç Öztürk", body: "CTO. AI mülakat motoru, backend mimarisi, NLP pipeline ve sistem güvenliğini yönetir." },
+  { title: "Davut Pehlivanlı", body: "Türkiye Operasyonları Danışmanı. Büyüme stratejisi ve kurumsal satış süreçlerinde yön verir." },
+  { title: "Eyüp Yorulmaz", body: "Yazılım Geliştirici. Mülakat arayüzü ve aday deneyimi geliştirme süreçlerinde aktif rol alır." },
+  { title: "Ramazan Badeli", body: "Yazılım Geliştirici. ATS entegrasyonları ve analitik modülleri geliştirme süreçlerinde görev alır." },
+  { title: "Merve Çınar", body: "Pazarlama & İçerik. İK sektörüne yönelik dijital pazarlama stratejileri ve marka iletişimini yönetir." }
 ];
 
 export const PUBLIC_CONTACT_TRUST: PublicCard[] = [
-  { title: "Dakikalar İçinde Kurulum", body: "Teknik bilgi gerektirmez. Hemen başlayın." },
-  { title: "4 Kanal, Tek AI", body: "Telefon, WhatsApp, Chat ve Email" },
-  { title: "Kurumsal Güvenlik", body: "KVKK uyumlu, verileriniz güvende" },
-  { title: "Özel Destek", body: "Kurulum ve entegrasyonda yanınızdayız" }
+  { title: "Dakikalar İçinde Kurulum", body: "İlk AI mülakatınızı hemen oluşturun, teknik bilgi gerektirmez." },
+  { title: "AI Destekli Mülakat", body: "Yapay zeka ile tutarlı ve objektif aday değerlendirmesi." },
+  { title: "Kurumsal Güvenlik", body: "KVKK uyumlu, aday verileriniz güvende." },
+  { title: "Özel Destek", body: "Kurulum, ATS entegrasyonu ve eğitimde yanınızdayız." }
 ];
 
 export const PUBLIC_CONTACT_METRICS: PublicStat[] = [
-  { value: "%85", label: "Daha hızlı yanıt" },
-  { value: "7/24", label: "Kesintisiz hizmet" },
-  { value: "1.8s", label: "Ort. yanıt süresi" },
-  { value: "4x", label: "Daha fazla kapasite" }
+  { value: "%70", label: "Daha hızlı ön eleme" },
+  { value: "7/24", label: "Kesintisiz mülakat" },
+  { value: "3 dk", label: "Ort. değerlendirme süresi" },
+  { value: "5x", label: "Daha fazla aday kapasitesi" }
 ];
 
 export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
