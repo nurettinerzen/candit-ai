@@ -12,8 +12,8 @@ export function LandingHero() {
 
   /* ── Manifesto: split text into words, mark emphasis ── */
   const manifestoWords = useMemo(() => {
-    const text = t("Doğru adayı bulmak zaman almamalı. Candit.ai, yapay zekâ ile işe alımı hızlandırır.");
-    const emphasisRaw = t("adayı,Candit.ai,yapay zekâ,hızlandırır");
+    const text = t("Her gün yüzlerce CV inceleniyor ama doğru adayı bulmak imkansız hissettiriyor. Candit bunu değiştiriyor.");
+    const emphasisRaw = t("doğru,imkansız,Candit,değiştiriyor.");
     const emphasisSet = new Set(emphasisRaw.split(",").map((w) => w.trim().toLowerCase()));
     return text.split(/\s+/).map((word) => ({
       word,
@@ -331,8 +331,8 @@ export function LandingHero() {
         <section className="lp-hero" id="hero">
           <div className="lp-hero-grid-bg" aria-hidden="true" />
           <div className="lp-hero-text-stack">
-            <span className="lp-hero-line" data-index="0">{t("Screening.")}</span>
-            <span className="lp-hero-line" data-index="1">{t("Sourcing.")}</span>
+            <span className="lp-hero-line" data-index="0">{t("Ön Eleme.")}</span>
+            <span className="lp-hero-line" data-index="1">{t("Kaynak Bulma.")}</span>
             <span className="lp-hero-line" data-index="2">{t("Mülakat.")}</span>
             <span className="lp-hero-tagline">{t("Yapay zekâ destekli işe alım platformu.")}</span>
           </div>
