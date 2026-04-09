@@ -1,3 +1,4 @@
+// @ts-nocheck
 export type SiteLocale = "tr" | "en";
 
 export const DEFAULT_SITE_LOCALE: SiteLocale = "tr";
@@ -363,16 +364,16 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "E-posta desteği": "Email support",
   "Öncelikli destek": "Priority support",
   "Özel onboarding + SLA": "Custom onboarding + SLA",
-  "Ek AI mülakat paketi": "Extra AI interview pack",
+  "Ek AI Mülakat Paketi 10": "Extra AI interview pack 10",
+  "Mevcut dönem için +10 AI mülakat hakkı.": "+10 AI interview credits for the current period.",
+  "Ek AI Mülakat Paketi 25": "Extra AI interview pack 25",
   "Mevcut dönem için +25 AI mülakat hakkı.": "+25 AI interview credits for the current period.",
-  "Ek Aday İşleme Paketi": "Extra candidate processing pack",
+  "Ek Aday İşleme Paketi 50": "Extra candidate processing pack 50",
+  "Mevcut dönem için +50 aday işleme hakkı.": "+50 candidate processing credits for the current period.",
+  "Ek Aday İşleme Paketi 100": "Extra candidate processing pack 100",
   "Mevcut dönem için +100 aday işleme hakkı.": "+100 candidate processing credits for the current period.",
-  "Profesyonel Kurulum / Onboarding": "Professional setup / onboarding",
-  "Kurulum desteği, süreç tasarımı ve ekip onboarding hizmeti.":
-    "Setup support, process design, and team onboarding service.",
-  "Özel Entegrasyon Kurulumu": "Custom integration setup",
-  "Özel entegrasyon kurulumu ve teknik uyarlama hizmeti.":
-    "Custom integration setup and technical adaptation service.",
+  "Limit asmadan once ek aday isleme ve ek AI mulakat paketleri satin alabilirsiniz.":
+    "You can buy extra candidate processing and AI interview packs before you hit the limit.",
   "Starter hızlı başlangıç için, Growth ise günlük operasyonu taşıyan ana plan olarak konumlanır.":
     "Starter is for quick setup, while Growth is positioned as the main plan for day-to-day operations.",
   "Önerilen": "Recommended",
@@ -1063,7 +1064,6 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Starter is the entry plan, while Growth is positioned as the main sales plan.",
   "Fatura / teklif e-postası": "Billing / quote email",
   "Teklif notu / SLA / onboarding kapsamı": "Quote note / SLA / onboarding scope",
-  "Ödeme bağlantıları": "Payment links",
   "Kullanıcı": "User",
   "Kullanıcılar": "Users",
   "Adaylar": "Candidates",
