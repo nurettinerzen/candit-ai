@@ -345,7 +345,9 @@ function SidebarContent({
     <>
       <div className="sidebar-header">
         <div className="sidebar-brand">
-          <div className="sidebar-logo">C</div>
+          <div className="sidebar-logo">
+            <img src="/brand/candit-mark.svg" alt="" aria-hidden="true" width="34" height="34" />
+          </div>
           <div className="sidebar-brand-text">
             <span className="sidebar-brand-name">Candit.ai</span>
             <span className="sidebar-brand-desc">{t("İşe alım işletim paneli")}</span>

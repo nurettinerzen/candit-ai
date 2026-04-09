@@ -258,15 +258,23 @@ worker.on("failed", (job, error) => {
   });
 });
 
-logger.info("worker.started", {
-  queueName,
-  concurrency: Number(process.env.WORKER_CONCURRENCY ?? 4),
-  supportedTasks: registry.list().map((task) => ({
-    type: task.type,
-    owner: task.owner,
-    retryProfile: task.retryProfile
-  }))
-});
+async function bootstrap() {
+  await prisma.$connect();
+  await worker.waitUntilReady();
+
+  logger.info("worker.started", {
+    queueName,
+    concurrency: Number(process.env.WORKER_CONCURRENCY ?? 4),
+    redisHost: connection.host,
+    redisPort: connection.port,
+    databaseConfigured: Boolean(process.env.DATABASE_URL),
+    supportedTasks: registry.list().map((task) => ({
+      type: task.type,
+      owner: task.owner,
+      retryProfile: task.retryProfile
+    }))
+  });
+}
 
 async function shutdown() {
   await Promise.allSettled([worker.close(), prisma.$disconnect()]);
@@ -278,5 +286,12 @@ process.on("SIGINT", () => {
 });
 
 process.on("SIGTERM", () => {
+  void shutdown();
+});
+
+void bootstrap().catch((error) => {
+  logger.error("worker.startup_failed", {
+    message: error instanceof Error ? error.message : "unknown_startup_error"
+  });
   void shutdown();
 });

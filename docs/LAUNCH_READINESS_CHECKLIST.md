@@ -25,6 +25,52 @@ Ilgili arka plan notlari icin:
 
 ## Verification Snapshot - 2026-04-09
 
+### Guncel local pilot verification
+
+- [x] Tek komutla tekrar kosulabilir smoke hattı eklendi.
+  - Komut:
+    - `corepack pnpm smoke:pilot`
+  - Kapsam:
+    - API health
+    - web root
+    - recruiter overview
+    - provider/infrastructure readiness
+    - job secimi
+    - candidate create
+    - application create
+    - fit score tetikleme + worker sonucu
+    - interview invite
+    - public interview start + cevap
+- [x] Recruiter cekirdek akis local ortamda uctan uca dogrulandi.
+  - Olusan akis:
+    - aday olustur
+    - basvuru olustur
+    - screening/fitscore kuyruğa ver
+    - AI mulakat daveti olustur
+    - public candidate session baslat
+    - readiness + ilk cevap gonder
+- [x] Recruiter drawer icindeki sessiz UX kirigi kapatildi.
+  - Onceki sorun:
+    - mulakat daveti backend'de olusuyor ama drawer sonucu gostermiyordu
+  - Yeni durum:
+    - link ve son gecerlilik recruiter'a aninda gosteriliyor
+- [x] Brand asset eksigi icin temel logo mark eklendi ve public + recruiter shell icine baglandi.
+  - Kaynak:
+    - `/Users/nurettinerzen/Desktop/ai-interviewer/apps/web/public/brand/candit-mark.svg`
+- [ ] Gercek email delivery hala launch blocker.
+  - Mevcut durum:
+    - notification provider `console-email`
+    - invite event'i DB/outbox tarafinda olusuyor ama gercek mail provider'a gitmiyor
+  - Gereken:
+    - `EMAIL_PROVIDER=resend`
+    - `RESEND_API_KEY`
+    - `EMAIL_FROM`
+- [ ] Stripe self-serve billing hala hazir degil.
+  - Mevcut durum:
+    - `stripeReady=false`
+  - Etki:
+    - self-serve subscription / addon akislari pilotta kapali kalir
+
 ### Tamamlanan ilk dogrulamalar
 
 - [x] Render API deploy ayakta ve `https://candit.onrender.com/v1/health` `200` donuyor.
@@ -50,6 +96,20 @@ Ilgili arka plan notlari icin:
 - [x] Public blog / integrations / changelog copy tarafinda Telyx destek/e-ticaret referanslarini temizleyen local degisiklikler repo workspace'inde mevcut.
   - Ana kaynak:
     - `/Users/nurettinerzen/Desktop/ai-interviewer/apps/web/lib/public-site-data.ts`
+- [x] Canli public sayfalarda eski marka / baglam sizintisi bulunmadi.
+  - Tarama yapilan canli sayfalar:
+    - `/`
+    - `/blog`
+    - `/features`
+    - `/pricing`
+    - `/contact`
+    - `/integrations`
+    - `/changelog`
+  - Aranan ifadeler:
+    - `Telyx`
+    - `Telix`
+    - `WhatsApp`
+    - `Sellerboard`
 - [x] Public claim cleanup icin launch-riskli metinler local olarak yumusatildi.
   - Temizlenen riskler:
     - kanitsiz performans yuzdeleri
@@ -82,6 +142,14 @@ Ilgili arka plan notlari icin:
 - [x] Google auth public login redirect'i staging callback'e donuyor.
   - Mevcut dogrulama:
     - `/v1/auth/google/authorize` -> `redirect_uri=https://candit.onrender.com/v1/auth/google/callback`
+- [ ] Google OAuth authorize akisi hala `redirect_uri_mismatch` veriyor.
+  - Mevcut durum:
+    - Backend dogru callback URL'yi uretiyor
+    - Ancak Google tarafinda `https://candit.onrender.com/v1/auth/google/callback` henüz yetkili redirect URI olarak tanimli degil
+  - Gereken:
+    - Google Cloud Console > OAuth client > Authorized redirect URIs icine ekle:
+      - `https://candit.onrender.com/v1/auth/google/callback`
+      - `https://candit.onrender.com/v1/integrations/google/callback`
 - [x] Integrations tarafindaki Google callback env'i staging/prod formatina getirildi.
   - Beklenen format:
     - `GOOGLE_OAUTH_REDIRECT_URI=https://candit.onrender.com/v1/integrations/google/callback`
@@ -90,6 +158,9 @@ Ilgili arka plan notlari icin:
     - `POST /v1/public/contact`
   - Yuksek olasilikli neden:
     - Son eklenen public lead inbox migration'lari DB'ye uygulanmamis olabilir.
+  - Local durum:
+    - `public-intake.service.ts` icinde schema drift fallback fix'i hazir
+    - API build temiz geciyor
   - Kontrol edilmesi gereken migration'lar:
     - `20260409170000_public_contact_inbox`
     - `20260409193000_security_incident_backbone`
@@ -110,6 +181,10 @@ Ilgili arka plan notlari icin:
     - `worker.started`
     - `worker.bullmq.completed`
     - `worker.bullmq.failed`
+  - Local durum:
+    - Worker startup fail-fast log/fix'i hazir
+    - `DATABASE_URL` ve BullMQ readiness kontrolu startup sirasina eklendi
+    - Hedef: worker'in "ayakta ama sessizce bozuk" kalmasi yerine acik hata vermesi
 - [ ] Browser tabanli interaktif smoke testi icin local `agent-browser` araci ortamda mevcut degil; ilk tur HTTP smoke + deploy/log dogrulamasi ile yapildi.
 
 ### Bir sonraki faz

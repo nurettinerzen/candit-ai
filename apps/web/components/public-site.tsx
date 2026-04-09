@@ -99,7 +99,9 @@ function SiteHeader({ activeHref }: { activeHref?: string }) {
     <header className={styles.header}>
       <div className={cn(styles.shell, styles.headerInner)}>
         <a href="/" className={styles.brand} aria-label={`${SITE_BRAND} ana sayfa`}>
-          <span className={styles.brandMark}>C</span>
+          <span className={styles.brandMark}>
+            <img src="/brand/candit-mark.svg" alt="" aria-hidden="true" width="40" height="40" />
+          </span>
           <span className={styles.brandCopy}>
             <strong>{SITE_BRAND}</strong>
             <span>AI destekli işe alım platformu</span>
@@ -137,7 +139,9 @@ function SiteFooter() {
         <div className={styles.footerGrid}>
           <div className={styles.footerBrand}>
             <a href="/" className={styles.brand}>
-              <span className={styles.brandMark}>C</span>
+              <span className={styles.brandMark}>
+                <img src="/brand/candit-mark.svg" alt="" aria-hidden="true" width="40" height="40" />
+              </span>
               <span className={styles.brandCopy}>
                 <strong>{SITE_BRAND}</strong>
                 <span>AI destekli işe alım platformu.</span>

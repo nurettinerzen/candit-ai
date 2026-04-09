@@ -5,7 +5,7 @@ import {
   Inject,
   Injectable
 } from "@nestjs/common";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import {
   NotificationDeliveryStatus,
   PlatformIncidentCategory,
@@ -109,6 +109,15 @@ function rateLimitException(message: string) {
   return new HttpException(message, HttpStatus.TOO_MANY_REQUESTS);
 }
 
+function isSchemaDriftError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = (error as { code?: unknown }).code;
+  return code === "P2021" || code === "P2022";
+}
+
 @Injectable()
 export class PublicIntakeService {
   constructor(
@@ -137,17 +146,40 @@ export class PublicIntakeService {
 
     const ipAddressHash = asOptionalString(input.ipAddress) ? hashValue(String(input.ipAddress)) : undefined;
 
-    await this.assertRateLimit({
-      normalizedEmail,
-      ipAddressHash
-    });
+    let persistenceAvailable = true;
+
+    try {
+      await this.assertRateLimit({
+        normalizedEmail,
+        ipAddressHash
+      });
+    } catch (error) {
+      if (!isSchemaDriftError(error)) {
+        throw error;
+      }
+
+      persistenceAvailable = false;
+      this.logPersistenceFallback("rate_limit_check", normalizedEmail, input.traceId);
+    }
 
     const now = new Date();
-    const existingLead = await this.prisma.publicLeadSubmission.findUnique({
-      where: {
-        normalizedEmail
-      }
-    });
+    const existingLead = persistenceAvailable
+      ? await this.prisma.publicLeadSubmission
+          .findUnique({
+            where: {
+              normalizedEmail
+            }
+          })
+          .catch((error) => {
+            if (!isSchemaDriftError(error)) {
+              throw error;
+            }
+
+            persistenceAvailable = false;
+            this.logPersistenceFallback("lead_lookup", normalizedEmail, input.traceId);
+            return null;
+          })
+      : null;
 
     const payload = {
       fullName,
@@ -174,45 +206,82 @@ export class PublicIntakeService {
       } satisfies Prisma.InputJsonValue
     };
 
-    const lead = existingLead
-      ? await this.prisma.publicLeadSubmission.update({
-          where: {
-            id: existingLead.id
-          },
-          data: {
-            ...payload,
-            submissionCount: {
-              increment: 1
-            },
-            status:
-              existingLead.status === PublicLeadStatus.ARCHIVED
-                ? PublicLeadStatus.NEW
-                : existingLead.status
-          }
-        })
-      : await this.prisma.publicLeadSubmission.create({
-          data: {
-            ...payload
-          }
-        });
+    const fallbackLead = {
+      id: randomUUID(),
+      fullName,
+      email: input.email.trim(),
+      company: payload.company ?? null,
+      role: payload.role ?? null,
+      phone: payload.phone ?? null,
+      message,
+      sourcePage: payload.sourcePage ?? null,
+      landingUrl: payload.landingUrl ?? null,
+      referrerUrl: payload.referrerUrl ?? null,
+      submissionCount: existingLead ? existingLead.submissionCount + 1 : 1,
+      locale: payload.locale ?? null
+    };
+
+    const lead =
+      persistenceAvailable
+        ? await (existingLead
+            ? this.prisma.publicLeadSubmission.update({
+                where: {
+                  id: existingLead.id
+                },
+                data: {
+                  ...payload,
+                  submissionCount: {
+                    increment: 1
+                  },
+                  status:
+                    existingLead.status === PublicLeadStatus.ARCHIVED
+                      ? PublicLeadStatus.NEW
+                      : existingLead.status
+                }
+              })
+            : this.prisma.publicLeadSubmission.create({
+                data: {
+                  ...payload
+                }
+              })).catch((error) => {
+            if (!isSchemaDriftError(error)) {
+              throw error;
+            }
+
+            persistenceAvailable = false;
+            this.logPersistenceFallback("lead_write", normalizedEmail, input.traceId);
+            return fallbackLead;
+          })
+        : fallbackLead;
 
     const notification = await this.dispatchOpsNotification(lead, input.traceId);
 
-    await this.prisma.publicLeadSubmission.update({
-      where: {
-        id: lead.id
-      },
-      data: {
-        opsNotificationStatus: notification.status,
-        opsNotificationProvider: notification.provider,
-        opsNotificationError: notification.errorMessage ?? null,
-        opsNotificationLastTriedAt: now,
-        opsNotificationSentAt:
-          notification.status === NotificationDeliveryStatus.SENT ? now : null
-      }
-    });
+    if (persistenceAvailable) {
+      await this.prisma.publicLeadSubmission
+        .update({
+          where: {
+            id: lead.id
+          },
+          data: {
+            opsNotificationStatus: notification.status,
+            opsNotificationProvider: notification.provider,
+            opsNotificationError: notification.errorMessage ?? null,
+            opsNotificationLastTriedAt: now,
+            opsNotificationSentAt:
+              notification.status === NotificationDeliveryStatus.SENT ? now : null
+          }
+        })
+        .catch((error) => {
+          if (!isSchemaDriftError(error)) {
+            throw error;
+          }
 
-    if (notification.status === NotificationDeliveryStatus.FAILED) {
+          persistenceAvailable = false;
+          this.logPersistenceFallback("notification_update", normalizedEmail, input.traceId);
+        });
+    }
+
+    if (notification.status === NotificationDeliveryStatus.FAILED && persistenceAvailable) {
       await this.securityEventsService
         .recordPlatformIncident({
           category: PlatformIncidentCategory.APPLICATION,
@@ -234,7 +303,8 @@ export class PublicIntakeService {
     return {
       success: true as const,
       id: lead.id,
-      deduplicated: Boolean(existingLead),
+      deduplicated: persistenceAvailable && Boolean(existingLead),
+      persistence: persistenceAvailable ? "stored" : "stateless_fallback",
       message: existingLead
         ? "Mesajinizi zaten almistik. Kaydinizi guncelledik ve ekibimize tekrar ilettik."
         : "Mesajinizi aldik. Ekibimiz kisa sure icinde sizinle iletisime gececek."
@@ -395,5 +465,17 @@ export class PublicIntakeService {
       status: NotificationDeliveryStatus.SENT,
       provider: "resend"
     };
+  }
+
+  private logPersistenceFallback(step: string, normalizedEmail: string, traceId?: string) {
+    console.warn(
+      JSON.stringify({
+        level: "warn",
+        message: "public_contact.persistence_fallback",
+        step,
+        normalizedEmail,
+        traceId: traceId ?? null
+      })
+    );
   }
 }

@@ -5,7 +5,14 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiClient } from "../lib/api/recruiter-client";
 import { applicationDetailHref, withApiBaseOverride } from "../lib/entity-routes";
-import type { ApplicantFitScoreView, ApplicationStage, JobInboxApplicant, QuickActionType, RecruiterNote } from "../lib/types";
+import type {
+  ApplicantFitScoreView,
+  ApplicationStage,
+  JobInboxApplicant,
+  QuickActionResult,
+  QuickActionType,
+  RecruiterNote
+} from "../lib/types";
 import { getStageMeta, getStageActions, SOURCE_LABELS } from "../lib/constants";
 import { formatInterviewDeadline, getInterviewInvitationMeta } from "../lib/interview-invitation";
 import { FitScoreBreakdown } from "./fit-score-breakdown";
@@ -99,6 +106,16 @@ function applicantNextAction(applicant: JobInboxApplicant) {
   };
 }
 
+function buildInviteSuccessMessage(result: { interviewLink: string | null; expiresAt: string | null }) {
+  if (result.expiresAt) {
+    return `AI mülakat daveti gönderildi. Link ${formatInterviewDeadline(result.expiresAt)} tarihine kadar aktif.`;
+  }
+
+  return result.interviewLink
+    ? "AI mülakat daveti gönderildi. Direkt görüşme linki hazır."
+    : "AI mülakat daveti gönderildi.";
+}
+
 function sourceLabel(source: string | null | undefined) {
   if (!source) {
     return "—";
@@ -116,8 +133,13 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<QuickActionType | null>(null);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteOutcome, setInviteOutcome] = useState<{ interviewLink: string | null; expiresAt: string | null } | null>(null);
 
   useEffect(() => {
+    setInviteOutcome(null);
+    setFitScore(null);
+    setNotes([]);
+
     if (!applicant) return;
     setLoading(true);
     Promise.all([
@@ -289,6 +311,37 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
                   {t("Gönderilen AI mülakat linkini aç")}
                 </a>
               ) : null}
+              {inviteOutcome ? (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--success-border, rgba(16, 185, 129, 0.24))",
+                    background: "var(--success-light, rgba(16, 185, 129, 0.08))",
+                    display: "grid",
+                    gap: 6
+                  }}
+                >
+                  <div style={{ fontWeight: 700, color: "var(--success-text, #16a34a)" }}>
+                    {t("Davet hazır")}
+                  </div>
+                  <p className="small" style={{ margin: 0 }}>
+                    {buildInviteSuccessMessage(inviteOutcome)}
+                  </p>
+                  {inviteOutcome.interviewLink ? (
+                    <a
+                      href={inviteOutcome.interviewLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="small"
+                      style={{ display: "inline-block" }}
+                    >
+                      {t("Yeni AI mülakat linkini aç")}
+                    </a>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -402,8 +455,12 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
           jobTitle={t("Seçili ilan")}
           roleFamily={null}
           onClose={() => setInviteModalOpen(false)}
-          onSubmitted={() => {
+          onSubmitted={(result) => {
             setInviteModalOpen(false);
+            setInviteOutcome({
+              interviewLink: result.interviewLink ?? null,
+              expiresAt: result.expiresAt ?? null
+            });
             onActionDone();
           }}
         />

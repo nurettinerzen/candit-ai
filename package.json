@@ -9,6 +9,7 @@
     "lint": "corepack pnpm -r --if-present lint",
     "test": "corepack pnpm -r --if-present test",
     "launch:verify": "corepack pnpm db:generate && corepack pnpm lint && corepack pnpm test && corepack pnpm build",
+    "smoke:pilot": "node scripts/pilot-smoke.mjs",
     "format": "corepack pnpm -r --if-present format",
     "i18n:audit": "node scripts/translate-audit.mjs",
     "db:generate": "corepack pnpm --filter @ai-interviewer/api prisma:generate",

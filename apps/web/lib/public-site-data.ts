@@ -156,7 +156,7 @@ export const PUBLIC_HOME_PROOF: PublicStat[] = [
   {
     value: "Daha az",
     label: "Manuel Tekrar",
-    detail: "Tekrarlayan ön eleme, özet ve raporlama adımlarını otomatikleştirerek recruiter ekibinin odağını koruyun."
+    detail: "Tekrarlayan ön eleme, özet ve raporlama adımlarını otomatikleştirerek işe alım ekibinin odağını koruyun."
   }
 ];
 
@@ -217,18 +217,18 @@ export const PUBLIC_FEATURE_GROUPS: PublicCard[] = [
   {
     title: "Entegrasyonlar",
     body: "Pilot kapsamındaki takvim ve API entegrasyonlarını kontrollü şekilde devreye alın.",
-    bullets: ["Google Calendar ve Google Meet", "Calendly bağlantısı", "ATS generic API / webhook", "Kaynak Bulma (beta)"]
+    bullets: ["Google Calendar ve Google Meet", "Calendly bağlantısı", "ATS genel API / webhook", "Kaynak Bulma (beta)"]
   }
 ];
 
 export const PUBLIC_FEATURE_OPERATIONS: PublicCard[] = [
   {
-    title: "İşe Alım Dashboard'u",
+    title: "İşe Alım Kontrol Paneli",
     body: "Tüm işe alım sürecinizi tek ekrandan takip edin ve yönetin.",
     bullets: [
       "Pozisyon bazlı ilerleme ve doluluk oranları",
       "Mülakat tamamlanma ve değerlendirme metrikleri",
-      "Aday havuzu ve pipeline görünürlüğü",
+      "Aday havuzu ve süreç hattı görünürlüğü",
       "Ekip performansı ve SLA takibi"
     ]
   },
@@ -269,7 +269,7 @@ export const PUBLIC_SOLUTIONS: PublicSolution[] = [
       "Teknik soru setleri ile derinlemesine değerlendirme",
       "Kod analizi ve problem çözme becerisi ölçümü",
       "Hızlı işe alım döngüsü ile yetenek kaybını önleme",
-      "Çoklu pozisyon ve ekip bazlı pipeline yönetimi"
+      "Çoklu pozisyon ve ekip bazlı süreç hattı yönetimi"
     ],
     channels: ["AI Mülakat", "Ön Eleme", "Analitik"],
     ctaTitle: "Teknik ekibinizi AI ile güçlendirin",
@@ -290,7 +290,7 @@ export const PUBLIC_SOLUTIONS: PublicSolution[] = [
     highlights: [
       "Yüksek hacimli başvurularda otomatik filtreleme",
       "Vardiya ve lokasyon uyumu kontrolü",
-      "Hızlı onboarding için standart mülakat akışları",
+      "Hızlı işe alıştırma için standart mülakat akışları",
       "Bölge müdürleri için özel raporlama"
     ],
     channels: ["AI Mülakat", "Ön Eleme", "Aday Yönetimi"],
@@ -415,7 +415,7 @@ export const PUBLIC_FAQ: PublicFaq[] = [
   {
     question: "Mevcut ATS sistemimle entegre olabilir mi?",
     answer:
-      "Evet. Pilot aşamada REST API ve webhook desteği ile ATS sistemleriyle kontrollü entegrasyon kurulabilir. Hazır ve aktif bağlantı tarafında Google Calendar, Google Meet ve Calendly odaklı ilerliyoruz; diğer entegrasyonlar roadmap'e göre açılıyor."
+      "Evet. Pilot aşamada REST API ve webhook desteği ile ATS sistemleriyle kontrollü entegrasyon kurulabilir. Hazır ve aktif bağlantı tarafında Google Calendar, Google Meet ve Calendly odaklı ilerliyoruz; diğer entegrasyonlar yol haritasına göre açılıyor."
   }
 ];
 
@@ -438,7 +438,7 @@ export const PUBLIC_PRICING_PLANS: PublicCard[] = [
   },
   {
     title: "Starter",
-    body: "Tek recruiter ile düzenli işe alım yapan ekipler için.",
+    body: "Tek işe alım uzmanı ile düzenli işe alım yapan ekipler için.",
     meta: "4.499₺/ay",
     bullets: [
       "1 kullanıcı",
@@ -479,7 +479,7 @@ export const PUBLIC_PRICING_PLANS: PublicCard[] = [
       "Özel AI mülakat",
       "Takvim entegrasyonları",
       "Gelişmiş raporlama",
-      "Özel onboarding + SLA"
+      "Özel işe alıştırma + SLA"
     ],
     href: "/contact",
     actionLabel: "Bize Ulaşın"
@@ -515,16 +515,16 @@ export const PUBLIC_INTEGRATION_GROUPS: Array<{ title: string; items: PublicCard
     title: "ATS ve İşe Alım Sistemleri",
     items: [
       { title: "ATS Generic API", body: "Mevcut ATS verinizi REST tabanlı senkronizasyonla bağlayın", badge: "Pilotta aktif", href: "/docs/api", actionLabel: "Dokümanı aç" },
-      { title: "Webhook Events", body: "Başvuru ve mülakat olaylarını kendi sistemlerinize aktarın", badge: "Pilotta aktif", href: "/docs/api", actionLabel: "Dokümanı aç" },
+      { title: "Webhook Olayları", body: "Başvuru ve mülakat olaylarını kendi sistemlerinize aktarın", badge: "Pilotta aktif", href: "/docs/api", actionLabel: "Dokümanı aç" },
       { title: "Özel ATS Bağlantısı", body: "Kurumsal ekipler için mevcut işe alım altyapısına özel entegrasyon", badge: "Kurumsal", href: "/contact", actionLabel: "İletişime geç" }
     ]
   },
   {
-    title: "Roadmap",
+    title: "Yol Haritası",
     items: [
-      { title: "Microsoft Calendar", body: "Kurumsal planlama ihtiyaçları için roadmap üzerinde", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" },
-      { title: "Zoom", body: "Doğrudan meeting provisioning desteği roadmap üzerinde", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" },
-      { title: "Gelişmiş HRIS Sync", body: "Çift yönlü veri eşleme ve özel saha senaryoları için hazırlanıyor", badge: "Roadmap", href: "/contact", actionLabel: "İhtiyaç paylaş" }
+      { title: "Microsoft Calendar", body: "Kurumsal planlama ihtiyaçları için yol haritasında", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" },
+      { title: "Zoom", body: "Doğrudan toplantı oluşturma desteği yol haritasında", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" },
+      { title: "Gelişmiş HRIS Senkronizasyonu", body: "Çift yönlü veri eşleme ve özel saha senaryoları için hazırlanıyor", badge: "Yol Haritası", href: "/contact", actionLabel: "İhtiyaç paylaş" }
     ]
   }
 ];
@@ -564,7 +564,7 @@ export const PUBLIC_BLOG_ARTICLES: PublicBlogArticle[] = [
   },
   {
     slug: "yapilandirilmis-mulakat-skorlama",
-    category: "Recruiting Ops",
+    category: "İşe Alım Operasyonları",
     title: "Yapılandırılmış Mülakat Skorlaması Neden Daha Güvenilir?",
     date: "27 Mart 2026",
     readTime: "6 dk",
@@ -692,7 +692,7 @@ export const PUBLIC_BLOG_ARTICLES: PublicBlogArticle[] = [
   },
   {
     slug: "hiring-manager-ile-kalibrasyon",
-    category: "Recruiting Ops",
+    category: "İşe Alım Operasyonları",
     title: "Hiring Manager ile Kalibrasyon Toplantıları Nasıl Kısalır?",
     date: "8 Nisan 2026",
     readTime: "7 dk",
@@ -783,7 +783,7 @@ export const PUBLIC_SECURITY_GROUPS: PublicCard[] = [
     bullets: [
       "Aday verileri model eğitiminde kullanılmaz",
       "Yanıtlar politika kontrolü ve içerik filtrelemeden geçer",
-      "Hassas veri maskeleme ve halüsinasyon engelleme guardrail'leri"
+      "Hassas veri maskeleme ve halüsinasyon engelleme koruma katmanları"
     ]
   },
   {
@@ -834,7 +834,7 @@ export const PUBLIC_ABOUT_STORY: PublicCard[] = [
 
 export const PUBLIC_TEAM: PublicCard[] = [
   { title: "Nurettin Erzen", body: "Kurucu & CEO. Ürün vizyonu, iş stratejisi ve İK teknoloji ortaklıklarını yönetir." },
-  { title: "Miraç Öztürk", body: "CTO. AI mülakat motoru, backend mimarisi, NLP pipeline ve sistem güvenliğini yönetir." },
+  { title: "Miraç Öztürk", body: "CTO. AI mülakat motoru, sunucu mimarisi, NLP altyapısı ve sistem güvenliğini yönetir." },
   { title: "Davut Pehlivanlı", body: "Türkiye Operasyonları Danışmanı. Büyüme stratejisi ve kurumsal satış süreçlerinde yön verir." },
   { title: "Eyüp Yorulmaz", body: "Yazılım Geliştirici. Mülakat arayüzü ve aday deneyimi geliştirme süreçlerinde aktif rol alır." },
   { title: "Ramazan Badeli", body: "Yazılım Geliştirici. ATS entegrasyonları ve analitik modülleri geliştirme süreçlerinde görev alır." },
@@ -852,47 +852,47 @@ export const PUBLIC_CONTACT_METRICS: PublicStat[] = [
   { value: "Daha hızlı", label: "Ön eleme akışı" },
   { value: "7/24", label: "Kesintisiz mülakat" },
   { value: "Dakikalar", label: "İlk shortlist görünürlüğü" },
-  { value: "Tek panel", label: "Recruiter operasyonu" }
+  { value: "Tek panel", label: "İşe alım uzmanı operasyonu" }
 ];
 
 export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
   {
     date: "Haziran 2026",
     version: "v0.6.0",
-    title: "Launch Hardening",
+    title: "Lansman Sertleştirme",
     body:
-      "Pilot launch öncesi auth güvenliği, lead intake, admin visibility ve incident omurgası sertleştirildi.",
+      "Pilot lansman öncesi kimlik doğrulama güvenliği, iletişim formu alımı, yönetim görünürlüğü ve olay yönetimi omurgası sertleştirildi.",
     items: [
-      "Public contact intake gerçek backend'e bağlandı",
-      "Internal admin lead inbox açıldı",
-      "Security event ve red-alert incident persistence eklendi",
-      "Production auth defaults sertleştirildi"
+      "Herkese açık iletişim formu gerçek sunucuya bağlandı",
+      "İç yönetim potansiyel müşteri gelen kutusu açıldı",
+      "Güvenlik olayı ve kritik alarm kalıcılığı eklendi",
+      "Üretim ortamı kimlik doğrulama varsayılanları sertleştirildi"
     ]
   },
   {
     date: "Mart 2026",
     version: "v0.5.0",
-    title: "Takvim ve Scheduling Akışı",
+    title: "Takvim ve Planlama Akışı",
     body:
-      "Mülakat planlama tarafında Google ekosistemi ve Calendly odaklı scheduling akışları güçlendirildi.",
+      "Mülakat planlama tarafında Google ekosistemi ve Calendly odaklı planlama akışları güçlendirildi.",
     items: [
       "Google Calendar bağlantı akışı güncellendi",
-      "Google Meet / scheduling context desteği genişletildi",
+      "Google Meet / planlama bağlam desteği genişletildi",
       "Calendly webhook senkronizasyonu geliştirildi",
-      "Fallback meeting akışı görünür hale getirildi"
+      "Yedek toplantı akışı görünür hale getirildi"
     ]
   },
   {
     date: "Şubat 2026",
     version: "v0.4.0",
-    title: "Sourcing ve Aday Havuzu",
+    title: "Kaynak Bulma ve Aday Havuzu",
     body:
-      "Aday keşfi, prospect takibi ve mevcut havuzdan yeniden değerlendirme akışları ürünün çekirdeğine eklendi.",
+      "Aday keşfi, potansiyel aday takibi ve mevcut havuzdan yeniden değerlendirme akışları ürünün çekirdeğine eklendi.",
     items: [
-      "Sourcing project ve prospect modeli açıldı",
-      "Talent profile kaynak katmanı eklendi",
-      "Fit scoring ve outreach temelleri güçlendirildi",
-      "Recruiter görünürlüğü geliştirildi"
+      "Kaynak bulma projesi ve potansiyel aday modeli açıldı",
+      "Yetenek profili kaynak katmanı eklendi",
+      "Uyum skorlama ve iletişim temelleri güçlendirildi",
+      "İşe alım uzmanı görünürlüğü geliştirildi"
     ]
   },
   {
@@ -900,24 +900,24 @@ export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
     version: "v0.3.0",
     title: "AI Mülakat Motoru",
     body:
-      "AI destekli sesli ve yazılı mülakat altyapısı, transcript ve rapor katmanları ile birlikte devreye alındı.",
+      "AI destekli sesli ve yazılı mülakat altyapısı, transkript ve rapor katmanları ile birlikte devreye alındı.",
     items: [
       "AI sesli görüşme desteği",
-      "Transcript summarization ve report generation",
-      "Recommendation ve recruiter review akışları",
-      "Interview runtime fallback davranışları"
+      "Transkript özetleme ve rapor oluşturma",
+      "Öneri ve işe alım uzmanı değerlendirme akışları",
+      "Mülakat çalışma zamanı yedek davranışları"
     ]
   },
   {
     date: "Aralık 2025",
     version: "v0.2.0",
-    title: "Recruiter Workspace",
+    title: "İşe Alım Uzmanı Çalışma Alanı",
     body:
-      "Dashboard, jobs, candidates, applications ve reports yüzeyleri tek recruiter workspace altında birleştirildi.",
+      "Kontrol paneli, ilanlar, adaylar, başvurular ve raporlar yüzeyleri tek çalışma alanı altında birleştirildi.",
     items: [
-      "Genel bakış dashboard'u",
-      "Jobs ve applications akışı",
-      "Candidate havuzu ve profil ekranları",
+      "Genel bakış kontrol paneli",
+      "İlan ve başvuru akışı",
+      "Aday havuzu ve profil ekranları",
       "İlk raporlama yüzeyi"
     ]
   },
@@ -926,11 +926,11 @@ export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
     version: "v0.1.0",
     title: "İlk Ürün Omurgası",
     body:
-      "Tenant, member, auth ve işe alım domain modelleriyle Candit'in ilk ürün omurgası kuruldu.",
+      "Kiracı, üye, kimlik doğrulama ve işe alım alan modelleriyle Candit'in ilk ürün omurgası kuruldu.",
     items: [
-      "Tenant ve workspace modeli",
-      "Signup / login / invite temelleri",
-      "Job, candidate ve application domain'i",
+      "Kiracı ve çalışma alanı modeli",
+      "Kayıt / giriş / davet temelleri",
+      "İlan, aday ve başvuru alan modeli",
       "İlk iç yönetim omurgası"
     ]
   }
