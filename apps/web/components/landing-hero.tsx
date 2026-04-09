@@ -20,10 +20,10 @@ export function LandingHero() {
   }, [t]);
 
   const chatMessages = useMemo(() => [
-    { type: "bot", text: t("Merhaba! Ben Candit AI asistanınızım. Yazılım Geliştirici pozisyonu için mülakatınıza hoş geldiniz.") },
-    { type: "bot", text: t("İlk sorum: Daha önce agile metodolojilerle çalıştınız mı? Deneyiminizi anlatır mısınız?") },
-    { type: "candidate", text: t("Evet, son 3 yıldır Scrum framework'ü ile çalışıyorum. Sprint planlaması ve retrospektif toplantılarına aktif katılıyorum.") },
-    { type: "bot", text: t("Harika bir yanıt! Teknik bilginiz ve deneyiminiz çok değerli. Şimdi ikinci soruya geçelim...") },
+    { type: "bot", text: t("Merhaba Selen, hoş geldiniz! Son iş deneyiminizden biraz bahseder misiniz?") },
+    { type: "candidate", text: t("Tabii, son 2 yıldır bir e-ticaret şirketinde frontend geliştirici olarak çalışıyorum. React ve TypeScript kullanıyoruz.") },
+    { type: "bot", text: t("Ekip içinde bir anlaşmazlık yaşadığınız bir durumu ve nasıl çözdüğünüzü anlatır mısınız?") },
+    { type: "candidate", text: t("Sprint planlamasında öncelik konusunda farklı düşündüğümüz bir durum olmuştu. Veri odaklı bir sunum hazırlayıp ikna ettim.") },
   ], [t]);
 
   useEffect(() => {
@@ -481,25 +481,39 @@ export function LandingHero() {
           </div>
         </section>
 
-        {/* ═══ Interview Demo ═══ */}
+        {/* ═══ Interview Room Mockup ═══ */}
         <section className="lp-chat-demo">
           <div className="lp-shell">
             <div className="lp-chat-demo-grid lp-reveal-sync" id="chatDemoGrid">
               <div className="lp-chat-demo-copy lp-sync-left">
-                <span className="lp-kicker">{t("MÜLAKAT DENEYİMİ")}</span>
-                <h2 className="lp-section-title">{t("AI mülakat ekranını canlı görün")}</h2>
-                <p className="lp-section-sub">{t("Adayların mülakat sırasında gördüğü ekranı ve AI değerlendirme sürecini keşfedin.")}</p>
+                <span className="lp-kicker">{t("CANLI MÜLAKAT")}</span>
+                <h2 className="lp-section-title">{t("Gerçek zamanlı AI görüşme odası")}</h2>
+                <p className="lp-section-sub">{t("Aday ve AI asistan karşılıklı görüşür. Transcript anlık oluşur, değerlendirme otomatik yapılır.")}</p>
               </div>
-              <div className="lp-chat-window lp-sync-right">
-                <div className="lp-chat-header" style={{ borderBottom: "1px solid var(--border)" }}>
-                  <div className="lp-chat-avatar" style={{ background: "var(--lp-primary)", borderRadius: 8 }}>C</div>
-                  <div className="lp-chat-header-info">
-                    <strong>{t("Candit AI Mülakat")}</strong>
-                    <span style={{ color: "var(--lp-accent)" }}>{"\u{25CF}"} {t("Mülakat devam ediyor")}</span>
+              <div className="lp-interview-room lp-sync-right">
+                {/* Video area - 2 participants */}
+                <div className="lp-interview-video-grid">
+                  <div className="lp-interview-participant">
+                    <div className="lp-interview-avatar-candit">
+                      <span>C</span>
+                    </div>
+                    <span className="lp-interview-name">{t("Candit Asistan")}</span>
+                    <span className="lp-interview-role-tag">{t("AI Mülakat")}</span>
+                  </div>
+                  <div className="lp-interview-participant">
+                    <div className="lp-interview-avatar-candidate">
+                      <svg viewBox="0 0 40 40" width="56" height="56" fill="none">
+                        <circle cx="20" cy="14" r="8" fill="var(--lp-accent)" opacity="0.7" />
+                        <ellipse cx="20" cy="36" rx="14" ry="10" fill="var(--lp-accent)" opacity="0.5" />
+                      </svg>
+                    </div>
+                    <span className="lp-interview-name">{t("Selen Yılmaz")}</span>
+                    <span className="lp-interview-role-tag">{t("Aday")}</span>
                   </div>
                 </div>
-                <div className="lp-chat-messages" id="chatDemo" style={{ gap: 10 }}>
-                  {/* Messages injected by JS - interview transcript style */}
+                {/* Live transcript */}
+                <div className="lp-interview-transcript" id="chatDemo">
+                  {/* Messages injected by JS */}
                 </div>
               </div>
             </div>
