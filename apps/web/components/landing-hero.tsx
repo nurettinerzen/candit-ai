@@ -44,7 +44,12 @@ export function LandingHero() {
         const scrolled = window.scrollY;
         const thresholds = [0, 100, 200];
         for (let i = 0; i < lines.length; i++) {
-          lines[i].classList.toggle("lp-active", scrolled >= thresholds[i]);
+          const line = lines.item(i);
+          if (!line) {
+            continue;
+          }
+
+          line.classList.toggle("lp-active", scrolled >= (thresholds[i] ?? 0));
         }
         if (scrolled >= 300) {
           tagline?.classList.add("lp-active");
@@ -78,7 +83,12 @@ export function LandingHero() {
           const total = words.length;
           for (let i = 0; i < total; i++) {
             const threshold = (i + 1) / (total + 1);
-            words[i].classList.toggle("lp-lit", progress >= threshold);
+            const word = words.item(i);
+            if (!word) {
+              continue;
+            }
+
+            word.classList.toggle("lp-lit", progress >= threshold);
           }
           ticking = false;
         }
@@ -147,7 +157,12 @@ export function LandingHero() {
           const cards = grid.querySelectorAll(".lp-scroll-card");
           const scrolled = viewH - grid.getBoundingClientRect().top;
           for (let i = 0; i < cards.length; i++) {
-            cards[i].classList.toggle("lp-visible", scrolled >= start + i * gap);
+            const card = cards.item(i);
+            if (!card) {
+              continue;
+            }
+
+            card.classList.toggle("lp-visible", scrolled >= start + i * gap);
           }
         });
         ticking = false;
@@ -285,7 +300,12 @@ export function LandingHero() {
           container!.innerHTML = "";
           for (let i = 0; i < messages.length; i++) {
             if (cancelled) return;
-            await addMessage(messages[i], i === 0 ? 200 : 700 + Math.random() * 300);
+            const message = messages[i];
+            if (!message) {
+              continue;
+            }
+
+            await addMessage(message, i === 0 ? 200 : 700 + Math.random() * 300);
           }
           if (cancelled) return;
           chatLoopTimeout.current = setTimeout(runChat, 2000);
@@ -293,7 +313,8 @@ export function LandingHero() {
 
         const chatGrid = root.querySelector("#chatDemoGrid") || container;
         const chatObserver = new IntersectionObserver((entries) => {
-          if (entries[0].isIntersecting && !chatDemoStarted.current) {
+          const entry = entries[0];
+          if (entry?.isIntersecting && !chatDemoStarted.current) {
             chatDemoStarted.current = true;
             setTimeout(runChat, 800);
           }
