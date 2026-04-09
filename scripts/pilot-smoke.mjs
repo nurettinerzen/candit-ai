@@ -156,26 +156,55 @@ async function ensurePublishedJob(token) {
     return existing;
   }
 
-  const created = await requestJson("Create job", "/jobs", {
-    method: "POST",
-    headers: jsonHeaders(token),
-    body: JSON.stringify({
-      title: "Operasyon Uzmani",
-      roleFamily: "Operasyon",
-      department: "Operasyon",
-      status: "PUBLISHED",
-      locationText: "Istanbul",
-      shiftType: "Vardiyali",
-      jdText: "Depo operasyonu, vardiya koordinasyonu ve ekip ici raporlama sorumluluklari.",
-      requirements: [
-        { key: "vardiya", value: "Vardiyali calisma deneyimi", required: true },
-        { key: "iletisim", value: "Ekip ici iletisim", required: true }
-      ]
-    })
-  });
+  const baseJobPayload = {
+    title: "Operasyon Uzmani",
+    roleFamily: "Operasyon",
+    department: "Operasyon",
+    locationText: "Istanbul",
+    shiftType: "Vardiyali",
+    jdText: "Depo operasyonu, vardiya koordinasyonu ve ekip ici raporlama sorumluluklari.",
+    requirements: [
+      { key: "vardiya", value: "Vardiyali calisma deneyimi", required: true },
+      { key: "iletisim", value: "Ekip ici iletisim", required: true }
+    ]
+  };
 
-  logStatus("PASS", "Published job created", `${created.id} (${created.title})`);
-  return created;
+  try {
+    const created = await requestJson("Create job", "/jobs", {
+      method: "POST",
+      headers: jsonHeaders(token),
+      body: JSON.stringify({
+        ...baseJobPayload,
+        status: "PUBLISHED"
+      })
+    });
+
+    logStatus("PASS", "Published job created", `${created.id} (${created.title})`);
+    return created;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (!message.includes("ücretsiz denemeyi daha önce kullandı")) {
+      throw error;
+    }
+
+    addWarning(
+      "Published job billing guardrail hit",
+      "Smoke DRAFT job fallback ile devam ediyor."
+    );
+
+    const fallback = await requestJson("Create draft job", "/jobs", {
+      method: "POST",
+      headers: jsonHeaders(token),
+      body: JSON.stringify({
+        ...baseJobPayload,
+        status: "DRAFT"
+      })
+    });
+
+    logStatus("PASS", "Draft job created", `${fallback.id} (${fallback.title})`);
+    return fallback;
+  }
 }
 
 async function uploadPilotCv(token, candidateId, stamp) {

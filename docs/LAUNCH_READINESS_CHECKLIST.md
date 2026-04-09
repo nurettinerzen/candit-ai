@@ -136,6 +136,23 @@ Ilgili arka plan notlari icin:
     - `databaseConfigured: true`
     - `queueName: ai-interviewer-jobs`
     - `concurrency: 4`
+- [x] Yeni yuklenen CV icin parsing staging'de tekrar calisiyor.
+  - Canli tekrar:
+    - CV upload -> `201`
+    - CV parsing -> `SUCCEEDED`
+    - parsed profile kaydi olusuyor
+- [x] Screening ve fit score cekirdek akisi staging'de dogrulandi.
+  - Canli tekrar:
+    - Screening run -> `SUCCEEDED`
+    - `GET /applications/:id/fit-score/latest` gercek skor donuyor
+  - Ornek sonuc:
+    - `overallScore: 75`
+    - `confidence: 0.596`
+- [x] Tekrarli smoke tenant acilislarinda trial billing guardrail gorulebilir.
+  - Davranis:
+    - `PUBLISHED` job olusturma bazen `Bu e-posta adresi ücretsiz denemeyi daha önce kullandı...` ile reddediliyor
+  - Uygulanan cozum:
+    - smoke script bu durumda `DRAFT` job fallback ile akisa devam ediyor
 
 ### Tespit edilen blocker / misconfiguration
 
@@ -171,28 +188,15 @@ Ilgili arka plan notlari icin:
 - [ ] Public integrations copy'sinde Calendly hazirlik seviyesi runtime readiness ile tekrar hizalanmali.
   - Canli risk:
     - `/integrations` sayfasi Calendly'i fazla hazir gosterebilir.
-- [ ] CV parsing, ayri API/worker servis topolojisinde su anda blocker.
-  - Canli tekrar:
-    - `POST /v1/candidates/:id/cv-files` -> `201`
-    - `POST /v1/candidates/:id/cv-parsing/trigger` -> `201`
-    - ilk `GET /v1/candidates/:id/cv-parsing/latest` -> `FAILED`
-  - Donen hata:
-    - `CV dosyasi storage alanindan okunamadi.`
-    - `ENOENT ... /opt/render/project/src/data/storage/...`
-  - Kok neden:
-    - API CV dosyasini `local_fs` altina yaziyor
-    - Worker ayri Render servisinde ayni filesystem'i gormuyor
-  - Hazir kod/cozum:
-    - `CVFileBlob` relation + DB blob fallback worker extraction akısına eklendi
+- [x] API/worker ayri servis topolojisindeki CV parsing kirigi kapatildi.
+  - Uygulanan cozum:
+    - `CVFileBlob` relation + DB blob fallback
     - migration:
       - `20260409224500_cv_file_blob_fallback`
-  - Gereken rollout:
-    - API redeploy
-    - Worker redeploy
-    - `corepack pnpm --filter @ai-interviewer/api exec prisma migrate deploy`
-  - Not:
-    - rollout sonrasi yeni yuklenen CV'ler parse edilebilecek
-    - daha once yuklenmis CV'lerin yeniden yuklenmesi gerekebilir
+  - Dogrulama:
+    - yeni yuklenen TXT CV parsing run'i `SUCCEEDED`
+    - parsed profile olusuyor
+    - screening ve fit-score akisi devam ediyor
 - [x] Recruiter fit-score quick action yeni tenant icin tekrar kuyruga alinabiliyor.
   - Son dogrulama:
     - `POST /applications/:id/quick-action { action: "trigger_fit_score" }` -> `201 queued`
@@ -216,8 +220,8 @@ Ilgili arka plan notlari icin:
 ### Bir sonraki faz
 
 - [ ] P0/P1 icinde kalan blocker'lari kapat:
-  - CV blob fallback migration + redeploy
-  - yeni CV upload ile parse + fit-score smoke
+  - Google OAuth redirect mismatch
+  - public integrations copy / Calendly readiness hizasi
 - [ ] Ardindan P2'ye gec:
   - landing page claim/copy/dogruluk kontrolu
 
