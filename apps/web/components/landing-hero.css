@@ -121,8 +121,8 @@
   border-radius: 999px;
   border: 1px solid rgba(139,92,246,0.22);
   background: rgba(139,92,246,0.08);
-  color: var(--kicker-color); font-size: 11px; font-weight: 700;
-  letter-spacing: 0.08em;
+  color: var(--kicker-color); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .lp-section-title {

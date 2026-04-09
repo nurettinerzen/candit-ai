@@ -473,7 +473,7 @@ export function LandingHero() {
         <section className="lp-channels" id="channels">
           <div className="lp-shell">
             <div className="lp-channels-header lp-reveal">
-              <span className="lp-kicker">{t("MODÜLLER")}</span>
+              <span className="lp-kicker">{t("Modüller")}</span>
               <h2 className="lp-section-title">{t("Her adımda aynı kalite")}</h2>
               <p className="lp-section-sub" style={{ margin: "0 auto" }}>{t("İş ilanı, başvuru toplama, ön eleme ve AI mülakat süreçlerinin hepsi tek platformda yönetilir.")}</p>
             </div>
@@ -507,7 +507,7 @@ export function LandingHero() {
           <div className="lp-shell">
             <div className="lp-chat-demo-grid lp-reveal-sync" id="chatDemoGrid">
               <div className="lp-chat-demo-copy lp-sync-left">
-                <span className="lp-kicker">{t("CANLI MÜLAKAT")}</span>
+                <span className="lp-kicker">{t("Canlı Mülakat")}</span>
                 <h2 className="lp-section-title">{t("Gerçek zamanlı AI görüşme odası")}</h2>
                 <p className="lp-section-sub">{t("Aday ve AI asistan karşılıklı görüşür. Transcript anlık oluşur, değerlendirme otomatik yapılır.")}</p>
               </div>
@@ -568,7 +568,7 @@ export function LandingHero() {
         <section className="lp-workflow" id="workflow">
           <div className="lp-shell">
             <div className="lp-workflow-header lp-reveal">
-              <span className="lp-kicker">{t("NASIL ÇALIŞIR")}</span>
+              <span className="lp-kicker">{t("Nasıl Çalışır")}</span>
               <h2 className="lp-section-title">{t("Dört adımda işe alıma başlayın")}</h2>
               <p className="lp-section-sub" style={{ margin: "0 auto" }}>{t("Pozisyonu tanımlayın, adayları analiz edin, AI mülakat yaptırın, en iyi adayı seçin.")}</p>
             </div>
@@ -601,55 +601,13 @@ export function LandingHero() {
         <section className="lp-features" id="features">
           <div className="lp-shell">
             <div className="lp-feature-row">
-              <div className="lp-reveal-left lp-reveal-late">
-                <span className="lp-kicker">{t("ENTEGRASYONLAR")}</span>
-                <h2 className="lp-section-title">{t("Mevcut sistemlerinizle uyumlu")}</h2>
-                <p className="lp-section-sub">{t("ATS, HRIS ve iletişim platformlarınızla entegre çalışın. Veri senkronizasyonu otomatik yapılır.")}</p>
-              </div>
-              <div className="lp-feature-visual lp-reveal-right lp-reveal-late">
-                <div className="lp-feature-visual-title">{t("BAĞLANTI NOKTALARI")}</div>
-                <div className="lp-integration-logos-grid">
-                  <div className="lp-integration-logo-card">
-                    <span style={{ fontSize: "24px" }}>{"\u{1F4E7}"}</span>
-                    <span>{t("E-posta")}</span>
-                    <span style={{ fontSize: 11, opacity: 0.6 }}>{t("Davet & bildirim")}</span>
-                  </div>
-                  <div className="lp-integration-logo-card">
-                    <span style={{ fontSize: "24px" }}>{"\u{1F310}"}</span>
-                    <span>REST API</span>
-                    <span style={{ fontSize: 11, opacity: 0.6 }}>{t("Tam entegrasyon")}</span>
-                  </div>
-                  <div className="lp-integration-logo-card">
-                    <span style={{ fontSize: "24px" }}>{"\u{1F517}"}</span>
-                    <span>Webhook</span>
-                    <span style={{ fontSize: 11, opacity: 0.6 }}>{t("Gerçek zamanlı")}</span>
-                  </div>
-                  <div className="lp-integration-logo-card">
-                    <span style={{ fontSize: "24px" }}>{"\u{1F4C5}"}</span>
-                    <span>{t("Takvim")}</span>
-                    <span style={{ fontSize: 11, opacity: 0.6 }}>Google / Outlook</span>
-                  </div>
-                  <div className="lp-integration-logo-card">
-                    <span style={{ fontSize: "24px" }}>{"\u{1F4BC}"}</span>
-                    <span>ATS</span>
-                    <span style={{ fontSize: 11, opacity: 0.6 }}>{t("İK sistemleri")}</span>
-                  </div>
-                  <div className="lp-integration-logo-card">
-                    <span style={{ fontSize: "24px" }}>{"\u{1F4CA}"}</span>
-                    <span>HRIS</span>
-                    <span style={{ fontSize: 11, opacity: 0.6 }}>{t("Veri senkron")}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="lp-feature-row lp-reverse">
               <div className="lp-reveal-right lp-reveal-late">
-                <span className="lp-kicker">{t("GÜVENLİK")}</span>
+                <span className="lp-kicker">{t("Güvenlik")}</span>
                 <h2 className="lp-section-title">{t("Verileriniz güvendedir")}</h2>
                 <p className="lp-section-sub">{t("KVKK uyumlu altyapı, şifrelenmiş veri depolama ve erişim kontrolleri ile tam güvenlik.")}</p>
               </div>
               <div className="lp-feature-visual lp-reveal-left lp-reveal-late">
-                <div className="lp-feature-visual-title">{t("GÜVENLİK KATMANLARI")}</div>
+                <div className="lp-feature-visual-title">{t("Güvenlik Katmanları")}</div>
                 <div className="lp-shield-grid">
                   <div className="lp-shield-item">
                     <strong>{"\u{1F510}"} {t("Kimlik Doğrulama")}</strong>
@@ -677,7 +635,7 @@ export function LandingHero() {
         <section className="lp-cta" id="cta">
           <div className="lp-shell">
             <div className="lp-cta-panel lp-reveal-scale">
-              <span className="lp-kicker">{t("BAŞLAYALIM")}</span>
+              <span className="lp-kicker">{t("Başlayalım")}</span>
               <h2 className="lp-section-title">{t("Adaylara hak ettikleri deneyimi sunun")}</h2>
               <p className="lp-section-sub">{t("Ücretsiz deneme ile başlayıp, dakikalar içinde ilk AI mülakatınızı oluşturun.")}</p>
               <div className="lp-cta-actions">
