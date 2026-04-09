@@ -251,12 +251,8 @@ export function SiteSettingsSwitcher({
 }
 
 export function SiteLanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<SiteLocale>(() => {
-    if (typeof window !== "undefined") {
-      return normalizeSiteLocale(window.localStorage.getItem(SITE_LOCALE_STORAGE_KEY));
-    }
-    return DEFAULT_SITE_LOCALE;
-  });
+  const [locale, setLocaleState] = useState<SiteLocale>(DEFAULT_SITE_LOCALE);
+  const [hydrated, setHydrated] = useState(false);
   const textSourceCacheRef = useRef<WeakMap<Text, string>>(new WeakMap());
   const attributeSourceCacheRef = useRef<WeakMap<Element, AttributeCache>>(new WeakMap());
   const previousLocaleRef = useRef<SiteLocale>(DEFAULT_SITE_LOCALE);
@@ -270,6 +266,7 @@ export function SiteLanguageProvider({ children }: { children: ReactNode }) {
 
     const storedLocale = normalizeSiteLocale(window.localStorage.getItem(SITE_LOCALE_STORAGE_KEY));
     setLocaleState(storedLocale);
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
@@ -352,7 +349,9 @@ export function SiteLanguageProvider({ children }: { children: ReactNode }) {
 
   return (
     <SiteLanguageContext.Provider value={contextValue}>
-      {children}
+      <div style={{ opacity: hydrated ? 1 : 0, transition: "opacity 0.05s ease" }}>
+        {children}
+      </div>
     </SiteLanguageContext.Provider>
   );
 }
