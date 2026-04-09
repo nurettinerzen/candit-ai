@@ -1182,6 +1182,7 @@ export type AiSupportCenterReadModel = {
 };
 
 export type InfrastructureReadinessReadModel = {
+  queryWarnings?: string[];
   runtime: {
     parsing: {
       provider: string;

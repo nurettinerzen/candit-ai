@@ -198,6 +198,18 @@ export default function AiSupportCenterPage() {
           {infrastructure ? (
             <section className="panel nested-panel" style={{ marginTop: 16 }}>
               <h3 style={{ marginTop: 0 }}>Infrastructure Readiness</h3>
+              {infrastructure.queryWarnings?.length ? (
+                <div style={{ marginBottom: 12 }}>
+                  <strong>{t("Bazi readiness verileri eksik yüklendi.")}</strong>
+                  <ul className="plain-list" style={{ marginTop: 8 }}>
+                    {infrastructure.queryWarnings.map((warning) => (
+                      <li key={warning} className="list-row">
+                        <span>{t(warning)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <table className="table">
                 <tbody>
                   <tr>

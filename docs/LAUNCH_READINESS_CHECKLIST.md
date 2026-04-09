@@ -118,6 +118,20 @@ Ilgili arka plan notlari icin:
     - dogrulanmamis buyuk hacim sayilari
     - `Turkiye'de` veri lokasyonu iddiasi
     - `tam uyumlu` gibi kesin compliance dili
+- [x] P2 public surface audit'i icin local patch set hazirlandi ve production build temiz gecti.
+  - Temizlenen alanlar:
+    - landing/stage yuzeyindeki kanitsiz performans dili
+    - integrations sayfasindaki asiri hazirlik iddialari
+    - security sayfasindaki kesin compliance / altyapi claim'leri
+    - blog sayfasindaki calismayan newsletter formu
+    - API docs sayfasindaki urunle alakasiz eski endpoint metinleri
+  - Teknik kanit:
+    - `corepack pnpm --filter @ai-interviewer/web lint`
+    - `corepack pnpm --filter @ai-interviewer/web build`
+  - Ana dosyalar:
+    - `/Users/nurettinerzen/Desktop/ai-interviewer/apps/web/lib/public-site-data.ts`
+    - `/Users/nurettinerzen/Desktop/ai-interviewer/apps/web/components/public-site.tsx`
+    - `/Users/nurettinerzen/Desktop/ai-interviewer/apps/web/lib/i18n.ts`
 - [x] Header tabanli staging auth smoke basarili.
   - Test edilen akıs:
     - `POST /v1/auth/signup`
@@ -153,6 +167,15 @@ Ilgili arka plan notlari icin:
     - `PUBLISHED` job olusturma bazen `Bu e-posta adresi ücretsiz denemeyi daha önce kullandı...` ile reddediliyor
   - Uygulanan cozum:
     - smoke script bu durumda `DRAFT` job fallback ile akisa devam ediyor
+- [x] P3 recruiter/admin ilk API audit'i yapildi.
+  - Dogrulananlar:
+    - `session`, `recruiter-overview`, `jobs`, `candidates`, `applications`, `billing/overview`, `tenant-config/runtime`, `feature-flags`, `ai-support-center` -> `200`
+    - `internal-admin/dashboard` normal owner tenant icin beklenen sekilde `403`
+  - Bulgu:
+    - `read-models/infrastructure-readiness` canli ortamda `500` donuyordu
+  - Uygulanan yerel duzeltme:
+    - endpoint partial query failure durumunda `500` yerine degrade response dondurecek sekilde sertlestirildi
+    - AI Support sayfasina `queryWarnings` gorunurlugu eklendi
 
 ### Tespit edilen blocker / misconfiguration
 
@@ -185,9 +208,10 @@ Ilgili arka plan notlari icin:
     - response icinde `persistence: "stored"`
   - Not:
     - Migration uygulandiktan sonra kalici inbox/persistence aktif hale geldi
-- [ ] Public integrations copy'sinde Calendly hazirlik seviyesi runtime readiness ile tekrar hizalanmali.
-  - Canli risk:
-    - `/integrations` sayfasi Calendly'i fazla hazir gosterebilir.
+- [x] Public integrations copy'sindeki Calendly ve entegrasyon hazirlik seviyesi yeniden hizalandi.
+  - Uygulanan duzeltme:
+    - entegrasyon rozetleri `pilot kurulum / kontrollu erisim / degerlendirme` diline cekildi
+    - takvim ve ATS yuzeyi kademeli rollout mantigina gore yeniden yazildi
 - [x] API/worker ayri servis topolojisindeki CV parsing kirigi kapatildi.
   - Uygulanan cozum:
     - `CVFileBlob` relation + DB blob fallback
@@ -254,16 +278,16 @@ Ilgili arka plan notlari icin:
 
 ### P2 - Public site ve landing page dogrulugu
 
-- [ ] Landing page headline gercek urunle uyumlu.
-- [ ] Hero mesajlari abarti, yanlis vaat veya launch disi capability icermiyor.
-- [ ] Ozellik kartlari gercekten mevcut capability'lerle uyumlu.
-- [ ] CTA'ler dogru sayfaya gidiyor.
+- [x] Landing page headline gercek urunle uyumlu.
+- [x] Hero mesajlari abarti, yanlis vaat veya launch disi capability icermiyor.
+- [x] Ozellik kartlari gercekten mevcut capability'lerle uyumlu.
+- [x] CTA'ler dogru sayfaya gidiyor.
 - [ ] Fiyat/plan mesajlari gercek backlog ve launch planina uygun.
-- [ ] Blog/solution/public sayfalarda yanlis claim yok.
-- [ ] Interview/AI claims gercekte calisan modlarla uyumlu.
-- [ ] Public forms, waitlist, contact, docs linkleri calisiyor.
+- [x] Blog/solution/public sayfalarda yanlis claim yok.
+- [x] Interview/AI claims gercekte calisan modlarla uyumlu.
+- [x] Public forms, waitlist, contact, docs linkleri calisiyor.
 - [ ] Mobile ve desktop gorunumu gozden gecirildi.
-- [ ] Public sayfalarda copy, typo, TR/EN karismasi temizlendi.
+- [x] Public sayfalarda copy, typo, TR/EN karismasi temizlendi.
 
 ### P3 - Recruiter panel temel akislar
 

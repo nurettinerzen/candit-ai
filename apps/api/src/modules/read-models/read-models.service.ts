@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject} from "@nestjs/common";
+import { Injectable, NotFoundException, Inject, Logger } from "@nestjs/common";
 import { AiTaskType, type ApplicationStage } from "@prisma/client";
 import { AiOrchestrationService } from "../ai-orchestration/ai-orchestration.service";
 import { AnalyticsService } from "../analytics/analytics.service";
@@ -39,6 +39,8 @@ function readHumanDecision(metadata: unknown) {
 
 @Injectable()
 export class ReadModelsService {
+  private readonly logger = new Logger(ReadModelsService.name);
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AnalyticsService) private readonly analyticsService: AnalyticsService,
@@ -851,43 +853,97 @@ export class ReadModelsService {
   }
 
   async infrastructureReadiness(tenantId: string) {
+    const queryWarnings: string[] = [];
+    const warningLabels: Record<string, string> = {
+      ai_support: "AI destek verisi su an eksik yuklendi.",
+      integrations: "Entegrasyon readiness verisi su an eksik yuklendi.",
+      interview_sessions: "Mulakat oturum verisi su an eksik yuklendi.",
+      scheduling_workflows: "Planlama workflow verisi su an eksik yuklendi.",
+      notification_deliveries: "Bildirim teslimat verisi su an eksik yuklendi.",
+      startup_validation: "Calisma zamani dogrulama verisi su an eksik yuklendi."
+    };
+
+    const withFallback = <T>(label: string, fallback: T) => (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`infrastructure_readiness.${label}.failed: ${message}`);
+      queryWarnings.push(warningLabels[label] ?? "Altyapi readiness verisi su an eksik yuklendi.");
+      return fallback;
+    };
+
     const [aiSupport, integrations, latestSessions, schedulingWorkflows, notificationStats] = await Promise.all([
-      this.aiSupportCenter(tenantId),
-      this.integrationsService.listConnections(tenantId),
-      this.prisma.interviewSession.findMany({
-        where: {
-          tenantId
-        },
-        orderBy: {
-          updatedAt: "desc"
-        },
-        take: 40,
-        select: {
-          id: true,
-          runtimeProviderMode: true,
-          voiceInputProvider: true,
-          voiceOutputProvider: true,
-          schedulingSource: true,
-          meetingProvider: true,
-          meetingProviderSource: true,
-          mode: true,
-          status: true,
-          updatedAt: true
-        }
-      }),
-      this.prisma.schedulingWorkflow.groupBy({
-        by: ["state"],
-        where: { tenantId },
-        _count: { id: true }
-      }).catch(() => [] as Array<{ state: string; _count: { id: number } }>),
-      this.prisma.notificationDelivery.groupBy({
-        by: ["status"],
-        where: { tenantId },
-        _count: { id: true }
-      }).catch(() => [] as Array<{ status: string; _count: { id: number } }>)
+      this.aiSupportCenter(tenantId).catch(
+        withFallback("ai_support", {
+          providers: [],
+          providerStatus: {
+            defaultProvider: null,
+            providers: []
+          },
+          flags: [],
+          speech: this.speechRuntimeService.getProviderStatus(),
+          integrations: [],
+          extraction: {
+            byStatus: {},
+            byMethod: {}
+          },
+          taskRuns: []
+        })
+      ),
+      this.integrationsService.listConnections(tenantId).catch(withFallback("integrations", [])),
+      this.prisma.interviewSession
+        .findMany({
+          where: {
+            tenantId
+          },
+          orderBy: {
+            updatedAt: "desc"
+          },
+          take: 40,
+          select: {
+            id: true,
+            runtimeProviderMode: true,
+            voiceInputProvider: true,
+            voiceOutputProvider: true,
+            schedulingSource: true,
+            meetingProvider: true,
+            meetingProviderSource: true,
+            mode: true,
+            status: true,
+            updatedAt: true
+          }
+        })
+        .catch(withFallback("interview_sessions", [])),
+      this.prisma.schedulingWorkflow
+        .groupBy({
+          by: ["state"],
+          where: { tenantId },
+          _count: { id: true }
+        })
+        .catch(withFallback("scheduling_workflows", [] as Array<{ state: string; _count: { id: number } }>)),
+      this.prisma.notificationDelivery
+        .groupBy({
+          by: ["status"],
+          where: { tenantId },
+          _count: { id: true }
+        })
+        .catch(withFallback("notification_deliveries", [] as Array<{ status: string; _count: { id: number } }>))
     ]);
 
-    const startupValidation = this.runtimeConfig.validateAtStartup();
+    const startupValidation = (() => {
+      try {
+        return this.runtimeConfig.validateAtStartup();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`infrastructure_readiness.startup_validation.failed: ${message}`);
+        queryWarnings.push(
+          warningLabels.startup_validation ?? "Calisma zamani dogrulama verisi su an eksik yuklendi."
+        );
+        return {
+          healthy: false,
+          warnings: [message],
+          providers: {} as Record<string, { ready: boolean; mode: string }>
+        };
+      }
+    })();
 
     const schedulingStats = schedulingWorkflows.reduce(
       (acc, row) => {
@@ -906,6 +962,7 @@ export class ReadModelsService {
     );
 
     return {
+      queryWarnings,
       runtime: this.runtimeConfig.providerReadiness,
       startupHealth: {
         healthy: startupValidation.healthy,

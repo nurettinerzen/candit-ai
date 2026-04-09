@@ -3755,6 +3755,21 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Rate limits and controlled access are applied to protect pilot stability.",
   "Erişim, denetim izi ve veri yönetişimi kontrollerini kademeli olarak güçlendiren bir güvenlik yaklaşımı benimsiyoruz.":
     "We follow a security approach that gradually strengthens access, audit trail, and data governance controls."
+  ,
+  "Bazi readiness verileri eksik yüklendi.":
+    "Some readiness data loaded incompletely.",
+  "AI destek verisi su an eksik yuklendi.":
+    "AI support data is currently incomplete.",
+  "Entegrasyon readiness verisi su an eksik yuklendi.":
+    "Integration readiness data is currently incomplete.",
+  "Mulakat oturum verisi su an eksik yuklendi.":
+    "Interview session data is currently incomplete.",
+  "Planlama workflow verisi su an eksik yuklendi.":
+    "Scheduling workflow data is currently incomplete.",
+  "Bildirim teslimat verisi su an eksik yuklendi.":
+    "Notification delivery data is currently incomplete.",
+  "Calisma zamani dogrulama verisi su an eksik yuklendi.":
+    "Runtime validation data is currently incomplete."
 });
 
 const EN_TO_TR_PHRASE_TRANSLATIONS: Record<string, string> = Object.entries(
