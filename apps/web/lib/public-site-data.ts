@@ -397,29 +397,29 @@ export const PUBLIC_SOLUTIONS_ADVANTAGES: PublicCard[] = [
 
 export const PUBLIC_FAQ: PublicFaq[] = [
   {
-    question: "Entegrasyon ne kadar sürer?",
+    question: "AI mülakat nasıl çalışır?",
     answer:
-      "Standart kurulumlar genellikle 15-30 dakika içinde tamamlanır. Özel sistemler ve ileri eşleştirmeler 1-3 iş günü sürebilir."
+      "Aday, paylaşılan mülakat linkine tıklayarak görüşmeyi başlatır. AI asistan pozisyona özel soruları sırayla sorar, yanıtları gerçek zamanlı analiz eder ve detaylı bir değerlendirme raporu oluşturur."
   },
   {
-    question: "Başlamak için hangi veriler gerekir?",
+    question: "Ön eleme (screening) süreci nedir?",
     answer:
-      "En azından ürün, hizmet, politika ve sık sorulan soru içeriği ile başlanabilir. Entegrasyon bilgileri ve operasyon kuralları eklendikçe yanıt kalitesi artar."
+      "Adayların CV ve başvuru bilgileri AI tarafından analiz edilir, pozisyon gereksinimleriyle eşleştirilir ve uygunluk skoru hesaplanır. Belirlediğiniz kriterlere göre otomatik kısa liste oluşturulur."
   },
   {
-    question: "AI hangi durumda insana devreder?",
+    question: "Deneme sürümünde neler var?",
     answer:
-      "Kullanıcı açıkça insan desteği istediğinde, aynı konuda sistem tekrarlandığında veya yüksek güven gerektiren kritik işlemlerde kontrollü handoff devreye girer."
+      "14 gün boyunca 2 kullanıcı, 1 aktif ilan, 50 aday ön eleme ve 5 AI mülakat hakkı ile platformu ücretsiz deneyebilirsiniz. Kredi kartı gerekmez."
   },
   {
-    question: "KVKK yaklaşımınız nedir?",
+    question: "KVKK ve veri güvenliği nasıl sağlanıyor?",
     answer:
-      "Veri minimizasyonu, rol bazlı erişim, maskeleme, audit log ve kontrollü saklama politikaları ile KVKK ve GDPR gerekliliklerine uyum hedeflenir."
+      "Aday verileri Türkiye'de, KVKK ve GDPR standartlarına tam uyumlu şekilde saklanır. Rol bazlı erişim, veri maskeleme ve otomatik silme politikaları uygulanır."
   },
   {
-    question: "Paket aşımı nasıl çalışır?",
+    question: "Mevcut ATS sistemimle entegre olabilir mi?",
     answer:
-      "Plan limitleri aşıldığında önce dahil kullanım, ardından ek paket veya kullanım bazlı ücretlendirme devreye girer."
+      "Evet, REST API ve webhook desteği ile mevcut İK sistemlerinize entegre olabilirsiniz. Google Calendar, Outlook ve yaygın ATS platformları ile hazır entegrasyonlar mevcuttur."
   }
 ];
 

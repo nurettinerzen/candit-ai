@@ -367,14 +367,14 @@ function ProductStage() {
             </div>
 
             <div className={styles.signalBody}>
-              <h3>Tek AI katmanı ile daha hızlı, daha temiz operasyon.</h3>
+              <h3>Tek platform ile daha hızlı, daha doğru işe alım.</h3>
               <p>
-                Telefon, WhatsApp, web chat ve email üzerinden gelen tüm talepler aynı
-                sahiplenme mantığıyla yönetilir.
+                Ön eleme, AI mülakat ve değerlendirme süreçleri aynı akış içinde
+                otomatik yönetilir.
               </p>
               <div className={styles.progressList}>
                 <div>
-                  <span>Handoff kalitesi</span>
+                  <span>Değerlendirme doğruluğu</span>
                   <i>
                     <b style={{ width: "82%" }} />
                   </i>
@@ -400,7 +400,7 @@ function ProductStage() {
           <div className={styles.stagePanelLabel}>Örnek akış</div>
           <div className={styles.scheduleCard}>
             <span className={styles.scheduleBadge}>Bugün</span>
-            <strong>WhatsApp support handoff</strong>
+            <strong>AI mülakat değerlendirmesi</strong>
             <p>Kullanıcı AI ile başlar, gerekirse aynı konuşma içinde canlı ekibe geçer.</p>
             <div className={styles.tagList}>
               <span>Telefon</span>
@@ -545,7 +545,7 @@ function DocsEndpoints() {
     {
       method: "GET",
       path: "/v1/conversations",
-      body: "Konuşmaları, durumları ve handoff bilgilerini listeler."
+      body: "Mülakatları, durumları ve değerlendirme bilgilerini listeler."
     },
     {
       method: "POST",
@@ -606,7 +606,7 @@ function SolutionWorkflow({ solution }: { solution: PublicSolution }) {
     {
       step: "04",
       title: "Performansı ölç",
-      body: "Çözüm oranı, handoff hızı ve memnuniyet verileri operasyon paneline düşer."
+      body: "Mülakat tamamlanma, değerlendirme skoru ve süreç verileri panele düşer."
     }
   ];
 
@@ -1617,7 +1617,7 @@ export function PublicDocsApiPage() {
               },
               {
                 title: "Webhook Delivery",
-                body: "Handoff, çözüm, başarısız istek ve temsilci devri olaylarını takip edin."
+                body: "Mülakat, değerlendirme, başvuru ve süreç olaylarını takip edin."
               },
               {
                 title: "Rate Limits",
