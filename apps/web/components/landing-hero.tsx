@@ -13,11 +13,9 @@ export function LandingHero() {
   /* ── Manifesto: split text into words, mark emphasis ── */
   const manifestoWords = useMemo(() => {
     const text = t("Her gün yüzlerce CV inceleniyor ama doğru adayı bulmak imkansız hissettiriyor. Candit bunu değiştiriyor.");
-    const emphasisRaw = t("doğru,imkansız,Candit,değiştiriyor.");
-    const emphasisSet = new Set(emphasisRaw.split(",").map((w) => w.trim().toLowerCase()));
     return text.split(/\s+/).map((word) => ({
       word,
-      em: emphasisSet.has(word.toLowerCase()),
+      em: word.toLowerCase() === "candit",
     }));
   }, [t]);
 

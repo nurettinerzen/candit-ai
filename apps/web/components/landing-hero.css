@@ -256,8 +256,8 @@
   transition: color 0.4s var(--ease);
 }
 .lp-mw.lp-lit { color: var(--text-primary); }
-.lp-mw.lp-em { font-style: italic; color: var(--lp-primary-400); }
-.lp-mw.lp-em.lp-lit { color: var(--lp-primary-light); }
+.lp-mw.lp-em { font-style: italic; color: var(--lp-primary-400) !important; }
+.lp-mw.lp-em.lp-lit { color: var(--lp-primary-light) !important; }
 
 /* --- Dashboard mockup --- */
 .lp-dashboard-section { padding: 0 0 100px; }
