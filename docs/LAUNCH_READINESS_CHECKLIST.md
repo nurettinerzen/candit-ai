@@ -153,17 +153,13 @@ Ilgili arka plan notlari icin:
 - [x] Integrations tarafindaki Google callback env'i staging/prod formatina getirildi.
   - Beklenen format:
     - `GOOGLE_OAUTH_REDIRECT_URI=https://candit.onrender.com/v1/integrations/google/callback`
-- [ ] Public contact intake endpoint'i ilk gercek smoke testte `500` donuyor.
-  - Test:
-    - `POST /v1/public/contact`
-  - Yuksek olasilikli neden:
-    - Son eklenen public lead inbox migration'lari DB'ye uygulanmamis olabilir.
-  - Local durum:
-    - `public-intake.service.ts` icinde schema drift fallback fix'i hazir
-    - API build temiz geciyor
-  - Kontrol edilmesi gereken migration'lar:
-    - `20260409170000_public_contact_inbox`
-    - `20260409193000_security_incident_backbone`
+- [x] Public contact intake endpoint'i staging'de tekrar calisir hale geldi.
+  - Son dogrulama:
+    - `POST /v1/public/contact` -> `201`
+    - response icinde `persistence: "stateless_fallback"`
+  - Not:
+    - Endpoint artik form akisini kirmiyor
+    - Kalici inbox/persistence tarafinin yine de migration ile tamamlanmasi daha saglikli
 - [ ] Public integrations copy'sinde Calendly hazirlik seviyesi runtime readiness ile tekrar hizalanmali.
   - Canli risk:
     - `/integrations` sayfasi Calendly'i fazla hazir gosterebilir.
@@ -185,21 +181,24 @@ Ilgili arka plan notlari icin:
     - Worker startup fail-fast log/fix'i hazir
     - `DATABASE_URL` ve BullMQ readiness kontrolu startup sirasina eklendi
     - Hedef: worker'in "ayakta ama sessizce bozuk" kalmasi yerine acik hata vermesi
-- [ ] Recruiter fit-score quick action staging'de `403` donuyor.
-  - Mevcut cevap:
-    - `Feature flag kapali: ai.applicant_fit_scoring.enabled`
-  - Yorum:
-    - Bu bir auth kirigi degil; feature flag / launch scope karari
-  - Local durum:
-    - `FeatureFlagsService.ensureDefaults(...)` icine eksik default flag eklendi
-    - API build temiz geciyor
-- [ ] Interview invite akisi yeni tenant icin seed/template bagimliligi nedeniyle kiriliyor.
-  - Canli durum:
-    - `POST /applications/:id/quick-action { action: "invite_interview" }`
-    - cevap: `404 Aktif interview template bulunamadi.`
-  - Local durum:
-    - Interview template auto-provision fallback fix'i hazir
-    - API build temiz geciyor
+- [x] Recruiter fit-score quick action yeni tenant icin tekrar kuyruga alinabiliyor.
+  - Son dogrulama:
+    - `POST /applications/:id/quick-action { action: "trigger_fit_score" }` -> `201 queued`
+  - Not:
+    - Worker halen tuketmedigi icin task run status'u `QUEUED` kalmaya devam ediyor
+- [x] Interview invite akisi yeni tenant icin template bagimliligindan kurtarildi.
+  - Son dogrulama:
+    - `POST /applications/:id/quick-action { action: "invite_interview" }` -> `201`
+    - `interviewLink` ve `sessionId` donuyor
+    - Public session fallback template ile aciliyor:
+      - `Operasyon Varsayilan Ilk Gorusme`
+- [x] Public interview runtime manual text fallback ile ilerliyor.
+  - Son dogrulama:
+    - `POST /interviews/public/sessions/:id/start` -> `201`
+    - readiness cevabi `answerSource: "manual_text"` ile kabul ediliyor
+    - ilk soru ve follow-up akisi ilerliyor
+  - Not:
+    - `answerSource: "text"` gecersiz; frontend/manual smoke icin `manual_text` kullanilmali
 - [ ] Browser tabanli interaktif smoke testi icin local `agent-browser` araci ortamda mevcut degil; ilk tur HTTP smoke + deploy/log dogrulamasi ile yapildi.
 
 ### Bir sonraki faz
