@@ -185,6 +185,21 @@ Ilgili arka plan notlari icin:
     - Worker startup fail-fast log/fix'i hazir
     - `DATABASE_URL` ve BullMQ readiness kontrolu startup sirasina eklendi
     - Hedef: worker'in "ayakta ama sessizce bozuk" kalmasi yerine acik hata vermesi
+- [ ] Recruiter fit-score quick action staging'de `403` donuyor.
+  - Mevcut cevap:
+    - `Feature flag kapali: ai.applicant_fit_scoring.enabled`
+  - Yorum:
+    - Bu bir auth kirigi degil; feature flag / launch scope karari
+  - Local durum:
+    - `FeatureFlagsService.ensureDefaults(...)` icine eksik default flag eklendi
+    - API build temiz geciyor
+- [ ] Interview invite akisi yeni tenant icin seed/template bagimliligi nedeniyle kiriliyor.
+  - Canli durum:
+    - `POST /applications/:id/quick-action { action: "invite_interview" }`
+    - cevap: `404 Aktif interview template bulunamadi.`
+  - Local durum:
+    - Interview template auto-provision fallback fix'i hazir
+    - API build temiz geciyor
 - [ ] Browser tabanli interaktif smoke testi icin local `agent-browser` araci ortamda mevcut degil; ilk tur HTTP smoke + deploy/log dogrulamasi ile yapildi.
 
 ### Bir sonraki faz

@@ -174,6 +174,15 @@ function sanitizeText(input: string) {
   return input.replace(/\s+/g, " ").trim();
 }
 
+function formatRoleFamilyLabel(roleFamily: string) {
+  const normalized = sanitizeText(roleFamily.replace(/[_-]+/g, " "));
+  if (!normalized) {
+    return "genel rol";
+  }
+
+  return `${normalized.charAt(0).toLocaleUpperCase("tr-TR")}${normalized.slice(1)}`;
+}
+
 function asObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
@@ -4618,10 +4627,129 @@ export class InterviewsService {
     });
 
     if (!anyActive) {
-      throw new NotFoundException("Aktif interview template bulunamadi.");
+      return this.provisionFallbackTemplateRecord({
+        tenantId: input.tenantId,
+        roleFamily: input.roleFamily
+      });
     }
 
     return anyActive;
+  }
+
+  private async provisionFallbackTemplateRecord(input: {
+    tenantId: string;
+    roleFamily: string;
+  }): Promise<TemplateRecord> {
+    const roleLabel = formatRoleFamilyLabel(input.roleFamily);
+    const latestVersion = await this.prisma.interviewTemplate.findFirst({
+      where: {
+        tenantId: input.tenantId,
+        roleFamily: input.roleFamily
+      },
+      orderBy: {
+        version: "desc"
+      },
+      select: {
+        version: true
+      }
+    });
+
+    const version = (latestVersion?.version ?? 0) + 1;
+
+    const template = await this.prisma.interviewTemplate.create({
+      data: {
+        tenantId: input.tenantId,
+        name: `${roleLabel} Varsayilan Ilk Gorusme`,
+        roleFamily: input.roleFamily,
+        version,
+        isActive: true,
+        templateJson: {
+          language: "tr-TR",
+          introPrompt:
+            "Merhaba, ben sirketinizin ilk gorusme asistaniyim. Size kisa sorular soracagim ve yanitlarinizi recruiter ekibine iletecegim.",
+          closingPrompt:
+            "Tesekkur ederim. Bu gorusme ciktilari recruiter ekibi tarafindan incelenecek ve sonraki adimlarda sizinle iletisime gecilecek.",
+          durationTargetMin: 12,
+          blocks: [
+            {
+              key: "recent_experience",
+              questionKey: "q_recent_experience",
+              category: "recent_experience",
+              prompt: `${roleLabel} rolune uygun son deneyiminizi ve gunluk sorumluluklarinizi kisaca anlatir misiniz?`,
+              followUps: [
+                "Bu deneyimde sizi en cok zorlayan konu neydi ve nasil yonettiniz?"
+              ],
+              maxFollowUps: 1,
+              minWords: 8,
+              required: true
+            },
+            {
+              key: "motivation",
+              questionKey: "q_motivation",
+              category: "motivation",
+              prompt: `Bu ${roleLabel} rolunu neden istiyorsunuz ve ekibe ne katacaginizi dusunuyorsunuz?`,
+              followUps: [
+                "Bu rolde sizi diger adaylardan ayiracak guclu yonunuz nedir?"
+              ],
+              maxFollowUps: 1,
+              minWords: 8,
+              required: true
+            },
+            {
+              key: "communication",
+              questionKey: "q_communication",
+              category: "communication",
+              prompt:
+                "Ekip ici iletisim veya yogun is takibi gerektiren bir durumda nasil hareket ettiginize dair bir ornek verir misiniz?",
+              followUps: [
+                "Benzer bir durumda tekrar ayni yaklasimi mi kullanirdiniz?"
+              ],
+              maxFollowUps: 1,
+              minWords: 8,
+              required: true
+            },
+            {
+              key: "availability",
+              questionKey: "q_availability",
+              category: "availability",
+              prompt:
+                "Calisma duzeni, baslama zamani veya operasyon kosullari konusunda uygunluk durumunuzu paylasir misiniz?",
+              followUps: [
+                "Program veya lokasyon acisindan dikkate almamiz gereken bir kosul var mi?"
+              ],
+              maxFollowUps: 1,
+              minWords: 6,
+              required: true
+            }
+          ]
+        } satisfies Prisma.InputJsonValue,
+        rubricJson: {
+          dimensions: [
+            { key: "relevant_experience", weight: 0.35 },
+            { key: "communication_clarity", weight: 0.25 },
+            { key: "motivation", weight: 0.2 },
+            { key: "operational_fit", weight: 0.2 }
+          ]
+        } satisfies Prisma.InputJsonValue
+      },
+      select: {
+        id: true,
+        name: true,
+        roleFamily: true,
+        templateJson: true,
+        rubricJson: true,
+        version: true
+      }
+    });
+
+    this.logger.warn("interview.template.auto_provisioned", {
+      tenantId: input.tenantId,
+      roleFamily: input.roleFamily,
+      templateId: template.id,
+      version: template.version
+    });
+
+    return template;
   }
 
   private async transitionApplicationStageIfNeeded(input: {

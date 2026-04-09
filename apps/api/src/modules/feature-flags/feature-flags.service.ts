@@ -157,6 +157,12 @@ export class FeatureFlagsService {
         description: "AI rapor uretimi (V1 demo) ac/kapat."
       },
       {
+        key: "ai.applicant_fit_scoring.enabled",
+        type: FeatureFlagType.BOOLEAN,
+        value: true,
+        description: "Aday uyum skoru uretimi (V1 demo) ac/kapat."
+      },
+      {
         key: "ai.recommendation_generation.enabled",
         type: FeatureFlagType.BOOLEAN,
         value: true,
