@@ -250,12 +250,22 @@ export function SiteSettingsSwitcher({
   );
 }
 
+function getInitialLocale(): SiteLocale {
+  if (typeof document !== "undefined") {
+    const match = document.cookie.match(/(?:^|;\s*)site_locale=(\w+)/);
+    if (match) return normalizeSiteLocale(match[1]);
+  }
+  if (typeof window !== "undefined") {
+    return normalizeSiteLocale(window.localStorage.getItem(SITE_LOCALE_STORAGE_KEY));
+  }
+  return DEFAULT_SITE_LOCALE;
+}
+
 export function SiteLanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<SiteLocale>(DEFAULT_SITE_LOCALE);
-  const [hydrated, setHydrated] = useState(false);
+  const [locale, setLocaleState] = useState<SiteLocale>(getInitialLocale);
   const textSourceCacheRef = useRef<WeakMap<Text, string>>(new WeakMap());
   const attributeSourceCacheRef = useRef<WeakMap<Element, AttributeCache>>(new WeakMap());
-  const previousLocaleRef = useRef<SiteLocale>(DEFAULT_SITE_LOCALE);
+  const previousLocaleRef = useRef<SiteLocale>(getInitialLocale);
   const isApplyingLocaleRef = useRef(false);
   const rafRef = useRef<number | null>(null);
 
@@ -265,9 +275,10 @@ export function SiteLanguageProvider({ children }: { children: ReactNode }) {
     }
 
     const storedLocale = normalizeSiteLocale(window.localStorage.getItem(SITE_LOCALE_STORAGE_KEY));
-    setLocaleState(storedLocale);
-    setHydrated(true);
-  }, []);
+    if (storedLocale !== locale) {
+      setLocaleState(storedLocale);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -278,6 +289,7 @@ export function SiteLanguageProvider({ children }: { children: ReactNode }) {
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(SITE_LOCALE_STORAGE_KEY, locale);
+      document.cookie = `site_locale=${locale};path=/;max-age=31536000;SameSite=Lax`;
     }
   }, [locale]);
 
@@ -349,9 +361,7 @@ export function SiteLanguageProvider({ children }: { children: ReactNode }) {
 
   return (
     <SiteLanguageContext.Provider value={contextValue}>
-      <div style={{ opacity: hydrated ? 1 : 0, transition: "opacity 0.05s ease" }}>
-        {children}
-      </div>
+      {children}
     </SiteLanguageContext.Provider>
   );
 }
