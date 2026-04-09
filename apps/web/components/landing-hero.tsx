@@ -20,10 +20,10 @@ export function LandingHero() {
   }, [t]);
 
   const chatMessages = useMemo(() => [
-    { type: "bot", text: t("Merhaba Selen, hoş geldiniz! Son iş deneyiminizden biraz bahseder misiniz?") },
-    { type: "candidate", text: t("Tabii, son 2 yıldır bir e-ticaret şirketinde frontend geliştirici olarak çalışıyorum. React ve TypeScript kullanıyoruz.") },
-    { type: "bot", text: t("Ekip içinde bir anlaşmazlık yaşadığınız bir durumu ve nasıl çözdüğünüzü anlatır mısınız?") },
-    { type: "candidate", text: t("Sprint planlamasında öncelik konusunda farklı düşündüğümüz bir durum olmuştu. Veri odaklı bir sunum hazırlayıp ikna ettim.") },
+    { type: "bot", text: t("Selen Hanım, son deneyiminizden bahseder misiniz? Hangi teknolojilerle çalıştınız?") },
+    { type: "candidate", text: t("Son 2 yıldır React ve TypeScript ile e-ticaret projeleri geliştiriyorum. Performans optimizasyonu ve CI/CD süreçlerinde aktif rol aldım.") },
+    { type: "bot", text: t("Bir projede beklenmedik bir teknik sorunla karşılaştığınızda nasıl bir yol izlediniz?") },
+    { type: "candidate", text: t("Canlıda kritik bir bellek sızıntısı yaşadık. Profiler ile root cause'u bulup, memo ve lazy loading ile çözdüm. Sayfa yüklenme süresi %40 düştü.") },
   ], [t]);
 
   useEffect(() => {
