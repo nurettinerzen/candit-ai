@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import styles from "./public-site.module.css";
 import { LandingHero } from "./landing-hero";
 import { PublicLeadForm } from "./public-lead-form";
-import { LanguagePill } from "./language-pill";
+import { SiteHeader } from "./site-header";
+import { SiteFooter } from "./site-footer";
 import {
   PUBLIC_ABOUT_STATS,
   PUBLIC_ABOUT_STORY,
@@ -14,7 +15,6 @@ import {
   PUBLIC_FEATURE_GROUPS,
   PUBLIC_FEATURE_HERO_ACTIONS,
   PUBLIC_FEATURE_OPERATIONS,
-  PUBLIC_FOOTER_COLUMNS,
   PUBLIC_HELP_QUICKSTART,
   PUBLIC_HELP_TOPICS,
   PUBLIC_HOME_CHANNELS,
@@ -30,7 +30,6 @@ import {
   PUBLIC_SOLUTIONS_STATS,
   PUBLIC_TEAM,
   PUBLIC_TERMS_SECTIONS,
-  PUBLIC_TOP_NAV,
   getBlogArticleBySlug,
   getSolutionBySlug,
   type PublicAction,
@@ -94,91 +93,7 @@ function SectionHeader({
   );
 }
 
-function SiteHeader({ activeHref }: { activeHref?: string }) {
-  return (
-    <header className={styles.header}>
-      <div className={cn(styles.shell, styles.headerInner)}>
-        <a href="/" className={styles.brand} aria-label={`${SITE_BRAND} ana sayfa`}>
-          <span className={styles.brandMark}>
-            <img src="/brand/candit-mark.svg" alt="" aria-hidden="true" width="40" height="40" />
-          </span>
-          <span className={styles.brandCopy}>
-            <strong>{SITE_BRAND}</strong>
-            <span>AI destekli işe alım platformu</span>
-          </span>
-        </a>
 
-        <nav className={styles.nav} aria-label="Public navigation">
-          {PUBLIC_TOP_NAV.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className={cn(styles.navLink, activeHref === item.href && styles.navLinkActive)}
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
-
-        <div className={styles.headerActions}>
-          <LanguagePill />
-          <a href="/auth/login" className={styles.headerTextAction}>
-            Giriş Yap
-          </a>
-          <ActionLink action={{ label: "Ücretsiz Deneyin", href: "/auth/signup" }} />
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function SiteFooter() {
-  return (
-    <footer className={styles.footer}>
-      <div className={styles.shell}>
-        <div className={styles.footerGrid}>
-          <div className={styles.footerBrand}>
-            <a href="/" className={styles.brand}>
-              <span className={styles.brandMark}>
-                <img src="/brand/candit-mark.svg" alt="" aria-hidden="true" width="40" height="40" />
-              </span>
-              <span className={styles.brandCopy}>
-                <strong>{SITE_BRAND}</strong>
-                <span>AI destekli işe alım platformu.</span>
-              </span>
-            </a>
-            <p className={styles.footerCopy}>
-              Ön eleme, kaynak bulma ve mülakat süreçlerini yapay zekâ ile otomatikleştirin.
-              Doğru adayı daha hızlı bulun.
-            </p>
-          </div>
-
-          {PUBLIC_FOOTER_COLUMNS.map((column) => (
-            <div key={column.title} className={styles.footerColumn}>
-              <h3>{column.title}</h3>
-              <div className={styles.footerLinks}>
-                {column.links.map((item) => (
-                  <a key={item.href} href={item.href}>
-                    {item.label}
-                  </a>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className={styles.footerBottom}>
-          <span>(c) 2026 {SITE_BRAND}. Tüm hakları saklıdır.</span>
-          <div className={styles.footerBottomLinks}>
-            <a href="/privacy">Gizlilik</a>
-            <a href="/terms">Kullanım Koşulları</a>
-            <a href="/contact">İletişim</a>
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-}
 
 function PublicSiteFrame({
   activeHref,

@@ -2467,6 +2467,40 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Başlayalım": "Get Started",
 });
 
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  // Header / footer nav
+  "Çözümler": "Solutions",
+  "Fiyatlar": "Pricing",
+  "Kaynaklar": "Resources",
+  "AI destekli işe alım platformu": "AI-powered hiring platform",
+
+  // Footer column titles
+  "Şirket": "Company",
+
+  // Footer column links
+  "Entegrasyonlar": "Integrations",
+  "Güncellemeler": "Updates",
+  "Teknoloji": "Technology",
+  "Perakende": "Retail",
+  "Sağlık": "Healthcare",
+  "Finans": "Finance",
+  "Üretim ve Lojistik": "Manufacturing & Logistics",
+  "Blog": "Blog",
+  "Yardım": "Help",
+  "API Dokümantasyonu": "API Documentation",
+  "Hakkımızda": "About Us",
+  "Gizlilik Politikası": "Privacy Policy",
+
+  // Footer bottom
+  "Tüm hakları saklıdır": "All rights reserved",
+  "Gizlilik": "Privacy",
+  "Kullanım Koşulları": "Terms of Use",
+
+  // Footer copy
+  "Ön eleme, kaynak bulma ve mülakat süreçlerini yapay zekâ ile otomatikleştirin. Doğru adayı daha hızlı bulun.":
+    "Automate pre-screening, sourcing, and interview processes with AI. Find the right candidate faster.",
+});
+
 const EN_WORD_TRANSLATIONS: Array<[string, string]> = [
   ["Başvuru", "Application"],
   ["Başvurular", "Applications"],
