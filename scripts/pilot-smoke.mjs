@@ -98,7 +98,7 @@ function jsonHeaders(token) {
 function buildPilotCv(stamp) {
   return [
     "Ad Soyad: Pilot Smoke Candidate",
-    `E-posta: pilot-smoke+${stamp}@example.com`,
+    `E-posta: pilot-smoke-${stamp}@example.com`,
     "Telefon: +90 555 123 45 67",
     "Lokasyon: Istanbul",
     "",
@@ -116,7 +116,7 @@ function buildPilotCv(stamp) {
 
 async function signupPilotUser() {
   const stamp = Date.now().toString();
-  const email = `pilot-smoke+${stamp}@example.com`;
+  const email = `pilot-smoke-${stamp}@example.com`;
 
   const signup = await requestJson("Pilot signup", "/auth/signup", {
     method: "POST",
@@ -291,7 +291,7 @@ async function main() {
   const job = await ensurePublishedJob(pilot.token);
   const candidatePayload = {
     fullName: `Pilot Smoke ${pilot.stamp.slice(-6)}`,
-    email: `pilot-candidate+${pilot.stamp}@example.com`,
+    email: `pilot-candidate-${pilot.stamp}@example.com`,
     phone: `+90555${pilot.stamp.slice(-7)}`,
     source: "manual"
   };
@@ -474,6 +474,63 @@ async function main() {
   });
   ensure(interviewProgress?.activePrompt || interviewProgress?.conversation, "Interview did not advance after answer");
   logStatus("PASS", "Interview advanced after answer");
+
+  const completedSession = await requestJson("Complete public interview", `/interviews/public/sessions/${sessionId}/complete`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      token,
+      locale: "tr-TR",
+      completionReasonCode: "candidate_completed",
+      transcriptSegments: [
+        { speaker: "AI", text: "Hos geldiniz, hazirsaniz baslayalim." },
+        {
+          speaker: "CANDIDATE",
+          text: "Hazirim. Son iki yilda vardiyali operasyon ekiplerinde calistim ve gunluk akislari raporlayarak yonettim."
+        },
+        { speaker: "AI", text: "Baski altinda nasil karar verirsiniz?" },
+        {
+          speaker: "CANDIDATE",
+          text: "Onceliklendirme, kontrol listeleri ve ekip ici net is dagilimi ile ilerlerim. Hatalari azaltmak icin ikinci kontrol uygularim."
+        }
+      ]
+    })
+  });
+  ensure(
+    completedSession?.status === "COMPLETED",
+    "Public interview did not complete",
+    completedSession?.status ?? "unknown"
+  );
+  logStatus("PASS", "Public interview completed", completedSession.status);
+
+  const reviewPack = await poll(
+    "Interview review pack completion",
+    async () => {
+      const [reports, recommendation] = await Promise.all([
+        requestJson("Poll report list", `/reports/applications/${applicationId}`, {
+          headers: auth
+        }),
+        requestJson("Poll latest recommendation", `/recommendations/applications/${applicationId}/latest`, {
+          headers: auth
+        })
+      ]);
+
+      return { reports, recommendation };
+    },
+    (snapshot) =>
+      Array.isArray(snapshot?.reports) &&
+      snapshot.reports.length > 0 &&
+      Boolean(snapshot?.recommendation?.id),
+    { attempts: 25, intervalMs: 2000 }
+  );
+
+  ensure(Array.isArray(reviewPack.reports) && reviewPack.reports.length > 0, "Report generation did not complete");
+  ensure(reviewPack.recommendation?.id, "Recommendation generation did not complete");
+  logStatus(
+    "PASS",
+    "Interview review pack completed",
+    `${reviewPack.reports[0]?.id ?? "report"} | ${reviewPack.recommendation.id}`
+  );
 
   if (warnings.length > 0) {
     const detail = warnings.map((warning) => `${warning.label}${warning.detail ? ` (${warning.detail})` : ""}`).join(" | ");

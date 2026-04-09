@@ -25,10 +25,12 @@ export default function SourcingPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+  const [accessNotice, setAccessNotice] = useState("");
 
   const loadPage = useCallback(async () => {
     setLoading(true);
     setError("");
+    setAccessNotice("");
 
     try {
       const [overviewPayload, jobRows] = await Promise.all([
@@ -39,7 +41,17 @@ export default function SourcingPage() {
       setOverview(overviewPayload);
       setJobs(jobRows.filter((job) => job.status !== "ARCHIVED"));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : t("Sourcing ekranı yüklenemedi."));
+      const message =
+        loadError instanceof Error ? loadError.message : t("Sourcing ekranı yüklenemedi.");
+      if (message.includes("beta erişiminde") || message.includes("iç yönetim ekibi")) {
+        setAccessNotice(
+          "Sourcing modülü şu anda kontrollü beta erişiminde. İç yönetim ekibi dışında görünüm paylaşılmıyor."
+        );
+        setOverview(null);
+        setJobs([]);
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -94,7 +106,25 @@ export default function SourcingPage() {
         </section>
       ) : null}
 
-      {!loading && error ? (
+      {!loading && accessNotice ? (
+        <section className="panel" style={{ display: "grid", gap: 10 }}>
+          <div
+            style={{
+              padding: "14px 16px",
+              background: "rgba(245,158,11,0.08)",
+              border: "1px solid rgba(245,158,11,0.2)",
+              borderRadius: 10
+            }}
+          >
+            <h2 style={{ margin: "0 0 6px", fontSize: 16 }}>{t("Beta erişim gerekli")}</h2>
+            <p className="small" style={{ margin: 0 }}>
+              {t(accessNotice)}
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      {!loading && !accessNotice && error ? (
         <section className="panel">
           <ErrorState
             error={error}
@@ -107,7 +137,7 @@ export default function SourcingPage() {
         </section>
       ) : null}
 
-      {!loading && !error && overview ? (
+      {!loading && !accessNotice && !error && overview ? (
         <>
           {/* ── Compact summary strip ── */}
           <div className="sourcing-summary-grid">

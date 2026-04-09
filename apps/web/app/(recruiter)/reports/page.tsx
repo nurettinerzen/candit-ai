@@ -20,6 +20,19 @@ type ReportData = {
   interviewQuality: AnalyticsInterviewQuality | null;
 };
 
+function toErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function resolveAnalyticsGateNotice(error: unknown) {
+  const message = toErrorMessage(error, "");
+  if (message.includes("Gelişmiş raporlama") && message.includes("Growth")) {
+    return "Gelişmiş raporlama metrikleri mevcut planınızda kapalı. Growth planına geçtiğinizde burada görünecek.";
+  }
+
+  return null;
+}
+
 export default function RaporlarPage() {
   const { t } = useUiText();
   const [data, setData] = useState<ReportData>({
@@ -30,19 +43,63 @@ export default function RaporlarPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [analyticsNotices, setAnalyticsNotices] = useState<string[]>([]);
 
   const loadReports = useCallback(async () => {
     setLoading(true);
     setError("");
+    setAnalyticsNotices([]);
 
     try {
-      const [overview, funnel, timeToHire, interviewQuality] = await Promise.all([
-        apiClient.recruiterOverviewReadModel().catch(() => null),
-        apiClient.analyticsFunnel().catch(() => []),
-        apiClient.analyticsTimeToHire().catch(() => null),
-        apiClient.analyticsInterviewQuality().catch(() => null)
-      ]);
-      setData({ overview, funnel, timeToHire, interviewQuality });
+      const [overviewResult, funnelResult, timeToHireResult, interviewQualityResult] =
+        await Promise.allSettled([
+          apiClient.recruiterOverviewReadModel(),
+          apiClient.analyticsFunnel(),
+          apiClient.analyticsTimeToHire(),
+          apiClient.analyticsInterviewQuality()
+        ]);
+
+      const nextData: ReportData = {
+        overview: overviewResult.status === "fulfilled" ? overviewResult.value : null,
+        funnel: funnelResult.status === "fulfilled" ? funnelResult.value : [],
+        timeToHire: timeToHireResult.status === "fulfilled" ? timeToHireResult.value : null,
+        interviewQuality:
+          interviewQualityResult.status === "fulfilled" ? interviewQualityResult.value : null
+      };
+      const notices = new Set<string>();
+
+      if (timeToHireResult.status === "rejected") {
+        const notice = resolveAnalyticsGateNotice(timeToHireResult.reason);
+        if (notice) {
+          notices.add(notice);
+        }
+      }
+
+      if (interviewQualityResult.status === "rejected") {
+        const notice = resolveAnalyticsGateNotice(interviewQualityResult.reason);
+        if (notice) {
+          notices.add(notice);
+        }
+      }
+
+      setData(nextData);
+      setAnalyticsNotices(Array.from(notices));
+
+      if (
+        !nextData.overview &&
+        nextData.funnel.length === 0 &&
+        (overviewResult.status === "rejected" || funnelResult.status === "rejected")
+      ) {
+        const blockingReason =
+          overviewResult.status === "rejected"
+            ? overviewResult.reason
+            : funnelResult.status === "rejected"
+              ? funnelResult.reason
+              : null;
+        setError(
+          toErrorMessage(blockingReason, t("Rapor verileri yüklenemedi."))
+        );
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("Rapor verileri yüklenemedi."));
     } finally {
@@ -115,6 +172,26 @@ export default function RaporlarPage() {
 
       {!loading && !error && (
         <>
+          {analyticsNotices.length > 0 ? (
+            <section className="panel" style={{ display: "grid", gap: 10 }}>
+              {analyticsNotices.map((message) => (
+                <div
+                  key={message}
+                  style={{
+                    padding: "12px 16px",
+                    background: "rgba(245,158,11,0.08)",
+                    border: "1px solid rgba(245,158,11,0.2)",
+                    borderRadius: 10,
+                    color: "var(--warn, #f59e0b)",
+                    fontSize: 14
+                  }}
+                >
+                  {t(message)}
+                </div>
+              ))}
+            </section>
+          ) : null}
+
           {/* Genel Göstergeler */}
           {data.overview && (
             <div className="kpi-grid">
@@ -206,7 +283,13 @@ export default function RaporlarPage() {
                   </li>
                 </ul>
               ) : (
-                <EmptyState message={t("İşe alım süresi verisi henüz oluşmadı.")} />
+                <EmptyState
+                  message={
+                    analyticsNotices.length > 0
+                      ? t("Bu metrik mevcut planınızda kapalı.")
+                      : t("İşe alım süresi verisi henüz oluşmadı.")
+                  }
+                />
               )}
             </section>
 
@@ -232,7 +315,13 @@ export default function RaporlarPage() {
                   </li>
                 </ul>
               ) : (
-                <EmptyState message={t("Görüşme kalitesi verisi henüz oluşmadı.")} />
+                <EmptyState
+                  message={
+                    analyticsNotices.length > 0
+                      ? t("Bu metrik mevcut planınızda kapalı.")
+                      : t("Görüşme kalitesi verisi henüz oluşmadı.")
+                  }
+                />
               )}
             </section>
           </div>

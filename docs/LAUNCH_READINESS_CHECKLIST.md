@@ -51,6 +51,10 @@ Ilgili arka plan notlari icin:
     - AI mulakat daveti olustur
     - public candidate session baslat
     - readiness + ilk cevap gonder
+    - public interview tamamla
+    - report + recommendation olusumunu dogrula
+  - Sertlestirme:
+    - smoke signup/candidate e-postalari `+alias` yerine benzersiz local-part ile uretiliyor; trial email normalizasyonuna carpmiyor
 - [x] Recruiter drawer icindeki sessiz UX kirigi kapatildi.
   - Onceki sorun:
     - mulakat daveti backend'de olusuyor ama drawer sonucu gostermiyordu
@@ -176,6 +180,26 @@ Ilgili arka plan notlari icin:
   - Uygulanan yerel duzeltme:
     - endpoint partial query failure durumunda `500` yerine degrade response dondurecek sekilde sertlestirildi
     - AI Support sayfasina `queryWarnings` gorunurlugu eklendi
+- [x] P4/P5 review-pack zinciri staging'de canli olarak dogrulandi.
+  - Canli tekrar:
+    - public session `COMPLETED`
+    - `reports/applications/:id` -> en az 1 rapor
+    - `recommendations/applications/:id/latest` -> recommendation uretiyor
+- [x] P7 rapor ekrani icin premium analytics kilidi gorunur hale getirildi.
+  - Onceki sorun:
+    - `time-to-hire` ve `interview-quality` Growth kilidi altinda `400` donerken UI bunu bos veri gibi gosteriyordu
+  - Yeni durum:
+    - rapor ekrani plan kilidini acik bir notice olarak gosteriyor
+- [x] P8 ekip daveti yuzeyi seat limit guardrail'i ile hizalandi.
+  - Onceki sorun:
+    - free trial seat limiti doluyken davet formu aktif gorunuyor, submit sonrasi `400` donuyordu
+  - Yeni durum:
+    - settings > ekip sekmesinde davet butonu proaktif olarak disable ve limit mesaji gosteriliyor
+- [x] P8 sourcing modu icin beta-gated gorunum iyilestirildi.
+  - Onceki sorun:
+    - non-admin user icin ham `403` hata gorunuyordu
+  - Yeni durum:
+    - kontrollu beta erisim mesaji ile acik sekilde explain ediliyor
 
 ### Tespit edilen blocker / misconfiguration
 

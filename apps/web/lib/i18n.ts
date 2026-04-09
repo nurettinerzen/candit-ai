@@ -322,6 +322,7 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "Stripe kurulumu tamamlanmadığı için self servis satın alma işlemleri şu an pasif durumda.":
     "Self-serve purchases are currently disabled because Stripe setup is incomplete.",
   "İç yönetim panelini aç": "Open internal admin panel",
+  "Bu metrik mevcut planınızda kapalı.": "This metric is unavailable on your current plan.",
   "Mevcut plan": "Current plan",
   "Faturaları yönet": "Manage billing",
   "Satın Al": "Buy",
@@ -380,6 +381,8 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "Takvim entegrasyonları açık": "Calendar integrations included",
   "Takvim entegrasyonu yok": "No calendar integration",
   "Gelişmiş raporlama açık": "Advanced reporting included",
+  "Gelişmiş raporlama metrikleri mevcut planınızda kapalı. Growth planına geçtiğinizde burada görünecek.":
+    "Advanced reporting metrics are locked on your current plan. They will appear here after upgrading to Growth.",
   "Temel raporlama": "Basic reporting",
   "İç teklif akışını aç": "Open internal quote flow",
   "Özel kota, SLA ve kurumsal entegrasyonlar için satış ekibiyle ilerlenir.":
@@ -1056,6 +1059,9 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Kullanımı yenile": "Refresh usage",
   "Seat limiti aktif ve davet bekleyen ekip kullanıcılarını kapsar. AI interview kotası davet oluştuğunda tüketilir.":
     "The seat limit includes active and invited team members. AI interview quota is consumed when an invite is created.",
+  "Kullanıcı kotası": "Seat quota",
+  "Davet bekleyen kullanıcılar da bu limite dahildir.": "Pending invitations also count against this limit.",
+  "Ekip kullanıcı limiti dolu. Yeni davet için plan yükseltin.": "Your team seat limit is full. Upgrade the plan to invite another user.",
   "Dönem bilgisi": "Billing period",
   "Stripe hazırlığı": "Stripe readiness",
   "Limitler tek merkezden izlenir. Kritik noktalarda sistem blok koyar ve upgrade / add-on önerir.":
@@ -2836,6 +2842,9 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "15 AI mülakat": "15 AI interviews",
   "50 AI mülakat": "50 AI interviews",
   "Temel raporlama": "Basic reporting",
+  "Beta erişim gerekli": "Beta access required",
+  "Sourcing modülü şu anda kontrollü beta erişiminde. İç yönetim ekibi dışında görünüm paylaşılmıyor.":
+    "The sourcing module is currently in controlled beta. The view is not shared outside the internal admin team.",
   "E-posta desteği": "Email support",
   "Takvim entegrasyonları": "Calendar integrations",
   "Gelişmiş raporlama": "Advanced reporting",

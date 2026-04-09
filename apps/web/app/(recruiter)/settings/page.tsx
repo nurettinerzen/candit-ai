@@ -552,6 +552,12 @@ export default function SettingsPage() {
   const billingHasTrialContext = billing
     ? billing.trial.isActive || billing.trial.isExpired || !billing.trial.isEligible
     : false;
+  const seatQuota = billing?.usage.quotas.find((quota) => quota.key === "SEATS") ?? null;
+  const inviteBlockedReason =
+    seatQuota?.warningState === "exceeded"
+      ? "Ekip kullanıcı limiti dolu. Yeni davet için plan yükseltin."
+      : "";
+  const inviteDisabled = busyKey === "invite" || Boolean(inviteBlockedReason);
 
   return (
     <section className="page-grid">
@@ -1112,10 +1118,22 @@ export default function SettingsPage() {
                           {t("Owner olarak sisteme yeni menajer veya personel ekleyebilirsiniz.")}
                     </p>
 
+                    {inviteBlockedReason ? (
+                      <NoticeBox tone="danger" message={inviteBlockedReason} />
+                    ) : null}
+
+                    {seatQuota ? (
+                      <p className="small text-muted" style={{ marginTop: 12, marginBottom: 12 }}>
+                        {t("Kullanıcı kotası")}: {seatQuota.used}/{seatQuota.limit}.{" "}
+                        {t("Davet bekleyen kullanıcılar da bu limite dahildir.")}
+                      </p>
+                    ) : null}
+
                     <form className="inline-grid" style={{ gridTemplateColumns: "1.2fr 1.2fr 0.8fr auto", gap: 12 }} onSubmit={handleInviteSubmit}>
                       <input
                         className="input"
                         value={inviteForm.fullName}
+                        disabled={inviteDisabled}
                         onChange={(event) => setInviteForm((prev) => ({ ...prev, fullName: event.target.value }))}
                         placeholder={t("Ad Soyad")}
                         required
@@ -1124,6 +1142,7 @@ export default function SettingsPage() {
                         className="input"
                         type="email"
                         value={inviteForm.email}
+                        disabled={inviteDisabled}
                         onChange={(event) => setInviteForm((prev) => ({ ...prev, email: event.target.value }))}
                         placeholder={t("E-posta")}
                         required
@@ -1131,6 +1150,7 @@ export default function SettingsPage() {
                       <select
                         className="input"
                         value={inviteForm.role}
+                        disabled={inviteDisabled}
                         onChange={(event) =>
                           setInviteForm((prev) => ({
                             ...prev,
@@ -1144,7 +1164,7 @@ export default function SettingsPage() {
                           </option>
                         ))}
                       </select>
-                      <button type="submit" className="ghost-button" disabled={busyKey === "invite"}>
+                      <button type="submit" className="ghost-button" disabled={inviteDisabled}>
                         {busyKey === "invite" ? t("Gönderiliyor...") : t("Davet Gönder")}
                       </button>
                     </form>
