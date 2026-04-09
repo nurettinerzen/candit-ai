@@ -353,7 +353,13 @@ export class CandidatesService {
             mimeType: validated.mimeType,
             sizeBytes: storageResult.sizeBytes,
             uploadedBy: input.uploadedBy,
-            isPrimary: true
+            isPrimary: true,
+            blob: {
+              create: {
+                tenantId: input.tenantId,
+                contentBytes: input.file.content
+              }
+            }
           }
         });
       });

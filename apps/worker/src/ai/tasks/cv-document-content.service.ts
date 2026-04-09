@@ -9,6 +9,7 @@ export type CvDocumentInput = {
   storageKey: string;
   originalName: string;
   mimeType: string;
+  contentBytes?: Buffer | Uint8Array | null;
 };
 
 export type CvExtractionStatus = "extracted" | "partial" | "unsupported" | "failed";
@@ -56,21 +57,27 @@ export class CvDocumentContentService {
   private readonly moduleRequire = createRequire(import.meta.url);
 
   async extract(input: CvDocumentInput): Promise<CvExtractionResult> {
-    const filePath = this.resolveStoragePath(input.storageKey);
     let content: Buffer;
+    let filePath: string | null = null;
 
-    try {
-      content = await readFile(filePath);
-    } catch (error) {
-      throw new TaskProcessingError(
-        "CV_FILE_READ_ERROR",
-        "CV dosyasi storage alanindan okunamadi.",
-        true,
-        {
-          storageKey: input.storageKey,
-          message: (error as Error).message
-        }
-      );
+    if (input.contentBytes && input.contentBytes.byteLength > 0) {
+      content = Buffer.from(input.contentBytes);
+    } else {
+      filePath = this.resolveStoragePath(input.storageKey);
+
+      try {
+        content = await readFile(filePath);
+      } catch (error) {
+        throw new TaskProcessingError(
+          "CV_FILE_READ_ERROR",
+          "CV dosyasi storage alanindan okunamadi.",
+          true,
+          {
+            storageKey: input.storageKey,
+            message: (error as Error).message
+          }
+        );
+      }
     }
 
     const extension = extname(input.originalName).toLowerCase();
@@ -103,6 +110,22 @@ export class CvDocumentContentService {
     }
 
     if (extension === ".doc" || normalizedMime === "application/msword") {
+      if (!filePath) {
+        return {
+          status: "unsupported",
+          method: "metadata_only",
+          providerKey: "doc_requires_filesystem",
+          text: null,
+          charCount: 0,
+          qualityScore: null,
+          notes: [
+            "Legacy DOC extraction icin worker tarafinda yerel dosya erisimi gerekir.",
+            "Bu dosya DB blob fallback ile tasindigi icin parse edilemedi."
+          ],
+          errorMessage: "doc_file_requires_filesystem"
+        };
+      }
+
       return this.extractLegacyDoc(filePath);
     }
 
@@ -219,7 +242,7 @@ export class CvDocumentContentService {
     return Math.min(1, Number(score.toFixed(3)));
   }
 
-  private async extractPdf(content: Buffer, absolutePath: string): Promise<CvExtractionResult> {
+  private async extractPdf(content: Buffer, absolutePath: string | null): Promise<CvExtractionResult> {
     const notes: string[] = [];
 
     const pdfParseModule = await this.loadOptionalModule<unknown>("pdf-parse");
@@ -253,6 +276,19 @@ export class CvDocumentContentService {
       notes.push("pdf-parse modulu kurulu degil.");
     }
 
+    if (!absolutePath) {
+      return {
+        status: "failed",
+        method: "pdf_parse",
+        providerKey: "pdf-extract-chain",
+        text: null,
+        charCount: 0,
+        qualityScore: 0,
+        notes: [...notes, "PDF icin CLI fallback kullanilamadi; worker tarafinda dosya yolu mevcut degil."],
+        errorMessage: "pdf_cli_requires_filesystem"
+      };
+    }
+
     const cliResult = await this.runCommandForText("pdftotext", [
       "-layout",
       "-enc",
@@ -282,7 +318,7 @@ export class CvDocumentContentService {
     };
   }
 
-  private async extractDocx(content: Buffer, absolutePath: string): Promise<CvExtractionResult> {
+  private async extractDocx(content: Buffer, absolutePath: string | null): Promise<CvExtractionResult> {
     const notes: string[] = [];
     const mammothModule = await this.loadOptionalModule<unknown>("mammoth");
 
@@ -322,6 +358,19 @@ export class CvDocumentContentService {
       }
     } else {
       notes.push("mammoth modulu kurulu degil.");
+    }
+
+    if (!absolutePath) {
+      return {
+        status: "failed",
+        method: "docx_mammoth",
+        providerKey: "docx-extract-chain",
+        text: null,
+        charCount: 0,
+        qualityScore: 0,
+        notes: [...notes, "DOCX icin CLI fallback kullanilamadi; worker tarafinda dosya yolu mevcut degil."],
+        errorMessage: "docx_cli_requires_filesystem"
+      };
     }
 
     const cliResult = await this.runCommandForText("textutil", [

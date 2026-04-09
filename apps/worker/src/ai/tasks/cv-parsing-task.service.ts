@@ -351,7 +351,8 @@ export class CvParsingTaskService {
     const extraction = await this.cvContentService.extract({
       storageKey: cvFile.storageKey,
       originalName: cvFile.originalName,
-      mimeType: cvFile.mimeType
+      mimeType: cvFile.mimeType,
+      contentBytes: cvFile.blob?.contentBytes ?? null
     });
     const extractionStatus = mapExtractionStatusToPrisma(extraction.status);
     const extractionMethod = mapExtractionMethodToPrisma(extraction.method);
@@ -975,6 +976,13 @@ export class CvParsingTaskService {
           id: requestedCvFileId,
           tenantId: context.tenantId,
           candidateId
+        },
+        include: {
+          blob: {
+            select: {
+              contentBytes: true
+            }
+          }
         }
       });
 
@@ -998,7 +1006,14 @@ export class CvParsingTaskService {
         tenantId: context.tenantId,
         candidateId
       },
-      orderBy: [{ isPrimary: "desc" }, { uploadedAt: "desc" }]
+      orderBy: [{ isPrimary: "desc" }, { uploadedAt: "desc" }],
+      include: {
+        blob: {
+          select: {
+            contentBytes: true
+          }
+        }
+      }
     });
 
     if (!latestCvFile) {

@@ -1036,12 +1036,25 @@ model CVFile {
   uploadedAt      DateTime @default(now())
 
   candidate      Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  blob           CVFileBlob?
   parsedProfile  CVParsedProfile?
   extractionRuns CVExtractionRun[]
 
   @@index([tenantId, uploadedAt(sort: Desc)])
   @@index([tenantId, candidateId, uploadedAt(sort: Desc)])
   @@index([tenantId, candidateId, isPrimary])
+}
+
+model CVFileBlob {
+  cvFileId    String   @id
+  tenantId    String
+  contentBytes Bytes
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cvFile CVFile @relation(fields: [cvFileId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt(sort: Desc)])
 }
 
 model CVParsedProfile {

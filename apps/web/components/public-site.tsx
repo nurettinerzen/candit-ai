@@ -1,9 +1,12 @@
+"use client";
+
 import type { ReactNode } from "react";
 import styles from "./public-site.module.css";
 import { LandingHero } from "./landing-hero";
 import { PublicLeadForm } from "./public-lead-form";
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
+import { useUiText } from "./site-language-provider";
 import {
   PUBLIC_ABOUT_STATS,
   PUBLIC_ABOUT_STORY,
@@ -84,11 +87,12 @@ function SectionHeader({
   subtitle?: string;
   align?: "left" | "center";
 }) {
+  const { t } = useUiText();
   return (
     <div className={cn(styles.sectionHeader, align === "center" && styles.sectionHeaderCentered)}>
-      {eyebrow ? <span className={styles.eyebrow}>{eyebrow}</span> : null}
-      <h2 className={styles.sectionTitle}>{title}</h2>
-      {subtitle ? <p className={styles.sectionSubtitle}>{subtitle}</p> : null}
+      {eyebrow ? <span className={styles.eyebrow}>{t(eyebrow)}</span> : null}
+      <h2 className={styles.sectionTitle}>{t(title)}</h2>
+      {subtitle ? <p className={styles.sectionSubtitle}>{t(subtitle)}</p> : null}
     </div>
   );
 }
@@ -114,13 +118,14 @@ function PublicSiteFrame({
 }
 
 function StatsGrid({ items, columns = 3 }: { items: PublicStat[]; columns?: 3 | 4 }) {
+  const { t } = useUiText();
   return (
     <div className={cn(styles.statsGrid, columns === 4 && styles.statsGridFour)}>
       {items.map((item) => (
         <article key={`${item.label}-${item.value}`} className={styles.metricCard}>
-          <strong>{item.value}</strong>
-          <h3>{item.label}</h3>
-          {item.detail ? <p>{item.detail}</p> : null}
+          <strong>{t(item.value)}</strong>
+          <h3>{t(item.label)}</h3>
+          {item.detail ? <p>{t(item.detail)}</p> : null}
         </article>
       ))}
     </div>
@@ -134,6 +139,7 @@ function CardGrid({
   cards: PublicCard[];
   columns?: 2 | 3 | 4;
 }) {
+  const { t } = useUiText();
   return (
     <div
       className={cn(
@@ -144,22 +150,22 @@ function CardGrid({
     >
       {cards.map((card) => (
         <article key={`${card.title}-${card.body}`} className={styles.card}>
-          {card.badge ? <span className={styles.cardBadge}>{card.badge}</span> : null}
-          {card.eyebrow ? <span className={styles.cardEyebrow}>{card.eyebrow}</span> : null}
+          {card.badge ? <span className={styles.cardBadge}>{t(card.badge)}</span> : null}
+          {card.eyebrow ? <span className={styles.cardEyebrow}>{t(card.eyebrow)}</span> : null}
           {card.icon ? <span className={styles.cardIcon}>{card.icon}</span> : null}
-          <h3>{card.title}</h3>
-          <p>{card.body}</p>
-          {card.meta ? <div className={styles.cardMeta}>{card.meta}</div> : null}
+          <h3>{t(card.title)}</h3>
+          <p>{t(card.body)}</p>
+          {card.meta ? <div className={styles.cardMeta}>{t(card.meta)}</div> : null}
           {card.bullets?.length ? (
             <div className={styles.bulletList}>
               {card.bullets.map((bullet) => (
-                <span key={bullet}>{bullet}</span>
+                <span key={bullet}>{t(bullet)}</span>
               ))}
             </div>
           ) : null}
           {card.href && card.actionLabel ? (
             <a href={card.href} className={styles.inlineLink}>
-              {card.actionLabel}
+              {t(card.actionLabel)}
             </a>
           ) : null}
         </article>
@@ -169,13 +175,14 @@ function CardGrid({
 }
 
 function StepsGrid({ steps }: { steps: PublicStep[] }) {
+  const { t } = useUiText();
   return (
     <div className={styles.stepsGrid}>
       {steps.map((step) => (
         <article key={`${step.step}-${step.title}`} className={styles.stepCard}>
           <span className={styles.stepIndex}>{step.step}</span>
-          <h3>{step.title}</h3>
-          <p>{step.body}</p>
+          <h3>{t(step.title)}</h3>
+          <p>{t(step.body)}</p>
         </article>
       ))}
     </div>
@@ -183,12 +190,13 @@ function StepsGrid({ steps }: { steps: PublicStep[] }) {
 }
 
 function FAQBlock({ items }: { items: PublicFaq[] }) {
+  const { t } = useUiText();
   return (
     <div className={styles.faqList}>
       {items.map((item) => (
         <details key={item.question} className={styles.faqItem}>
-          <summary>{item.question}</summary>
-          <p>{item.answer}</p>
+          <summary>{t(item.question)}</summary>
+          <p>{t(item.answer)}</p>
         </details>
       ))}
     </div>
@@ -206,17 +214,18 @@ function CTASection({
   primary?: PublicAction;
   secondary?: PublicAction;
 }) {
+  const { t } = useUiText();
   return (
     <section className={styles.section}>
       <div className={cn(styles.shell, styles.ctaBand)}>
         <div>
-          <span className={styles.eyebrow}>Hazır mısınız?</span>
-          <h2 className={styles.ctaTitle}>{title}</h2>
-          <p className={styles.ctaBody}>{body}</p>
+          <span className={styles.eyebrow}>{t("Hazır mısınız?")}</span>
+          <h2 className={styles.ctaTitle}>{t(title)}</h2>
+          <p className={styles.ctaBody}>{t(body)}</p>
         </div>
         <div className={styles.ctaActions}>
-          <ActionLink action={primary} />
-          <ActionLink action={secondary} tone="secondary" />
+          <ActionLink action={{ ...primary, label: t(primary.label) }} />
+          <ActionLink action={{ ...secondary, label: t(secondary.label) }} tone="secondary" />
         </div>
       </div>
     </section>
@@ -224,6 +233,7 @@ function CTASection({
 }
 
 function ProductStage() {
+  const { t } = useUiText();
   return (
     <div className={styles.stageShell}>
       <div className={styles.stageChrome}>
@@ -234,18 +244,18 @@ function ProductStage() {
         </div>
         <span className={styles.livePill}>
           <i />
-          Sistem aktif
+          {t("Sistem aktif")}
         </span>
       </div>
 
       <div className={styles.stageHeadline}>
         <div>
-          <span className={styles.stageEyebrow}>Tek platform, tam kontrol</span>
-          <h2>Tüm işe alım süreçleri tek panelde buluşur.</h2>
+          <span className={styles.stageEyebrow}>{t("Tek platform, tam kontrol")}</span>
+          <h2>{t("Tüm işe alım süreçleri tek panelde buluşur.")}</h2>
         </div>
         <div className={styles.stageScore}>
           <strong>%87</strong>
-          <span>daha hızlı işe alım</span>
+          <span>{t("daha hızlı işe alım")}</span>
         </div>
       </div>
 
@@ -253,22 +263,22 @@ function ProductStage() {
         {PUBLIC_HOME_STEPS.map((step) => (
           <div key={step.step} className={styles.stageTrackStep}>
             <i />
-            <strong>{step.title}</strong>
-            <span>{step.body}</span>
+            <strong>{t(step.title)}</strong>
+            <span>{t(step.body)}</span>
           </div>
         ))}
       </div>
 
       <div className={styles.stagePanels}>
         <article className={styles.stagePanel}>
-          <div className={styles.stagePanelLabel}>Modüller</div>
+          <div className={styles.stagePanelLabel}>{t("Modüller")}</div>
           <div className={styles.inboundList}>
             {PUBLIC_HOME_CHANNELS.map((channel) => (
               <div key={channel.title} className={styles.inboundItem}>
                 <span className={styles.channelBadge}>{channel.icon}</span>
                 <div>
-                  <strong>{channel.title}</strong>
-                  <span>{channel.body}</span>
+                  <strong>{t(channel.title)}</strong>
+                  <span>{t(channel.body)}</span>
                 </div>
               </div>
             ))}
@@ -276,34 +286,33 @@ function ProductStage() {
         </article>
 
         <article className={cn(styles.stagePanel, styles.stagePanelWide)}>
-          <div className={styles.stagePanelLabel}>Performans metrikleri</div>
+          <div className={styles.stagePanelLabel}>{t("Performans metrikleri")}</div>
           <div className={styles.signalPanel}>
             <div className={styles.signalRing}>
               <span>7/24</span>
-              <small>mülakat</small>
+              <small>{t("mülakat")}</small>
             </div>
 
             <div className={styles.signalBody}>
-              <h3>Tek platform ile daha hızlı, daha doğru işe alım.</h3>
+              <h3>{t("Tek platform ile daha hızlı, daha doğru işe alım.")}</h3>
               <p>
-                Ön eleme, AI mülakat ve değerlendirme süreçleri aynı akış içinde
-                otomatik yönetilir.
+                {t("Ön eleme, AI mülakat ve değerlendirme süreçleri aynı akış içinde otomatik yönetilir.")}
               </p>
               <div className={styles.progressList}>
                 <div>
-                  <span>Değerlendirme doğruluğu</span>
+                  <span>{t("Değerlendirme doğruluğu")}</span>
                   <i>
                     <b style={{ width: "82%" }} />
                   </i>
                 </div>
                 <div>
-                  <span>Süreç hızı</span>
+                  <span>{t("Süreç hızı")}</span>
                   <i>
                     <b style={{ width: "91%" }} />
                   </i>
                 </div>
                 <div>
-                  <span>Aday memnuniyeti</span>
+                  <span>{t("Aday memnuniyeti")}</span>
                   <i>
                     <b style={{ width: "96%" }} />
                   </i>
@@ -314,20 +323,20 @@ function ProductStage() {
         </article>
 
         <article className={styles.stagePanel}>
-          <div className={styles.stagePanelLabel}>Örnek akış</div>
+          <div className={styles.stagePanelLabel}>{t("Örnek akış")}</div>
           <div className={styles.scheduleCard}>
-            <span className={styles.scheduleBadge}>Bugün</span>
-            <strong>AI mülakat değerlendirmesi</strong>
-            <p>Aday AI mülakat ile başlar, değerlendirme otomatik oluşturulur ve sonuçlar panele düşer.</p>
+            <span className={styles.scheduleBadge}>{t("Bugün")}</span>
+            <strong>{t("AI mülakat değerlendirmesi")}</strong>
+            <p>{t("Aday AI mülakat ile başlar, değerlendirme otomatik oluşturulur ve sonuçlar panele düşer.")}</p>
             <div className={styles.tagList}>
-              <span>AI Mülakat</span>
-              <span>Ön Eleme</span>
-              <span>Analitik</span>
+              <span>{t("AI Mülakat")}</span>
+              <span>{t("Ön Eleme")}</span>
+              <span>{t("Analitik")}</span>
             </div>
           </div>
           <div className={styles.miniLog}>
             <i />
-            <span>Tüm mülakat ve değerlendirme kayıtları tek panelde görünür.</span>
+            <span>{t("Tüm mülakat ve değerlendirme kayıtları tek panelde görünür.")}</span>
           </div>
         </article>
       </div>
@@ -353,17 +362,18 @@ function Breadcrumbs({
 }
 
 function ArticleCard({ article }: { article: PublicBlogArticle }) {
+  const { t } = useUiText();
   return (
     <article className={styles.card}>
-      <span className={styles.cardEyebrow}>{article.category}</span>
-      <h3>{article.title}</h3>
-      <p>{article.excerpt}</p>
+      <span className={styles.cardEyebrow}>{t(article.category)}</span>
+      <h3>{t(article.title)}</h3>
+      <p>{t(article.excerpt)}</p>
       <div className={styles.articleMeta}>
-        <span>{article.date}</span>
-        <span>{article.readTime}</span>
+        <span>{t(article.date)}</span>
+        <span>{t(article.readTime)}</span>
       </div>
       <a href={`/blog/${article.slug}`} className={styles.inlineLink}>
-        Yazıyı oku
+        {t("Yazıyı oku")}
       </a>
     </article>
   );
@@ -397,20 +407,21 @@ function LeadCaptureForm({
 }
 
 function Timeline({ items }: { items: PublicTimelineEntry[] }) {
+  const { t } = useUiText();
   return (
     <div className={styles.timeline}>
       {items.map((entry) => (
         <article key={`${entry.date}-${entry.title}`} className={styles.timelineItem}>
           <div className={styles.timelineMeta}>
-            <span>{entry.date}</span>
+            <span>{t(entry.date)}</span>
             {entry.version ? <strong>{entry.version}</strong> : null}
           </div>
           <div className={styles.timelineCard}>
-            <h3>{entry.title}</h3>
-            <p>{entry.body}</p>
+            <h3>{t(entry.title)}</h3>
+            <p>{t(entry.body)}</p>
             <div className={styles.bulletList}>
               {entry.items.map((item) => (
-                <span key={item}>{item}</span>
+                <span key={item}>{t(item)}</span>
               ))}
             </div>
           </div>
@@ -421,12 +432,13 @@ function Timeline({ items }: { items: PublicTimelineEntry[] }) {
 }
 
 function LegalSections({ sections }: { sections: PublicLegalSection[] }) {
+  const { t } = useUiText();
   return (
     <div className={styles.legalList}>
       {sections.map((section) => (
         <article key={section.title} className={styles.legalCard}>
-          <h3>{section.title}</h3>
-          <p>{section.body}</p>
+          <h3>{t(section.title)}</h3>
+          <p>{t(section.body)}</p>
         </article>
       ))}
     </div>
@@ -434,6 +446,7 @@ function LegalSections({ sections }: { sections: PublicLegalSection[] }) {
 }
 
 function DocsEndpoints() {
+  const { t } = useUiText();
   const endpoints = [
     {
       method: "POST",
@@ -455,8 +468,8 @@ function DocsEndpoints() {
   return (
     <div className={styles.docsGrid}>
       <div className={styles.codeCard}>
-        <span className={styles.cardEyebrow}>Hızlı Başlangıç</span>
-        <h3>API anahtarıyla dakikalar içinde bağlanın.</h3>
+        <span className={styles.cardEyebrow}>{t("Hızlı Başlangıç")}</span>
+        <h3>{t("API anahtarıyla dakikalar içinde bağlanın.")}</h3>
         <pre className={styles.codeBlock}>
           <code>{`curl -X POST https://api.candit.ai/v1/messages \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
@@ -476,7 +489,7 @@ function DocsEndpoints() {
               <span>{endpoint.method}</span>
               <strong>{endpoint.path}</strong>
             </div>
-            <p>{endpoint.body}</p>
+            <p>{t(endpoint.body)}</p>
           </article>
         ))}
       </div>
@@ -485,26 +498,27 @@ function DocsEndpoints() {
 }
 
 function SolutionWorkflow({ solution }: { solution: PublicSolution }) {
+  const { t } = useUiText();
   const workflow = [
     {
       step: "01",
-      title: "Pozisyonu tanımlayın",
-      body: `${solution.label} sektörüne özel mülakat soruları ve değerlendirme kriterlerini belirleyin.`
+      title: t("Pozisyonu tanımlayın"),
+      body: t(`${solution.label} sektörüne özel mülakat soruları ve değerlendirme kriterlerini belirleyin.`)
     },
     {
       step: "02",
-      title: "Araçları etkinleştirin",
-      body: `${solution.channels.join(", ")} araçlarını aktif edin ve işe alım sürecinizi başlatın.`
+      title: t("Araçları etkinleştirin"),
+      body: t(`${solution.channels.join(", ")} araçlarını aktif edin ve işe alım sürecinizi başlatın.`)
     },
     {
       step: "03",
-      title: "AI mülakat yaptırın",
-      body: "Adaylar AI mülakat ile değerlendirilir, yanıtlar analiz edilir ve yetkinlik raporu oluşturulur."
+      title: t("AI mülakat yaptırın"),
+      body: t("Adaylar AI mülakat ile değerlendirilir, yanıtlar analiz edilir ve yetkinlik raporu oluşturulur.")
     },
     {
       step: "04",
-      title: "Sonuçları değerlendirin",
-      body: "Mülakat tamamlanma, değerlendirme skoru ve karşılaştırmalı raporlarla en uygun adayı belirleyin."
+      title: t("Sonuçları değerlendirin"),
+      body: t("Mülakat tamamlanma, değerlendirme skoru ve karşılaştırmalı raporlarla en uygun adayı belirleyin.")
     }
   ];
 
@@ -520,6 +534,7 @@ export function PublicHomePage() {
 }
 
 export function PublicFeaturesPage() {
+  const { t } = useUiText();
   /* Inline SVG icons for feature cards */
   const CheckSvg = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
@@ -550,20 +565,20 @@ export function PublicFeaturesPage() {
           <div className={cn(styles.shell, styles.ftHeroInner)}>
             <span className={styles.ftBadgeShimmer}>
               <SparklesSvg />
-              Güçlü Özellikler
+              {t("Güçlü Özellikler")}
             </span>
             <h1 className={styles.ftHeroTitle}>
-              İşe alım sürecinizi güçlendirecek AI yetenekleri
+              {t("İşe alım sürecinizi güçlendirecek AI yetenekleri")}
             </h1>
             <p className={styles.ftHeroSubtitle}>
-              AI mülakat, aday tarama, iş ilanı yönetimi ve analitik araçları tek platformda. Hızlı kurulum, derin entegrasyonlar ve ölçeklenebilir otomasyon.
+              {t("AI mülakat, aday tarama, iş ilanı yönetimi ve analitik araçları tek platformda. Hızlı kurulum, derin entegrasyonlar ve ölçeklenebilir otomasyon.")}
             </p>
             <div className={styles.ftHeroActions}>
               <a href="/auth/signup" className={cn(styles.ftGlowBtn, styles.ftGlowBtnPrimary)}>
-                Hemen Başlayın
+                {t("Hemen Başlayın")}
               </a>
               <a href="#features-grid" className={cn(styles.ftGlowBtn, styles.ftGlowBtnOutline)}>
-                Özellikleri Keşfedin
+                {t("Özellikleri Keşfedin")}
               </a>
             </div>
           </div>
@@ -579,14 +594,14 @@ export function PublicFeaturesPage() {
                   <article key={feature.title} className={cn(styles.ftCard, styles.ftCardLg)}>
                     <div className={styles.ftCardInner}>
                       <div className={cn(styles.ftIcon, featureGradients[index])} />
-                      <h3 className={cn(styles.ftCardTitle, styles.ftCardTitleLg)}>{feature.title}</h3>
-                      <p className={styles.ftCardDesc}>{feature.body}</p>
+                      <h3 className={cn(styles.ftCardTitle, styles.ftCardTitleLg)}>{t(feature.title)}</h3>
+                      <p className={styles.ftCardDesc}>{t(feature.body)}</p>
                       {feature.bullets?.length ? (
                         <div className={styles.ftCheckList}>
                           {feature.bullets.map((item) => (
                             <div key={item} className={styles.ftCheckItem}>
                               <span className={styles.ftCheck}><CheckSvg /></span>
-                              <span>{item}</span>
+                              <span>{t(item)}</span>
                             </div>
                           ))}
                         </div>
@@ -602,14 +617,14 @@ export function PublicFeaturesPage() {
                   <article key={feature.title} className={cn(styles.ftCard, styles.ftCardSm)}>
                     <div className={styles.ftCardInner}>
                       <div className={cn(styles.ftIcon, featureGradients[index + 2])} />
-                      <h3 className={styles.ftCardTitle}>{feature.title}</h3>
-                      <p className={styles.ftCardDesc}>{feature.body}</p>
+                      <h3 className={styles.ftCardTitle}>{t(feature.title)}</h3>
+                      <p className={styles.ftCardDesc}>{t(feature.body)}</p>
                       {feature.bullets?.length ? (
                         <div className={styles.ftCheckList}>
                           {feature.bullets.map((item) => (
                             <div key={item} className={styles.ftCheckItem}>
                               <span className={styles.ftCheck}><CheckSvg /></span>
-                              <span>{item}</span>
+                              <span>{t(item)}</span>
                             </div>
                           ))}
                         </div>
@@ -628,9 +643,9 @@ export function PublicFeaturesPage() {
 
           <div className={cn(styles.shell)} style={{ position: 'relative', zIndex: 10 }}>
             <div className={styles.ftSectionHeader}>
-              <h2 className={styles.ftSectionTitle}>Operasyon görünürlüğü ve yönetim araçları</h2>
+              <h2 className={styles.ftSectionTitle}>{t("Operasyon görünürlüğü ve yönetim araçları")}</h2>
               <p className={styles.ftSectionSubtitle}>
-                Dashboard, güvenlik ve entegrasyon katmanlarıyla ekibiniz ve yöneticileriniz aynı veriden karar verir.
+                {t("Dashboard, güvenlik ve entegrasyon katmanlarıyla ekibiniz ve yöneticileriniz aynı veriden karar verir.")}
               </p>
             </div>
             <div className={styles.ftDeepGrid}>
@@ -638,14 +653,14 @@ export function PublicFeaturesPage() {
                 <article key={op.title} className={styles.ftDeepCard}>
                   <div style={{ position: 'relative', zIndex: 10 }}>
                     <div className={cn(styles.ftIcon, operationGradients[index])} />
-                    <h3 className={styles.ftCardTitle}>{op.title}</h3>
-                    <p className={styles.ftCardDesc}>{op.body}</p>
+                    <h3 className={styles.ftCardTitle}>{t(op.title)}</h3>
+                    <p className={styles.ftCardDesc}>{t(op.body)}</p>
                     {op.bullets?.length ? (
                       <div className={styles.ftCheckList}>
                         {op.bullets.map((item) => (
                           <div key={item} className={styles.ftCheckItem}>
                             <span className={styles.ftCheck}><CheckSvg /></span>
-                            <span>{item}</span>
+                            <span>{t(item)}</span>
                           </div>
                         ))}
                       </div>
@@ -661,9 +676,9 @@ export function PublicFeaturesPage() {
         <section className={styles.ftSection}>
           <div className={styles.shell}>
             <div className={styles.ftSectionHeader}>
-              <h2 className={styles.ftSectionTitle}>Dakikalar içinde yayına alın</h2>
+              <h2 className={styles.ftSectionTitle}>{t("Dakikalar içinde yayına alın")}</h2>
               <p className={styles.ftSectionSubtitle}>
-                Dört adımda AI mülakat sisteminizi kurun ve işe alım süreçlerinizde canlı hizmete başlayın.
+                {t("Dört adımda AI mülakat sisteminizi kurun ve işe alım süreçlerinizde canlı hizmete başlayın.")}
               </p>
             </div>
             <div className={styles.ftStepsGrid}>
@@ -672,8 +687,8 @@ export function PublicFeaturesPage() {
                 <div key={step.step} className={styles.ftStep}>
                   <div className={cn(styles.ftStepCircle, stepGradients[index % stepGradients.length])} />
                   <div className={styles.ftStepNumber}>{step.step}</div>
-                  <h3 className={styles.ftStepTitle}>{step.title}</h3>
-                  <p className={styles.ftStepDesc}>{step.body}</p>
+                  <h3 className={styles.ftStepTitle}>{t(step.title)}</h3>
+                  <p className={styles.ftStepDesc}>{t(step.body)}</p>
                 </div>
               ))}
             </div>
@@ -684,9 +699,9 @@ export function PublicFeaturesPage() {
         <section className={styles.ftSection}>
           <div className={styles.shell}>
             <div className={styles.ftSectionHeader}>
-              <h2 className={styles.ftSectionTitle}>Her sektöre özel AI işe alım çözümleri</h2>
+              <h2 className={styles.ftSectionTitle}>{t("Her sektöre özel AI işe alım çözümleri")}</h2>
               <p className={styles.ftSectionSubtitle}>
-                Teknoloji, perakende, sağlık, finans ve üretim sektörlerine özel mülakat akışları.
+                {t("Teknoloji, perakende, sağlık, finans ve üretim sektörlerine özel mülakat akışları.")}
               </p>
             </div>
             <div className={styles.ftSolutionGrid}>
@@ -695,10 +710,10 @@ export function PublicFeaturesPage() {
                   <div className={styles.ftSolutionCardInner}>
                     <div className={cn(styles.ftSolutionIcon, featureGradients[index % featureGradients.length])} />
                     <div style={{ flex: 1 }}>
-                      <h3 className={styles.ftSolutionTitle}>{solution.title}</h3>
-                      <p className={styles.ftSolutionDesc}>{solution.shortDescription}</p>
+                      <h3 className={styles.ftSolutionTitle}>{t(solution.title)}</h3>
+                      <p className={styles.ftSolutionDesc}>{t(solution.shortDescription)}</p>
                       <span className={styles.ftSolutionLink}>
-                        Çözümü incele <ArrowRightSvg />
+                        {t("Çözümü incele")} <ArrowRightSvg />
                       </span>
                     </div>
                   </div>
@@ -712,9 +727,9 @@ export function PublicFeaturesPage() {
         <section className={styles.ftSection}>
           <div className={styles.shell}>
             <div className={styles.ftSectionHeader}>
-              <h2 className={styles.ftSectionTitle}>Merak edilenler</h2>
+              <h2 className={styles.ftSectionTitle}>{t("Merak edilenler")}</h2>
               <p className={styles.ftSectionSubtitle}>
-                Özellikler, entegrasyon ve kullanım hakkında en çok sorulan sorular.
+                {t("Özellikler, entegrasyon ve kullanım hakkında en çok sorulan sorular.")}
               </p>
             </div>
             <FAQBlock items={PUBLIC_FAQ} />
@@ -726,16 +741,16 @@ export function PublicFeaturesPage() {
           <div className={styles.shell}>
             <div className={styles.ftCta}>
               <div className={styles.ftCtaInner}>
-                <h2 className={styles.ftCtaTitle}>AI ile işe alım deneyiminizi dönüştürün</h2>
+                <h2 className={styles.ftCtaTitle}>{t("AI ile işe alım deneyiminizi dönüştürün")}</h2>
                 <p className={styles.ftCtaSubtitle}>
-                  Tüm özelliklerimizi ücretsiz deneyin. Kurulum dakikalar içinde tamamlanır, teknik bilgi gerekmez.
+                  {t("Tüm özelliklerimizi ücretsiz deneyin. Kurulum dakikalar içinde tamamlanır, teknik bilgi gerekmez.")}
                 </p>
                 <div className={styles.ftCtaActions}>
                   <a href="/auth/signup" className={cn(styles.ftGlowBtn, styles.ftCtaBtnWhite)}>
-                    Hemen Başlayın
+                    {t("Hemen Başlayın")}
                   </a>
                   <a href="/contact" className={cn(styles.ftGlowBtn, styles.ftCtaBtnGhost)}>
-                    Bize Ulaşın
+                    {t("Bize Ulaşın")}
                   </a>
                 </div>
               </div>
@@ -748,6 +763,7 @@ export function PublicFeaturesPage() {
 }
 
 export function PublicSolutionsPage() {
+  const { t } = useUiText();
   const CheckSvg = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
   );
@@ -776,20 +792,20 @@ export function PublicSolutionsPage() {
           <div className={cn(styles.shell, styles.solHeroInner)}>
             <span className={styles.solBadge}>
               <SparklesSvg />
-              Sektörel AI Çözümleri
+              {t("Sektörel AI Çözümleri")}
             </span>
             <h1 className={styles.solHeroTitle}>
-              Sektörünüze özel AI mülakat asistanı
+              {t("Sektörünüze özel AI mülakat asistanı")}
             </h1>
             <p className={styles.solHeroSubtitle}>
-              Teknoloji, perakende, sağlık, finans ve üretim sektörlerine özel AI mülakat ve ön eleme akışları ile hemen başlayın.
+              {t("Teknoloji, perakende, sağlık, finans ve üretim sektörlerine özel AI mülakat ve ön eleme akışları ile hemen başlayın.")}
             </p>
             <div className={styles.solHeroActions}>
               <a href="#solutions-grid" className={cn(styles.solGlowBtn, styles.solGlowBtnPrimary)}>
-                Çözümleri Keşfedin
+                {t("Çözümleri Keşfedin")}
               </a>
               <a href="/contact" className={cn(styles.solGlowBtn, styles.solGlowBtnOutline)}>
-                Bize Ulaşın
+                {t("Bize Ulaşın")}
               </a>
             </div>
           </div>
@@ -801,8 +817,8 @@ export function PublicSolutionsPage() {
             <div className={styles.solStatsGrid}>
               {PUBLIC_SOLUTIONS_STATS.map((stat) => (
                 <div key={stat.label} className={styles.solStatItem}>
-                  <div className={styles.solStatValue}>{stat.value}</div>
-                  <div className={styles.solStatLabel}>{stat.label}</div>
+                  <div className={styles.solStatValue}>{t(stat.value)}</div>
+                  <div className={styles.solStatLabel}>{t(stat.label)}</div>
                 </div>
               ))}
             </div>
@@ -813,9 +829,9 @@ export function PublicSolutionsPage() {
         <section className={styles.solSection} id="solutions-grid">
           <div className={styles.shell}>
             <div className={styles.solSectionHeader}>
-              <h2 className={styles.solSectionTitle}>Sektörünüzü seçin, hemen başlayın</h2>
+              <h2 className={styles.solSectionTitle}>{t("Sektörünüzü seçin, hemen başlayın")}</h2>
               <p className={styles.solSectionSubtitle}>
-                Her çözüm, sektörün ihtiyaçlarına özel AI mülakat akışları, ön eleme kriterleri ve değerlendirme metrikleriyle donatıldı.
+                {t("Her çözüm, sektörün ihtiyaçlarına özel AI mülakat akışları, ön eleme kriterleri ve değerlendirme metrikleriyle donatıldı.")}
               </p>
             </div>
             <div className={styles.solGrid}>
@@ -824,18 +840,18 @@ export function PublicSolutionsPage() {
                   <div className={cn(styles.solCardBlur, solutionGradients[index % solutionGradients.length])} aria-hidden="true" />
                   <div className={styles.solCardContent}>
                     <div className={cn(styles.solCardIcon, solutionGradients[index % solutionGradients.length])} />
-                    <h3 className={styles.solCardTitle}>{solution.title}</h3>
-                    <p className={styles.solCardDesc}>{solution.shortDescription}</p>
+                    <h3 className={styles.solCardTitle}>{t(solution.title)}</h3>
+                    <p className={styles.solCardDesc}>{t(solution.shortDescription)}</p>
                     <div className={styles.solCheckList}>
                       {solution.useCases.map((useCase) => (
                         <div key={useCase} className={styles.solCheckItem}>
                           <span className={styles.solCheck}><CheckSvg /></span>
-                          <span>{useCase}</span>
+                          <span>{t(useCase)}</span>
                         </div>
                       ))}
                     </div>
                     <span className={styles.solCardCta}>
-                      Çözümü incele
+                      {t("Çözümü incele")}
                       <ArrowRightSvg />
                     </span>
                   </div>
@@ -849,9 +865,9 @@ export function PublicSolutionsPage() {
         <section className={styles.solSectionMuted}>
           <div className={styles.shell}>
             <div className={styles.solSectionHeader}>
-              <h2 className={styles.solSectionTitle}>Neden Candit.ai?</h2>
+              <h2 className={styles.solSectionTitle}>{t("Neden Candit.ai?")}</h2>
               <p className={styles.solSectionSubtitle}>
-                Sektörden bağımsız olarak her işe alım ekibine değer katan temel avantajlar.
+                {t("Sektörden bağımsız olarak her işe alım ekibine değer katan temel avantajlar.")}
               </p>
             </div>
             <div className={styles.solBentoGrid}>
@@ -859,8 +875,8 @@ export function PublicSolutionsPage() {
                 <article key={advantage.title} className={styles.solBentoItem}>
                   <div className={styles.solBentoItemInner}>
                     <div className={cn(styles.solBentoIcon, advantageGradients[index % advantageGradients.length])} />
-                    <h3 className={styles.solBentoTitle}>{advantage.title}</h3>
-                    <p className={styles.solBentoDesc}>{advantage.body}</p>
+                    <h3 className={styles.solBentoTitle}>{t(advantage.title)}</h3>
+                    <p className={styles.solBentoDesc}>{t(advantage.body)}</p>
                   </div>
                 </article>
               ))}
@@ -872,9 +888,9 @@ export function PublicSolutionsPage() {
         <section className={styles.solSection}>
           <div className={styles.shell}>
             <div className={styles.solSectionHeader}>
-              <h2 className={styles.solSectionTitle}>Karar öncesi merak edilenler</h2>
+              <h2 className={styles.solSectionTitle}>{t("Karar öncesi merak edilenler")}</h2>
               <p className={styles.solSectionSubtitle}>
-                Çözümler, entegrasyon süreci ve fiyatlandırma hakkında en sık sorulan sorular.
+                {t("Çözümler, entegrasyon süreci ve fiyatlandırma hakkında en sık sorulan sorular.")}
               </p>
             </div>
             <FAQBlock items={PUBLIC_FAQ} />
@@ -886,16 +902,16 @@ export function PublicSolutionsPage() {
           <div className={styles.shell}>
             <div className={styles.solCta}>
               <div className={styles.solCtaInner}>
-                <h2 className={styles.solCtaTitle}>Sektörünüze özel AI işe alım çözümünü deneyin</h2>
+                <h2 className={styles.solCtaTitle}>{t("Sektörünüze özel AI işe alım çözümünü deneyin")}</h2>
                 <p className={styles.solCtaSubtitle}>
-                  Listede olsun ya da olmasın, sektörünüze uygun mülakat ve ön eleme akışını birlikte tasarlayalım.
+                  {t("Listede olsun ya da olmasın, sektörünüze uygun mülakat ve ön eleme akışını birlikte tasarlayalım.")}
                 </p>
                 <div className={styles.solCtaActions}>
                   <a href="/contact" className={styles.solCtaBtnWhite}>
-                    Bize Ulaşın
+                    {t("Bize Ulaşın")}
                   </a>
                   <a href="/auth/signup" className={styles.solCtaBtnGhost}>
-                    Hesap Oluştur
+                    {t("Hesap Oluştur")}
                   </a>
                 </div>
               </div>
@@ -908,6 +924,7 @@ export function PublicSolutionsPage() {
 }
 
 export function PublicSolutionDetailPage({ slug }: { slug: string }) {
+  const { t } = useUiText();
   const solution = getSolutionBySlug(slug);
 
   if (!solution) {
@@ -921,18 +938,18 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
           <div>
             <Breadcrumbs
               items={[
-                { label: "Ana Sayfa", href: "/" },
-                { label: "Çözümler", href: "/solutions" },
-                { label: solution.label }
+                { label: t("Ana Sayfa"), href: "/" },
+                { label: t("Çözümler"), href: "/solutions" },
+                { label: t(solution.label) }
               ]}
             />
-            <span className={styles.heroKicker}>{solution.label}</span>
-            <h1 className={styles.solutionTitle}>{solution.title}</h1>
-            <p className={styles.solutionIntro}>{solution.intro}</p>
+            <span className={styles.heroKicker}>{t(solution.label)}</span>
+            <h1 className={styles.solutionTitle}>{t(solution.title)}</h1>
+            <p className={styles.solutionIntro}>{t(solution.intro)}</p>
             <div className={styles.heroActions}>
-              <ActionLink action={{ label: "Hesap Oluştur", href: "/auth/signup" }} />
+              <ActionLink action={{ label: t("Hesap Oluştur"), href: "/auth/signup" }} />
               <ActionLink
-                action={{ label: "Fiyatları İncele", href: "/pricing", tone: "secondary" }}
+                action={{ label: t("Fiyatları İncele"), href: "/pricing", tone: "secondary" }}
                 tone="secondary"
               />
             </div>
@@ -940,19 +957,19 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
 
           <div className={styles.solutionShowcase}>
             <div className={styles.showcaseCard}>
-              <span className={styles.cardEyebrow}>Kullanım Senaryoları</span>
-              <h3>{solution.shortDescription}</h3>
+              <span className={styles.cardEyebrow}>{t("Kullanım Senaryoları")}</span>
+              <h3>{t(solution.shortDescription)}</h3>
               <div className={styles.bulletList}>
                 {solution.useCases.map((item) => (
-                  <span key={item}>{item}</span>
+                  <span key={item}>{t(item)}</span>
                 ))}
               </div>
             </div>
             <div className={styles.showcaseStats}>
               {PUBLIC_SOLUTIONS_STATS.slice(0, 3).map((item) => (
                 <div key={item.label} className={styles.showcaseStat}>
-                  <strong>{item.value}</strong>
-                  <span>{item.label}</span>
+                  <strong>{t(item.value)}</strong>
+                  <span>{t(item.label)}</span>
                 </div>
               ))}
             </div>
@@ -963,9 +980,9 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
       <section className={styles.section}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Nasıl Çalışır?"
-            title={`${solution.label} operasyonuna uygun kurulum akışı`}
-            subtitle="Pozisyonu tanımlayın, adayları yönlendirin ve AI mülakatı başlatın. Her adım otomatik yönetilir."
+            eyebrow={t("Nasıl Çalışır?")}
+            title={t(`${solution.label} operasyonuna uygun kurulum akışı`)}
+            subtitle={t("Pozisyonu tanımlayın, adayları yönlendirin ve AI mülakatı başlatın. Her adım otomatik yönetilir.")}
           />
           <SolutionWorkflow solution={solution} />
         </div>
@@ -974,13 +991,13 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Kullanım Senaryoları"
-            title="Saha gerçeğine yakın örnek akışlar"
-            subtitle="Sektörünüze özel AI mülakat ve ön eleme senaryolarını inceleyin."
+            eyebrow={t("Kullanım Senaryoları")}
+            title={t("Saha gerçeğine yakın örnek akışlar")}
+            subtitle={t("Sektörünüze özel AI mülakat ve ön eleme senaryolarını inceleyin.")}
           />
           <CardGrid
             cards={solution.useCases.map((item, index) => ({
-              title: `Senaryo ${index + 1}`,
+              title: `${t("Senaryo")} ${index + 1}`,
               body: item
             }))}
             columns={3}
@@ -991,9 +1008,9 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
       <section className={styles.section}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow={`${solution.label} İçin Öne Çıkanlar`}
-            title="Operasyonun kritik avantajları"
-            subtitle="Bu sektördeki işe alım sürecinizi hızlandıran temel avantajlar."
+            eyebrow={t(`${solution.label} İçin Öne Çıkanlar`)}
+            title={t("Operasyonun kritik avantajları")}
+            subtitle={t("Bu sektördeki işe alım sürecinizi hızlandıran temel avantajlar.")}
           />
           <CardGrid
             cards={solution.highlights.map((item) => ({
@@ -1008,9 +1025,9 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Kullanılan Araçlar"
-            title="İşe alım sürecinin her adımında AI desteği"
-            subtitle="Candit'in temel araçları bu sektör çözümünde nasıl kullanılıyor?"
+            eyebrow={t("Kullanılan Araçlar")}
+            title={t("İşe alım sürecinin her adımında AI desteği")}
+            subtitle={t("Candit'in temel araçları bu sektör çözümünde nasıl kullanılıyor?")}
           />
           <CardGrid
             cards={solution.channels.map((channel) => ({
@@ -1028,6 +1045,7 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
 }
 
 export function PublicPricingPage() {
+  const { t } = useUiText();
   const OVERAGE_ROWS = [
     {
       channel: "Ek aday işleme",
@@ -1065,16 +1083,16 @@ export function PublicPricingPage() {
         <div className={cn(styles.shell, styles.prHeroInner)}>
           <span className={styles.prBadge}>
             <span className={styles.prBadgeDot} />
-            Şeffaf Fiyatlandırma
+            {t("Şeffaf Fiyatlandırma")}
           </span>
           <h1 className={styles.prHeroTitle}>
-            İhtiyacınıza uygun planı seçin
+            {t("İhtiyacınıza uygun planı seçin")}
           </h1>
           <p className={styles.prHeroSubtitle}>
-            Ücretsiz deneme ile başlayıp, büyüdükçe ölçeklendirin. Gizli ücret yok, sürpriz yok.
+            {t("Ücretsiz deneme ile başlayıp, büyüdükçe ölçeklendirin. Gizli ücret yok, sürpriz yok.")}
           </p>
           <p className={styles.prHeroKicker}>
-            Ücretsiz deneme &mdash; Kredi kartı gerekmez
+            {t("Ücretsiz deneme — Kredi kartı gerekmez")}
           </p>
         </div>
       </section>
@@ -1096,21 +1114,21 @@ export function PublicPricingPage() {
                   {/* Popular badge */}
                   {isPopular && (
                     <div className={styles.prPopularBadgeWrap}>
-                      <span className={styles.prPopularBadge}>En Pop&uuml;ler</span>
+                      <span className={styles.prPopularBadge}>{t("En Popüler")}</span>
                     </div>
                   )}
 
                   {/* Plan header */}
                   <div className={styles.prPlanHeader}>
-                    <h3 className={styles.prPlanName}>{plan.title}</h3>
-                    <p className={styles.prPlanDesc}>{plan.body}</p>
+                    <h3 className={styles.prPlanName}>{t(plan.title)}</h3>
+                    <p className={styles.prPlanDesc}>{t(plan.body)}</p>
 
                     {/* Price */}
                     <div className={styles.prPriceBlock}>
                       {isTrial ? (
-                        <span className={styles.prPriceFree}>&Uuml;cretsiz</span>
+                        <span className={styles.prPriceFree}>{t("Ücretsiz")}</span>
                       ) : isEnterprise ? (
-                        <span className={styles.prPriceContact}>İletişime Geçin</span>
+                        <span className={styles.prPriceContact}>{t("İletişime Geçin")}</span>
                       ) : (
                         <>
                           <span className={styles.prPriceAmount}>
@@ -1118,7 +1136,7 @@ export function PublicPricingPage() {
                               ? plan.meta.split("/")[0]?.split("•")[0]?.trim() ?? ""
                               : ""}
                           </span>
-                          <span className={styles.prPricePeriod}>/ay</span>
+                          <span className={styles.prPricePeriod}>{t("/ay")}</span>
                         </>
                       )}
                     </div>
@@ -1126,11 +1144,11 @@ export function PublicPricingPage() {
                     {/* Sub-price info */}
                     <div className={styles.prSubPrice}>
                       {isTrial && plan.badge ? (
-                        <span>{plan.badge}</span>
+                        <span>{t(plan.badge)}</span>
                       ) : isEnterprise ? (
-                        <span>&Ouml;zel fiyatlandırma</span>
+                        <span>{t("Özel fiyatlandırma")}</span>
                       ) : plan.meta?.includes("Asim") ? (
-                        <span>Aşım: {plan.meta.split("Asim:")[1]?.split("•")[0]?.trim()}</span>
+                        <span>{t("Aşım")}: {plan.meta.split("Asim:")[1]?.split("•")[0]?.trim()}</span>
                       ) : null}
                     </div>
                   </div>
@@ -1143,7 +1161,7 @@ export function PublicPricingPage() {
                     {plan.bullets?.map((bullet) => (
                       <li key={bullet} className={styles.prFeatureItem}>
                         <span className={styles.prCheckIcon}>&#10003;</span>
-                        <span>{bullet}</span>
+                        <span>{t(bullet)}</span>
                       </li>
                     ))}
                   </ul>
@@ -1158,7 +1176,7 @@ export function PublicPricingPage() {
                           isPopular && styles.prCardBtnPopular
                         )}
                       >
-                        <span>{plan.actionLabel}</span>
+                        <span>{t(plan.actionLabel)}</span>
                       </a>
                     </div>
                   ) : null}
@@ -1175,11 +1193,11 @@ export function PublicPricingPage() {
           <div className={styles.prPaygHeader}>
             <span className={styles.prPaygBadge}>
               <span className={styles.prBadgeDot} />
-              {PUBLIC_PAY_AS_YOU_GO.eyebrow}
+              {t(PUBLIC_PAY_AS_YOU_GO.eyebrow ?? "")}
             </span>
-            <h2 className={styles.prSectionTitle}>{PUBLIC_PAY_AS_YOU_GO.title}</h2>
+            <h2 className={styles.prSectionTitle}>{t(PUBLIC_PAY_AS_YOU_GO.title)}</h2>
             <p className={styles.prSectionSubtitle}>
-              Planınızı yükseltmeden, sadece ihtiyacınız olan ek kotayı satın alın.
+              {t("Planınızı yükseltmeden, sadece ihtiyacınız olan ek kotayı satın alın.")}
             </p>
           </div>
 
@@ -1188,18 +1206,18 @@ export function PublicPricingPage() {
               {PUBLIC_PAY_AS_YOU_GO.meta}
             </div>
             <p className={styles.prPaygNote}>
-              {PUBLIC_PAY_AS_YOU_GO.body}
+              {t(PUBLIC_PAY_AS_YOU_GO.body)}
             </p>
 
             <div className={styles.prPaygTags}>
               {PUBLIC_PAY_AS_YOU_GO.bullets?.map((tag) => (
-                <span key={tag} className={styles.prPaygTag}>{tag}</span>
+                <span key={tag} className={styles.prPaygTag}>{t(tag)}</span>
               ))}
             </div>
 
             {PUBLIC_PAY_AS_YOU_GO.href && PUBLIC_PAY_AS_YOU_GO.actionLabel ? (
               <a href={PUBLIC_PAY_AS_YOU_GO.href} className={styles.prPaygBtn}>
-                <span>{PUBLIC_PAY_AS_YOU_GO.actionLabel}</span>
+                <span>{t(PUBLIC_PAY_AS_YOU_GO.actionLabel)}</span>
               </a>
             ) : null}
           </div>
@@ -1210,9 +1228,9 @@ export function PublicPricingPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <div className={styles.prOverageHeader}>
-            <h2 className={styles.prSectionTitle}>Ek paket detayları</h2>
+            <h2 className={styles.prSectionTitle}>{t("Ek paket detayları")}</h2>
             <p className={styles.prSectionSubtitle}>
-              Bu paketler mevcut plan kotanız yetmediğinde dönem içinde tek seferlik kapasite artışı sağlar.
+              {t("Bu paketler mevcut plan kotanız yetmediğinde dönem içinde tek seferlik kapasite artışı sağlar.")}
             </p>
           </div>
 
@@ -1220,19 +1238,19 @@ export function PublicPricingPage() {
             <table className={styles.prTable}>
               <thead>
                 <tr>
-                  <th>Kanal</th>
-                  <th>Birim</th>
-                  <th>Paket fiyatı</th>
-                  <th>Not</th>
+                  <th>{t("Kanal")}</th>
+                  <th>{t("Birim")}</th>
+                  <th>{t("Paket fiyatı")}</th>
+                  <th>{t("Not")}</th>
                 </tr>
               </thead>
               <tbody>
                 {OVERAGE_ROWS.map((row, idx) => (
                   <tr key={`${row.channel}-${idx}`}>
-                    <td className={styles.prTableBold}>{row.channel}</td>
-                    <td>{row.unit}</td>
+                    <td className={styles.prTableBold}>{t(row.channel)}</td>
+                    <td>{t(row.unit)}</td>
                     <td>{row.rate}</td>
-                    <td className={styles.prTableMuted}>{row.note}</td>
+                    <td className={styles.prTableMuted}>{t(row.note)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1245,12 +1263,12 @@ export function PublicPricingPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <div className={styles.prCtaSection}>
-            <h2 className={styles.prCtaTitle}>Hala kararsız mısınız?</h2>
+            <h2 className={styles.prCtaTitle}>{t("Hala kararsız mısınız?")}</h2>
             <p className={styles.prCtaBody}>
-              İhtiyacınıza göre doğru paketi birlikte seçelim.
+              {t("İhtiyacınıza göre doğru paketi birlikte seçelim.")}
             </p>
             <a href="/auth/signup" className={styles.prGlowBtn}>
-              <span>Hesap Oluştur</span>
+              <span>{t("Hesap Oluştur")}</span>
             </a>
           </div>
         </div>
@@ -1273,8 +1291,8 @@ export function PublicPricingPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <p className={styles.prContactLine}>
-            Sorularınız mı var?{" "}
-            <a href="/contact" className={styles.prContactLink}>Bize ulaşın</a>
+            {t("Sorularınız mı var?")}{" "}
+            <a href="/contact" className={styles.prContactLink}>{t("Bize ulaşın")}</a>
           </p>
         </div>
       </section>
@@ -1283,6 +1301,7 @@ export function PublicPricingPage() {
 }
 
 export function PublicIntegrationsPage() {
+  const { t } = useUiText();
   return (
     <PublicSiteFrame>
       <section className={styles.heroSectionSlim}>
@@ -1301,7 +1320,7 @@ export function PublicIntegrationsPage() {
           <div className={styles.integrationGroups}>
             {PUBLIC_INTEGRATION_GROUPS.map((group) => (
               <section key={group.title} className={styles.integrationGroup}>
-                <h2>{group.title}</h2>
+                <h2>{t(group.title)}</h2>
                 <CardGrid cards={group.items} columns={3} />
               </section>
             ))}
@@ -1318,6 +1337,7 @@ export function PublicIntegrationsPage() {
 }
 
 export function PublicBlogIndexPage() {
+  const { t } = useUiText();
   return (
     <PublicSiteFrame activeHref="/blog">
       <section className={styles.heroSectionSlim}>
@@ -1344,16 +1364,16 @@ export function PublicBlogIndexPage() {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={cn(styles.shell, styles.newsletterBand)}>
           <div>
-            <span className={styles.eyebrow}>Yeni içeriklerden haberdar olun</span>
-            <h2 className={styles.ctaTitle}>AI ve işe alım dünyasındaki gelişmeleri takip edin</h2>
+            <span className={styles.eyebrow}>{t("Yeni içeriklerden haberdar olun")}</span>
+            <h2 className={styles.ctaTitle}>{t("AI ve işe alım dünyasındaki gelişmeleri takip edin")}</h2>
             <p className={styles.ctaBody}>
-              Sektör trendleri, ürün güncellemeleri ve en iyi uygulamaları doğrudan e-posta adresinize alın.
+              {t("Sektör trendleri, ürün güncellemeleri ve en iyi uygulamaları doğrudan e-posta adresinize alın.")}
             </p>
           </div>
           <div className={styles.newsletterForm}>
-            <input type="email" placeholder="E-posta adresiniz" />
+            <input type="email" placeholder={t("E-posta adresiniz")} />
             <button type="button" className={cn(styles.button, styles.buttonPrimary)}>
-              <span>Abone Ol</span>
+              <span>{t("Abone Ol")}</span>
             </button>
           </div>
         </div>
@@ -1363,6 +1383,7 @@ export function PublicBlogIndexPage() {
 }
 
 export function PublicBlogArticlePage({ slug }: { slug: string }) {
+  const { t } = useUiText();
   const article = getBlogArticleBySlug(slug);
 
   if (!article) {
@@ -1379,18 +1400,18 @@ export function PublicBlogArticlePage({ slug }: { slug: string }) {
         <div className={cn(styles.shell, styles.articleHero)}>
           <Breadcrumbs
             items={[
-              { label: "Ana Sayfa", href: "/" },
+              { label: t("Ana Sayfa"), href: "/" },
               { label: "Blog", href: "/blog" },
-              { label: article.title }
+              { label: t(article.title) }
             ]}
           />
-          <span className={styles.heroKicker}>{article.category}</span>
-          <h1 className={styles.articleTitle}>{article.title}</h1>
+          <span className={styles.heroKicker}>{t(article.category)}</span>
+          <h1 className={styles.articleTitle}>{t(article.title)}</h1>
           <div className={styles.articleMetaLarge}>
-            <span>{article.date}</span>
-            <span>{article.readTime} okuma</span>
+            <span>{t(article.date)}</span>
+            <span>{t(article.readTime)} {t("okuma")}</span>
           </div>
-          <p className={styles.articleLead}>{article.excerpt}</p>
+          <p className={styles.articleLead}>{t(article.excerpt)}</p>
         </div>
       </section>
 
@@ -1399,19 +1420,19 @@ export function PublicBlogArticlePage({ slug }: { slug: string }) {
           <div className={styles.articleContent}>
             {article.sections.map((section) => (
               <article key={section.title} className={styles.articleSection}>
-                <h2>{section.title}</h2>
-                <p>{section.body}</p>
+                <h2>{t(section.title)}</h2>
+                <p>{t(section.body)}</p>
               </article>
             ))}
           </div>
 
           <aside className={styles.articleAside}>
             <div className={styles.card}>
-              <span className={styles.cardEyebrow}>Yazı Bilgisi</span>
-              <h3>{article.category}</h3>
+              <span className={styles.cardEyebrow}>{t("Yazı Bilgisi")}</span>
+              <h3>{t(article.category)}</h3>
               <div className={styles.bulletList}>
-                <span>{article.date}</span>
-                <span>{article.readTime}</span>
+                <span>{t(article.date)}</span>
+                <span>{t(article.readTime)}</span>
                 <span>Candit Blog</span>
               </div>
             </div>
@@ -1630,6 +1651,7 @@ export function PublicAboutPage() {
 }
 
 export function PublicContactPage() {
+  const { t } = useUiText();
   return (
     <PublicSiteFrame activeHref="/contact">
       {/* ═══ Hero ═══ */}
@@ -1655,12 +1677,12 @@ export function PublicContactPage() {
       <section className={styles.section}>
         <div className={cn(styles.shell, styles.contactLayout)}>
           <LeadCaptureForm
-            title="Bize Mesaj Gönderin"
-            body="Formu doldurarak bize ulaşın. Pilot hedefiniz, mevcut işe alım akışınız ve ihtiyaç duyduğunuz otomasyonları paylaşın."
-            submitLabel="Mesajı Gönder"
+            title={t("Bize Mesaj Gönderin")}
+            body={t("Formu doldurarak bize ulaşın. Pilot hedefiniz, mevcut işe alım akışınız ve ihtiyaç duyduğunuz otomasyonları paylaşın.")}
+            submitLabel={t("Mesajı Gönder")}
             sourcePage="contact"
-            successTitle="Mesajınız ulaştı"
-            successBody="Ekibimiz kısa süre içinde size dönüş yapacak."
+            successTitle={t("Mesajınız ulaştı")}
+            successBody={t("Ekibimiz kısa süre içinde size dönüş yapacak.")}
           />
 
           <div>
@@ -1668,8 +1690,8 @@ export function PublicContactPage() {
             <div className={styles.compactStats}>
               {PUBLIC_CONTACT_METRICS.map((item) => (
                 <div key={item.label} className={styles.compactStat}>
-                  <strong>{item.value}</strong>
-                  <span>{item.label}</span>
+                  <strong>{t(item.value)}</strong>
+                  <span>{t(item.label)}</span>
                 </div>
               ))}
             </div>
@@ -1755,6 +1777,7 @@ export function PublicChangelogPage() {
 }
 
 export function PublicWaitlistPage() {
+  const { t } = useUiText();
   return (
     <PublicSiteFrame>
       <section className={styles.heroSection}>
@@ -1776,18 +1799,18 @@ export function PublicWaitlistPage() {
           </div>
 
           <div className={styles.formCard}>
-            <span className={styles.eyebrow}>Kayıt</span>
-            <h3>Doğrudan hesap oluşturun</h3>
-            <p>Hemen hesap oluşturun ve AI destekli işe alım platformunu denemeye başlayın. Kurulum desteği için ekibimiz her zaman yanınızda.</p>
+            <span className={styles.eyebrow}>{t("Kayıt")}</span>
+            <h3>{t("Doğrudan hesap oluşturun")}</h3>
+            <p>{t("Hemen hesap oluşturun ve AI destekli işe alım platformunu denemeye başlayın. Kurulum desteği için ekibimiz her zaman yanınızda.")}</p>
             <div className={styles.tagList}>
-              <span>Owner hesabı</span>
-              <span>E-posta doğrulama</span>
-              <span>İlk workspace kurulumu</span>
+              <span>{t("Owner hesabı")}</span>
+              <span>{t("E-posta doğrulama")}</span>
+              <span>{t("İlk workspace kurulumu")}</span>
             </div>
             <div className={styles.ctaActions} style={{ marginTop: 18 }}>
-              <ActionLink action={{ label: "Hesap Oluştur", href: "/auth/signup" }} fullWidth />
+              <ActionLink action={{ label: t("Hesap Oluştur"), href: "/auth/signup" }} fullWidth />
               <ActionLink
-                action={{ label: "İletişime Geçin", href: "/contact", tone: "secondary" }}
+                action={{ label: t("İletişime Geçin"), href: "/contact", tone: "secondary" }}
                 tone="secondary"
                 fullWidth
               />

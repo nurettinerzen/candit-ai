@@ -3,15 +3,7 @@
 const API_BASE_URL = stripTrailingSlash(process.env.CANDIT_API_BASE_URL ?? "http://localhost:4000/v1");
 const WEB_BASE_URL = stripTrailingSlash(process.env.CANDIT_WEB_BASE_URL ?? "http://localhost:3000");
 const STRICT_MODE = isTruthy(process.env.CANDIT_SMOKE_STRICT);
-
-const AUTH_HEADERS = {
-  "content-type": "application/json",
-  "x-tenant-id": process.env.CANDIT_TENANT_ID ?? "ten_demo",
-  "x-user-id": process.env.CANDIT_USER_ID ?? "usr_admin_demo",
-  "x-roles": process.env.CANDIT_USER_ROLES ?? "owner",
-  "x-user-label": process.env.CANDIT_USER_LABEL ?? "Pilot Smoke",
-  "x-user-email": process.env.CANDIT_USER_EMAIL ?? "owner@demo.local"
-};
+const DEFAULT_PASSWORD = process.env.CANDIT_SMOKE_PASSWORD ?? "Launch123!";
 
 const warnings = [];
 
@@ -73,7 +65,7 @@ async function requestJson(label, path, options = {}) {
 }
 
 async function poll(label, callback, predicate, options = {}) {
-  const attempts = options.attempts ?? 12;
+  const attempts = options.attempts ?? 15;
   const intervalMs = options.intervalMs ?? 2000;
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -90,15 +82,123 @@ async function poll(label, callback, predicate, options = {}) {
   throw new Error(`${label} timed out after ${attempts} attempts.`);
 }
 
-function pickJob(jobs) {
-  const rows = Array.isArray(jobs) ? jobs : [];
-  return rows.find((job) => job.status === "PUBLISHED") ?? rows[0] ?? null;
-}
-
 function formatWarnings(items) {
   return items
     .filter((item) => typeof item === "string" && item.trim().length > 0)
     .join(" | ");
+}
+
+function jsonHeaders(token) {
+  return {
+    "content-type": "application/json",
+    authorization: `Bearer ${token}`
+  };
+}
+
+function buildPilotCv(stamp) {
+  return [
+    "Ad Soyad: Pilot Smoke Candidate",
+    `E-posta: pilot-smoke+${stamp}@example.com`,
+    "Telefon: +90 555 123 45 67",
+    "Lokasyon: Istanbul",
+    "",
+    "Deneyim",
+    "2022-2025 Depo Operasyon Personeli - ABC Lojistik",
+    "Sevkiyat, stok takibi, vardiya koordinasyonu ve ekip ici raporlama gorevleri yuruttum.",
+    "",
+    "Yetenekler",
+    "Excel, stok yonetimi, vardiyali calisma, raporlama, ekip iletisim",
+    "",
+    "Egitim",
+    "Lise mezunu"
+  ].join("\n");
+}
+
+async function signupPilotUser() {
+  const stamp = Date.now().toString();
+  const email = `pilot-smoke+${stamp}@example.com`;
+
+  const signup = await requestJson("Pilot signup", "/auth/signup", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      companyName: `Candit Pilot ${stamp}`,
+      fullName: "Pilot Smoke",
+      email,
+      password: DEFAULT_PASSWORD
+    })
+  });
+
+  ensure(signup?.accessToken, "Signup access token missing");
+
+  logStatus("PASS", "Pilot tenant created", signup.user?.tenantId ?? email);
+
+  return {
+    stamp,
+    token: signup.accessToken,
+    tenantId: signup.user?.tenantId ?? null
+  };
+}
+
+async function ensurePublishedJob(token) {
+  const jobs = await requestJson("Jobs list", "/jobs", {
+    headers: {
+      authorization: `Bearer ${token}`
+    }
+  });
+
+  const existing = Array.isArray(jobs)
+    ? jobs.find((job) => job.status === "PUBLISHED") ?? jobs[0] ?? null
+    : null;
+
+  if (existing) {
+    logStatus("PASS", "Using existing job", `${existing.id} (${existing.title})`);
+    return existing;
+  }
+
+  const created = await requestJson("Create job", "/jobs", {
+    method: "POST",
+    headers: jsonHeaders(token),
+    body: JSON.stringify({
+      title: "Operasyon Uzmani",
+      roleFamily: "Operasyon",
+      department: "Operasyon",
+      status: "PUBLISHED",
+      locationText: "Istanbul",
+      shiftType: "Vardiyali",
+      jdText: "Depo operasyonu, vardiya koordinasyonu ve ekip ici raporlama sorumluluklari.",
+      requirements: [
+        { key: "vardiya", value: "Vardiyali calisma deneyimi", required: true },
+        { key: "iletisim", value: "Ekip ici iletisim", required: true }
+      ]
+    })
+  });
+
+  logStatus("PASS", "Published job created", `${created.id} (${created.title})`);
+  return created;
+}
+
+async function uploadPilotCv(token, candidateId, stamp) {
+  const formData = new FormData();
+  formData.set(
+    "file",
+    new File([buildPilotCv(stamp)], "pilot-smoke-cv.txt", {
+      type: "text/plain"
+    })
+  );
+
+  const upload = await requestJson("Upload CV", `/candidates/${candidateId}/cv-files`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  ensure(upload?.id, "CV upload returned no id");
+  logStatus("PASS", "CV uploaded", upload.id);
+
+  return upload;
 }
 
 async function main() {
@@ -111,8 +211,16 @@ async function main() {
   ensure(typeof webRoot.data === "string" && webRoot.data.length > 0, "Web root empty");
   logStatus("PASS", "Web reachable", `status=${webRoot.status}`);
 
+  const pilot = await signupPilotUser();
+  const auth = { authorization: `Bearer ${pilot.token}` };
+
+  const session = await requestJson("Auth session", "/auth/session", {
+    headers: auth
+  });
+  logStatus("PASS", "Auth session loaded", session?.runtime?.authTransport ?? "unknown");
+
   const recruiterOverview = await requestJson("Recruiter overview", "/read-models/recruiter-overview", {
-    headers: AUTH_HEADERS
+    headers: auth
   });
   logStatus(
     "PASS",
@@ -121,13 +229,13 @@ async function main() {
   );
 
   const providerHealth = await requestJson("Provider health", "/read-models/provider-health", {
-    headers: AUTH_HEADERS
+    headers: auth
   });
   const infrastructure = await requestJson("Infrastructure readiness", "/read-models/infrastructure-readiness", {
-    headers: AUTH_HEADERS
+    headers: auth
   });
   const billingOverview = await requestJson("Billing overview", "/billing/overview", {
-    headers: AUTH_HEADERS
+    headers: auth
   });
 
   if (providerHealth?.overall === "degraded") {
@@ -151,31 +259,58 @@ async function main() {
     logStatus("PASS", "Stripe billing configured");
   }
 
-  const jobs = await requestJson("Jobs list", "/jobs", { headers: AUTH_HEADERS });
-  const job = pickJob(jobs);
-  ensure(job, "No job found for pilot smoke");
-  logStatus("PASS", "Using job", `${job.id} (${job.title})`);
-
-  const stamp = `${Date.now()}`;
+  const job = await ensurePublishedJob(pilot.token);
   const candidatePayload = {
-    fullName: `Pilot Smoke ${stamp.slice(-6)}`,
-    email: `pilot-smoke+${stamp}@example.com`,
-    phone: `+90555${stamp.slice(-7)}`,
+    fullName: `Pilot Smoke ${pilot.stamp.slice(-6)}`,
+    email: `pilot-candidate+${pilot.stamp}@example.com`,
+    phone: `+90555${pilot.stamp.slice(-7)}`,
     source: "manual"
   };
 
   const candidateResult = await requestJson("Create candidate", "/candidates", {
     method: "POST",
-    headers: AUTH_HEADERS,
+    headers: jsonHeaders(pilot.token),
     body: JSON.stringify(candidatePayload)
   });
   const candidateId = candidateResult?.candidate?.id ?? candidateResult?.id ?? null;
   ensure(candidateId, "Candidate creation returned no id");
   logStatus("PASS", "Candidate created", candidateId);
 
+  const cvUpload = await uploadPilotCv(pilot.token, candidateId, pilot.stamp);
+
+  const cvParseTrigger = await requestJson("Trigger CV parsing", `/candidates/${candidateId}/cv-parsing/trigger`, {
+    method: "POST",
+    headers: jsonHeaders(pilot.token),
+    body: JSON.stringify({
+      cvFileId: cvUpload.id
+    })
+  });
+  logStatus("PASS", "CV parsing queued", cvParseTrigger?.taskRun?.taskRunId ?? cvUpload.id);
+
+  const latestCvParsing = await poll(
+    "CV parsing completion",
+    () =>
+      requestJson(`Poll latest CV parsing`, `/candidates/${candidateId}/cv-parsing/latest?cvFileId=${encodeURIComponent(cvUpload.id)}`, {
+        headers: auth
+      }),
+    (detail) => {
+      const status = detail?.taskRun?.status;
+      return Boolean(status && !["PENDING", "QUEUED", "RUNNING"].includes(status));
+    },
+    { attempts: 20, intervalMs: 2000 }
+  );
+
+  ensure(
+    latestCvParsing?.taskRun?.status === "SUCCEEDED",
+    "CV parsing did not succeed",
+    latestCvParsing?.taskRun?.errorMessage ?? JSON.stringify(latestCvParsing?.taskRun?.outputJson ?? {})
+  );
+  ensure(latestCvParsing?.parsedProfile?.id, "Parsed CV profile missing after successful parse");
+  logStatus("PASS", "CV parsing completed", latestCvParsing.parsedProfile.id);
+
   const applicationResult = await requestJson("Create application", "/applications", {
     method: "POST",
-    headers: AUTH_HEADERS,
+    headers: jsonHeaders(pilot.token),
     body: JSON.stringify({
       candidateId,
       jobId: process.env.CANDIT_JOB_ID ?? job.id
@@ -186,35 +321,59 @@ async function main() {
   logStatus("PASS", "Application created", applicationId);
 
   await requestJson("Application detail", `/read-models/applications/${applicationId}`, {
-    headers: AUTH_HEADERS
+    headers: auth
   });
   logStatus("PASS", "Application detail loaded");
 
   await requestJson("Trigger fit score", `/applications/${applicationId}/quick-action`, {
     method: "POST",
-    headers: AUTH_HEADERS,
+    headers: jsonHeaders(pilot.token),
     body: JSON.stringify({ action: "trigger_fit_score" })
   });
   logStatus("PASS", "Fit score queued");
 
-  const screeningDetail = await poll(
-    "Screening completion",
+  const applicationDetail = await poll(
+    "Fit score completion",
     () =>
       requestJson("Poll application detail", `/read-models/applications/${applicationId}`, {
-        headers: AUTH_HEADERS
+        headers: auth
       }),
-    (detail) => detail?.artifacts?.latestScreeningRun?.status === "SUCCEEDED",
-    { attempts: 15, intervalMs: 2000 }
+    (detail) => {
+      const fitStatus = detail?.artifacts?.latestFitScoreRun?.status;
+      return Boolean(fitStatus && !["PENDING", "QUEUED", "RUNNING"].includes(fitStatus));
+    },
+    { attempts: 20, intervalMs: 2000 }
+  );
+
+  ensure(
+    applicationDetail?.artifacts?.latestFitScoreRun?.status === "SUCCEEDED",
+    "Fit score did not succeed",
+    applicationDetail?.artifacts?.latestFitScoreRun?.errorMessage ??
+      JSON.stringify(applicationDetail?.artifacts?.latestFitScoreRun?.outputJson ?? {})
   );
   logStatus(
     "PASS",
-    "Screening completed",
-    screeningDetail?.artifacts?.latestScreeningRun?.id ?? "latest run succeeded"
+    "Fit score completed",
+    applicationDetail?.artifacts?.latestFitScoreRun?.id ?? "latest fit score succeeded"
   );
+
+  const screeningStatus = applicationDetail?.artifacts?.latestScreeningRun?.status;
+  if (screeningStatus && screeningStatus === "SUCCEEDED") {
+    logStatus(
+      "PASS",
+      "Screening completed",
+      applicationDetail?.artifacts?.latestScreeningRun?.id ?? "latest screening succeeded"
+    );
+  } else {
+    addWarning(
+      "Screening run not terminal",
+      screeningStatus ?? "latestScreeningRun missing"
+    );
+  }
 
   const inviteResult = await requestJson("Invite interview", `/applications/${applicationId}/quick-action`, {
     method: "POST",
-    headers: AUTH_HEADERS,
+    headers: jsonHeaders(pilot.token),
     body: JSON.stringify({ action: "invite_interview" })
   });
   const sessionId = inviteResult?.sessionId ?? null;
@@ -250,7 +409,7 @@ async function main() {
     body: JSON.stringify({
       token,
       transcriptText: "Hazirim, baslayabiliriz.",
-      answerSource: "text",
+      answerSource: "manual_text",
       locale: "tr-TR"
     })
   });
@@ -261,8 +420,8 @@ async function main() {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       token,
-      transcriptText: "Son iki yilda vardiyali operasyon ekiplerinde calistim, hizli tempoda hata payini dusurmek icin kontrol listeleri kullandim.",
-      answerSource: "text",
+      transcriptText: "Son iki yilda vardiyali operasyon ekiplerinde calistim, hata payini azaltmak icin kontrol listeleri ve raporlama kullandim.",
+      answerSource: "manual_text",
       locale: "tr-TR"
     })
   });

@@ -156,10 +156,9 @@ Ilgili arka plan notlari icin:
 - [x] Public contact intake endpoint'i staging'de tekrar calisir hale geldi.
   - Son dogrulama:
     - `POST /v1/public/contact` -> `201`
-    - response icinde `persistence: "stateless_fallback"`
+    - response icinde `persistence: "stored"`
   - Not:
-    - Endpoint artik form akisini kirmiyor
-    - Kalici inbox/persistence tarafinin yine de migration ile tamamlanmasi daha saglikli
+    - Migration uygulandiktan sonra kalici inbox/persistence aktif hale geldi
 - [ ] Public integrations copy'sinde Calendly hazirlik seviyesi runtime readiness ile tekrar hizalanmali.
   - Canli risk:
     - `/integrations` sayfasi Calendly'i fazla hazir gosterebilir.
@@ -173,6 +172,10 @@ Ilgili arka plan notlari icin:
     - `attempts=0`
   - Yorum:
     - API job kaydini olusturuyor ama worker kuyrugu tuketmuyor gibi gorunuyor.
+  - Son tekrar dogrulama:
+    - Migration sonrasi yeniden test edildi
+    - `APPLICANT_FIT_SCORING` ve `SCREENING_SUPPORT` task'lari 12 saniye sonra bile `QUEUED`
+    - `errorMessage: null`
   - Worker log'unda aranacak satir:
     - `worker.started`
     - `worker.bullmq.completed`

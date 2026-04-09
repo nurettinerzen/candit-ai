@@ -2501,6 +2501,919 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Automate pre-screening, sourcing, and interview processes with AI. Find the right candidate faster.",
 });
 
+// ─── Public Site Pages ───────────────────────────────────────────────
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  // ProductStage
+  "Sistem aktif": "System active",
+  "Tek platform, tam kontrol": "One platform, full control",
+  "Tüm işe alım süreçleri tek panelde buluşur.": "All hiring processes come together in one panel.",
+  "daha hızlı işe alım": "faster hiring",
+  "Modüller": "Modules",
+  "Performans metrikleri": "Performance metrics",
+  "Tek platform ile daha hızlı, daha doğru işe alım.": "Faster, more accurate hiring with one platform.",
+  "Ön eleme, AI mülakat ve değerlendirme süreçleri aynı akış içinde otomatik yönetilir.":
+    "Pre-screening, AI interview, and evaluation processes are managed automatically in the same flow.",
+  "Değerlendirme doğruluğu": "Evaluation accuracy",
+  "Süreç hızı": "Process speed",
+  "Aday memnuniyeti": "Candidate satisfaction",
+  "Örnek akış": "Sample flow",
+  "AI mülakat değerlendirmesi": "AI interview evaluation",
+  "Aday AI mülakat ile başlar, değerlendirme otomatik oluşturulur ve sonuçlar panele düşer.":
+    "The candidate starts with an AI interview, the evaluation is created automatically, and the results appear in the panel.",
+  "AI Mülakat": "AI Interview",
+  "Ön Eleme": "Pre-Screening",
+  "Analitik": "Analytics",
+  "Tüm mülakat ve değerlendirme kayıtları tek panelde görünür.":
+    "All interview and evaluation records are visible in one panel.",
+
+  // Home channels
+  "AI Mülakat": "AI Interview",
+  "Adaylara otomatik sesli veya yazılı mülakat uygulayın. AI yanıtları anlık analiz eder ve puanlar.":
+    "Conduct automated voice or text interviews with candidates. AI analyzes and scores responses in real time.",
+  "Ön Eleme": "Pre-Screening",
+  "CV ve başvuru bilgilerini AI ile tarayın, pozisyona uygun adayları otomatik filtreleyin.":
+    "Scan CVs and application data with AI, automatically filter candidates suitable for the position.",
+  "Aday Yönetimi": "Candidate Management",
+  "Tüm başvuruları tek panelden takip edin. Durum güncellemeleri ve iletişim otomatik yönetilir.":
+    "Track all applications from one panel. Status updates and communication are managed automatically.",
+  "Analitik": "Analytics",
+  "İşe alım süreci metriklerini gerçek zamanlı izleyin. Darboğazları tespit edip optimize edin.":
+    "Monitor hiring process metrics in real time. Identify and optimize bottlenecks.",
+
+  // Home proof stats
+  "Tutarlı": "Consistent",
+  "Değerlendirme Çıktıları": "Evaluation Outputs",
+  "Yapılandırılmış screening, mülakat ve rapor çıktıları ile ekip içinde ortak karar zemini oluşturun.":
+    "Create a common decision ground within the team with structured screening, interview, and report outputs.",
+  "7/24": "24/7",
+  "Kesintisiz Mülakat": "Non-Stop Interviews",
+  "AI mülakat 7 gün 24 saat aktif. Adaylar istedikleri zaman mülakata girebilir.":
+    "AI interviews are active 24/7. Candidates can enter the interview whenever they want.",
+  "Daha az": "Less",
+  "Manuel Tekrar": "Manual Repetition",
+  "Tekrarlayan ön eleme, özet ve raporlama adımlarını otomatikleştirerek işe alım ekibinin odağını koruyun.":
+    "Maintain the hiring team's focus by automating repetitive pre-screening, summary, and reporting steps.",
+
+  // Home steps
+  "Pozisyonu tanımlayın": "Define the position",
+  "İş ilanını oluşturun, mülakat sorularını ve değerlendirme kriterlerini belirleyin.":
+    "Create the job posting, set interview questions and evaluation criteria.",
+  "Adayları yönlendirin": "Direct candidates",
+  "Mülakat linkini paylaşın veya başvuru formunuza entegre edin. Adaylar kolayca katılsın.":
+    "Share the interview link or integrate it into your application form. Let candidates easily participate.",
+  "AI mülakat yaptırın": "Conduct AI interviews",
+  "Adaylar sizin belirlediğiniz sorularla mülakata girer. AI yanıtları analiz eder ve raporlar.":
+    "Candidates enter the interview with the questions you defined. AI analyzes the responses and reports.",
+  "En iyi adayı seçin": "Select the best candidate",
+  "Karşılaştırmalı raporlarla en uygun adayı belirleyin ve teklifinizi iletin.":
+    "Identify the most suitable candidate with comparative reports and extend your offer.",
+
+  // Features page
+  "Güçlü Özellikler": "Powerful Features",
+  "İşe alım sürecinizi güçlendirecek AI yetenekleri": "AI capabilities to power up your hiring process",
+  "AI mülakat, aday tarama, iş ilanı yönetimi ve analitik araçları tek platformda. Hızlı kurulum, derin entegrasyonlar ve ölçeklenebilir otomasyon.":
+    "AI interviews, candidate screening, job posting management, and analytics tools in one platform. Quick setup, deep integrations, and scalable automation.",
+  "Hemen Başlayın": "Get Started",
+  "Özellikleri Keşfedin": "Explore Features",
+  "Operasyon görünürlüğü ve yönetim araçları": "Operations visibility and management tools",
+  "Dashboard, güvenlik ve entegrasyon katmanlarıyla ekibiniz ve yöneticileriniz aynı veriden karar verir.":
+    "Your team and managers make decisions from the same data with dashboard, security, and integration layers.",
+  "Dakikalar içinde yayına alın": "Go live in minutes",
+  "Dört adımda AI mülakat sisteminizi kurun ve işe alım süreçlerinizde canlı hizmete başlayın.":
+    "Set up your AI interview system in four steps and go live with your hiring processes.",
+  "Her sektöre özel AI işe alım çözümleri": "AI hiring solutions tailored to every industry",
+  "Teknoloji, perakende, sağlık, finans ve üretim sektörlerine özel mülakat akışları.":
+    "Interview workflows customized for technology, retail, healthcare, finance, and manufacturing industries.",
+  "Çözümü incele": "Explore solution",
+  "Merak edilenler": "Frequently asked",
+  "Özellikler, entegrasyon ve kullanım hakkında en çok sorulan sorular.":
+    "The most frequently asked questions about features, integrations, and usage.",
+  "AI ile işe alım deneyiminizi dönüştürün": "Transform your hiring experience with AI",
+  "Tüm özelliklerimizi ücretsiz deneyin. Kurulum dakikalar içinde tamamlanır, teknik bilgi gerekmez.":
+    "Try all our features for free. Setup is completed in minutes, no technical knowledge required.",
+
+  // Feature groups
+  "Adaylara sesli veya görüntülü AI mülakatları otomatik gerçekleştirin.":
+    "Automatically conduct voice or video AI interviews with candidates.",
+  "Pozisyona özel soru setleri": "Position-specific question sets",
+  "Sesli ve görüntülü mülakat desteği": "Voice and video interview support",
+  "Gerçek zamanlı değerlendirme": "Real-time evaluation",
+  "Otomatik transkript ve özet": "Automatic transcript and summary",
+  "Ön Eleme (Screening)": "Pre-Screening",
+  "Başvuruları AI ile hızlıca tarayın, uygun adayları öne çıkarın.":
+    "Quickly scan applications with AI and highlight suitable candidates.",
+  "CV ve başvuru formu analizi": "CV and application form analysis",
+  "Pozisyon-aday uyum skoru": "Position-candidate fit score",
+  "Otomatik kısa liste oluşturma": "Automatic shortlisting",
+  "Özelleştirilebilir eleme kriterleri": "Customizable screening criteria",
+  "Aday Değerlendirme": "Candidate Evaluation",
+  "Her adayı yapılandırılmış puanlama ile objektif değerlendirin.":
+    "Objectively evaluate each candidate with structured scoring.",
+  "Yetkinlik bazlı skorlama": "Competency-based scoring",
+  "Teknik ve davranışsal analiz": "Technical and behavioral analysis",
+  "Karşılaştırmalı aday raporu": "Comparative candidate report",
+  "Önyargı azaltma metrikleri": "Bias reduction metrics",
+  "İş İlanı Yönetimi": "Job Posting Management",
+  "İlanlarınızı oluşturun, yayınlayın ve başvuruları tek yerden takip edin.":
+    "Create and publish your postings and track applications from one place.",
+  "Hızlı ilan oluşturma şablonları": "Quick posting creation templates",
+  "Çoklu pozisyon yönetimi": "Multi-position management",
+  "Başvuru havuzu takibi": "Application pool tracking",
+  "Kariyer sayfası entegrasyonu": "Career page integration",
+  "Analitik ve Raporlama": "Analytics and Reporting",
+  "İşe alım sürecinizin her adımını ölçün ve optimize edin.":
+    "Measure and optimize every step of your hiring process.",
+  "Mülakat performans metrikleri": "Interview performance metrics",
+  "Aday dönüşüm hunisi": "Candidate conversion funnel",
+  "Pozisyon bazlı süre analizi": "Position-based time analysis",
+  "Ekip verimliliği raporları": "Team efficiency reports",
+  "Entegrasyonlar": "Integrations",
+  "Pilot kapsamındaki takvim ve API entegrasyonlarını kontrollü şekilde devreye alın.":
+    "Activate pilot-scope calendar and API integrations in a controlled manner.",
+  "Google Calendar ve Google Meet": "Google Calendar and Google Meet",
+  "Calendly bağlantısı": "Calendly connection",
+  "ATS genel API / webhook": "ATS generic API / webhook",
+  "Kaynak Bulma (beta)": "Sourcing (beta)",
+
+  // Feature operations
+  "İşe Alım Kontrol Paneli": "Hiring Control Panel",
+  "Tüm işe alım sürecinizi tek ekrandan takip edin ve yönetin.":
+    "Track and manage your entire hiring process from one screen.",
+  "Pozisyon bazlı ilerleme ve doluluk oranları": "Position-based progress and fill rates",
+  "Mülakat tamamlanma ve değerlendirme metrikleri": "Interview completion and evaluation metrics",
+  "Aday havuzu ve süreç hattı görünürlüğü": "Candidate pool and pipeline visibility",
+  "Ekip performansı ve SLA takibi": "Team performance and SLA tracking",
+  "Güvenlik ve KVKK": "Security and KVKK",
+  "Aday verilerini güvenle saklayın, KVKK ve GDPR uyumlu çalışın.":
+    "Store candidate data securely and work in compliance with KVKK and GDPR.",
+  "Rol bazlı erişim ve yetkilendirme": "Role-based access and authorization",
+  "Aday verisi maskeleme ve anonimleştirme": "Candidate data masking and anonymization",
+  "Veri saklama süresi politikaları ve otomatik silme": "Data retention policies and automatic deletion",
+  "Tüm adaylarınızı tek havuzda yönetin, geçmiş verilere kolayca erişin.":
+    "Manage all your candidates in a single pool, easily access historical data.",
+  "Merkezi aday veritabanı ve arama": "Central candidate database and search",
+  "Aday etiketleme ve segmentasyon": "Candidate tagging and segmentation",
+  "Geçmiş mülakat ve değerlendirme kayıtları": "Historical interview and evaluation records",
+
+  // Solutions page
+  "Sektörel AI Çözümleri": "Industry AI Solutions",
+  "Sektörünüze özel AI mülakat asistanı": "AI interview assistant tailored to your industry",
+  "Teknoloji, perakende, sağlık, finans ve üretim sektörlerine özel AI mülakat ve ön eleme akışları ile hemen başlayın.":
+    "Get started with AI interview and pre-screening workflows customized for technology, retail, healthcare, finance, and manufacturing.",
+  "Çözümleri Keşfedin": "Explore Solutions",
+  "Sektörünüzü seçin, hemen başlayın": "Choose your industry, get started now",
+  "Her çözüm, sektörün ihtiyaçlarına özel AI mülakat akışları, ön eleme kriterleri ve değerlendirme metrikleriyle donatıldı.":
+    "Each solution is equipped with AI interview workflows, pre-screening criteria, and evaluation metrics tailored to industry needs.",
+  "Neden Candit.ai?": "Why Candit.ai?",
+  "Sektörden bağımsız olarak her işe alım ekibine değer katan temel avantajlar.":
+    "Core advantages that add value to every hiring team regardless of industry.",
+  "Karar öncesi merak edilenler": "Pre-decision FAQs",
+  "Çözümler, entegrasyon süreci ve fiyatlandırma hakkında en sık sorulan sorular.":
+    "Frequently asked questions about solutions, integration process, and pricing.",
+  "Sektörünüze özel AI işe alım çözümünü deneyin": "Try the AI hiring solution tailored to your industry",
+  "Listede olsun ya da olmasın, sektörünüze uygun mülakat ve ön eleme akışını birlikte tasarlayalım.":
+    "Whether listed or not, let's design the interview and pre-screening workflow that fits your industry together.",
+
+  // Solution stats
+  "Daha hızlı": "Faster",
+  "İşe alım akışı": "Hiring workflow",
+  "Çoklu rol": "Multi-role",
+  "Desteklenen senaryolar": "Supported scenarios",
+  "Ön eleme çıktıları": "Pre-screening outputs",
+  "Ölçeklenebilir": "Scalable",
+  "Aday kapasitesi": "Candidate capacity",
+
+  // Solution advantages
+  "Hızlı İşe Alım Döngüsü": "Fast Hiring Cycle",
+  "AI ön eleme ve mülakat ile işe alım döngüsündeki tekrarları azaltın ve ekip hızını artırın.":
+    "Reduce repetition in the hiring cycle with AI pre-screening and interviews, and increase team speed.",
+  "Objektif Aday Değerlendirme": "Objective Candidate Evaluation",
+  "Yapılandırılmış skorlama ile önyargıyı azaltın, tutarlı kararlar verin.":
+    "Reduce bias with structured scoring and make consistent decisions.",
+  "Ölçeklenebilir Alım": "Scalable Hiring",
+  "Tek pozisyondan toplu alıma kadar her ölçekte AI mülakat gerçekleştirin.":
+    "Conduct AI interviews at every scale, from single positions to bulk hiring.",
+  "Uyum Odaklı": "Compliance-Focused",
+  "Aday verilerini rol bazlı erişim, denetim izi ve yaşam döngüsü kontrolleriyle yönetin.":
+    "Manage candidate data with role-based access, audit trails, and lifecycle controls.",
+
+  // Solution detail page
+  "Ana Sayfa": "Home",
+  "Çözümler": "Solutions",
+  "Hesap Oluştur": "Create Account",
+  "Fiyatları İncele": "View Pricing",
+  "Kullanım Senaryoları": "Use Cases",
+  "Nasıl Çalışır?": "How Does It Work?",
+  "Saha gerçeğine yakın örnek akışlar": "Real-world example workflows",
+  "Sektörünüze özel AI mülakat ve ön eleme senaryolarını inceleyin.":
+    "Explore AI interview and pre-screening scenarios specific to your industry.",
+  "Senaryo": "Scenario",
+  "Operasyonun kritik avantajları": "Critical advantages of the operation",
+  "Bu sektördeki işe alım sürecinizi hızlandıran temel avantajlar.":
+    "Key advantages that accelerate your hiring process in this industry.",
+  "Kullanılan Araçlar": "Tools Used",
+  "İşe alım sürecinin her adımında AI desteği": "AI support at every step of the hiring process",
+  "Candit'in temel araçları bu sektör çözümünde nasıl kullanılıyor?":
+    "How are Candit's core tools used in this industry solution?",
+
+  // Solution detail - per industry
+  "Teknoloji Sektörü İçin AI İşe Alım": "AI Hiring for the Technology Sector",
+  "Yazılımcı, mühendis ve teknik pozisyonlarda hızlı ve doğru işe alım.":
+    "Fast and accurate hiring for developer, engineer, and technical positions.",
+  "Teknik yetkinlik değerlendirmesi, kodlama becerisi analizi ve kültür uyumu skorlaması ile teknoloji sektöründe doğru adayı bulun.":
+    "Find the right candidate in the technology sector with technical competency evaluation, coding skill analysis, and culture fit scoring.",
+  "Yazılım geliştirici teknik mülakat ve değerlendirme": "Software developer technical interview and evaluation",
+  "Mühendislik pozisyonları için yetkinlik bazlı ön eleme": "Competency-based pre-screening for engineering positions",
+  "Toplu stajyer ve yeni mezun alımı": "Bulk intern and new graduate hiring",
+  "Teknik soru setleri ile derinlemesine değerlendirme": "In-depth evaluation with technical question sets",
+  "Kod analizi ve problem çözme becerisi ölçümü": "Code analysis and problem-solving skill measurement",
+  "Hızlı işe alım döngüsü ile yetenek kaybını önleme": "Preventing talent loss with a fast hiring cycle",
+  "Çoklu pozisyon ve ekip bazlı süreç hattı yönetimi": "Multi-position and team-based pipeline management",
+  "Teknik ekibinizi AI ile güçlendirin": "Strengthen your technical team with AI",
+  "Doğru yazılımcıyı bulmak artık günler değil, saatler sürüyor.": "Finding the right developer now takes hours, not days.",
+
+  "Perakende Sektörü İçin AI İşe Alım": "AI Hiring for the Retail Sector",
+  "Yüksek hacimli mağaza ve depo personeli alımını hızlandırın.": "Accelerate high-volume store and warehouse staff hiring.",
+  "Sezonluk kampanya dönemlerinde yüzlerce başvuruyu AI ile tarayın, uygun adayları dakikalar içinde belirleyin.":
+    "Scan hundreds of applications with AI during seasonal campaign periods and identify suitable candidates in minutes.",
+  "Mağaza personeli toplu alımı ve hızlı ön eleme": "Bulk store staff hiring and fast pre-screening",
+  "Sezonluk kampanya dönemi işe alım otomasyonu": "Seasonal campaign period hiring automation",
+  "Bölge bazlı aday havuzu yönetimi": "Regional candidate pool management",
+  "Yüksek hacimli başvurularda otomatik filtreleme": "Automatic filtering for high-volume applications",
+  "Vardiya ve lokasyon uyumu kontrolü": "Shift and location compatibility check",
+  "Hızlı işe alıştırma için standart mülakat akışları": "Standard interview workflows for fast onboarding",
+  "Bölge müdürleri için özel raporlama": "Custom reporting for regional managers",
+  "Perakende alımlarınızı hızlandırın": "Accelerate your retail hiring",
+  "Sezonluk işe alımları AI ile yönetin, mağazalarınız zamanında açılsın.":
+    "Manage seasonal hiring with AI, so your stores open on time.",
+
+  "Sağlık Sektörü İçin AI İşe Alım": "AI Hiring for the Healthcare Sector",
+  "Hemşire, teknisyen ve sağlık personeli alımında hız ve uyum.": "Speed and compliance in hiring nurses, technicians, and healthcare staff.",
+  "Sertifika doğrulama, vardiya uyumu ve yetkinlik değerlendirmesi ile sağlık sektörüne özel işe alım çözümleri.":
+    "Hiring solutions specific to the healthcare sector with certificate verification, shift compatibility, and competency evaluation.",
+  "Hemşire ve sağlık teknisyeni alımı": "Nurse and healthcare technician hiring",
+  "Sertifika ve lisans uygunluk kontrolü": "Certificate and license eligibility check",
+  "Vardiya bazlı uygunluk değerlendirmesi": "Shift-based eligibility evaluation",
+  "Sektöre özel yetkinlik soru setleri": "Industry-specific competency question sets",
+  "Sertifika ve belge doğrulama desteği": "Certificate and document verification support",
+  "KVKK uyumlu hassas veri yönetimi": "KVKK-compliant sensitive data management",
+  "Acil pozisyonlar için hızlandırılmış süreç": "Expedited process for urgent positions",
+  "Sağlık ekibinizi doğru adaylarla tamamlayın": "Complete your healthcare team with the right candidates",
+  "Kritik sağlık pozisyonlarını AI destekli süreçle hızla doldurun.": "Quickly fill critical healthcare positions with an AI-powered process.",
+
+  "Finans Sektörü İçin AI İşe Alım": "AI Hiring for the Finance Sector",
+  "Bankacılık, sigorta ve fintek pozisyonlarında nitelikli aday seçimi.": "Qualified candidate selection for banking, insurance, and fintech positions.",
+  "Analitik düşünme, risk değerlendirme ve mevzuat bilgisi gibi kritik yetkinlikleri AI mülakat ile ölçün.":
+    "Measure critical competencies like analytical thinking, risk assessment, and regulatory knowledge with AI interviews.",
+  "Bankacılık ve sigorta pozisyonları için ön eleme": "Pre-screening for banking and insurance positions",
+  "Fintek startup'ları için hızlı teknik değerlendirme": "Fast technical evaluation for fintech startups",
+  "Uyum ve mevzuat bilgisi kontrolü": "Compliance and regulatory knowledge check",
+  "Finansal yetkinlik ve analitik düşünme ölçümü": "Financial competency and analytical thinking measurement",
+  "Mevzuat ve uyum bilgisi değerlendirmesi": "Regulatory and compliance knowledge evaluation",
+  "Gizlilik odaklı aday veri yönetimi": "Privacy-focused candidate data management",
+  "Kurumsal onay akışları ve rol bazlı erişim": "Corporate approval workflows and role-based access",
+  "Finansal yetenekleri AI ile keşfedin": "Discover financial talent with AI",
+  "Doğru finans profesyonelini bulmak için yapılandırılmış AI mülakatları kullanın.":
+    "Use structured AI interviews to find the right finance professional.",
+
+  "Üretim ve Lojistik İçin AI İşe Alım": "AI Hiring for Manufacturing and Logistics",
+  "Fabrika, depo ve saha personeli alımında ölçeklenebilir çözüm.": "Scalable solution for factory, warehouse, and field staff hiring.",
+  "Yüksek hacimli mavi yaka alımlarını AI ön eleme ve standart mülakat akışlarıyla hızlandırın.":
+    "Accelerate high-volume blue-collar hiring with AI pre-screening and standard interview workflows.",
+  "Üretim hattı operatörü ve teknisyen alımı": "Production line operator and technician hiring",
+  "Depo ve lojistik personeli toplu işe alımı": "Bulk warehouse and logistics staff hiring",
+  "Saha ekibi için bölge bazlı aday yönetimi": "Regional candidate management for field teams",
+  "Mavi yaka pozisyonlarına özel soru setleri": "Question sets specific to blue-collar positions",
+  "Fiziksel uygunluk ve vardiya tercihi kontrolü": "Physical fitness and shift preference check",
+  "Toplu alımlarda ölçeklenebilir AI mülakat": "Scalable AI interviews for bulk hiring",
+  "Fabrika ve depo bazlı raporlama": "Factory and warehouse-based reporting",
+  "Üretim ve lojistik alımlarınızı ölçeklendirin": "Scale your manufacturing and logistics hiring",
+  "Yüzlerce başvuruyu AI ile tarayın, doğru adayları saatler içinde belirleyin.":
+    "Scan hundreds of applications with AI and identify the right candidates in hours.",
+
+  // SolutionWorkflow
+  "Araçları etkinleştirin": "Activate tools",
+  "Adaylar AI mülakat ile değerlendirilir, yanıtlar analiz edilir ve yetkinlik raporu oluşturulur.":
+    "Candidates are evaluated with AI interviews, responses are analyzed, and a competency report is generated.",
+  "Sonuçları değerlendirin": "Evaluate results",
+  "Mülakat tamamlanma, değerlendirme skoru ve karşılaştırmalı raporlarla en uygun adayı belirleyin.":
+    "Identify the most suitable candidate with interview completion, evaluation score, and comparative reports.",
+  "Pozisyonu tanımlayın, adayları yönlendirin ve AI mülakatı başlatın. Her adım otomatik yönetilir.":
+    "Define the position, direct candidates, and start the AI interview. Each step is managed automatically.",
+
+  // Pricing page
+  "Şeffaf Fiyatlandırma": "Transparent Pricing",
+  "İhtiyacınıza uygun planı seçin": "Choose the plan that fits your needs",
+  "Ücretsiz deneme ile başlayıp, büyüdükçe ölçeklendirin. Gizli ücret yok, sürpriz yok.":
+    "Start with a free trial and scale as you grow. No hidden fees, no surprises.",
+  "Ücretsiz deneme — Kredi kartı gerekmez": "Free trial — No credit card required",
+  "En Popüler": "Most Popular",
+  "Ücretsiz": "Free",
+  "İletişime Geçin": "Contact Us",
+  "/ay": "/mo",
+  "Özel fiyatlandırma": "Custom pricing",
+  "Aşım": "Overage",
+  "Platformu keşfedin. 7 gün boyunca temel özellikleri deneyin.": "Explore the platform. Try core features for 7 days.",
+  "7 gün ücretsiz — Kredi kartı gerekmez": "7 days free — No credit card required",
+  "Deneme": "Trial",
+  "Starter": "Starter",
+  "Tek işe alım uzmanı ile düzenli işe alım yapan ekipler için.": "For teams with a single recruiter doing regular hiring.",
+  "Growth": "Growth",
+  "Düzenli işe alım yapan küçük ekipler için.": "For small teams doing regular hiring.",
+  "Kurumsal": "Enterprise",
+  "Büyük ekipler için özel kota, branded deneyim, SLA ve entegrasyonlar.":
+    "Custom quotas, branded experience, SLA, and integrations for large teams.",
+  "Özel Teklif": "Custom Quote",
+  "1 kullanıcı": "1 user",
+  "2 kullanıcı": "2 users",
+  "1 aktif ilan": "1 active job",
+  "2 aktif ilan": "2 active jobs",
+  "10 aktif ilan": "10 active jobs",
+  "25 aday ön eleme": "25 candidate screenings",
+  "100 aday işleme": "100 candidate processing",
+  "500 aday işleme": "500 candidate processing",
+  "3 AI mülakat": "3 AI interviews",
+  "15 AI mülakat": "15 AI interviews",
+  "50 AI mülakat": "50 AI interviews",
+  "Temel raporlama": "Basic reporting",
+  "E-posta desteği": "Email support",
+  "Takvim entegrasyonları": "Calendar integrations",
+  "Gelişmiş raporlama": "Advanced reporting",
+  "Öncelikli destek": "Priority support",
+  "Özel kullanıcı limiti": "Custom user limit",
+  "Özel aktif ilan": "Custom active jobs",
+  "Özel aday işleme": "Custom candidate processing",
+  "Özel AI mülakat": "Custom AI interviews",
+  "Özel işe alıştırma + SLA": "Custom onboarding + SLA",
+  "Ücretsiz Deneyin": "Try Free",
+  "Bize Ulaşın": "Contact Us",
+  "Planınızı yükseltmeden, sadece ihtiyacınız olan ek kotayı satın alın.":
+    "Buy just the extra quota you need without upgrading your plan.",
+  "Ek Paketler": "Add-on Packs",
+  "Planınızı Bozmadan Kapasite Artırın": "Increase Capacity Without Changing Your Plan",
+  "Planınızı değiştirmeden yoğun dönemlerde ek aday işleme ve AI mülakat kotası satın alın.":
+    "Buy extra candidate processing and AI interview quota during busy periods without changing your plan.",
+  "Ek aday işleme: 1.099₺ / 50 aday": "Extra candidate processing: 1,099₺ / 50 candidates",
+  "Ek aday işleme: 1.999₺ / 100 aday": "Extra candidate processing: 1,999₺ / 100 candidates",
+  "Ek AI mülakat: 1.199₺ / 10 mülakat": "Extra AI interviews: 1,199₺ / 10 interviews",
+  "Ek AI mülakat: 2.499₺ / 25 mülakat": "Extra AI interviews: 2,499₺ / 25 interviews",
+  "Mevcut plana eklenir, dönem içinde aktif olur": "Added to current plan, active within the period",
+  "Plana Ekle": "Add to Plan",
+  "Ek paket detayları": "Add-on pack details",
+  "Bu paketler mevcut plan kotanız yetmediğinde dönem içinde tek seferlik kapasite artışı sağlar.":
+    "These packs provide a one-time capacity increase during the period when your current plan quota runs out.",
+  "Kanal": "Channel",
+  "Birim": "Unit",
+  "Paket fiyatı": "Pack price",
+  "Not": "Note",
+  "Ek aday işleme": "Extra candidate processing",
+  "Ek AI mülakat": "Extra AI interviews",
+  "50 aday": "50 candidates",
+  "100 aday": "100 candidates",
+  "10 mülakat": "10 interviews",
+  "25 mülakat": "25 interviews",
+  "Düşük hacimli ek ihtiyaçlarda hızlı kapasite artışı için kullanılır.":
+    "Used for quick capacity increase in low-volume additional needs.",
+  "Aday ön eleme kotası dolduğunda daha avantajlı geniş paket seçeneğidir.":
+    "A more cost-effective large pack option when the candidate pre-screening quota is full.",
+  "Kısa süreli ek görüşme ihtiyacı için küçük mülakat paketi.":
+    "Small interview pack for short-term additional interview needs.",
+  "Dönem içinde daha yoğun AI mülakat kullanımı için daha avantajlı büyük paket seçeneğidir.":
+    "A more cost-effective large pack option for heavier AI interview usage within the period.",
+  "Hala kararsız mısınız?": "Still undecided?",
+  "İhtiyacınıza göre doğru paketi birlikte seçelim.": "Let's choose the right package together for your needs.",
+  "Sık Sorulan Sorular": "Frequently Asked Questions",
+  "Fiyatlandırma hakkında merak edilenler": "FAQs about pricing",
+  "Karar vermeden önce en sık gelen sorulara göz atın.": "Check the most frequently asked questions before deciding.",
+  "Sorularınız mı var?": "Have questions?",
+  "Bize ulaşın": "Contact us",
+
+  // FAQ
+  "AI mülakat nasıl çalışır?": "How does AI interview work?",
+  "Aday, paylaşılan mülakat linkine tıklayarak görüşmeyi başlatır. AI asistan pozisyona özel soruları sırayla sorar, yanıtları gerçek zamanlı analiz eder ve detaylı bir değerlendirme raporu oluşturur.":
+    "The candidate starts the interview by clicking the shared interview link. The AI assistant asks position-specific questions one by one, analyzes responses in real time, and generates a detailed evaluation report.",
+  "Ön eleme (screening) süreci nedir?": "What is the pre-screening process?",
+  "Adayların CV ve başvuru bilgileri AI tarafından analiz edilir, pozisyon gereksinimleriyle eşleştirilir ve uygunluk skoru hesaplanır. Belirlediğiniz kriterlere göre otomatik kısa liste oluşturulur.":
+    "Candidates' CVs and application data are analyzed by AI, matched with position requirements, and a fit score is calculated. An automatic shortlist is created based on your criteria.",
+  "Deneme sürümünde neler var?": "What's included in the trial?",
+  "7 gün boyunca 1 kullanıcı, 1 aktif ilan, 25 aday ön eleme ve 3 AI mülakat hakkı ile platformu ücretsiz deneyebilirsiniz. Kredi kartı gerekmez.":
+    "You can try the platform free for 7 days with 1 user, 1 active job, 25 candidate screenings, and 3 AI interviews. No credit card required.",
+  "KVKK ve veri güvenliği nasıl sağlanıyor?": "How is KVKK and data security ensured?",
+  "Platform; rol bazlı erişim, veri maskeleme, audit log ve yaşam döngüsü kontrolleriyle güvenli kullanım için tasarlanmıştır. KVKK ve GDPR süreçleri için gerekli operasyonel kontroller ekip bazında yapılandırılmalıdır.":
+    "The platform is designed for secure use with role-based access, data masking, audit logs, and lifecycle controls. Operational controls required for KVKK and GDPR processes must be configured on a team basis.",
+  "Mevcut ATS sistemimle entegre olabilir mi?": "Can it integrate with my existing ATS?",
+  "Evet. Pilot aşamada REST API ve webhook desteği ile ATS sistemleriyle kontrollü entegrasyon kurulabilir. Hazır ve aktif bağlantı tarafında Google Calendar, Google Meet ve Calendly odaklı ilerliyoruz; diğer entegrasyonlar yol haritasına göre açılıyor.":
+    "Yes. In the pilot phase, controlled integration with ATS systems can be set up via REST API and webhook support. On the ready and active connections side, we are focused on Google Calendar, Google Meet, and Calendly; other integrations are opened according to the roadmap.",
+
+  // Integrations page
+  "Pilot kapsamındaki entegrasyonlar": "Pilot-scope integrations",
+  "Takvim, ATS ve webhook odaklı bağlantıları kontrollü şekilde devreye alın.":
+    "Activate calendar, ATS, and webhook-focused connections in a controlled manner.",
+  "Takvim ve Planlama": "Calendar and Scheduling",
+  "ATS ve İşe Alım Sistemleri": "ATS and Hiring Systems",
+  "Yol Haritası": "Roadmap",
+  "İhtiyacınıza özel entegrasyon mu gerekiyor?": "Need a custom integration?",
+  "Mevcut işe alım altyapınıza uygun özel bağlantı ihtiyacınız varsa ekibimizle planlayalım.":
+    "If you need a custom connection that fits your existing hiring infrastructure, let's plan it with our team.",
+  "Mülakat planlarını takvime bağlayın ve etkinlik oluşturun": "Connect interview schedules to your calendar and create events",
+  "Uygun akışlarda görüşme linklerini Google ekosistemiyle yönetin": "Manage interview links through the Google ecosystem in suitable flows",
+  "Aday planlama akışları için kurulum aşamasında, talep bazlı devreye alınır": "In setup phase for candidate scheduling flows, activated on demand",
+  "Pilotta aktif": "Active in pilot",
+  "Yakında": "Coming soon",
+  "Panelde aç": "Open in panel",
+  "İletişime geç": "Contact us",
+  "Mevcut ATS verinizi REST tabanlı senkronizasyonla bağlayın": "Connect your existing ATS data with REST-based synchronization",
+  "Başvuru ve mülakat olaylarını kendi sistemlerinize aktarın": "Transfer application and interview events to your own systems",
+  "Dokümanı aç": "Open docs",
+  "Kurumsal ekipler için mevcut işe alım altyapısına özel entegrasyon": "Custom integration for enterprise teams with existing hiring infrastructure",
+  "Kurumsal": "Enterprise",
+  "Kurumsal planlama ihtiyaçları için yol haritasında": "On the roadmap for enterprise scheduling needs",
+  "Doğrudan toplantı oluşturma desteği yol haritasında": "Direct meeting creation support on the roadmap",
+  "Çift yönlü veri eşleme ve özel saha senaryoları için hazırlanıyor": "Being prepared for two-way data mapping and custom field scenarios",
+  "Yol Haritası": "Roadmap",
+  "İhtiyaç paylaş": "Share your need",
+
+  // Blog page
+  "Candit Blog": "Candit Blog",
+  "AI destekli işe alım hakkında en son yazılar": "Latest articles about AI-powered hiring",
+  "Sektör trendleri, en iyi uygulamalar ve AI ile işe alım süreçlerinizi nasıl optimize edeceğinizi keşfedin.":
+    "Discover industry trends, best practices, and how to optimize your hiring processes with AI.",
+  "Yazıyı oku": "Read article",
+  "Yeni içeriklerden haberdar olun": "Stay updated with new content",
+  "AI ve işe alım dünyasındaki gelişmeleri takip edin": "Follow developments in AI and the hiring world",
+  "Sektör trendleri, ürün güncellemeleri ve en iyi uygulamaları doğrudan e-posta adresinize alın.":
+    "Get industry trends, product updates, and best practices delivered directly to your email.",
+  "E-posta adresiniz": "Your email address",
+  "Abone Ol": "Subscribe",
+
+  // Blog article page
+  "okuma": "read",
+  "Yazı Bilgisi": "Article Info",
+  "İlgili Yazılar": "Related Articles",
+  "Bunları da okumak isteyebilirsiniz": "You might also want to read these",
+  "AI destekli işe alım ve sektör trendleri hakkında ilgili yazılar.":
+    "Related articles about AI-powered hiring and industry trends.",
+  "AI ile işe alım sürecinizi dönüştürmeye hazır mısınız?": "Ready to transform your hiring process with AI?",
+  "Platformumuzu ücretsiz deneyin ve farkı kendiniz görün.": "Try our platform for free and see the difference yourself.",
+
+  // Blog article categories and titles
+  "AI İşe Alım": "AI Hiring",
+  "İşe Alım Operasyonları": "Hiring Operations",
+  "Operasyon": "Operations",
+  "Entegrasyon": "Integration",
+  "AI Mülakatların Geleceği: 2026'da Neler Değişiyor?": "The Future of AI Interviews: What's Changing in 2026?",
+  "Yapılandırılmış Mülakat Skorlaması Neden Daha Güvenilir?": "Why Is Structured Interview Scoring More Reliable?",
+  "CV Ön Eleme Skorunu Doğru Okumak: Recruiter İçin Pratik Çerçeve": "Reading CV Pre-Screening Scores Correctly: A Practical Framework for Recruiters",
+  "Aday Deneyimini Bozmadan Hızlanmak İçin 5 Pratik": "5 Practices to Speed Up Without Hurting Candidate Experience",
+  "ATS Entegrasyonu Ne Zaman Gerekli, Ne Zaman Erken?": "When Is ATS Integration Necessary, When Is It Too Early?",
+  "Hiring Manager ile Kalibrasyon Toplantıları Nasıl Kısalır?": "How to Shorten Calibration Meetings with Hiring Managers?",
+  "15 Mart 2026": "March 15, 2026",
+  "27 Mart 2026": "March 27, 2026",
+  "15 Şubat 2026": "February 15, 2026",
+  "4 Nisan 2026": "April 4, 2026",
+  "22 Şubat 2026": "February 22, 2026",
+  "8 Nisan 2026": "April 8, 2026",
+  "5 dk": "5 min",
+  "6 dk": "6 min",
+  "7 dk": "7 min",
+
+  // Blog article excerpts
+  "Yapay zeka destekli mülakatlar sadece hız değil, daha tutarlı değerlendirme kalitesi de sunuyor. 2026'da öne çıkan pratikleri özetledik.":
+    "AI-powered interviews offer not just speed but also more consistent evaluation quality. We summarized the standout practices in 2026.",
+  "Serbest notlar yerine yapılandırılmış skor kartları kullanan ekipler neden daha hızlı ve daha savunulabilir karar alıyor?":
+    "Why do teams using structured scorecards instead of free-form notes make faster and more defensible decisions?",
+  "Skor tek başına karar değildir. CV ön eleme çıktısını hızlandırıcı olarak kullanırken hangi sinyallere bakmanız gerektiğini özetledik.":
+    "A score alone is not a decision. We summarized which signals you should look at when using CV pre-screening output as an accelerator.",
+  "Daha hızlı işe alım ile daha iyi aday deneyimi arasında seçim yapmak zorunda değilsiniz. Küçük ama etkili 5 uygulamayı derledik.":
+    "You don't have to choose between faster hiring and better candidate experience. We compiled 5 small but effective practices.",
+  "Her ekip ilk günden karmaşık entegrasyona ihtiyaç duymaz. ATS entegrasyonunun gerçekten ne zaman değer ürettiğini anlatıyoruz.":
+    "Not every team needs complex integration from day one. We explain when ATS integration truly creates value.",
+  "Hiring manager toplantıları uzuyorsa sorun çoğu zaman aday değil, sinyal formatıdır. Kalibrasyonu hızlandıran çerçeveyi paylaşıyoruz.":
+    "If hiring manager meetings are dragging on, the problem is usually the signal format, not the candidate. We share the framework that speeds up calibration.",
+
+  // Blog article section titles
+  "Yapılandırılmış Değerlendirme Yeni Standart": "Structured Evaluation Is the New Standard",
+  "İnsan + AI Birlikte Çalışıyor": "Human + AI Working Together",
+  "Aday Deneyimi de Ölçülüyor": "Candidate Experience Is Also Being Measured",
+  "Kazanan Model: Şeffaf ve Denetlenebilir Akış": "The Winning Model: Transparent and Auditable Workflow",
+  "Aynı Sorular, Daha Kıyaslanabilir Sonuçlar": "Same Questions, More Comparable Results",
+  "Not Kalitesi Kişiye Bağımlı Olmaktan Çıkar": "Note Quality Is No Longer Person-Dependent",
+  "Denetlenebilir Karar Çerçevesi": "Auditable Decision Framework",
+  "Sonuç: Daha Hızlı Kalibrasyon": "Result: Faster Calibration",
+  "Skor, Bağlamla Birlikte Anlamlıdır": "A Score Is Meaningful with Context",
+  "Eksik Bilgi Alanları Kritik Sinyaldir": "Missing Information Fields Are Critical Signals",
+  "Otomatik Red İçin Değil, Önceliklendirme İçin": "For Prioritization, Not Automatic Rejection",
+  "Skor + Mülakat + Hiring Manager Notu": "Score + Interview + Hiring Manager Note",
+  "İlk Teması Netleştirin": "Clarify the First Contact",
+  "Bekleme Süresini Sessizlikle Geçirmeyin": "Don't Let Waiting Time Pass in Silence",
+  "Mülakat Sorularını Rol ile Uyumlu Tutun": "Keep Interview Questions Aligned with the Role",
+  "Raporu İnsan Diline Çevirin": "Translate the Report into Human Language",
+  "İlk Kırılma Noktası: Çift Veri Girişi": "First Breaking Point: Double Data Entry",
+  "Pilotta Tam Kapsam Yerine Kontrollü Senaryo": "Controlled Scenario Instead of Full Coverage in Pilot",
+  "Takvim Entegrasyonu Ayrı Bir Katmandır": "Calendar Integration Is a Separate Layer",
+  "Entegrasyonun Başarısı Teknikten Çok Operasyoneldir": "Integration Success Is More Operational Than Technical",
+  "Aynı Dili Konuşmak Gerekir": "Speaking the Same Language Is Essential",
+  "Ham Notlar Yerine Karar Destek Paketi": "Decision Support Package Instead of Raw Notes",
+  "İtiraz Noktalarını Önceden Görünür Kılın": "Make Objection Points Visible Upfront",
+  "Sonuç: Daha Az Toplantı, Daha Net Karar": "Result: Fewer Meetings, Clearer Decisions",
+
+  // Help page
+  "Yardım Merkezi": "Help Center",
+  "Candit ile hızlı başlangıç rehberi": "Quick start guide with Candit",
+  "Platform kurulumundan ileri düzey kullanıma kadar ihtiyacınız olan tüm bilgiler burada.":
+    "All the information you need from platform setup to advanced usage is here.",
+  "Hızlı Başlangıç": "Quick Start",
+  "Dakikalar içinde ilk mülakatınızı oluşturun": "Create your first interview in minutes",
+  "Popüler Konular": "Popular Topics",
+  "Sık kullanılan konular": "Frequently used topics",
+  "SSS": "FAQ",
+  "Başka sorunuz mu var?": "Have more questions?",
+  "Aradığınızı bulamadınız mı?": "Couldn't find what you're looking for?",
+  "Ekibimize doğrudan ulaşın, size en kısa sürede yardımcı olalım.":
+    "Reach out to our team directly, and let us help you as soon as possible.",
+  "Hesap Oluşturun": "Create Your Account",
+  "Dakikalar içinde ücretsiz hesabınızı açın.": "Open your free account in minutes.",
+  "Pozisyon Ekleyin": "Add a Position",
+  "İş ilanınızı ve mülakat sorularınızı tanımlayın.": "Define your job posting and interview questions.",
+  "Mülakat Linki Paylaşın": "Share Interview Link",
+  "Adaylara mülakat linkini gönderin, başvurular otomatik başlasın.":
+    "Send the interview link to candidates, let applications start automatically.",
+  "Sonuçları Değerlendirin": "Evaluate Results",
+  "AI raporlarıyla en uygun adayları hızlıca belirleyin.": "Quickly identify the most suitable candidates with AI reports.",
+  "Güvenlik & Uyumluluk": "Security & Compliance",
+  "Veri güvenliği, KVKK ve GDPR uyumluluğu": "Data security, KVKK and GDPR compliance",
+  "Fiyatlandırma": "Pricing",
+  "Planlar, özellikler ve fiyat karşılaştırması": "Plans, features, and price comparison",
+  "Özellikler": "Features",
+  "Tüm platform özellikleri ve yetenekleri": "All platform features and capabilities",
+  "Keşfet": "Explore",
+  "Takvim, ATS ve API entegrasyonları": "Calendar, ATS, and API integrations",
+
+  // Docs API page
+  "API Dokümantasyonu": "API Documentation",
+  "Candit API ile entegre olun": "Integrate with Candit API",
+  "REST API ve webhook desteği ile Candit'i mevcut İK sistemlerinize kolayca bağlayın.":
+    "Easily connect Candit to your existing HR systems with REST API and webhook support.",
+  "API anahtarıyla dakikalar içinde bağlanın.": "Connect in minutes with your API key.",
+  "Kanallardan gelen mesajı işler ve AI yanıt akışını başlatır.": "Processes the incoming message and starts the AI response flow.",
+  "Mülakatları, durumları ve değerlendirme bilgilerini listeler.": "Lists interviews, statuses, and evaluation details.",
+  "Harici sistem olaylarını alıp operasyon akışını tetikler.": "Receives external system events and triggers the operations flow.",
+  "Kimlik Doğrulama": "Authentication",
+  "Bearer token ile API isteklerini güvenli şekilde yetkilendirin.": "Securely authorize API requests with a Bearer token.",
+  "Webhook Bildirimleri": "Webhook Notifications",
+  "Mülakat, değerlendirme, başvuru ve süreç olaylarını anlık takip edin.":
+    "Track interview, evaluation, application, and process events in real time.",
+  "Hız Limitleri": "Rate Limits",
+  "Sistem kararlılığını korumak için dakikalık ve saatlik istek limitleri uygulanır.":
+    "Per-minute and per-hour request limits are applied to maintain system stability.",
+  "API entegrasyonunuz hakkında destek mi gerekiyor?": "Need support with your API integration?",
+  "Teknik ekibimiz entegrasyon sürecinde size yardımcı olmaya hazır.":
+    "Our technical team is ready to help you during the integration process.",
+
+  // Security page
+  "Verileriniz Güvende": "Your Data Is Safe",
+  "Kurumsal düzeyde veri güvenliği": "Enterprise-grade data security",
+  "Aday verileriniz KVKK ve GDPR standartlarında, endüstri lideri güvenlik protokolleriyle korunur.":
+    "Your candidate data is protected by industry-leading security protocols at KVKK and GDPR standards.",
+  "Güvenlik hakkında sorularınız mı var?": "Have questions about security?",
+  "Veri güvenliği ve uyumluluk konusundaki sorularınızı yanıtlamaktan memnuniyet duyarız.":
+    "We are happy to answer your questions about data security and compliance.",
+  "İletişime Geçin": "Contact Us",
+  "Veri Güvenliği": "Data Security",
+  "Verileriniz katmanlı güvenlik kontrolleriyle korunur.": "Your data is protected by layered security controls.",
+  "AES-256 ve TLS 1.3 ile uçtan uca şifreleme": "End-to-end encryption with AES-256 and TLS 1.3",
+  "RBAC, MFA ve gelişmiş oturum yönetimi": "RBAC, MFA, and advanced session management",
+  "DDoS koruması ve izole ağ mimarisi": "DDoS protection and isolated network architecture",
+  "Yasal Uyumluluk": "Legal Compliance",
+  "KVKK ve GDPR gereksinimlerine yönelik süreçler ve kontroller desteklenir.":
+    "Processes and controls for KVKK and GDPR requirements are supported.",
+  "KVKK için VİS, açık rıza, saklama ve silme politikaları": "VIS, explicit consent, retention, and deletion policies for KVKK",
+  "GDPR için veri taşınabilirliği, silme talebi ve DPA desteği": "Data portability, deletion requests, and DPA support for GDPR",
+  "Veri ihlali bildirim süreci ve veri minimizasyonu ilkesi": "Data breach notification process and data minimization principle",
+  "AI Güvenliği": "AI Security",
+  "Yapay zeka asistanı çoklu güvenlik katmanıyla korunur.": "The AI assistant is protected by multiple security layers.",
+  "Aday verileri model eğitiminde kullanılmaz": "Candidate data is not used for model training",
+  "Yanıtlar politika kontrolü ve içerik filtrelemeden geçer": "Responses go through policy control and content filtering",
+  "Hassas veri maskeleme ve halüsinasyon engelleme koruma katmanları":
+    "Sensitive data masking and hallucination prevention protection layers",
+  "Operasyonel Güvenlik": "Operational Security",
+  "Sistemler düzenli izleme, kayıt ve müdahale akışlarıyla korunur.":
+    "Systems are protected with regular monitoring, logging, and incident response workflows.",
+  "Anomali tespitli sürekli izleme": "Continuous monitoring with anomaly detection",
+  "Kim, ne zaman, ne yaptı görünürlüğü için audit log": "Audit log for who did what and when visibility",
+  "Günlük yedekleme ve olay müdahale planı": "Daily backup and incident response plan",
+
+  // About page
+  "Hakkımızda": "About Us",
+  "İşe alımı yapay zeka ile yeniden tanımlıyoruz": "We are redefining hiring with artificial intelligence",
+  "Her büyüklükteki şirketin en doğru adayı en hızlı şekilde bulabilmesi için AI destekli mülakat ve ön eleme çözümleri sunuyoruz.":
+    "We offer AI-powered interview and pre-screening solutions so companies of all sizes can find the right candidate as quickly as possible.",
+  "2024": "2024",
+  "Kuruluş Yılı": "Founded",
+  "B2B SaaS": "B2B SaaS",
+  "Ürün Modeli": "Product Model",
+  "TR / EN": "TR / EN",
+  "Ürün Dili": "Product Language",
+  "AI + Human": "AI + Human",
+  "Karar Yaklaşımı": "Decision Approach",
+  "Hikayemiz": "Our Story",
+  "Nereden geldik, nereye gidiyoruz": "Where we came from, where we're going",
+  "İşe alım süreçlerindeki deneyim, yapay zeka ile birleşerek Candit'i ortaya çıkardı.":
+    "The experience in hiring processes combined with artificial intelligence to create Candit.",
+  "Nereden Geldik": "Where We Came From",
+  "Yıllarca işe alım süreçlerindeki verimsizlikleri ve önyargıları gözlemledik. 2024'te yapay zeka teknolojisini işe alım süreçleriyle birleştirerek Candit'i kurduk.":
+    "We observed inefficiencies and biases in hiring processes for years. In 2024, we founded Candit by combining AI technology with hiring processes.",
+  "Neden Los Angeles": "Why Los Angeles",
+  "Candit, yapay zeka ve teknoloji ekosisteminin kalbinde, Los Angeles'ta kuruldu. Türk kuruculara sahip ekip önce Türkiye pazarında işe alım süreçlerini dönüştürmeyi hedefledi.":
+    "Candit was founded in Los Angeles, at the heart of the AI and technology ecosystem. The team with Turkish founders initially aimed to transform hiring processes in the Turkish market.",
+  "Misyonumuz": "Our Mission",
+  "Her şirketin büyüklüğünden bağımsız olarak adaylarını yapay zeka destekli mülakatlarla objektif, hızlı ve tutarlı şekilde değerlendirebilmesini sağlamak.":
+    "To enable every company, regardless of size, to evaluate candidates objectively, quickly, and consistently with AI-powered interviews.",
+  "Vizyonumuz": "Our Vision",
+  "İşe alım süreçlerinin yapay zeka ile tamamen dönüştüğü, her şirketin en doğru adayı en kısa sürede bulabildiği bir dünya inşa etmek.":
+    "To build a world where hiring processes are completely transformed by AI and every company can find the right candidate in the shortest time.",
+  "Kültürümüz": "Our Culture",
+  "Küçük ama tutkulu bir ekip. Her özellik, her iyileştirme ve her ürün kararı İK ekiplerinin ve adayların ihtiyaçlarından hareketle geliştiriliyor.":
+    "A small but passionate team. Every feature, improvement, and product decision is driven by the needs of HR teams and candidates.",
+  "Ekibimiz": "Our Team",
+  "Küçük ama tutkulu bir ekip": "A small but passionate team",
+  "Her ürün kararı, her özellik ve her iyileştirme İK ekiplerinin ve adayların ihtiyaçlarından hareketle geliştiriliyor.":
+    "Every product decision, feature, and improvement is driven by the needs of HR teams and candidates.",
+  "Kurucu & CEO. Ürün vizyonu, iş stratejisi ve İK teknoloji ortaklıklarını yönetir.":
+    "Founder & CEO. Manages product vision, business strategy, and HR technology partnerships.",
+  "CTO. AI mülakat motoru, sunucu mimarisi, NLP altyapısı ve sistem güvenliğini yönetir.":
+    "CTO. Manages AI interview engine, server architecture, NLP infrastructure, and system security.",
+  "Türkiye Operasyonları Danışmanı. Büyüme stratejisi ve kurumsal satış süreçlerinde yön verir.":
+    "Turkey Operations Advisor. Guides growth strategy and enterprise sales processes.",
+  "Yazılım Geliştirici. Mülakat arayüzü ve aday deneyimi geliştirme süreçlerinde aktif rol alır.":
+    "Software Developer. Takes an active role in interview interface and candidate experience development.",
+  "Yazılım Geliştirici. ATS entegrasyonları ve analitik modülleri geliştirme süreçlerinde görev alır.":
+    "Software Developer. Works on ATS integrations and analytics module development.",
+  "Pazarlama & İçerik. İK sektörüne yönelik dijital pazarlama stratejileri ve marka iletişimini yönetir.":
+    "Marketing & Content. Manages digital marketing strategies and brand communication for the HR industry.",
+  "Hikayemizin bir parçası olun": "Be part of our story",
+  "İşe alım süreçlerinizi AI ile dönüştürerek en doğru adayları en hızlı şekilde bulun.":
+    "Find the right candidates as quickly as possible by transforming your hiring processes with AI.",
+
+  // Contact page
+  "İletişim": "Contact",
+  "Size nasıl yardımcı olabiliriz?": "How can we help you?",
+  "İşe alım süreçlerinizi AI ile dönüştürmek mi istiyorsunuz? Sorularınızı iletin, ekibimiz en kısa sürede size dönecektir.":
+    "Want to transform your hiring processes with AI? Send us your questions, and our team will get back to you as soon as possible.",
+  "Dakikalar İçinde Kurulum": "Setup in Minutes",
+  "İlk AI mülakatınızı hemen oluşturun, teknik bilgi gerektirmez.": "Create your first AI interview right away, no technical knowledge required.",
+  "AI Destekli Mülakat": "AI-Powered Interview",
+  "Yapay zeka ile tutarlı ve objektif aday değerlendirmesi.": "Consistent and objective candidate evaluation with AI.",
+  "Kurumsal Güvenlik": "Enterprise Security",
+  "Rol bazlı erişim, audit görünürlüğü ve güvenli veri akışlarıyla tasarlandı.":
+    "Designed with role-based access, audit visibility, and secure data flows.",
+  "Özel Destek": "Dedicated Support",
+  "Kurulum, ATS entegrasyonu ve eğitimde yanınızdayız.": "We're with you for setup, ATS integration, and training.",
+  "Bize Mesaj Gönderin": "Send Us a Message",
+  "Formu doldurarak bize ulaşın. Pilot hedefiniz, mevcut işe alım akışınız ve ihtiyaç duyduğunuz otomasyonları paylaşın.":
+    "Reach out by filling out the form. Share your pilot goals, current hiring workflow, and the automations you need.",
+  "Mesajı Gönder": "Send Message",
+  "Mesajınız ulaştı": "Your message was received",
+  "Ekibimiz kısa süre içinde size dönüş yapacak.": "Our team will get back to you shortly.",
+  "Ön eleme akışı": "Pre-screening workflow",
+  "Kesintisiz mülakat": "Non-stop interviews",
+  "Dakikalar": "Minutes",
+  "İlk shortlist görünürlüğü": "First shortlist visibility",
+  "Tek panel": "One panel",
+  "İşe alım uzmanı operasyonu": "Recruiter operations",
+
+  // Legal page
+  "Yasal": "Legal",
+
+  // Privacy page
+  "Gizlilik Politikası (Privacy Policy)": "Privacy Policy",
+  "Kişisel verilerinizin nasıl toplandığını, kullanıldığını ve korunduğunu öğrenin.":
+    "Learn how your personal data is collected, used, and protected.",
+  "1. Toplanan Veriler": "1. Data Collected",
+  "Platformu kullandığınızda hesap bilgileri, işletme bilgileri, entegrasyon verileri, iletişim verileri, kullanım logları ve otomasyon senaryoları toplanabilir.":
+    "When you use the platform, account information, business information, integration data, communication data, usage logs, and automation scenarios may be collected.",
+  "2. Verilerin Kullanım Amaçları": "2. Purposes of Data Use",
+  "Veriler hizmeti sağlamak, entegrasyonları çalıştırmak, güvenliği korumak, teknik destek vermek ve yasal yükümlülükleri yerine getirmek amacıyla kullanılır.":
+    "Data is used to provide services, run integrations, maintain security, provide technical support, and fulfill legal obligations.",
+  "3. Veri Koruma Mekanizmaları": "3. Data Protection Mechanisms",
+  "Şifreleme, HTTPS, OAuth 2.0, erişim kontrolleri ve düzenli güvenlik güncellemeleri ile veri güvenliği sağlanır.":
+    "Data security is ensured with encryption, HTTPS, OAuth 2.0, access controls, and regular security updates.",
+  "4. Saklama ve Silme Politikası": "4. Retention and Deletion Policy",
+  "İletişim kayıtları platform üzerinden silinebilir. Hesap bilgileri hesap kapatılana kadar saklanır; bazı kayıtlar yasal gereklilikler nedeniyle daha uzun tutulabilir.":
+    "Communication records can be deleted through the platform. Account information is retained until the account is closed; some records may be kept longer due to legal requirements.",
+  "5. Üçüncü Taraflarla Paylaşım": "5. Sharing with Third Parties",
+  "Entegrasyon sağlayıcıları, sesli arama ve yapay zeka servisleri, ödeme işleyiciler ve yasal zorunluluklar kapsamında sınırlı veri paylaşımı yapılabilir.":
+    "Limited data sharing may occur with integration providers, voice call and AI services, payment processors, and within legal obligations.",
+  "6. Çerezler": "6. Cookies",
+  "Oturum yönetimi ve kullanıcı deneyiminin iyileştirilmesi için çerez kullanılabilir. Çerez tercihleri tarayıcı ayarlarından yönetilebilir.":
+    "Cookies may be used for session management and improving user experience. Cookie preferences can be managed from browser settings.",
+  "7. Kullanıcı Hakları": "7. User Rights",
+  "Erişim, düzeltme, silme, itiraz ve veri taşınabilirliği hakları için info@candit.ai üzerinden başvuru yapılabilir.":
+    "Applications for access, correction, deletion, objection, and data portability rights can be made via info@candit.ai.",
+  "8. Çocukların Gizliliği": "8. Children's Privacy",
+  "Platform 18 yaş altı kullanıcılara yönelik değildir ve ebeveyn izni olmadan bilerek veri toplanmaz.":
+    "The platform is not intended for users under 18 and does not knowingly collect data without parental consent.",
+  "9. Değişiklikler": "9. Changes",
+  "Politika zaman zaman güncellenebilir. Önemli değişiklikler e-posta veya platform bildirimi ile duyurulur.":
+    "The policy may be updated from time to time. Significant changes are announced via email or platform notification.",
+  "10. İletişim": "10. Contact",
+  "Gizlilik ile ilgili sorular için info@candit.ai adresine ulaşabilirsiniz.":
+    "You can reach info@candit.ai for privacy-related questions.",
+
+  // Terms page
+  "Kullanım Koşulları (Terms of Service)": "Terms of Service",
+  "Platformumuzu kullanırken geçerli olan kurallar, sorumluluklar ve haklarınız.":
+    "The rules, responsibilities, and rights applicable when using our platform.",
+  "1. Hizmet Tanımı": "1. Service Description",
+  "Platform, işletmelere yapay zeka destekli işe alım ve mülakat yönetimi sunan bir SaaS ürünüdür.":
+    "The platform is a SaaS product that offers AI-powered hiring and interview management to businesses.",
+  "2. Hesap Oluşturma ve Yetkilendirme": "2. Account Creation and Authorization",
+  "Hesap bilgilerinin doğruluğu ve güvenliği kullanıcı sorumluluğundadır. Yetkisiz erişim şüphesi gecikmeden bildirilmelidir.":
+    "The accuracy and security of account information is the user's responsibility. Suspected unauthorized access must be reported without delay.",
+  "3. Üçüncü Taraf Entegrasyonları": "3. Third-Party Integrations",
+  "Google ve diğer sağlayıcılarla entegrasyon bağlandığında ilgili sağlayıcıların şartları da geçerli olabilir. Hizmet kesintilerinden platform sorumlu değildir.":
+    "When integrations with Google and other providers are connected, those providers' terms may also apply. The platform is not responsible for service interruptions.",
+  "4. Kabul Edilebilir Kullanım": "4. Acceptable Use",
+  "Yasalara aykırı, spam, dolandırıcılık veya güvenlik önlemlerini aşmaya yönelik kullanım yasaktır.":
+    "Use that violates laws, spam, fraud, or attempts to bypass security measures is prohibited.",
+  "5. Planlar, Ücretlendirme ve Faturalandırma": "5. Plans, Pricing, and Billing",
+  "Aylık, yıllık veya kullanım bazlı ücretlendirme uygulanabilir. Abonelik ve iade kuralları abonelik sayfasında belirtilir.":
+    "Monthly, annual, or usage-based pricing may apply. Subscription and refund rules are specified on the subscription page.",
+  "6. İçerik ve Veri Sorumluluğu": "6. Content and Data Responsibility",
+  "Platforma yüklenen içerikler, entegrasyon verileri ve asistan talimatları kullanıcı sorumluluğundadır. Yasal yükümlülüklerin yerine getirilmesi müşteriye aittir.":
+    "Content uploaded to the platform, integration data, and assistant instructions are the user's responsibility. Fulfilling legal obligations belongs to the customer.",
+  "7. Fikri Mülkiyet": "7. Intellectual Property",
+  "Platformun yazılımı, arayüzü ve marka unsurları Candit.ai'ye aittir. Tersine mühendislik ve yetkisiz erişim yasaktır.":
+    "The platform's software, interface, and brand elements belong to Candit.ai. Reverse engineering and unauthorized access are prohibited.",
+  "8. Hizmet Seviyesi ve Sorumluluk Sınırları": "8. Service Level and Liability Limits",
+  "Platform olduğu gibi sunulur; dolaylı zararlardan sorumluluk kabul edilmez ve toplam sorumluluk ilgili dönemde ödenen ücretle sınırlıdır.":
+    "The platform is provided as is; liability for indirect damages is not accepted, and total liability is limited to the fees paid in the relevant period.",
+  "9. Fesih ve Hesap Kapatma": "9. Termination and Account Closure",
+  "Hesap istenen zamanda kapatılabilir. Şartların ihlali halinde hesap askıya alınabilir veya kapatılabilir.":
+    "The account can be closed at any time. In case of terms violation, the account may be suspended or closed.",
+  "10. Değişiklikler": "10. Changes",
+  "Koşullar önceden bildirimle güncellenebilir. Platformu kullanmaya devam etmek güncel koşulların kabulü anlamına gelir.":
+    "Terms may be updated with prior notice. Continuing to use the platform means acceptance of the current terms.",
+  "11. İletişim": "11. Contact",
+  "Sorularınız için info@candit.ai adresine ulaşabilirsiniz.": "You can reach info@candit.ai for your questions.",
+
+  // Changelog page
+  "Neler Değişiyor?": "What's Changing?",
+  "Ürün güncellemeleri ve yeni özellikler": "Product updates and new features",
+  "Candit platformundaki son geliştirmeleri ve yeni özellikleri takip edin.":
+    "Follow the latest developments and new features on the Candit platform.",
+  "Yeni özelliklerden ilk siz haberdar olun": "Be the first to know about new features",
+  "Hesap oluşturun ve platform güncellemelerini doğrudan takip edin.":
+    "Create an account and follow platform updates directly.",
+  "Haziran 2026": "June 2026",
+  "Lansman Sertleştirme": "Launch Hardening",
+  "Pilot lansman öncesi kimlik doğrulama güvenliği, iletişim formu alımı, yönetim görünürlüğü ve olay yönetimi omurgası sertleştirildi.":
+    "Pre-pilot launch authentication security, contact form intake, admin visibility, and incident management backbone were hardened.",
+  "Herkese açık iletişim formu gerçek sunucuya bağlandı": "Public contact form connected to the real server",
+  "İç yönetim potansiyel müşteri gelen kutusu açıldı": "Internal admin lead inbox opened",
+  "Güvenlik olayı ve kritik alarm kalıcılığı eklendi": "Security incident and critical alert persistence added",
+  "Üretim ortamı kimlik doğrulama varsayılanları sertleştirildi": "Production environment authentication defaults hardened",
+  "Mart 2026": "March 2026",
+  "Takvim ve Planlama Akışı": "Calendar and Scheduling Flow",
+  "Mülakat planlama tarafında Google ekosistemi ve Calendly odaklı planlama akışları güçlendirildi.":
+    "Interview scheduling workflows focused on the Google ecosystem and Calendly were strengthened.",
+  "Google Calendar bağlantı akışı güncellendi": "Google Calendar connection flow updated",
+  "Google Meet / planlama bağlam desteği genişletildi": "Google Meet / scheduling context support expanded",
+  "Calendly webhook senkronizasyonu geliştirildi": "Calendly webhook synchronization improved",
+  "Yedek toplantı akışı görünür hale getirildi": "Fallback meeting flow made visible",
+  "Şubat 2026": "February 2026",
+  "Kaynak Bulma ve Aday Havuzu": "Sourcing and Candidate Pool",
+  "Aday keşfi, potansiyel aday takibi ve mevcut havuzdan yeniden değerlendirme akışları ürünün çekirdeğine eklendi.":
+    "Candidate discovery, prospect tracking, and re-evaluation flows from the existing pool were added to the product core.",
+  "Kaynak bulma projesi ve potansiyel aday modeli açıldı": "Sourcing project and prospect model launched",
+  "Yetenek profili kaynak katmanı eklendi": "Talent profile sourcing layer added",
+  "Uyum skorlama ve iletişim temelleri güçlendirildi": "Fit scoring and communication foundations strengthened",
+  "İşe alım uzmanı görünürlüğü geliştirildi": "Recruiter visibility improved",
+  "Ocak 2026": "January 2026",
+  "AI Mülakat Motoru": "AI Interview Engine",
+  "AI destekli sesli ve yazılı mülakat altyapısı, transkript ve rapor katmanları ile birlikte devreye alındı.":
+    "AI-powered voice and text interview infrastructure was deployed with transcript and report layers.",
+  "AI sesli görüşme desteği": "AI voice interview support",
+  "Transkript özetleme ve rapor oluşturma": "Transcript summarization and report generation",
+  "Öneri ve işe alım uzmanı değerlendirme akışları": "Recommendation and recruiter evaluation workflows",
+  "Mülakat çalışma zamanı yedek davranışları": "Interview runtime fallback behaviors",
+  "Aralık 2025": "December 2025",
+  "İşe Alım Uzmanı Çalışma Alanı": "Recruiter Workspace",
+  "Kontrol paneli, ilanlar, adaylar, başvurular ve raporlar yüzeyleri tek çalışma alanı altında birleştirildi.":
+    "Dashboard, postings, candidates, applications, and reports surfaces were unified under a single workspace.",
+  "Genel bakış kontrol paneli": "Overview dashboard",
+  "İlan ve başvuru akışı": "Posting and application flow",
+  "Aday havuzu ve profil ekranları": "Candidate pool and profile screens",
+  "İlk raporlama yüzeyi": "First reporting surface",
+  "Kasım 2025": "November 2025",
+  "İlk Ürün Omurgası": "Initial Product Backbone",
+  "Kiracı, üye, kimlik doğrulama ve işe alım alan modelleriyle Candit'in ilk ürün omurgası kuruldu.":
+    "Candit's initial product backbone was built with tenant, member, authentication, and hiring domain models.",
+  "Kiracı ve çalışma alanı modeli": "Tenant and workspace model",
+  "Kayıt / giriş / davet temelleri": "Registration / login / invitation foundations",
+  "İlan, aday ve başvuru alan modeli": "Posting, candidate, and application domain model",
+  "İlk iç yönetim omurgası": "Initial internal admin backbone",
+
+  // Waitlist page
+  "Hemen Başlayın": "Get Started",
+  "Bekleme listesi yerine doğrudan hesap oluşturun": "Create an account directly instead of a waitlist",
+  "Ücretsiz hesap oluşturun ve AI destekli işe alım platformunu hemen denemeye başlayın.":
+    "Create a free account and start trying the AI-powered hiring platform right away.",
+  "Owner hesabını açın": "Open your owner account",
+  "İlk çalışma alanınızı ve yönetici hesabınızı birkaç dakika içinde oluşturun.":
+    "Create your first workspace and admin account in a few minutes.",
+  "Temel ayarları tamamlayın": "Complete basic settings",
+  "Takım üyeleri, entegrasyonlar ve ürün ayarlarını içeriden yönetin.":
+    "Manage team members, integrations, and product settings from within.",
+  "Pilotu başlatın": "Start the pilot",
+  "İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın.":
+    "Run posting, candidate, and interview flows with your real use cases.",
+  "Destek gerekiyorsa yazın": "Write to us if you need support",
+  "Ekibimiz kurulum ve onboarding sürecinde size yardımcı olmaya hazır.":
+    "Our team is ready to help you during setup and onboarding.",
+  "Kayıt": "Registration",
+  "Doğrudan hesap oluşturun": "Create an account directly",
+  "Hemen hesap oluşturun ve AI destekli işe alım platformunu denemeye başlayın. Kurulum desteği için ekibimiz her zaman yanınızda.":
+    "Create an account now and start trying the AI-powered hiring platform. Our team is always by your side for setup support.",
+  "Owner hesabı": "Owner account",
+  "E-posta doğrulama": "Email verification",
+  "İlk workspace kurulumu": "First workspace setup",
+  "İletişime Geçin": "Contact Us",
+
+  // CTA section
+  "Hazır mısınız?": "Are you ready?",
+  "Fiyatları İncele": "View Pricing",
+
+  // Dynamic solution detail strings (per-industry workflows)
+  "Teknoloji sektörüne özel mülakat soruları ve değerlendirme kriterlerini belirleyin.":
+    "Set interview questions and evaluation criteria specific to the technology sector.",
+  "Perakende sektörüne özel mülakat soruları ve değerlendirme kriterlerini belirleyin.":
+    "Set interview questions and evaluation criteria specific to the retail sector.",
+  "Sağlık sektörüne özel mülakat soruları ve değerlendirme kriterlerini belirleyin.":
+    "Set interview questions and evaluation criteria specific to the healthcare sector.",
+  "Finans sektörüne özel mülakat soruları ve değerlendirme kriterlerini belirleyin.":
+    "Set interview questions and evaluation criteria specific to the finance sector.",
+  "Üretim ve Lojistik sektörüne özel mülakat soruları ve değerlendirme kriterlerini belirleyin.":
+    "Set interview questions and evaluation criteria specific to the manufacturing and logistics sector.",
+  "AI Mülakat, Ön Eleme, Analitik araçlarını aktif edin ve işe alım sürecinizi başlatın.":
+    "Activate AI Interview, Pre-Screening, Analytics tools and start your hiring process.",
+  "AI Mülakat, Ön Eleme, Aday Yönetimi araçlarını aktif edin ve işe alım sürecinizi başlatın.":
+    "Activate AI Interview, Pre-Screening, Candidate Management tools and start your hiring process.",
+  "Teknoloji operasyonuna uygun kurulum akışı": "Setup workflow suitable for technology operations",
+  "Perakende operasyonuna uygun kurulum akışı": "Setup workflow suitable for retail operations",
+  "Sağlık operasyonuna uygun kurulum akışı": "Setup workflow suitable for healthcare operations",
+  "Finans operasyonuna uygun kurulum akışı": "Setup workflow suitable for finance operations",
+  "Üretim ve Lojistik operasyonuna uygun kurulum akışı": "Setup workflow suitable for manufacturing and logistics operations",
+  "Teknoloji İçin Öne Çıkanlar": "Highlights for Technology",
+  "Perakende İçin Öne Çıkanlar": "Highlights for Retail",
+  "Sağlık İçin Öne Çıkanlar": "Highlights for Healthcare",
+  "Finans İçin Öne Çıkanlar": "Highlights for Finance",
+  "Üretim ve Lojistik İçin Öne Çıkanlar": "Highlights for Manufacturing & Logistics",
+  "Teknoloji sektöründe işe alım kalitesini ve hızını artıran temel avantajı temsil eder.":
+    "Represents a key advantage that increases hiring quality and speed in the technology sector.",
+  "Perakende sektöründe işe alım kalitesini ve hızını artıran temel avantajı temsil eder.":
+    "Represents a key advantage that increases hiring quality and speed in the retail sector.",
+  "Sağlık sektöründe işe alım kalitesini ve hızını artıran temel avantajı temsil eder.":
+    "Represents a key advantage that increases hiring quality and speed in the healthcare sector.",
+  "Finans sektöründe işe alım kalitesini ve hızını artıran temel avantajı temsil eder.":
+    "Represents a key advantage that increases hiring quality and speed in the finance sector.",
+  "Üretim ve Lojistik sektöründe işe alım kalitesini ve hızını artıran temel avantajı temsil eder.":
+    "Represents a key advantage that increases hiring quality and speed in the manufacturing and logistics sector.",
+  "Teknoloji sektöründe AI Mülakat aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the AI Interview tool in the technology sector.",
+  "Teknoloji sektöründe Ön Eleme aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the Pre-Screening tool in the technology sector.",
+  "Teknoloji sektöründe Analitik aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the Analytics tool in the technology sector.",
+  "Perakende sektöründe AI Mülakat aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the AI Interview tool in the retail sector.",
+  "Perakende sektöründe Ön Eleme aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the Pre-Screening tool in the retail sector.",
+  "Perakende sektöründe Aday Yönetimi aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the Candidate Management tool in the retail sector.",
+  "Sağlık sektöründe AI Mülakat aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the AI Interview tool in the healthcare sector.",
+  "Sağlık sektöründe Ön Eleme aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the Pre-Screening tool in the healthcare sector.",
+  "Sağlık sektöründe Analitik aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the Analytics tool in the healthcare sector.",
+  "Finans sektöründe AI Mülakat aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the AI Interview tool in the finance sector.",
+  "Finans sektöründe Ön Eleme aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the Pre-Screening tool in the finance sector.",
+  "Finans sektöründe Analitik aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the Analytics tool in the finance sector.",
+  "Üretim ve Lojistik sektöründe AI Mülakat aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the AI Interview tool in the manufacturing and logistics sector.",
+  "Üretim ve Lojistik sektöründe Ön Eleme aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the Pre-Screening tool in the manufacturing and logistics sector.",
+  "Üretim ve Lojistik sektöründe Aday Yönetimi aracı ile işe alım sürecinizi güçlendirin.":
+    "Strengthen your hiring process with the Candidate Management tool in the manufacturing and logistics sector.",
+  "Güvenlik": "Security",
+  "Perakende": "Retail",
+  "Sağlık": "Healthcare",
+});
+
 const EN_WORD_TRANSLATIONS: Array<[string, string]> = [
   ["Başvuru", "Application"],
   ["Başvurular", "Applications"],
