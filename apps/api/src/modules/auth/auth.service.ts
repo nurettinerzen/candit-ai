@@ -15,6 +15,7 @@ import {
   AuthActionTokenType,
   AuthProvider,
   AuthSessionStatus,
+  SecurityEventSeverity,
   UserStatus,
   type Prisma,
   type Role as PrismaRole
@@ -22,6 +23,7 @@ import {
 import { RuntimeConfigService } from "../../config/runtime-config.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { SecurityEventsService } from "../security-events/security-events.service";
 import { hashPassword, verifyPassword } from "./password";
 
 type AccessTokenPayload = {
@@ -160,7 +162,9 @@ export class AuthService {
     @Inject(JwtService) private readonly jwtService: JwtService,
     @Inject(ConfigService) private readonly configService: ConfigService,
     @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService,
-    @Inject(NotificationsService) private readonly notificationsService: NotificationsService
+    @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
+    @Inject(SecurityEventsService)
+    private readonly securityEventsService: SecurityEventsService
   ) {}
 
   async login(
@@ -192,20 +196,71 @@ export class AuthService {
     });
 
     if (!user || user.deletedAt) {
+      await this.reportSecurityEvent({
+        tenantId: resolvedTenantId,
+        source: "auth.login",
+        code: "auth.login.user_not_found",
+        message: "Taninmayan kullanici ile giris denemesi engellendi.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        metadata: {
+          email: normalizedEmail
+        }
+      });
       throw new UnauthorizedException("Kullanıcı bulunamadı.");
     }
 
     if (user.status === UserStatus.INVITED || !user.passwordHash) {
+      await this.reportSecurityEvent({
+        tenantId: user.tenantId,
+        userId: user.id,
+        source: "auth.login",
+        code: "auth.login.invitation_incomplete",
+        message: "Davet kabul etmeden giris denemesi engellendi.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        metadata: {
+          email: user.email
+        }
+      });
       throw new ForbiddenException("Davet kabul edilmeden giriş yapılamaz.");
     }
 
     if (user.status === UserStatus.DISABLED) {
+      await this.reportSecurityEvent({
+        tenantId: user.tenantId,
+        userId: user.id,
+        source: "auth.login",
+        code: "auth.login.disabled_user",
+        message: "Pasif kullanici ile giris denemesi engellendi.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        metadata: {
+          email: user.email
+        }
+      });
       throw new ForbiddenException("Kullanıcı pasif durumda.");
     }
 
     const passwordMatches = await verifyPassword(user.passwordHash, input.password);
 
     if (!passwordMatches) {
+      await this.reportSecurityEvent({
+        tenantId: user.tenantId,
+        userId: user.id,
+        source: "auth.login",
+        code: "auth.login.invalid_password",
+        message: "Hatali sifre ile giris denemesi algilandi.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        metadata: {
+          email: user.email
+        }
+      });
       throw new UnauthorizedException("E-posta veya sifre hatali.");
     }
 
@@ -425,6 +480,14 @@ export class AuthService {
 
   async refresh(refreshToken: string, meta: SessionClientMeta = {}) {
     if (!refreshToken || refreshToken.trim().length < 20) {
+      await this.reportSecurityEvent({
+        source: "auth.refresh",
+        code: "auth.refresh.malformed_token",
+        message: "Gecersiz formatta refresh token yenileme denemesi reddedildi.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent
+      });
       throw new UnauthorizedException("Refresh token zorunludur.");
     }
 
@@ -453,15 +516,45 @@ export class AuthService {
     });
 
     if (!tokenRecord) {
+      await this.reportSecurityEvent({
+        source: "auth.refresh",
+        code: "auth.refresh.token_not_found",
+        message: "Eslesmeyen refresh token yenileme denemesi reddedildi.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent
+      });
       throw new UnauthorizedException("Refresh token gecersiz veya suresi dolmus.");
     }
 
     if (tokenRecord.replacedByTokenId) {
+      await this.reportSecurityEvent({
+        tenantId: tokenRecord.tenantId,
+        userId: tokenRecord.userId,
+        sessionId: tokenRecord.sessionId,
+        source: "auth.refresh",
+        code: "auth.refresh.reuse_detected",
+        message: "Refresh token tekrar kullanimi tespit edildi.",
+        severity: SecurityEventSeverity.CRITICAL,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent
+      });
       await this.revokeSession(tokenRecord.sessionId, "refresh_token_reuse_detected");
       throw new UnauthorizedException("Refresh token tekrar kullanimi tespit edildi.");
     }
 
     if (tokenRecord.revokedAt || isExpired(tokenRecord.expiresAt)) {
+      await this.reportSecurityEvent({
+        tenantId: tokenRecord.tenantId,
+        userId: tokenRecord.userId,
+        sessionId: tokenRecord.sessionId,
+        source: "auth.refresh",
+        code: "auth.refresh.expired_or_revoked",
+        message: "Suresi dolmus veya iptal edilmis refresh token kullanildi.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent
+      });
       throw new UnauthorizedException("Refresh token gecersiz veya suresi dolmus.");
     }
 
@@ -481,10 +574,35 @@ export class AuthService {
         });
       }
 
+      await this.reportSecurityEvent({
+        tenantId: session.tenantId,
+        userId: session.userId,
+        sessionId: session.id,
+        source: "auth.refresh",
+        code: "auth.refresh.invalid_session",
+        message: "Aktif olmayan oturum icin refresh denemesi reddedildi.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent
+      });
       throw new UnauthorizedException("Kullanici oturumu gecersiz.");
     }
 
     if (tokenRecord.user.deletedAt || tokenRecord.user.status !== UserStatus.ACTIVE) {
+      await this.reportSecurityEvent({
+        tenantId: tokenRecord.user.tenantId,
+        userId: tokenRecord.user.id,
+        sessionId: session.id,
+        source: "auth.refresh",
+        code: "auth.refresh.user_inactive",
+        message: "Pasif veya silinmis kullanici icin refresh denemesi tespit edildi.",
+        severity: SecurityEventSeverity.CRITICAL,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        metadata: {
+          userStatus: tokenRecord.user.status
+        }
+      });
       await this.revokeSession(session.id, "user_disabled_or_deleted");
       throw new UnauthorizedException("Kullanici oturumu gecersiz.");
     }
@@ -1639,6 +1757,25 @@ export class AuthService {
       emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
       avatarUrl: user.avatarUrl ?? null
     };
+  }
+
+  private async reportSecurityEvent(input: {
+    tenantId?: string | null;
+    userId?: string | null;
+    sessionId?: string | null;
+    source: string;
+    code: string;
+    message: string;
+    severity?: SecurityEventSeverity;
+    ipAddress?: string;
+    userAgent?: string;
+    metadata?: Prisma.InputJsonValue | null;
+  }) {
+    try {
+      await this.securityEventsService.recordSecurityEvent(input);
+    } catch {
+      // Security telemetry should never break the primary auth flow.
+    }
   }
 
   private async revokeSession(sessionId: string, reason: string) {

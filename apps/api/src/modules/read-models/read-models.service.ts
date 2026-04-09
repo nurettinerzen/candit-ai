@@ -802,16 +802,38 @@ export class ReadModelsService {
       reason: val.mode === "fallback" ? "fallback" : null
     }));
 
+    const connectionWarnings = connections.flatMap((conn) => {
+      switch (conn.effectiveStatus) {
+        case "unsupported_provider":
+          return [`${conn.provider} launch icin henuz desteklenmiyor.`];
+        case "missing_config":
+          return [`${conn.provider} baglantisi icin zorunlu konfigurasyon eksik.`];
+        case "needs_auth":
+          return [`${conn.provider} baglantisi yetkilendirme bekliyor.`];
+        case "missing_credentials":
+          return [`${conn.provider} baglantisi kimlik bilgisi bekliyor.`];
+        default:
+          return [];
+      }
+    });
+
     const integrations = connections.map((conn) => ({
       provider: conn.provider,
-      status: conn.status,
+      status:
+        conn.status === "ERROR"
+          ? "ERROR"
+          : conn.status === "INACTIVE"
+            ? "INACTIVE"
+            : conn.effectiveStatus === "configured"
+              ? "ACTIVE"
+              : "DEGRADED",
       displayName: conn.displayName,
-      lastError: conn.lastError ?? null
+      lastError: conn.lastError ?? conn.credentialLastError ?? null
     }));
 
     return {
       overall: startupValidation.healthy ? "healthy" : "degraded",
-      warnings: startupValidation.warnings,
+      warnings: Array.from(new Set([...startupValidation.warnings, ...connectionWarnings])),
       ai: {
         providers: providerStatus.providers.map((p) => ({ key: p.key, available: p.active })),
         activeProvider: providerStatus.providers.find((p) => p.active)?.key ?? null

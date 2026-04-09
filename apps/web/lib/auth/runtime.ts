@@ -31,7 +31,7 @@ function toCsvList(value: string | undefined) {
     .filter(Boolean) ?? [];
 }
 
-function readRuntimeMode(raw: string | undefined): WebRuntimeMode {
+export function resolveWebRuntimeMode(raw: string | undefined): WebRuntimeMode {
   const normalized = raw?.trim().toLowerCase();
 
   if (normalized === "production") {
@@ -45,22 +45,25 @@ function readRuntimeMode(raw: string | undefined): WebRuntimeMode {
   return process.env.NODE_ENV === "production" ? "production" : "development";
 }
 
-export const WEB_RUNTIME_MODE = readRuntimeMode(process.env.NEXT_PUBLIC_APP_RUNTIME_MODE);
+export const WEB_RUNTIME_MODE = resolveWebRuntimeMode(process.env.NEXT_PUBLIC_APP_RUNTIME_MODE);
 
-function readMode(raw: string | undefined): AuthSessionMode {
+export function resolveAuthSessionMode(
+  raw: string | undefined,
+  runtimeMode: WebRuntimeMode
+): AuthSessionMode {
   if (raw === "jwt" || raw === "hybrid" || raw === "dev_header") {
-    if (WEB_RUNTIME_MODE === "production" && raw !== "jwt") {
+    if (runtimeMode === "production" && raw !== "jwt") {
       return "jwt";
     }
 
     return raw;
   }
 
-  if (WEB_RUNTIME_MODE === "production") {
+  if (runtimeMode === "production") {
     return "jwt";
   }
 
-  return WEB_RUNTIME_MODE === "demo" ? "hybrid" : "dev_header";
+  return runtimeMode === "demo" ? "hybrid" : "dev_header";
 }
 
 export const API_BASE_URL =
@@ -75,10 +78,17 @@ export const API_BASE_URL =
     return trimSlashSuffix(process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/v1");
   })();
 
-export const AUTH_SESSION_MODE = readMode(process.env.NEXT_PUBLIC_AUTH_SESSION_MODE);
+export const AUTH_SESSION_MODE = resolveAuthSessionMode(
+  process.env.NEXT_PUBLIC_AUTH_SESSION_MODE,
+  WEB_RUNTIME_MODE
+);
 
-function readTransport(raw: string | undefined): AuthTokenTransport {
-  if (WEB_RUNTIME_MODE === "production") {
+export function resolveAuthTokenTransport(
+  raw: string | undefined,
+  runtimeMode: WebRuntimeMode,
+  authMode: AuthSessionMode
+): AuthTokenTransport {
+  if (runtimeMode === "production") {
     return "cookie";
   }
 
@@ -86,10 +96,14 @@ function readTransport(raw: string | undefined): AuthTokenTransport {
     return raw;
   }
 
-  return AUTH_SESSION_MODE === "jwt" ? "cookie" : "header";
+  return authMode === "jwt" ? "cookie" : "header";
 }
 
-export const AUTH_TOKEN_TRANSPORT = readTransport(process.env.NEXT_PUBLIC_AUTH_TOKEN_TRANSPORT);
+export const AUTH_TOKEN_TRANSPORT = resolveAuthTokenTransport(
+  process.env.NEXT_PUBLIC_AUTH_TOKEN_TRANSPORT,
+  WEB_RUNTIME_MODE,
+  AUTH_SESSION_MODE
+);
 
 export const AUTH_ACCESS_COOKIE_NAME =
   process.env.NEXT_PUBLIC_AUTH_ACCESS_COOKIE_NAME ?? "aii_access_token";

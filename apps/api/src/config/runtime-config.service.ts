@@ -5,6 +5,15 @@ export type AppRuntimeMode = "development" | "demo" | "production";
 export type AuthSessionMode = "jwt" | "hybrid" | "dev_header";
 export type AuthTokenTransport = "header" | "cookie";
 
+export function isLocalOrigin(value: string) {
+  try {
+    const url = new URL(value);
+    return ["localhost", "127.0.0.1", "0.0.0.0"].includes(url.hostname);
+  } catch {
+    return value.includes("localhost") || value.includes("127.0.0.1") || value.includes("0.0.0.0");
+  }
+}
+
 function toOptionalString(value: string | undefined) {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
@@ -177,6 +186,7 @@ export class RuntimeConfigService {
     }
 
     const violations: string[] = [];
+    const publicWebBaseUrl = this.publicWebBaseUrl;
 
     if (this.authMode !== "jwt") {
       violations.push("AUTH_SESSION_MODE production ortaminda jwt olmalidir.");
@@ -205,6 +215,18 @@ export class RuntimeConfigService {
     const jwtSecret = this.configService.get<string>("JWT_SECRET")?.trim();
     if (!jwtSecret || jwtSecret === "change-me") {
       violations.push("JWT_SECRET production ortaminda guclu bir deger ile ayarlanmalidir.");
+    }
+
+    if (isLocalOrigin(publicWebBaseUrl)) {
+      violations.push("PUBLIC_WEB_BASE_URL production ortaminda localhost olamaz.");
+    }
+
+    if (!publicWebBaseUrl.startsWith("https://")) {
+      violations.push("PUBLIC_WEB_BASE_URL production ortaminda https ile baslamalidir.");
+    }
+
+    if (this.corsOrigins.some((origin) => isLocalOrigin(origin))) {
+      violations.push("CORS_ORIGIN production ortaminda localhost iceremez.");
     }
 
     if (violations.length > 0) {

@@ -1,0 +1,231 @@
+# Candit Launch Readiness Checklist
+
+Bu dokuman, launch oncesi tek "source of truth" kontrol listesi olarak kullanilir.
+Amac yeni feature yazmaktan once mevcut sistemin:
+
+- calisir durumda oldugunu
+- baglantilarinin dogru oldugunu
+- urun mesajinin dogru oldugunu
+- panel akislarinin dogru ve guvenli oldugunu
+- AI / screening / interview kalitesinin launch seviyesinde oldugunu
+- admin ve operasyon yuzeylerinin gercek kullanim icin hazir oldugunu
+
+dogrulamaktir.
+
+Ilgili arka plan notlari icin:
+
+- `docs/TELYX_CANDID_LAUNCH_GAP_ANALYSIS.md`
+
+## Kullanim Sekli
+
+- Her madde `Not Started`, `In Progress`, `Blocked`, `Done` durumlarindan biriyle takip edilir.
+- Her madde icin kanit istenir: ekran kaydi, screenshot, test notu, log, ya da dokuman linki.
+- Bir alan launch'a dahil edilmeyecekse, "Done" yerine "Deferred from launch" olarak not dusulur.
+- Domain baglamadan, Stripe/real mail/real traffic acilmadan once bu checklist en az bir tur tam gecilmelidir.
+
+## Verification Snapshot - 2026-04-09
+
+### Tamamlanan ilk dogrulamalar
+
+- [x] Render API deploy ayakta ve `https://candit.onrender.com/v1/health` `200` donuyor.
+- [x] Vercel frontend deploy ayakta ve ana sayfa `200` donuyor.
+- [x] Public auth sayfalari `200` donuyor:
+  - `/auth/login`
+  - `/auth/signup`
+- [x] Public marketing sayfalari `200` donuyor:
+  - `/pricing`
+  - `/features`
+  - `/contact`
+  - `/blog`
+- [x] CORS, Vercel origin icin dogru cevap veriyor:
+  - `Origin: https://candit-seven.vercel.app`
+  - `Access-Control-Allow-Origin: https://candit-seven.vercel.app`
+- [x] Public auth provider endpoint calisiyor:
+  - `GET /v1/auth/providers`
+  - response: `{"google":{"enabled":true}}`
+- [x] Supabase/Postgres baglantisi ve migration zinciri calisiyor; API Prisma ile ayaga kalkiyor.
+
+### Tespit edilen blocker / misconfiguration
+
+- [ ] Google auth public login redirect'i hala localhost callback'e gidiyor.
+  - Mevcut durum:
+    - `/v1/auth/google/authorize` -> `redirect_uri=http://localhost:4000/v1/auth/google/callback`
+  - Gereken staging degeri:
+    - `GOOGLE_AUTH_REDIRECT_URI=https://candit.onrender.com/v1/auth/google/callback`
+- [ ] Integrations tarafindaki Google callback env'i de staging/prod URL ile gozden gecirilmeli.
+  - Beklenen format:
+    - `GOOGLE_OAUTH_REDIRECT_URI=https://candit.onrender.com/v1/integrations/google/callback`
+- [ ] Worker queue'nin gercek bir job ile end-to-end dogrulamasi henuz yapilmadi.
+- [ ] Browser tabanli interaktif smoke testi icin local `agent-browser` araci ortamda mevcut degil; ilk tur HTTP smoke + deploy/log dogrulamasi ile yapildi.
+
+### Bir sonraki faz
+
+- [ ] P0/P1 icinde kalan blocker'lari kapat:
+  - Google auth redirect env duzeltmeleri
+  - Worker queue end-to-end smoke
+- [ ] Ardindan P2'ye gec:
+  - landing page claim/copy/dogruluk kontrolu
+
+## Durum Ozeti
+
+### P0 - Altyapi ve deploy dogrulamasi
+
+- [ ] Frontend Vercel deploy stabil ve tekrar deploylarda sorunsuz.
+- [ ] API Render deploy stabil ve `v1/health` donuyor.
+- [ ] Worker Render deploy stabil ve queue isleyebiliyor.
+- [ ] Redis baglantisi dogru ve queue islemleri basarili.
+- [ ] Supabase Postgres baglantisi dogru.
+- [ ] Prisma migrations eksiksiz uygulanmis.
+- [ ] Seed gerekiyorsa dogru yuklenmis.
+- [ ] Tum environment variable'lar dokumante edildi.
+- [ ] Demo/dev env'ler ile launch env'leri net ayrildi.
+- [ ] Placeholder domain / localhost redirect / test value kalmadi.
+
+### P1 - Sistem ve baglanti smoke testi
+
+- [ ] Frontend -> API temel istekleri basarili.
+- [ ] API -> DB okuma/yazma basarili.
+- [ ] API -> Redis queue basarili.
+- [ ] Worker -> DB basarili.
+- [ ] Worker -> Redis basarili.
+- [ ] Public site'dan recruiter paneline gecislerde baglanti sorunu yok.
+- [ ] Auth callback URL'leri dogru.
+- [ ] Public URL, API URL, callback URL, invite URL ve interview URL'leri dogru uretiliyor.
+- [ ] Health/readiness endpoint'leri gercek durumu yansitiyor.
+
+### P2 - Public site ve landing page dogrulugu
+
+- [ ] Landing page headline gercek urunle uyumlu.
+- [ ] Hero mesajlari abarti, yanlis vaat veya launch disi capability icermiyor.
+- [ ] Ozellik kartlari gercekten mevcut capability'lerle uyumlu.
+- [ ] CTA'ler dogru sayfaya gidiyor.
+- [ ] Fiyat/plan mesajlari gercek backlog ve launch planina uygun.
+- [ ] Blog/solution/public sayfalarda yanlis claim yok.
+- [ ] Interview/AI claims gercekte calisan modlarla uyumlu.
+- [ ] Public forms, waitlist, contact, docs linkleri calisiyor.
+- [ ] Mobile ve desktop gorunumu gozden gecirildi.
+- [ ] Public sayfalarda copy, typo, TR/EN karismasi temizlendi.
+
+### P3 - Recruiter panel temel akislar
+
+- [ ] Login/logout calisiyor.
+- [ ] Signup / invitation / password reset akislarinda kopukluk yok.
+- [ ] Dashboard verileri dogru yukleniyor.
+- [ ] Jobs list/create/edit/archive akislari test edildi.
+- [ ] Candidates list/create/detail akislarinda sorun yok.
+- [ ] Applications list/detail/stage transition akislari calisiyor.
+- [ ] Read models recruiter gorunumleri beklenen veriyi donuyor.
+- [ ] Settings sayfasi kirmiyor.
+- [ ] Subscription sayfasi gercekten hazir olmayan alanlari yanlis gostermiyor.
+- [ ] Tum kritik butonlar, modallar, tablolar ve filtreler gozden gecirildi.
+
+### P4 - CV, screening, AI destek ve worker akislar
+
+- [ ] CV upload calisiyor.
+- [ ] CV parse akisi kuyruga gidiyor ve tamamlanabiliyor.
+- [ ] Screening support task'i olusuyor ve sonuc uretiyor.
+- [ ] Report generation task'i olusuyor ve sonuc uretiyor.
+- [ ] Recommendation generation task'i olusuyor ve sonuc uretiyor.
+- [ ] Retry / dead-letter davranisi kontrol edildi.
+- [ ] Failed task durumlari UI'da anlasilir sekilde gorunuyor.
+- [ ] Upload/storage mimarisi Render ayrik servis yapisinda dogru calisiyor.
+- [ ] AI task output'lari hallucinasyon, bos cevap, format bozulmasi acisindan incelendi.
+- [ ] Human approval guardrail'leri beklendigi gibi calisiyor.
+
+### P5 - Interview runtime kalite kontrolu
+
+- [ ] Interview invite olusturma akisi calisiyor.
+- [ ] Public interview linki dogru uretiliyor.
+- [ ] Session baslatma calisiyor.
+- [ ] Sorular beklenen sirada ve dogru tonda soruluyor.
+- [ ] Asistanin dili, aksani, konusma akisi kabul edilebilir seviyede.
+- [ ] Readiness / consent / start akisi dogru.
+- [ ] Transcript toplaniyor ve dogru bolumleniyor.
+- [ ] Interview tamamlaninca beklenen downstream task'lar calisiyor.
+- [ ] Browser speech fallback / ElevenLabs davranisi anlasilir.
+- [ ] Gercek aday deneyimi icin en az bir tam mock interview kaydi alindi.
+
+### P6 - AI kalite ve analiz dogrulugu
+
+- [ ] Screening skorlarinin mantigi kontrol edildi.
+- [ ] Recommendation gerekceleri kanit bagli ve tutarli.
+- [ ] Report output formatlari recruiter icin kullanisli.
+- [ ] Uyum/fit analizleri rastgele veya tehlikeli degil.
+- [ ] Prompt ve output'lar Turkish-first beklentiyle uyumlu.
+- [ ] Bos veri, eksik CV, eksik transcript, uyumsuz veri durumlari test edildi.
+- [ ] AI cevaplarinda hukuki/riskli claim veya kesin yargi problemi yok.
+- [ ] Ayni input tekrarlandiginda kalite kabul edilebilir stabilitede.
+- [ ] Farkli rol tipleri ve aday profillerinde sonuc kalitesi gozden gecirildi.
+
+### P7 - Analytics, reporting ve tasarim dogrulugu
+
+- [ ] Dashboard metric'leri gercek DB verisiyle tutarli.
+- [ ] Raporlama yuzeylerinde hesaplama hatasi yok.
+- [ ] Trend/summary alanlari mantikli gorunuyor.
+- [ ] Empty/loading/error state'ler tasarim olarak kabul edilebilir.
+- [ ] Table, chart, KPI ve details gorunumleri tutarli.
+- [ ] Data formatting, tarih, para ve adet formatlari dogru.
+- [ ] UI genelinde spacing, overflow, alignment ve responsive sorunlar temizlendi.
+
+### P8 - Admin ve internal operasyon yuzeyleri
+
+- [ ] Admin paneline yetkisiz erisim engelleniyor.
+- [ ] User list / detail / edit akislari calisiyor.
+- [ ] Yeni kullanici olusturma calisiyor.
+- [ ] Tenant/account duzenleme akislari calisiyor.
+- [ ] Enterprise/customer olusturma ve guncelleme test edildi.
+- [ ] Red alert / internal admin ekranlari beklenen veriyi gosteriyor.
+- [ ] Password reset / owner reset gibi kritik akislarda audit ve guardrail var.
+- [ ] Tenant isolation manuel olarak test edildi.
+
+### P9 - Launch oncesi acilmamasi gereken entegrasyonlar
+
+- [ ] Stripe launch oncesi acilmayacaksa UI'da yanlis yonlendirme yok.
+- [ ] Real email gonderimi acilmadan once provider ayarlari dokumante edildi.
+- [ ] Google / Calendly / Stripe / Resend / ElevenLabs icin hangi provider'lar launch'a dahil net.
+- [ ] Launch disi entegrasyonlar UI'dan gizlendi, etiketlendi ya da disabled hale getirildi.
+- [ ] Test credential ile prod credential karismiyor.
+
+### P10 - Security, privacy ve operasyon hazirligi
+
+- [ ] Secret rotation planı hazir.
+- [ ] Public repo / screenshot / log uzerinden sizmis secret kalmadi.
+- [ ] Demo shortcut / dev auth / debug modlar launch'ta kapatilacak sekilde planlandi.
+- [ ] Error logging / incident response / rollback adimlari dokumante edildi.
+- [ ] Launch gunu icin owner, sorumlu ve go/no-go karari net.
+
+## Go / No-Go Kapilari
+
+Launch oncesi minimum "go" kosullari:
+
+- [ ] P0 tamamen tamamlandi.
+- [ ] P1 tamamen tamamlandi.
+- [ ] P2 launch copy acisindan tamamlandi.
+- [ ] P3 recruiter core flow smoke tamamlandi.
+- [ ] P4 en az bir gercek task zinciri ile dogrulandi.
+- [ ] P5 en az bir tam mock interview ile dogrulandi.
+- [ ] P6 AI kalite review yapildi.
+- [ ] P8 admin/tenant security kritik akislar test edildi.
+- [ ] Launch disi entegrasyonlar ya kapatildi ya da bilincli sekilde ertelendi.
+
+## Kanit Kaydi
+
+Her checklist alanina asagidaki formatta not dusulebilir:
+
+```md
+- [ ] Jobs create/edit/archive akislari test edildi.
+  Owner:
+  Status:
+  Evidence:
+  Notes:
+```
+
+## Birlikte Yurutulecek Fazlar
+
+Pratik calisma sirasi:
+
+1. P0 + P1: sistem/bağlanti/dagitim dogrulamasi
+2. P2: landing/public copy ve claim kontrolu
+3. P3 + P8: panel ve admin yuzeyleri
+4. P4 + P5 + P6: CV, screening, interview, AI kalite
+5. P7 + P9 + P10: analytics, integrations, launch guvenligi

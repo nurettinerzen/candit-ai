@@ -1,8 +1,10 @@
-import { Injectable, UnauthorizedException, Inject} from "@nestjs/common";
+import { Injectable, UnauthorizedException, Inject } from "@nestjs/common";
 import type { Role } from "@ai-interviewer/domain";
 import type { RequestWithContext } from "../../common/interfaces/request-with-context.interface";
 import type { RequestUser } from "../../common/interfaces/request-user.interface";
 import { RuntimeConfigService } from "../../config/runtime-config.service";
+import { SecurityEventSeverity } from "@prisma/client";
+import { SecurityEventsService } from "../security-events/security-events.service";
 import { AuthService } from "./auth.service";
 
 function parseCookieHeader(raw: string | undefined) {
@@ -25,7 +27,9 @@ function parseCookieHeader(raw: string | undefined) {
 export class SessionResolverService {
   constructor(
     @Inject(AuthService) private readonly authService: AuthService,
-    @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService
+    @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService,
+    @Inject(SecurityEventsService)
+    private readonly securityEventsService: SecurityEventsService
   ) {}
 
   async resolve(request: RequestWithContext): Promise<RequestUser> {
@@ -48,7 +52,25 @@ export class SessionResolverService {
       return null;
     }
 
-    const payload = await this.authService.verifyAccessToken(token);
+    let payload;
+    try {
+      payload = await this.authService.verifyAccessToken(token);
+    } catch (error) {
+      void this.securityEventsService
+        .recordSecurityEvent({
+          source: "auth.session",
+          code: "auth.session.access_token_rejected",
+          message: error instanceof Error ? error.message : "Access token dogrulamasi basarisiz oldu.",
+          severity: SecurityEventSeverity.WARNING,
+          ipAddress: request.ip,
+          userAgent: request.header("user-agent") ?? undefined,
+          metadata: {
+            hasAuthorizationHeader: Boolean(request.header("authorization"))
+          }
+        })
+        .catch(() => undefined);
+      throw error;
+    }
 
     return {
       userId: payload.sub,

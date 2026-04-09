@@ -219,6 +219,29 @@ enum PublicLeadStatus {
   ARCHIVED
 }
 
+enum SecurityEventSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum PlatformIncidentCategory {
+  APPLICATION
+  SECURITY
+  ASSISTANT
+  OPERATIONS
+}
+
+enum PlatformIncidentSeverity {
+  WARNING
+  CRITICAL
+}
+
+enum PlatformIncidentStatus {
+  OPEN
+  RESOLVED
+}
+
 enum BillingPlanKey {
   STARTER
   GROWTH
@@ -359,6 +382,8 @@ model Tenant {
   billingQuotaGrants       BillingQuotaGrant[]
   billingUsageEvents       BillingUsageEvent[]
   billingCheckoutSessions  BillingCheckoutSession[]
+  securityEvents           SecurityEvent[]
+  platformIncidents        PlatformIncident[]
 
   @@index([createdAt(sort: Desc)])
 }
@@ -550,6 +575,7 @@ model User {
   identities             UserIdentity[]
   memberInvitations      MemberInvitation[]  @relation("InvitationUser")
   sentMemberInvitations  MemberInvitation[]  @relation("InvitationInviter")
+  securityEvents         SecurityEvent[]
 
   @@unique([tenantId, email])
   @@index([tenantId, role])
@@ -1661,6 +1687,55 @@ model NotificationDelivery {
   @@index([tenantId, status, queuedAt(sort: Desc)])
   @@index([tenantId, channel, queuedAt(sort: Desc)])
   @@index([domainEventId])
+}
+
+model SecurityEvent {
+  id            String                @id @default(uuid())
+  tenantId      String?
+  userId        String?
+  sessionId     String?
+  source        String
+  code          String
+  message       String
+  severity      SecurityEventSeverity @default(WARNING)
+  ipAddressHash String?
+  userAgent     String?
+  metadata      Json?
+  occurredAt    DateTime              @default(now())
+  createdAt     DateTime              @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, occurredAt(sort: Desc)])
+  @@index([userId, occurredAt(sort: Desc)])
+  @@index([sessionId, occurredAt(sort: Desc)])
+  @@index([code, occurredAt(sort: Desc)])
+}
+
+model PlatformIncident {
+  id          String                   @id @default(uuid())
+  incidentKey String                   @unique
+  tenantId    String?
+  category    PlatformIncidentCategory
+  severity    PlatformIncidentSeverity @default(WARNING)
+  source      String
+  code        String
+  message     String
+  status      PlatformIncidentStatus   @default(OPEN)
+  firstSeenAt DateTime                 @default(now())
+  lastSeenAt  DateTime                 @default(now())
+  repeatCount Int                      @default(1)
+  metadata    Json?
+  resolvedAt  DateTime?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([status, lastSeenAt(sort: Desc)])
+  @@index([tenantId, category, lastSeenAt(sort: Desc)])
+  @@index([category, severity, lastSeenAt(sort: Desc)])
 }
 
 model PublicLeadSubmission {

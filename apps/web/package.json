@@ -6,9 +6,9 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "echo 'no lint yet'",
+    "lint": "tsc --noEmit -p tsconfig.json",
     "i18n:audit": "node ./scripts/i18n-audit.mjs",
-    "test": "echo 'no tests yet'"
+    "test": "node ../../scripts/run-ts-tests.mjs lib"
   },
   "dependencies": {
     "@ai-interviewer/domain": "workspace:*",
@@ -22,6 +22,7 @@
     "@types/node": "^22.15.17",
     "@types/react": "^19.1.5",
     "@types/react-dom": "^19.1.5",
+    "tsx": "^4.19.3",
     "typescript": "^5.8.3"
   }
 }

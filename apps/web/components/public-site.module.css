@@ -172,8 +172,9 @@
 }
 
 .languagePillActive {
-  background: rgba(255, 255, 255, 0.08);
+  background: #6554ff;
   color: #ffffff;
+  box-shadow: 0 1px 4px rgba(101, 84, 255, 0.4);
 }
 
 .headerTextAction {
@@ -2776,7 +2777,7 @@
   position: relative;
   border-radius: 28px;
   padding: 56px 40px;
-  background: linear-gradient(135deg, #0f172a, #1e3a5f);
+  background: linear-gradient(135deg, #020818, #1e1b4b);
   overflow: hidden;
   text-align: center;
   max-width: 56rem;
@@ -2832,7 +2833,7 @@
 
 .ftCtaSubtitle {
   font-size: 1.125rem;
-  color: #bfdbfe;
+  color: #c4b5fd;
   margin-bottom: 32px;
   max-width: 42rem;
   margin-left: auto;
@@ -2977,19 +2978,19 @@
 
 
 /* ═══════════════════════════════════════════════
-   Solutions Page — Telyx-style Styles & Animations
+   Solutions Page — Candit Styles & Animations
    ═══════════════════════════════════════════════ */
 
 .solPage {
-  --sol-accent: #006feb;
-  --sol-accent-light: #00c4e6;
-  --sol-accent-glow: rgba(0, 111, 235, 0.25);
+  --sol-accent: #5046e5;
+  --sol-accent-light: #7c3aed;
+  --sol-accent-glow: rgba(80, 70, 229, 0.25);
   --sol-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --sol-glass: rgba(255, 255, 255, 0.7);
   --sol-glass-hover: rgba(255, 255, 255, 0.9);
   --sol-border: rgba(0, 0, 0, 0.06);
   --sol-border-hover: rgba(0, 0, 0, 0.12);
-  --sol-text-primary: #0f172a;
+  --sol-text-primary: #0c0a2a;
   --sol-text-secondary: #475569;
   --sol-text-muted: #94a3b8;
   --sol-glow-opacity: 0.15;
@@ -3042,9 +3043,9 @@
   gap: 8px;
   padding: 6px 16px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 111, 235, 0.2);
-  background: rgba(0, 111, 235, 0.06);
-  color: #051752;
+  border: 1px solid rgba(80, 70, 229, 0.2);
+  background: rgba(80, 70, 229, 0.06);
+  color: #1e1b4b;
   font-size: 0.875rem;
   font-weight: 500;
   margin-bottom: 24px;
@@ -3117,13 +3118,13 @@
 }
 
 .solGlowBtnPrimary {
-  background: #051752;
+  background: #5046e5;
   color: #fff;
-  box-shadow: 0 4px 16px rgba(5, 23, 82, 0.2);
+  box-shadow: 0 4px 16px rgba(80, 70, 229, 0.3);
 }
 
 .solGlowBtnPrimary:hover {
-  background: #0a2266;
+  background: #4338ca;
 }
 
 .solGlowBtnOutline {
@@ -3133,9 +3134,9 @@
 }
 
 .solGlowBtnOutline:hover {
-  background: #051752;
+  background: #5046e5;
   color: #fff;
-  border-color: #051752;
+  border-color: #5046e5;
 }
 
 .solStatsBar {
@@ -3173,7 +3174,7 @@
 .solStatValue {
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 700;
-  color: #051752;
+  color: #1e1b4b;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.04em;
 }
@@ -3275,7 +3276,7 @@
 }
 
 .solCard:hover .solCardTitle {
-  color: #051752;
+  color: #5046e5;
 }
 
 .solCardDesc {
@@ -3329,8 +3330,8 @@
 }
 
 .solCard:hover .solCardCta {
-  border-color: #051752;
-  color: #051752;
+  border-color: #5046e5;
+  color: #5046e5;
 }
 
 .solCardCta svg {
@@ -3489,7 +3490,7 @@
   position: relative;
   border-radius: 28px;
   padding: 32px 32px;
-  background: linear-gradient(135deg, #0f172a, #1e3a5f);
+  background: linear-gradient(135deg, #020818, #1e1b4b);
   overflow: hidden;
   text-align: center;
   max-width: 56rem;
@@ -3511,7 +3512,7 @@
   width: 256px;
   height: 256px;
   border-radius: 50%;
-  background: rgba(0, 111, 235, 0.2);
+  background: rgba(80, 70, 229, 0.2);
   filter: blur(48px);
   pointer-events: none;
 }
@@ -3524,7 +3525,7 @@
   width: 192px;
   height: 192px;
   border-radius: 50%;
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(124, 58, 237, 0.15);
   filter: blur(48px);
   pointer-events: none;
 }
@@ -3544,7 +3545,7 @@
 
 .solCtaSubtitle {
   font-size: 1.125rem;
-  color: #bfdbfe;
+  color: #c4b5fd;
   margin-bottom: 32px;
   max-width: 42rem;
   margin-left: auto;
@@ -3575,7 +3576,7 @@
   text-decoration: none;
   cursor: pointer;
   background: #fff;
-  color: #0f172a;
+  color: #1e1b4b;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   transition: all 0.25s ease;
 }

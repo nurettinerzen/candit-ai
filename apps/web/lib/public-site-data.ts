@@ -90,7 +90,7 @@ export const PUBLIC_FOOTER_COLUMNS: Array<{ title: string; links: PublicNavLink[
       { label: "Özellikler", href: "/features" },
       { label: "Fiyatlar", href: "/pricing" },
       { label: "Entegrasyonlar", href: "/integrations" },
-      { label: "Changelog", href: "/changelog" }
+      { label: "Güncellemeler", href: "/changelog" }
     ]
   },
   {
@@ -125,65 +125,61 @@ export const PUBLIC_FOOTER_COLUMNS: Array<{ title: string; links: PublicNavLink[
 
 export const PUBLIC_HOME_CHANNELS: PublicCard[] = [
   {
-    icon: "📞",
-    title: "Telefon",
-    body: "Sesli AI asistan ile çağrıları karşılayın. Randevu oluşturma, bilgi verme ve yönlendirme otomatik."
+    title: "AI Mülakat",
+    body: "Adaylara otomatik sesli veya yazılı mülakat uygulayın. AI yanıtları anlık analiz eder ve puanlar."
   },
   {
-    icon: "💬",
-    title: "WhatsApp",
-    body: "En çok kullanılan kanalda anında yanıt. Sipariş takibi, randevu, destek, hepsi WhatsApp üzerinden."
+    title: "Ön Eleme",
+    body: "CV ve başvuru bilgilerini AI ile tarayın, pozisyona uygun adayları otomatik filtreleyin."
   },
   {
-    icon: "🌐",
-    title: "Web Chat",
-    body: "Sitenize tek satırlık kodla entegre edin. Ziyaretçileri müşteriye çeviren akıllı sohbet."
+    title: "Aday Yönetimi",
+    body: "Tüm başvuruları tek panelden takip edin. Durum güncellemeleri ve iletişim otomatik yönetilir."
   },
   {
-    icon: "📧",
-    title: "Email",
-    body: "Gelen kutusunu AI ile yönetin. Otomatik taslak, akıllı sınıflandırma ve hızlı yanıt."
+    title: "Analitik",
+    body: "İşe alım süreci metriklerini gerçek zamanlı izleyin. Darboğazları tespit edip optimize edin."
   }
 ];
 
 export const PUBLIC_HOME_PROOF: PublicStat[] = [
   {
-    value: "%85",
-    label: "Daha Hızlı Yanıt Süresi",
-    detail: "Müşteriler saniyeler içinde cevap alır. Bekleme süresi neredeyse sıfır."
+    value: "%87",
+    label: "Daha Hızlı İşe Alım",
+    detail: "İşe alım sürecini otomatikleştirerek ortalama kapanma süresini %87 kısaltın."
   },
   {
     value: "7/24",
-    label: "Kesintisiz Müşteri Hizmeti",
-    detail: "Gece, hafta sonu, bayram, AI asistan hiç tatil yapmaz."
+    label: "Kesintisiz Mülakat",
+    detail: "AI mülakat 7 gün 24 saat aktif. Adaylar istedikleri zaman mülakata girebilir."
   },
   {
-    value: "4x",
-    label: "Daha Fazla Müşteri Kapasitesi",
-    detail: "Aynı ekiple 4 kat daha fazla müşteriye hizmet verin."
+    value: "12x",
+    label: "Verimlilik Artışı",
+    detail: "İnsan kaynakları ekibinizin verimliliği ortalama 12 kat artar."
   }
 ];
 
 export const PUBLIC_HOME_STEPS: PublicStep[] = [
   {
     step: "01",
-    title: "İşletmenizi tanımlayın",
-    body: "SSS, bilgi tabanı ve işletme detaylarınızı yükleyin. AI asistan sizi öğrensin."
+    title: "Pozisyonu tanımlayın",
+    body: "İş ilanını oluşturun, mülakat sorularını ve değerlendirme kriterlerini belirleyin."
   },
   {
     step: "02",
-    title: "Kanalları bağlayın",
-    body: "Telefon, WhatsApp, email ve web chat, tek tıkla entegre edin. CRM bağlantısı da dahil."
+    title: "Adayları yönlendirin",
+    body: "Mülakat linkini paylaşın veya başvuru formunuza entegre edin. Adaylar kolayca katılsın."
   },
   {
     step: "03",
-    title: "AI devreye girsin",
-    body: "Müşterileriniz yazar, arar veya email atar. AI anında, doğru ve güvenli yanıt verir."
+    title: "AI mülakat yaptırın",
+    body: "Adaylar sizin belirlediğiniz sorularla mülakata girer. AI yanıtları analiz eder ve raporlar."
   },
   {
     step: "04",
-    title: "İzleyin ve optimize edin",
-    body: "Dashboard'dan tüm kanalları takip edin. Performans ve memnuniyet tek yerde."
+    title: "En iyi adayı seçin",
+    body: "Karşılaştırmalı raporlarla en uygun adayı belirleyin ve teklifinizi iletin."
   }
 ];
 
@@ -557,7 +553,7 @@ export const PUBLIC_BLOG_ARTICLES: PublicBlogArticle[] = [
       "Yapay zeka destekli müşteri hizmetleri hızla dönüşüyor. İşletmelerin bu değişime nasıl uyum sağlayabileceğini keşfedin.",
     sections: [
       {
-        title: "Konuşanabilir Yapay Zeka Yeni Standart",
+        title: "Konuşabilir Yapay Zeka Yeni Standart",
         body:
           "Eskiden chatbotlar belirli anahtar kelimelere göre önceden programlanmış yanıtlar verirdi. Bugün ise büyük dil modelleri sayesinde yapay zeka asistanları doğal dilde anlama, bağlamsal yanıt üretme ve karmaşık sorunları çözme yeteneğine sahip. 2026'da konuşanabilir AI, müşteri hizmetlerinde altın standart haline geldi."
       },
@@ -742,10 +738,10 @@ export const PUBLIC_BLOG_ARTICLES: PublicBlogArticle[] = [
 ];
 
 export const PUBLIC_HELP_QUICKSTART: PublicStep[] = [
-  { step: "1", title: "Asistan Oluştur", body: "10 dakikada ilk asistanınızı oluşturun." },
-  { step: "2", title: "Bilgi Tabanı Ekle", body: "Dokümanlarınızı yükleyin, AI öğrensin." },
-  { step: "3", title: "Kanalları Bağla", body: "WhatsApp, email ve web chat kanallarını entegre edin." },
-  { step: "4", title: "Yayına Alın", body: "Müşterilerinize hizmet vermeye başlayın." }
+  { step: "1", title: "Hesap Oluşturun", body: "Dakikalar içinde ücretsiz hesabınızı açın." },
+  { step: "2", title: "Pozisyon Ekleyin", body: "İş ilanınızı ve mülakat sorularınızı tanımlayın." },
+  { step: "3", title: "Mülakat Linki Paylaşın", body: "Adaylara mülakat linkini gönderin, başvurular otomatik başlasın." },
+  { step: "4", title: "Sonuçları Değerlendirin", body: "AI raporlarıyla en uygun adayları hızlıca belirleyin." }
 ];
 
 export const PUBLIC_HELP_TOPICS: PublicCard[] = [
@@ -970,7 +966,7 @@ export const PUBLIC_PRIVACY_SECTIONS: PublicLegalSection[] = [
       "Şifreleme, HTTPS, OAuth 2.0, erişim kontrolleri ve düzenli güvenlik güncellemeleri ile veri güvenliği sağlanır."
   },
   {
-    title: "4. Saklama / Retention / Silme Politikası",
+    title: "4. Saklama ve Silme Politikası",
     body:
       "İletişim kayıtları platform üzerinden silinebilir. Hesap bilgileri hesap kapatılana kadar saklanır; bazı kayıtlar yasal gereklilikler nedeniyle daha uzun tutulabilir."
   },
@@ -1009,7 +1005,7 @@ export const PUBLIC_TERMS_SECTIONS: PublicLegalSection[] = [
   {
     title: "1. Hizmet Tanımı",
     body:
-      "Platform, işletmelere yapay zeka destekli müşteri iletişimi ve operasyon yönetimi sunan bir SaaS ürünüdür."
+      "Platform, işletmelere yapay zeka destekli işe alım ve mülakat yönetimi sunan bir SaaS ürünüdür."
   },
   {
     title: "2. Hesap Oluşturma ve Yetkilendirme",

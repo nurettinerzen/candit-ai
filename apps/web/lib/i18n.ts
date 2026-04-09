@@ -2333,7 +2333,13 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Ad Soyad; Telefon; E-posta; Lokasyon; Deneyim (yıl)":
     "Full Name; Phone; Email; Location; Experience (years)",
   "Dış Kaynak Adı": "External Source Name",
-  "Kaynak adı": "Source name"
+  "Kaynak adı": "Source name",
+  "Kurumsal düzeyde veri güvenliği": "Enterprise-grade data security",
+  "AI destekli mülakat deneyimi": "AI-powered interview experience",
+  "Hemen başlayın": "Get started",
+  "Hesap oluşturun, pozisyonu tanımlayın ve mülakat sorularını belirleyin. AI destekli işe alım süreciniz dakikalar içinde aktif olsun.": "Create your account, define the position and set interview questions. Your AI-powered hiring process will be active in minutes.",
+  "Bu optimizasyonun iş sonuçlarına etkisini somut verilerle paylaşabilir misiniz?": "Can you share the business impact of this optimization with concrete data?",
+  "Tabi, sayfa hızındaki iyileşme sayesinde dönüşüm oranı %18 arttı ve aylık 200 bin TL ek gelir sağladık. Ayrıca bounce rate %35 düştü.": "Sure, thanks to the page speed improvement, conversion rate increased by 18% and we generated an additional 200K TL monthly revenue. Also, bounce rate dropped by 35%."
 });
 
 const EN_WORD_TRANSLATIONS: Array<[string, string]> = [

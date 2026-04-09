@@ -320,7 +320,7 @@ const primaryButtonStyle: CSSProperties = {
   width: "100%",
   border: "none",
   borderRadius: 16,
-  background: "linear-gradient(135deg, #0ea5e9, #f97316)",
+  background: "#5046e5",
   color: "#fff",
   fontSize: 15,
   fontWeight: 700,

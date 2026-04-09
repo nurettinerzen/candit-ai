@@ -6,8 +6,8 @@
     "dev": "tsx watch src/main.ts",
     "start": "node dist/apps/api/src/main.js",
     "build": "nest build",
-    "lint": "echo 'no lint yet'",
-    "test": "echo 'no tests yet'",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "test": "node ../../scripts/run-ts-tests.mjs src",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts"

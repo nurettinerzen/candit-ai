@@ -2,16 +2,21 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
-  NotFoundException, Inject} from "@nestjs/common";
+  NotFoundException,
+  Inject
+} from "@nestjs/common";
 import {
   ApplicationStage,
   AuditActorType,
+  PlatformIncidentCategory,
+  PlatformIncidentSeverity,
   IntegrationProvider,
   IntegrationConnectionStatus,
   JobStatus,
   Prisma
 } from "@prisma/client";
 import { AuditWriterService } from "../audit/audit-writer.service";
+import { SecurityEventsService } from "../security-events/security-events.service";
 import type {
   IntegrationDomainEventInput,
   IntegrationInterviewProvisionResult,
@@ -108,6 +113,13 @@ function asDate(value: unknown) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function isLaunchUnsupportedProvider(provider: IntegrationProvider) {
+  return (
+    provider === IntegrationProvider.MICROSOFT_CALENDAR ||
+    provider === IntegrationProvider.ZOOM
+  );
+}
+
 function mapExternalStage(stageRaw: string | null) {
   const normalized = stageRaw?.trim().toUpperCase();
 
@@ -160,7 +172,9 @@ export class IntegrationsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditWriterService) private readonly auditWriterService: AuditWriterService,
-    @Inject(IntegrationIdentityMapperService) private readonly identityMapper: IntegrationIdentityMapperService
+    @Inject(IntegrationIdentityMapperService) private readonly identityMapper: IntegrationIdentityMapperService,
+    @Inject(SecurityEventsService)
+    private readonly securityEventsService: SecurityEventsService
   ) {}
 
   async resolveMeetingContext(input: {
@@ -256,6 +270,22 @@ export class IntegrationsService {
         metadata: selectedConnection.credential?.metadata ?? null,
         lastError: selectedConnection.credential?.lastError ?? null
       };
+
+      if (isLaunchUnsupportedProvider(selectedConnection.provider)) {
+        await this.reportOpsIncident({
+          tenantId: input.tenantId,
+          severity: PlatformIncidentSeverity.WARNING,
+          source: "integration.meeting",
+          code: "integration.meeting.unsupported_provider",
+          message: `${selectedConnection.provider} provider launch icin henuz desteklenmiyor.`,
+          metadata: {
+            sessionId: input.sessionId,
+            provider: selectedConnection.provider,
+            connectionId: selectedConnection.id,
+            traceId: input.traceId ?? null
+          }
+        });
+      }
 
       if (adapter && (adapter.provisionInterview || adapter.updateInterview)) {
         const operation = input.operation ?? "create";
@@ -375,9 +405,48 @@ export class IntegrationsService {
             }
           };
         }
+
+        await this.reportOpsIncident({
+          tenantId: input.tenantId,
+          severity:
+            provisionResponse.status === "failed"
+              ? PlatformIncidentSeverity.CRITICAL
+              : PlatformIncidentSeverity.WARNING,
+          source: "integration.meeting",
+          code:
+            provisionResponse.status === "failed"
+              ? "integration.meeting.provision_failed"
+              : "integration.meeting.provision_unavailable",
+          message:
+            provisionResponse.status === "failed"
+              ? "Harici mulakat provider provisioning adimi basarisiz oldu."
+              : "Harici mulakat provider provisioning adimi kullanilabilir degil.",
+          metadata: {
+            sessionId: input.sessionId,
+            provider: selectedConnection.provider,
+            connectionId: selectedConnection.id,
+            providerSource: provisionResponse.providerSource,
+            details: (provisionResponse.details ?? null) as Prisma.InputJsonValue | null,
+            traceId: input.traceId ?? null
+          }
+        });
       }
 
       if (!baseMeetingUrl) {
+        await this.reportOpsIncident({
+          tenantId: input.tenantId,
+          severity: PlatformIncidentSeverity.WARNING,
+          source: "integration.meeting",
+          code: "integration.meeting.base_url_missing",
+          message: "Aktif meeting provider baglantisinda booking/baseMeetingUrl konfiguru eksik.",
+          metadata: {
+            sessionId: input.sessionId,
+            provider: selectedConnection.provider,
+            connectionId: selectedConnection.id,
+            credentialStatus: selectedConnection.credential?.status ?? "MISSING",
+            traceId: input.traceId ?? null
+          }
+        });
         return {
           provider: selectedConnection.provider,
           connectionId: selectedConnection.id,
@@ -564,6 +633,8 @@ export class IntegrationsService {
       const effectiveStatus =
         connection.status !== IntegrationConnectionStatus.ACTIVE
           ? "inactive"
+          : isLaunchUnsupportedProvider(connection.provider)
+            ? "unsupported_provider"
           : !hasConfig
             ? "missing_config"
             : connection.provider === IntegrationProvider.CALENDLY ||
@@ -774,6 +845,18 @@ export class IntegrationsService {
 
     const refreshToken = connection.credential.refreshToken?.trim();
     if (!refreshToken) {
+      await this.reportOpsIncident({
+        tenantId: input.tenantId,
+        severity: PlatformIncidentSeverity.WARNING,
+        source: "integration.oauth",
+        code: "integration.oauth.refresh_token_missing",
+        message: `${input.provider} baglantisi icin refresh token bulunamadi.`,
+        metadata: {
+          provider: input.provider,
+          connectionId: connection.id,
+          traceId: input.traceId ?? null
+        }
+      });
       return {
         refreshed: false,
         reason: "refresh_token_missing"
@@ -807,6 +890,18 @@ export class IntegrationsService {
           : null;
 
     if (!tokenPayload) {
+      await this.reportOpsIncident({
+        tenantId: input.tenantId,
+        severity: PlatformIncidentSeverity.WARNING,
+        source: "integration.oauth",
+        code: "integration.oauth.provider_refresh_unsupported",
+        message: `${input.provider} baglantisi otomatik token yenilemeyi desteklemiyor.`,
+        metadata: {
+          provider: input.provider,
+          connectionId: connection.id,
+          traceId: input.traceId ?? null
+        }
+      });
       return {
         refreshed: false,
         reason: "provider_refresh_not_supported"
@@ -823,6 +918,19 @@ export class IntegrationsService {
         body: JSON.stringify(tokenPayload.body)
       });
     } catch (error) {
+      await this.reportOpsIncident({
+        tenantId: input.tenantId,
+        severity: PlatformIncidentSeverity.CRITICAL,
+        source: "integration.oauth",
+        code: "integration.oauth.refresh_network_error",
+        message: `${input.provider} token yenileme istegi sirasinda ag hatasi olustu.`,
+        metadata: {
+          provider: input.provider,
+          connectionId: connection.id,
+          errorMessage: error instanceof Error ? error.message : "oauth_refresh_network_error",
+          traceId: input.traceId ?? null
+        }
+      });
       await this.prisma.integrationCredential.update({
         where: {
           id: connection.credential.id
@@ -841,6 +949,20 @@ export class IntegrationsService {
 
     if (!response.ok) {
       const body = await response.text();
+      await this.reportOpsIncident({
+        tenantId: input.tenantId,
+        severity: PlatformIncidentSeverity.CRITICAL,
+        source: "integration.oauth",
+        code: "integration.oauth.refresh_http_error",
+        message: `${input.provider} token yenileme istegi basarisiz oldu.`,
+        metadata: {
+          provider: input.provider,
+          connectionId: connection.id,
+          statusCode: response.status,
+          responseBody: body.slice(0, 200),
+          traceId: input.traceId ?? null
+        }
+      });
       await this.prisma.integrationCredential.update({
         where: {
           id: connection.credential.id
@@ -865,6 +987,21 @@ export class IntegrationsService {
       accessToken && Number.isFinite(expiresInRaw)
         ? new Date(Date.now() + Math.floor(expiresInRaw) * 1000)
         : null;
+
+    if (!accessToken) {
+      await this.reportOpsIncident({
+        tenantId: input.tenantId,
+        severity: PlatformIncidentSeverity.CRITICAL,
+        source: "integration.oauth",
+        code: "integration.oauth.empty_access_token",
+        message: `${input.provider} token yenileme cevabinda access token donmedi.`,
+        metadata: {
+          provider: input.provider,
+          connectionId: connection.id,
+          traceId: input.traceId ?? null
+        }
+      });
+    }
 
     await Promise.all([
       this.prisma.integrationCredential.update({
@@ -958,6 +1095,34 @@ export class IntegrationsService {
         : [];
 
       persisted = await this.persistAtsSyncItems(input.tenantId, items);
+    }
+
+    if (result.status === "error" || result.status === "noop") {
+      await this.reportOpsIncident({
+        tenantId: input.tenantId,
+        severity:
+          result.status === "error"
+            ? PlatformIncidentSeverity.CRITICAL
+            : PlatformIncidentSeverity.WARNING,
+        source: "integration.sync",
+        code:
+          result.status === "error"
+            ? "integration.sync.execution_failed"
+            : "integration.sync.noop",
+        message:
+          result.status === "error"
+            ? `${input.provider} senkronizasyonu hata ile sonlandi.`
+            : `${input.provider} senkronizasyonu calisti ancak gercek bir adapter davranisi uretmedi.`,
+        metadata: {
+          provider: input.provider,
+          objectType: input.objectType,
+          connectionId: connection.id,
+          fetchedCount: result.fetchedCount,
+          nextCursor: result.nextCursor ?? null,
+          details: (result.details ?? null) as Prisma.InputJsonValue | null,
+          traceId: input.traceId ?? null
+        }
+      });
     }
 
     await Promise.all([
@@ -1080,6 +1245,24 @@ export class IntegrationsService {
         status: processed.status.toUpperCase()
       }
     });
+
+    if (processed.status !== "processed") {
+      await this.reportOpsIncident({
+        tenantId: input.tenantId,
+        severity: PlatformIncidentSeverity.WARNING,
+        source: "integration.webhook",
+        code: "integration.webhook.unprocessed",
+        message: `${input.provider} webhook olayi tam olarak islenemedi.`,
+        metadata: {
+          provider: input.provider,
+          eventKey: input.eventKey,
+          idempotencyKey: input.idempotencyKey,
+          status: processed.status,
+          details: (processed.details ?? null) as Prisma.InputJsonValue | null,
+          traceId: input.traceId ?? null
+        }
+      });
+    }
 
     if (processed.status === "processed") {
       await this.applyWebhookInterviewSessionSync({
@@ -1450,6 +1633,29 @@ export class IntegrationsService {
         expiresAt: true
       }
     });
+  }
+
+  private async reportOpsIncident(input: {
+    tenantId?: string | null;
+    severity?: PlatformIncidentSeverity;
+    source: string;
+    code: string;
+    message: string;
+    metadata?: Prisma.InputJsonValue | null;
+  }) {
+    try {
+      await this.securityEventsService.recordPlatformIncident({
+        tenantId: input.tenantId ?? null,
+        category: PlatformIncidentCategory.OPERATIONS,
+        severity: input.severity ?? PlatformIncidentSeverity.WARNING,
+        source: input.source,
+        code: input.code,
+        message: input.message,
+        metadata: input.metadata
+      });
+    } catch {
+      // Incident tracking should stay best-effort for integration flows.
+    }
   }
 
   private async requireActiveConnection(tenantId: string, provider: IntegrationProvider) {

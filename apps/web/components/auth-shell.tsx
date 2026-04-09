@@ -20,7 +20,7 @@ export function AuthShell({ title, description, children, footer, badge }: AuthS
         alignItems: "center",
         justifyContent: "center",
         background:
-          "radial-gradient(circle at top left, rgba(14,165,233,0.16), transparent 34%), radial-gradient(circle at top right, rgba(249,115,22,0.14), transparent 28%), linear-gradient(180deg, #07111f 0%, #0f172a 100%)",
+          "radial-gradient(circle at top left, rgba(80,70,229,0.18), transparent 34%), radial-gradient(circle at top right, rgba(124,58,237,0.14), transparent 28%), linear-gradient(180deg, #07111f 0%, #0f172a 100%)",
         padding: 24
       }}
     >
@@ -44,7 +44,7 @@ export function AuthShell({ title, description, children, footer, badge }: AuthS
                 width: 46,
                 height: 46,
                 borderRadius: 14,
-                background: "linear-gradient(135deg, #0ea5e9, #f97316)",
+                background: "linear-gradient(135deg, #5046e5, #7c3aed)",
                 fontWeight: 800,
                 letterSpacing: "-0.04em"
               }}
@@ -69,7 +69,7 @@ export function AuthShell({ title, description, children, footer, badge }: AuthS
               padding: "28px 28px 18px",
               borderBottom: "1px solid rgba(255,255,255,0.06)",
               background:
-                "linear-gradient(135deg, rgba(14,165,233,0.18), rgba(249,115,22,0.12))"
+                "linear-gradient(135deg, rgba(80,70,229,0.18), rgba(124,58,237,0.12))"
             }}
           >
             {badge ? (
@@ -83,8 +83,7 @@ export function AuthShell({ title, description, children, footer, badge }: AuthS
                   fontSize: 12,
                   fontWeight: 700,
                   letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  color: "#bae6fd",
+                  color: "#c4b5fd",
                   background: "rgba(2,6,23,0.32)",
                   marginBottom: 14
                 }}
@@ -138,9 +137,9 @@ export function AuthNotice({
             background: "rgba(20,83,45,0.28)"
           }
         : {
-            color: "#bae6fd",
-            border: "rgba(14,165,233,0.24)",
-            background: "rgba(12,74,110,0.28)"
+            color: "#c4b5fd",
+            border: "rgba(80,70,229,0.24)",
+            background: "rgba(49,46,129,0.28)"
           };
 
   return (

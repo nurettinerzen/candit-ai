@@ -110,7 +110,7 @@ export function resolveActiveSession(): WebAuthSession | null {
   }
 
   if (isExplicitlyLoggedOut()) return null;
-  return getDemoSession();
+  return ENABLE_DEMO_SESSION ? getDemoSession() : null;
 }
 
 export function hasAnyRole(session: WebAuthSession | null, roles: string[]) {

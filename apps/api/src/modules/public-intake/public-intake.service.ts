@@ -6,8 +6,15 @@ import {
   Injectable
 } from "@nestjs/common";
 import { createHash } from "crypto";
-import { NotificationDeliveryStatus, Prisma, PublicLeadStatus } from "@prisma/client";
+import {
+  NotificationDeliveryStatus,
+  PlatformIncidentCategory,
+  PlatformIncidentSeverity,
+  Prisma,
+  PublicLeadStatus
+} from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { SecurityEventsService } from "../security-events/security-events.service";
 
 type SubmitContactInput = {
   fullName: string;
@@ -104,7 +111,11 @@ function rateLimitException(message: string) {
 
 @Injectable()
 export class PublicIntakeService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(SecurityEventsService)
+    private readonly securityEventsService: SecurityEventsService
+  ) {}
 
   async submitContact(input: SubmitContactInput) {
     if (input.website && input.website.trim().length > 0) {
@@ -200,6 +211,25 @@ export class PublicIntakeService {
           notification.status === NotificationDeliveryStatus.SENT ? now : null
       }
     });
+
+    if (notification.status === NotificationDeliveryStatus.FAILED) {
+      await this.securityEventsService
+        .recordPlatformIncident({
+          category: PlatformIncidentCategory.APPLICATION,
+          severity: PlatformIncidentSeverity.WARNING,
+          source: "public.contact",
+          code: "public.contact.ops_notification_failed",
+          message: "Public contact talebi alindi ancak ops bildirimi gonderilemedi.",
+          metadata: {
+            leadId: lead.id,
+            sourcePage: lead.sourcePage,
+            provider: notification.provider,
+            errorMessage: notification.errorMessage ?? null,
+            traceId: input.traceId ?? null
+          }
+        })
+        .catch(() => undefined);
+    }
 
     return {
       success: true as const,

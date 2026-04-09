@@ -6,12 +6,9 @@ import { Suspense, useEffect, useMemo, useState, type CSSProperties, type FormEv
 import { AuthNotice, AuthShell } from "../../../components/auth-shell";
 import { useUiText } from "../../../components/site-language-provider";
 import { formatAuthErrorMessage } from "../../../lib/auth/error";
-import { ENABLE_DEMO_SESSION } from "../../../lib/auth/runtime";
 import {
   getAuthProviders,
   getGoogleAuthAuthorizeUrl,
-  getLastTenantId,
-  loginWithDemoSession,
   loginWithPassword
 } from "../../../lib/auth/session";
 
@@ -31,14 +28,12 @@ function LoginPageContent() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [tenantId, setTenantId] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setTenantId(getLastTenantId() ?? "");
-
     let cancelled = false;
 
     async function loadProviders() {
@@ -66,15 +61,8 @@ function LoginPageContent() {
     setLoading(true);
     setError("");
 
-    if (email === "admin" && password === "1234") {
-      loginWithDemoSession();
-      window.location.assign(nextPath);
-      return;
-    }
-
     try {
       await loginWithPassword({
-        tenantId: tenantId.trim() || undefined,
         email,
         password
       });
@@ -86,21 +74,15 @@ function LoginPageContent() {
     }
   }
 
-  function handleDemoLogin() {
-    loginWithDemoSession();
-    window.location.assign(nextPath);
-  }
-
   const googleUrl = getGoogleAuthAuthorizeUrl({
     intent: "login",
-    tenantId: tenantId.trim() || undefined,
     returnTo: nextPath
   });
 
   return (
     <AuthShell
       badge={t("Hesaba giriş")}
-      title={t("İşe alım paneline geri dön")}
+      title={t("İşe alım platformuna giriş yapın")}
       description={t("Parola ile giriş yapabilir, şifrenizi sıfırlayabilir veya Google ile oturum açabilirsiniz.")}
       footer={
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
@@ -129,7 +111,7 @@ function LoginPageContent() {
             onChange={(event) => setEmail(event.target.value)}
             type="email"
             autoComplete="email"
-            placeholder="owner@demo.local"
+            placeholder="name@company.com"
             required
             style={inputStyle}
           />
@@ -142,19 +124,8 @@ function LoginPageContent() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             autoComplete="current-password"
-            placeholder="demo12345"
+            placeholder="••••••••"
             required
-            style={inputStyle}
-          />
-        </label>
-
-        <label style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Tenant kodu")} <span style={{ color: "#64748b" }}>({t("opsiyonel")})</span></span>
-          <input
-            value={tenantId}
-            onChange={(event) => setTenantId(event.target.value)}
-            autoComplete="organization"
-            placeholder="ten_demo"
             style={inputStyle}
           />
         </label>
@@ -216,11 +187,6 @@ function LoginPageContent() {
           />
         ) : null}
 
-        {ENABLE_DEMO_SESSION ? (
-          <button type="button" onClick={handleDemoLogin} style={secondaryButtonStyle}>
-            {t("Demo hesabıyla devam et")}
-          </button>
-        ) : null}
       </div>
     </AuthShell>
   );
@@ -250,7 +216,7 @@ const primaryButtonStyle: CSSProperties = {
   width: "100%",
   border: "none",
   borderRadius: 16,
-  background: "linear-gradient(135deg, #0ea5e9, #f97316)",
+  background: "#5046e5",
   color: "#fff",
   fontSize: 15,
   fontWeight: 700,

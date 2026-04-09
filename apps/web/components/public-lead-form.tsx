@@ -108,7 +108,7 @@ export function PublicLeadForm({
 
   return (
     <form className={styles.formCard} onSubmit={handleSubmit}>
-      <span className={styles.eyebrow}>Form</span>
+      <span className={styles.eyebrow}>{title}</span>
       <h3>{title}</h3>
       <p>{body}</p>
 
@@ -213,7 +213,6 @@ export function PublicLeadForm({
         className={`${styles.button} ${styles.buttonPrimary} ${styles.buttonBlock}`}
       >
         <span>{submitting ? "Gönderiliyor..." : submitLabel}</span>
-        <span aria-hidden="true">-&gt;</span>
       </button>
     </form>
   );

@@ -13,6 +13,7 @@ import {
   BillingQuotaKey,
   IntegrationConnectionStatus,
   NotificationDeliveryStatus,
+  PlatformIncidentStatus,
   Prisma,
   PublicLeadStatus,
   Role,
@@ -411,12 +412,34 @@ export class InternalAdminService {
     const since = new Date(Date.now() - filters.windowDays * 24 * 60 * 60 * 1000);
 
     const [
+      storedIncidents,
       notificationFailures,
       aiFailures,
-      authEvents,
       billingAlerts,
       integrationAlerts
     ] = await Promise.all([
+      this.prisma.platformIncident.findMany({
+        where: {
+          status: PlatformIncidentStatus.OPEN,
+          lastSeenAt: {
+            gte: since
+          }
+        },
+        orderBy: {
+          lastSeenAt: "desc"
+        },
+        select: {
+          id: true,
+          tenantId: true,
+          category: true,
+          severity: true,
+          source: true,
+          code: true,
+          message: true,
+          repeatCount: true,
+          lastSeenAt: true
+        }
+      }),
       this.prisma.notificationDelivery.groupBy({
         by: ["tenantId", "providerKey", "templateKey", "errorMessage"],
         where: {
@@ -449,23 +472,6 @@ export class InternalAdminService {
           createdAt: true
         }
       }),
-      this.prisma.authSession.groupBy({
-        by: ["tenantId", "revokedReason"],
-        where: {
-          revokedAt: {
-            gte: since
-          },
-          revokedReason: {
-            not: null
-          }
-        },
-        _count: {
-          _all: true
-        },
-        _max: {
-          revokedAt: true
-        }
-      }),
       this.prisma.tenantBillingAccount.findMany({
         where: {
           status: {
@@ -496,9 +502,9 @@ export class InternalAdminService {
 
     const tenantIds = Array.from(
       new Set([
+        ...storedIncidents.map((row) => row.tenantId).filter((value): value is string => Boolean(value)),
         ...notificationFailures.map((row) => row.tenantId),
         ...aiFailures.map((row) => row.tenantId),
-        ...authEvents.map((row) => row.tenantId),
         ...billingAlerts.map((row) => row.tenantId),
         ...integrationAlerts.map((row) => row.tenantId)
       ])
@@ -520,6 +526,23 @@ export class InternalAdminService {
 
     const tenantNameMap = new Map(tenants.map((tenant) => [tenant.id, tenant.name]));
     const items: PlatformAlertItem[] = [];
+
+    for (const row of storedIncidents) {
+      const tenantId = row.tenantId ?? "platform";
+
+      items.push({
+        id: row.id,
+        tenantId,
+        tenantName: row.tenantId ? tenantNameMap.get(row.tenantId) ?? row.tenantId : "Platform",
+        category: row.category,
+        severity: row.severity === "CRITICAL" ? "critical" : "warning",
+        source: row.source,
+        message: row.message,
+        repeats: row.repeatCount,
+        lastSeenAt: row.lastSeenAt.toISOString(),
+        status: "OPEN"
+      });
+    }
 
     for (const row of notificationFailures) {
       items.push({
@@ -547,24 +570,6 @@ export class InternalAdminService {
         message: row.errorMessage ?? `${row.taskType} görevinde kalite uyarısı oluştu.`,
         repeats: row._count._all,
         lastSeenAt: (row._max.createdAt ?? since).toISOString(),
-        status: "OPEN"
-      });
-    }
-
-    for (const row of authEvents) {
-      items.push({
-        id: `security:${row.tenantId}:${row.revokedReason ?? "revoked"}`,
-        tenantId: row.tenantId,
-        tenantName: tenantNameMap.get(row.tenantId) ?? row.tenantId,
-        category: "SECURITY",
-        severity: row.revokedReason?.includes("reuse") ? "critical" : "warning",
-        source: "Kimlik doğrulama",
-        message:
-          row.revokedReason === "refresh_token_reuse_detected"
-            ? "Refresh token tekrar kullanımı tespit edildi."
-            : row.revokedReason ?? "Oturum güvenlik gerekçesiyle sonlandırıldı.",
-        repeats: row._count._all,
-        lastSeenAt: (row._max.revokedAt ?? since).toISOString(),
         status: "OPEN"
       });
     }
