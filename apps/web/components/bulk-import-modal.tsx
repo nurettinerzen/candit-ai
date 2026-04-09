@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { SOURCE_LABELS } from "../lib/constants";
 import type { BulkImportCandidate } from "../lib/types";
+import { useUiText } from "./site-language-provider";
 
 type BulkImportModalProps = {
   open: boolean;
@@ -31,6 +32,7 @@ function parseCandidates(raw: string): BulkImportCandidate[] {
 }
 
 export function BulkImportModal({ open, onClose, onSubmit }: BulkImportModalProps) {
+  const { t } = useUiText();
   const [raw, setRaw] = useState("");
   const [source, setSource] = useState("kariyer_net");
   const [externalSource, setExternalSource] = useState("");
@@ -43,7 +45,7 @@ export function BulkImportModal({ open, onClose, onSubmit }: BulkImportModalProp
 
   const handleSubmit = async () => {
     if (candidates.length === 0) {
-      setError("En az 1 geçerli aday gerekli.");
+      setError(t("En az 1 geçerli aday gerekli."));
       return;
     }
     setError("");
@@ -53,7 +55,7 @@ export function BulkImportModal({ open, onClose, onSubmit }: BulkImportModalProp
       setRaw("");
       onClose();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Bir hata oluştu.");
+      setError(e instanceof Error ? e.message : t("Bir hata oluştu."));
     } finally {
       setSubmitting(false);
     }
@@ -63,28 +65,28 @@ export function BulkImportModal({ open, onClose, onSubmit }: BulkImportModalProp
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Toplu Aday Ekle</h3>
+          <h3>{t("Toplu Aday Ekle")}</h3>
           <button className="btn-close" onClick={onClose}>&times;</button>
         </div>
 
         <div className="modal-body">
           <p className="text-muted text-sm">
-            Her satıra bir aday. Alanlar noktalı virgül veya tab ile ayrılır:<br />
-            <code>Ad Soyad; Telefon; E-posta; Lokasyon; Deneyim (yıl)</code>
+            {t("Her satıra bir aday. Alanlar noktalı virgül veya tab ile ayrılır:")}<br />
+            <code>{t("Ad Soyad; Telefon; E-posta; Lokasyon; Deneyim (yıl)")}</code>
           </p>
 
           <textarea
             className="form-textarea"
             rows={8}
-            placeholder={"Ayşe Doğan; 0532 111 2233; ayse@email.com; İstanbul; 4\nAli Yılmaz; 0533 222 3344; ali@email.com; İstanbul; 3"}
+            placeholder={t("Ayşe Doğan; 0532 111 2233; ayse@email.com; İstanbul; 4\nAli Yılmaz; 0533 222 3344; ali@email.com; İstanbul; 3")}
             value={raw}
             onChange={(e) => setRaw(e.target.value)}
           />
 
-          <p className="text-sm">{candidates.length} aday algılandı</p>
+          <p className="text-sm">{t(`${candidates.length} aday algılandı`)}</p>
 
           <div className="form-row">
-            <label>Kaynak</label>
+            <label>{t("Kaynak")}</label>
             <select className="form-select" value={source} onChange={(e) => setSource(e.target.value)}>
               {IMPORT_SOURCES.map((s) => (
                 <option key={s} value={s}>{SOURCE_LABELS[s] ?? s}</option>
@@ -94,8 +96,8 @@ export function BulkImportModal({ open, onClose, onSubmit }: BulkImportModalProp
 
           {source === "other" && (
             <div className="form-row">
-              <label>Dış Kaynak Adı</label>
-              <input className="form-input" value={externalSource} onChange={(e) => setExternalSource(e.target.value)} placeholder="Kaynak adı" />
+              <label>{t("Dış Kaynak Adı")}</label>
+              <input className="form-input" value={externalSource} onChange={(e) => setExternalSource(e.target.value)} placeholder={t("Kaynak adı")} />
             </div>
           )}
 
@@ -103,9 +105,9 @@ export function BulkImportModal({ open, onClose, onSubmit }: BulkImportModalProp
         </div>
 
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose} disabled={submitting}>İptal</button>
+          <button className="btn btn-secondary" onClick={onClose} disabled={submitting}>{t("İptal")}</button>
           <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || candidates.length === 0}>
-            {submitting ? "İçe aktarılıyor..." : `${candidates.length} Aday Ekle`}
+            {submitting ? t("İçe aktarılıyor...") : t(`${candidates.length} Aday Ekle`)}
           </button>
         </div>
       </div>

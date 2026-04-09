@@ -20,10 +20,23 @@ import { RuntimeConfigService } from "../../config/runtime-config.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AiOrchestrationService } from "../ai-orchestration/ai-orchestration.service";
 import { AuditWriterService } from "../audit/audit-writer.service";
+import { BillingService } from "../billing/billing.service";
 import { DomainEventsService } from "../domain-events/domain-events.service";
 import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { IntegrationsService } from "../integrations/integrations.service";
 import { SpeechRuntimeService } from "../speech/speech-runtime.service";
+import {
+  AI_FIRST_INTERVIEW_INVITE_SOURCE,
+  AI_FIRST_INTERVIEW_VALIDITY_DAYS,
+  deriveInterviewInvitationState,
+  isAiFirstInterviewInvitation
+} from "./interview-invitation-state.util";
+import {
+  buildInterviewFirstQuestionPrompt,
+  buildInterviewOpeningPrompt,
+  buildInterviewReadinessReprompt,
+  classifyInterviewReadinessReply
+} from "./interview-opening.util";
 
 const INTERVIEW_COMPLETION_REVIEW_PACK_FLAG =
   "ai.system_triggers.interview_completed.review_pack.enabled";
@@ -92,10 +105,48 @@ type NormalizedInterviewTemplate = {
   blocks: InterviewTemplateBlock[];
 };
 
+type InterviewQuestionDraftInput = {
+  key?: string;
+  questionKey?: string;
+  category?: string;
+  prompt: string;
+  followUps?: string[];
+};
+
+type InterviewQuestionDraftView = {
+  id: string;
+  key: string;
+  questionKey: string;
+  category: string;
+  prompt: string;
+  followUps: string[];
+  source: "template" | "suggested";
+  reason?: string;
+};
+
+type TemplateRecord = {
+  id: string;
+  name: string;
+  roleFamily: string;
+  templateJson: Prisma.JsonValue;
+  rubricJson: Prisma.JsonValue;
+  version: number;
+};
+
 type AnswerEvaluation = {
   isComplete: boolean;
   reason: string;
   quality: "high" | "medium" | "low";
+};
+
+type InterviewEngineState = {
+  engineVersion?: string;
+  state?: string;
+  readinessRequired?: boolean;
+  readinessPromptText?: string | null;
+  readinessPromptAskedAt?: string | null;
+  readinessConfirmedAt?: string | null;
+  readinessDeclinedCount?: number;
 };
 
 function parseOptionalDate(raw?: string) {
@@ -151,6 +202,42 @@ function countWords(input: string) {
   return cleaned.split(" ").filter(Boolean).length;
 }
 
+function readInterviewEngineState(value: Prisma.JsonValue | null | undefined): InterviewEngineState {
+  const root = asObject(value);
+
+  return {
+    engineVersion:
+      typeof root.engineVersion === "string" && root.engineVersion.trim().length > 0
+        ? sanitizeText(root.engineVersion)
+        : undefined,
+    state:
+      typeof root.state === "string" && root.state.trim().length > 0
+        ? sanitizeText(root.state)
+        : undefined,
+    readinessRequired: root.readinessRequired !== false,
+    readinessPromptText:
+      typeof root.readinessPromptText === "string" && root.readinessPromptText.trim().length > 0
+        ? sanitizeText(root.readinessPromptText)
+        : null,
+    readinessPromptAskedAt:
+      typeof root.readinessPromptAskedAt === "string" && root.readinessPromptAskedAt.trim().length > 0
+        ? sanitizeText(root.readinessPromptAskedAt)
+        : null,
+    readinessConfirmedAt:
+      typeof root.readinessConfirmedAt === "string" && root.readinessConfirmedAt.trim().length > 0
+        ? sanitizeText(root.readinessConfirmedAt)
+        : null,
+    readinessDeclinedCount:
+      typeof root.readinessDeclinedCount === "number" && Number.isFinite(root.readinessDeclinedCount)
+        ? Math.max(0, Math.floor(root.readinessDeclinedCount))
+        : 0
+  };
+}
+
+function isReadinessConfirmationPending(engineState: InterviewEngineState) {
+  return !engineState.readinessConfirmedAt;
+}
+
 function nextSegmentWindow(lastEndMs: number | null) {
   const startMs = Math.max(0, (lastEndMs ?? 0) + 500);
   return {
@@ -164,6 +251,16 @@ function normalizeTranscriptText(input: string) {
     .split(/\r?\n/g)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
+}
+
+function toSlugKey(input: string, fallback: string) {
+  const normalized = sanitizeText(input)
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return normalized || fallback;
 }
 
 function parseSpeakerFromLine(
@@ -241,6 +338,7 @@ export class InterviewsService {
     @Inject(AiOrchestrationService) private readonly aiOrchestrationService: AiOrchestrationService,
     @Inject(FeatureFlagsService) private readonly featureFlagsService: FeatureFlagsService,
     @Inject(IntegrationsService) private readonly integrationsService: IntegrationsService,
+    @Inject(BillingService) private readonly billingService: BillingService,
     @Inject(SpeechRuntimeService) private readonly speechRuntimeService: SpeechRuntimeService,
     @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService,
     @Inject(StructuredLoggerService) private readonly logger: StructuredLoggerService
@@ -339,6 +437,105 @@ export class InterviewsService {
         }
       };
     });
+  }
+
+  async previewOnDemandQuestionnaire(input: {
+    tenantId: string;
+    applicationId: string;
+    templateId?: string;
+  }) {
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: input.applicationId,
+        tenantId: input.tenantId
+      },
+      select: {
+        id: true,
+        candidate: {
+          select: {
+            id: true,
+            fullName: true
+          }
+        },
+        job: {
+          select: {
+            id: true,
+            title: true,
+            roleFamily: true
+          }
+        }
+      }
+    });
+
+    if (!application) {
+      throw new NotFoundException("Basvuru bulunamadi.");
+    }
+
+    const [template, fitScore, latestReport] = await Promise.all([
+      this.resolveTemplateRecord({
+        tenantId: input.tenantId,
+        templateId: input.templateId,
+        roleFamily: application.job.roleFamily
+      }),
+      this.prisma.applicantFitScore.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          applicationId: input.applicationId
+        },
+        orderBy: {
+          createdAt: "desc"
+        }
+      }),
+      this.prisma.aiReport.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          applicationId: input.applicationId
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        select: {
+          reportJson: true
+        }
+      })
+    ]);
+
+    const normalizedTemplate = this.normalizeTemplate(template.templateJson);
+    const questions = normalizedTemplate.blocks.map((block, index) => ({
+      id: block.key,
+      key: block.key,
+      questionKey: block.questionKey,
+      category: block.category,
+      prompt: block.prompt,
+      followUps: block.followUps,
+      source: "template" as const,
+      reason: index === 0 ? "Varsayılan mülakat akışı" : undefined
+    }));
+
+    const match = this.buildMatchPresentation(
+      fitScore ? Number(fitScore.overallScore) : null,
+      fitScore ? asStringArray(fitScore.strengthsJson).slice(0, 3) : [],
+      fitScore?.reasoningJson
+    );
+
+    return {
+      candidate: application.candidate,
+      job: application.job,
+      template: {
+        id: template.id,
+        name: template.name,
+        version: template.version,
+        roleFamily: template.roleFamily
+      },
+      match,
+      estimatedDuration: this.estimateInterviewDuration(questions.length),
+      questions,
+      suggestions: this.buildSuggestedQuestionDrafts({
+        fitScore,
+        reportJson: latestReport?.reportJson ?? null,
+        existingPrompts: questions.map((question) => question.prompt)
+      })
+    };
   }
 
   async listSchedulingProviders(tenantId: string) {
@@ -532,6 +729,214 @@ export class InterviewsService {
     };
   }
 
+  async inviteOnDemandVoiceSession(input: {
+    tenantId: string;
+    applicationId: string;
+    templateId?: string;
+    questionnaire?: InterviewQuestionDraftInput[];
+    interviewerName?: string;
+    interviewerUserId?: string;
+    interviewType?: string;
+    scheduleNote?: string;
+    modeContext?: Record<string, unknown>;
+    requestedBy: string;
+    traceId?: string;
+  }) {
+    await this.billingService.assertCanCreateAiInterview(input.tenantId);
+
+    const [application, existingActiveSession] = await Promise.all([
+      this.prisma.candidateApplication.findFirst({
+        where: {
+          id: input.applicationId,
+          tenantId: input.tenantId
+        },
+        select: {
+          id: true,
+          currentStage: true,
+          candidateId: true,
+          jobId: true,
+          candidate: {
+            select: {
+              fullName: true,
+              email: true
+            }
+          },
+          job: {
+            select: {
+              roleFamily: true,
+              title: true
+            }
+          }
+        }
+      }),
+      this.prisma.interviewSession.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          applicationId: input.applicationId,
+          status: {
+            in: [InterviewSessionStatus.SCHEDULED, InterviewSessionStatus.RUNNING]
+          }
+        },
+        select: {
+          id: true
+        }
+      })
+    ]);
+
+    if (!application) {
+      throw new NotFoundException("Basvuru bulunamadi.");
+    }
+
+    if (!application.candidate.email?.trim()) {
+      throw new BadRequestException("Aday için e-posta adresi bulunamadı.");
+    }
+
+    if (
+      application.currentStage === ApplicationStage.REJECTED ||
+      application.currentStage === ApplicationStage.HIRED
+    ) {
+      throw new BadRequestException("Reddedilen veya ise alinan basvuru icin interview daveti gonderilemez.");
+    }
+
+    if (existingActiveSession) {
+      throw new BadRequestException("Bu basvuru icin zaten aktif bir interview daveti veya oturumu mevcut.");
+    }
+
+    const template = await this.resolveTemplateRecord({
+      tenantId: input.tenantId,
+      templateId: input.templateId,
+      roleFamily: application.job.roleFamily
+    });
+
+    const sessionTemplate =
+      input.questionnaire && input.questionnaire.length > 0
+        ? await this.createSessionQuestionnaireTemplate({
+            tenantId: input.tenantId,
+            baseTemplate: template,
+            questions: input.questionnaire
+          })
+        : template;
+
+    const issuedAt = new Date();
+    const expiresAt = new Date(
+      issuedAt.getTime() + AI_FIRST_INTERVIEW_VALIDITY_DAYS * 24 * 60 * 60 * 1000
+    );
+    const candidateAccessToken = this.generateCandidateAccessToken();
+
+    const session = await this.prisma.interviewSession.create({
+      data: {
+        tenantId: input.tenantId,
+        applicationId: input.applicationId,
+        templateId: sessionTemplate.id,
+        mode: "VOICE",
+        status: InterviewSessionStatus.SCHEDULED,
+        scheduledBy: input.requestedBy,
+        schedulingSource: AI_FIRST_INTERVIEW_INVITE_SOURCE,
+        scheduleNote: input.scheduleNote ?? "on_demand_ai_first_interview",
+        interviewerName: input.interviewerName,
+        interviewerUserId: input.interviewerUserId,
+        interviewType: input.interviewType,
+        modeContextJson: toJsonValue(input.modeContext),
+        candidateAccessToken,
+        candidateAccessExpiresAt: expiresAt,
+        invitationStatus: "SENT",
+        invitationIssuedAt: issuedAt,
+        runtimeMode: "guided_voice_turn_v1",
+        runtimeProviderMode: "browser_native",
+        currentQuestionIndex: 0,
+        currentFollowUpCount: 0,
+        engineStateJson: {
+          engineVersion: "voice_guided_v1",
+          state: "invited",
+          readinessRequired: true,
+          readinessPromptText: buildInterviewOpeningPrompt(),
+          readinessPromptAskedAt: null,
+          readinessConfirmedAt: null,
+          readinessDeclinedCount: 0
+        },
+        rubricKey: `interview_template:${sessionTemplate.id}`,
+        rubricVersion: sessionTemplate.version,
+        scheduledAt: issuedAt
+      }
+    });
+
+    const candidateInterviewUrl = this.buildCandidateInterviewUrl(session.id, candidateAccessToken);
+
+    const updatedSession = await this.prisma.interviewSession.update({
+      where: {
+        id: session.id
+      },
+      data: {
+        meetingProvider: null,
+        meetingProviderSource: "candidate_on_demand_voice_link_v1",
+        meetingConnectionId: null,
+        meetingJoinUrl: candidateInterviewUrl,
+        meetingExternalRef: `voice-${session.id}`,
+        meetingCalendarEventRef: null,
+        sessionSummaryJson: {
+          accessPath: "candidate_public_web_link",
+          candidateInterviewUrl,
+          invitationModel: "on_demand_ai_first_interview_v1"
+        }
+      }
+    });
+
+    await this.transitionApplicationStageIfNeeded({
+      tenantId: input.tenantId,
+      applicationId: input.applicationId,
+      targetStage: ApplicationStage.INTERVIEW_SCHEDULED,
+      changedBy: input.requestedBy,
+      reasonCode: "interview_invitation_sent",
+      traceId: input.traceId
+    });
+
+    await Promise.all([
+      this.domainEventsService.append({
+        tenantId: input.tenantId,
+        aggregateType: "InterviewSession",
+        aggregateId: updatedSession.id,
+        eventType: "interview.invitation.sent",
+        traceId: input.traceId,
+        payload: {
+          applicationId: input.applicationId,
+          templateId: sessionTemplate.id,
+          mode: updatedSession.mode,
+          issuedAt: issuedAt.toISOString(),
+          expiresAt: expiresAt.toISOString(),
+          interviewLink: candidateInterviewUrl,
+          notificationMetadata: {
+            emailVariant: "ai_interview_on_demand_invite_v1",
+            primaryCtaLabel: "Gorusmeye Katil",
+            primaryLink: candidateInterviewUrl,
+            estimatedDuration: "15-20 dakika",
+            validUntil: expiresAt.toISOString(),
+            hideScheduledAt: true
+          }
+        }
+      }),
+      this.auditWriterService.write({
+        tenantId: input.tenantId,
+        actorUserId: input.requestedBy,
+        actorType: AuditActorType.USER,
+        action: "interview.invitation.sent",
+        entityType: "InterviewSession",
+        entityId: updatedSession.id,
+        traceId: input.traceId,
+        metadata: {
+          applicationId: input.applicationId,
+          templateId: sessionTemplate.id,
+          issuedAt: issuedAt.toISOString(),
+          expiresAt: expiresAt.toISOString(),
+          interviewLink: candidateInterviewUrl
+        }
+      })
+    ]);
+
+    await this.billingService.recordAiInterviewUsage(input.tenantId, updatedSession.id);
+
+    return this.getById(input.tenantId, updatedSession.id);
+  }
+
   async schedule(input: {
     tenantId: string;
     applicationId: string;
@@ -606,7 +1011,7 @@ export class InterviewsService {
       throw new BadRequestException("Bu basvuru icin zaten aktif/schedule bir interview session mevcut.");
     }
 
-    const template = await this.resolveTemplate({
+    const template = await this.resolveTemplateRecord({
       tenantId: input.tenantId,
       templateId: input.templateId,
       roleFamily: application.job.roleFamily
@@ -637,7 +1042,12 @@ export class InterviewsService {
         currentFollowUpCount: 0,
         engineStateJson: {
           engineVersion: "voice_guided_v1",
-          state: "scheduled"
+          state: "scheduled",
+          readinessRequired: true,
+          readinessPromptText: buildInterviewOpeningPrompt(),
+          readinessPromptAskedAt: null,
+          readinessConfirmedAt: null,
+          readinessDeclinedCount: 0
         },
         rubricKey: `interview_template:${template.id}`,
         rubricVersion: template.version,
@@ -1463,6 +1873,7 @@ export class InterviewsService {
       },
       data: {
         status: InterviewSessionStatus.CANCELLED,
+        ...(isAiFirstInterviewInvitation(session) ? { invitationStatus: "FAILED" } : {}),
         cancelledAt: new Date(),
         cancelledBy: input.cancelledBy,
         cancelReasonCode: input.reasonCode,
@@ -1566,6 +1977,7 @@ export class InterviewsService {
       },
       data: {
         status: InterviewSessionStatus.COMPLETED,
+        ...(isAiFirstInterviewInvitation(session) ? { invitationStatus: "COMPLETED" } : {}),
         startedAt: session.startedAt ?? new Date(),
         endedAt: new Date(),
         abandonedAt: null,
@@ -1666,6 +2078,7 @@ export class InterviewsService {
     const session = await this.resolvePublicSession({
       sessionId: input.sessionId,
       accessToken: input.accessToken,
+      allowExpired: true,
       traceId: input.traceId
     });
 
@@ -1691,7 +2104,8 @@ export class InterviewsService {
 
     if (
       session.status === InterviewSessionStatus.CANCELLED ||
-      session.status === InterviewSessionStatus.FAILED
+      session.status === InterviewSessionStatus.FAILED ||
+      session.status === InterviewSessionStatus.NO_SHOW
     ) {
       return this.toPublicSessionView(session);
     }
@@ -1699,25 +2113,7 @@ export class InterviewsService {
     if (session.status === InterviewSessionStatus.COMPLETED) {
       return this.toPublicSessionView(session);
     }
-
     const now = new Date();
-
-    if (session.status === InterviewSessionStatus.SCHEDULED && session.scheduledAt) {
-      const launchWindowMs = 5 * 60 * 1000;
-      const scheduledTime = session.scheduledAt.getTime();
-
-      if (scheduledTime - now.getTime() > launchWindowMs) {
-        const plannedAt = new Intl.DateTimeFormat("tr-TR", {
-          dateStyle: "long",
-          timeStyle: "short",
-          timeZone: "Europe/Istanbul"
-        }).format(session.scheduledAt);
-
-        throw new BadRequestException(
-          `Görüşme henüz başlamadı. Lütfen planlanan saatte tekrar deneyin: ${plannedAt} (UTC+3).`
-        );
-      }
-    }
 
     const runtimeSelection = this.speechRuntimeService.resolveRuntimeSelection({
       speechRecognition: input.capabilities?.speechRecognition,
@@ -1731,6 +2127,7 @@ export class InterviewsService {
             },
             data: {
               status: InterviewSessionStatus.RUNNING,
+              ...(isAiFirstInterviewInvitation(session) ? { invitationStatus: "IN_PROGRESS" } : {}),
               startedAt: session.startedAt ?? now,
               lastCandidateActivityAt: now,
               voiceInputProvider: runtimeSelection.voiceInputProvider,
@@ -1746,6 +2143,7 @@ export class InterviewsService {
             },
             data: {
               lastCandidateActivityAt: now,
+              ...(isAiFirstInterviewInvitation(session) ? { invitationStatus: "IN_PROGRESS" } : {}),
               voiceInputProvider: session.voiceInputProvider ?? runtimeSelection.voiceInputProvider,
               voiceOutputProvider: session.voiceOutputProvider ?? runtimeSelection.voiceOutputProvider,
               runtimeProviderMode: session.runtimeProviderMode ?? runtimeSelection.runtimeProviderMode
@@ -1821,14 +2219,30 @@ export class InterviewsService {
       .sort((a, b) => a.sequenceNo - b.sequenceNo)
       .find((turn) => turn.completionStatus === "ASKED" && !turn.answerText);
 
-    if (!activeTurn) {
-      const prompted = await this.ensurePromptForRunningSession(activeSession, input.traceId);
-      return this.toPublicSessionView(prompted);
-    }
-
     const answerText = sanitizeText(input.transcriptText ?? "");
     if (!answerText) {
       throw new BadRequestException("Boş cevap gönderilemez.");
+    }
+
+    const engineState = readInterviewEngineState(activeSession.engineStateJson);
+
+    if (!activeTurn && isReadinessConfirmationPending(engineState)) {
+      const handled = await this.handlePublicReadinessReply({
+        session: activeSession,
+        answerText,
+        confidence: input.confidence,
+        speechDurationMs: input.speechDurationMs,
+        answerSource: input.answerSource,
+        locale: input.locale,
+        traceId: input.traceId
+      });
+
+      return this.toPublicSessionView(handled);
+    }
+
+    if (!activeTurn) {
+      const prompted = await this.ensurePromptForRunningSession(activeSession, input.traceId);
+      return this.toPublicSessionView(prompted);
     }
 
     const transcript = await this.ensureRuntimeTranscript({
@@ -1999,10 +2413,10 @@ export class InterviewsService {
         id: session.id
       },
       data: {
-        runtimeProviderMode:
-          transcription.providerKey === "openai_speech"
-            ? "provider_backed_openai"
-            : session.runtimeProviderMode,
+        runtimeProviderMode: this.toRuntimeProviderMode(
+          transcription.providerKey,
+          session.voiceOutputProvider
+        ),
         voiceInputProvider: transcription.providerKey
       }
     });
@@ -2016,6 +2430,140 @@ export class InterviewsService {
       locale: input.locale,
       traceId: input.traceId
     });
+  }
+
+  async completePublicSession(input: {
+    sessionId: string;
+    accessToken: string;
+    transcriptSegments?: Array<{
+      speaker: "AI" | "CANDIDATE" | "RECRUITER";
+      text: string;
+      confidence?: number;
+    }>;
+    locale?: string;
+    sttModel?: string;
+    completionReasonCode?: string;
+    traceId?: string;
+  }) {
+    const session = await this.resolvePublicSession({
+      sessionId: input.sessionId,
+      accessToken: input.accessToken,
+      allowExpired: true,
+      traceId: input.traceId
+    });
+
+    if (
+      session.status === InterviewSessionStatus.COMPLETED ||
+      session.status === InterviewSessionStatus.CANCELLED ||
+      session.status === InterviewSessionStatus.FAILED ||
+      session.status === InterviewSessionStatus.NO_SHOW
+    ) {
+      return this.toPublicSessionView(session);
+    }
+
+    const runningSession =
+      session.status === InterviewSessionStatus.SCHEDULED
+        ? await this.prisma.interviewSession.update({
+            where: {
+              id: session.id
+            },
+            data: {
+              status: InterviewSessionStatus.RUNNING,
+              ...(isAiFirstInterviewInvitation(session) ? { invitationStatus: "IN_PROGRESS" } : {}),
+              startedAt: session.startedAt ?? new Date(),
+              lastCandidateActivityAt: new Date(),
+              runtimeProviderMode: session.runtimeProviderMode || "elevenlabs_conversational_ai",
+              voiceInputProvider: session.voiceInputProvider ?? "elevenlabs_stt",
+              voiceOutputProvider: session.voiceOutputProvider ?? "elevenlabs_tts",
+              candidateLocale: input.locale?.trim() || session.candidateLocale
+            },
+            include: PUBLIC_SESSION_INCLUDE
+          })
+        : await this.prisma.interviewSession.update({
+            where: {
+              id: session.id
+            },
+            data: {
+              lastCandidateActivityAt: new Date(),
+              candidateLocale: input.locale?.trim() || session.candidateLocale
+            },
+            include: PUBLIC_SESSION_INCLUDE
+          });
+
+    if (session.status === InterviewSessionStatus.SCHEDULED) {
+      await Promise.all([
+        this.domainEventsService.append({
+          tenantId: runningSession.tenantId,
+          aggregateType: "InterviewSession",
+          aggregateId: runningSession.id,
+          eventType: "interview.session.started",
+          traceId: input.traceId,
+          payload: {
+            applicationId: runningSession.applicationId,
+            startedBy: "candidate_public_link_elevenlabs",
+            startedAt: runningSession.startedAt?.toISOString() ?? null,
+            runtimeProviderMode: runningSession.runtimeProviderMode,
+            voiceInputProvider: runningSession.voiceInputProvider,
+            voiceOutputProvider: runningSession.voiceOutputProvider
+          }
+        }),
+        this.auditWriterService.write({
+          tenantId: runningSession.tenantId,
+          actorType: AuditActorType.SYSTEM,
+          action: "interview.session.started",
+          entityType: "InterviewSession",
+          entityId: runningSession.id,
+          traceId: input.traceId,
+          metadata: {
+            source: "candidate_public_link_elevenlabs",
+            runtimeProviderMode: runningSession.runtimeProviderMode,
+            voiceInputProvider: runningSession.voiceInputProvider,
+            voiceOutputProvider: runningSession.voiceOutputProvider
+          }
+        })
+      ]);
+    }
+
+    const normalizedSegments = (input.transcriptSegments ?? [])
+      .map((segment) => ({
+        speaker: segment.speaker,
+        text: sanitizeText(segment.text ?? ""),
+        confidence: segment.confidence
+      }))
+      .filter((segment) => segment.text.length > 0);
+
+    if (normalizedSegments.length > 0) {
+      await this.replacePublicTranscriptFromSegments({
+        session: runningSession,
+        locale: input.locale,
+        sttModel: input.sttModel,
+        segments: normalizedSegments,
+        traceId: input.traceId
+      });
+    }
+
+    await this.complete({
+      tenantId: runningSession.tenantId,
+      sessionId: runningSession.id,
+      completedBy: "candidate_public_link",
+      actorType: AuditActorType.SYSTEM,
+      completionReasonCode: input.completionReasonCode ?? "candidate_completed",
+      triggerAiReviewPack: true,
+      traceId: input.traceId
+    });
+
+    const completed = await this.prisma.interviewSession.findFirst({
+      where: {
+        id: runningSession.id
+      },
+      include: PUBLIC_SESSION_INCLUDE
+    });
+
+    if (!completed) {
+      throw new NotFoundException("Interview session bulunamadı.");
+    }
+
+    return this.toPublicSessionView(completed);
   }
 
   async getPublicPromptAudio(input: {
@@ -2060,10 +2608,10 @@ export class InterviewsService {
           id: session.id
         },
         data: {
-          runtimeProviderMode:
-            synthesis.providerKey === "openai_speech"
-              ? "provider_backed_openai"
-              : session.runtimeProviderMode,
+          runtimeProviderMode: this.toRuntimeProviderMode(
+            session.voiceInputProvider,
+            synthesis.providerKey
+          ),
           voiceOutputProvider: synthesis.providerKey
         }
       });
@@ -2187,6 +2735,7 @@ export class InterviewsService {
       },
       data: {
         status: InterviewSessionStatus.FAILED,
+        ...(isAiFirstInterviewInvitation(session) ? { invitationStatus: "FAILED" } : {}),
         abandonedAt: new Date(),
         endedAt: new Date(),
         completedReasonCode: input.reasonCode?.trim() || "candidate_abandoned",
@@ -2222,15 +2771,6 @@ export class InterviewsService {
         }
       })
     ]);
-
-    await this.transitionApplicationStageIfNeeded({
-      tenantId: abandoned.tenantId,
-      applicationId: abandoned.applicationId,
-      targetStage: ApplicationStage.SCREENING,
-      changedBy: "candidate_public_link",
-      reasonCode: "interview_session_abandoned",
-      traceId: input.traceId
-    });
 
     return this.toPublicSessionView(abandoned);
   }
@@ -2334,7 +2874,6 @@ export class InterviewsService {
         }
       })
     ]);
-
     return {
       sessionId: session.id,
       applicationId: session.application.id,
@@ -2349,7 +2888,15 @@ export class InterviewsService {
 
   private buildCandidateInterviewUrl(sessionId: string, token: string) {
     const base = this.runtimeConfig.publicWebBaseUrl;
-    return `${base}/gorusme/${encodeURIComponent(sessionId)}?token=${encodeURIComponent(token)}`;
+    const url = new URL(`${base}/interview/${encodeURIComponent(sessionId)}`);
+    url.searchParams.set("token", token);
+
+    const apiBaseOverride = process.env.PUBLIC_CANDIDATE_API_BASE_URL?.trim();
+    if (apiBaseOverride) {
+      url.searchParams.set("apiBase", apiBaseOverride.replace(/\/+$/, ""));
+    }
+
+    return url.toString();
   }
 
   private normalizeTemplate(raw: Prisma.JsonValue): NormalizedInterviewTemplate {
@@ -2361,7 +2908,7 @@ export class InterviewsService {
     const closingPrompt =
       typeof root.closingPrompt === "string" && root.closingPrompt.trim().length > 0
         ? sanitizeText(root.closingPrompt)
-        : "Teşekkür ederim. Görüşme kaydınız recruiter ekibine iletilecek.";
+        : "Teşekkür ederim. Bu görüşme şirket ekibimiz tarafından incelenecek. Değerlendirme olumlu olursa bir sonraki insan görüşmesi için ekibimiz sizinle iletişime geçecek.";
 
     const blocksRaw = Array.isArray(root.blocks)
       ? root.blocks
@@ -2522,6 +3069,7 @@ export class InterviewsService {
   private async resolvePublicSession(input: {
     sessionId: string;
     accessToken: string;
+    allowExpired?: boolean;
     traceId?: string;
   }) {
     const session = await this.prisma.interviewSession.findFirst({
@@ -2536,18 +3084,26 @@ export class InterviewsService {
       throw new NotFoundException("Görüşme oturumu bulunamadı veya erişim bağlantısı geçersiz.");
     }
 
-    if (
-      session.candidateAccessExpiresAt &&
-      session.candidateAccessExpiresAt.getTime() < Date.now()
-    ) {
-      throw new ForbiddenException("Görüşme bağlantısının süresi doldu.");
-    }
-
     if (session.mode !== "VOICE") {
       throw new BadRequestException("Bu oturum web sesli görüşme modunda değil.");
     }
 
-    return session;
+    const ensured = await this.expireInvitationIfNeeded(session, input.traceId);
+    const invitation = deriveInterviewInvitationState(ensured);
+
+    if (invitation?.expired && input.allowExpired !== true) {
+      throw new ForbiddenException("Görüşme bağlantısının süresi doldu.");
+    }
+
+    if (
+      !invitation &&
+      ensured.candidateAccessExpiresAt &&
+      ensured.candidateAccessExpiresAt.getTime() < Date.now()
+    ) {
+      throw new ForbiddenException("Görüşme bağlantısının süresi doldu.");
+    }
+
+    return ensured;
   }
 
   private async autoFailStaleSessionIfNeeded(
@@ -2571,6 +3127,7 @@ export class InterviewsService {
       },
       data: {
         status: InterviewSessionStatus.FAILED,
+        ...(isAiFirstInterviewInvitation(session) ? { invitationStatus: "FAILED" } : {}),
         endedAt: new Date(),
         abandonedAt: new Date(),
         completedReasonCode: "candidate_timeout"
@@ -2605,6 +3162,68 @@ export class InterviewsService {
     ]);
 
     return timedOut;
+  }
+
+  private async expireInvitationIfNeeded(session: PublicSessionRow, traceId?: string) {
+    const invitation = deriveInterviewInvitationState(session);
+
+    if (!invitation?.expired || session.status !== InterviewSessionStatus.SCHEDULED) {
+      return session;
+    }
+
+    const now = new Date();
+    const expired = await this.prisma.interviewSession.updateMany({
+      where: {
+        id: session.id,
+        status: InterviewSessionStatus.SCHEDULED,
+        candidateAccessExpiresAt: {
+          lte: now
+        }
+      },
+      data: {
+        status: InterviewSessionStatus.NO_SHOW,
+        invitationStatus: "EXPIRED",
+        endedAt: now,
+        completedReasonCode: "invitation_expired"
+      }
+    });
+
+    if (expired.count > 0) {
+      await Promise.all([
+        this.domainEventsService.append({
+          tenantId: session.tenantId,
+          aggregateType: "InterviewSession",
+          aggregateId: session.id,
+          eventType: "interview.invitation.expired",
+          traceId,
+          payload: {
+            applicationId: session.applicationId,
+            expiresAt: session.candidateAccessExpiresAt?.toISOString() ?? null
+          }
+        }),
+        this.auditWriterService.write({
+          tenantId: session.tenantId,
+          actorType: AuditActorType.SYSTEM,
+          action: "interview.invitation.expired",
+          entityType: "InterviewSession",
+          entityId: session.id,
+          traceId,
+          metadata: {
+            applicationId: session.applicationId,
+            expiresAt: session.candidateAccessExpiresAt?.toISOString() ?? null
+          }
+        })
+      ]);
+    }
+
+    const refreshed = await this.prisma.interviewSession.findFirst({
+      where: {
+        id: session.id
+      },
+      include: PUBLIC_SESSION_INCLUDE
+    });
+
+    return refreshed ?? session;
   }
 
   private async ensureRuntimeTranscript(input: {
@@ -2669,6 +3288,164 @@ export class InterviewsService {
     ]);
 
     return transcript;
+  }
+
+  private async replacePublicTranscriptFromSegments(input: {
+    session: PublicSessionRow;
+    locale?: string;
+    sttModel?: string;
+    segments: Array<{
+      speaker: "AI" | "CANDIDATE" | "RECRUITER";
+      text: string;
+      confidence?: number;
+    }>;
+    traceId?: string;
+  }) {
+    const session = await this.prisma.interviewSession.findFirst({
+      where: {
+        id: input.session.id
+      },
+      include: {
+        transcript: {
+          select: {
+            id: true
+          }
+        }
+      }
+    });
+
+    if (!session) {
+      throw new NotFoundException("Interview session bulunamadı.");
+    }
+
+    const { transcriptId, created, segmentCount } = await this.prisma.$transaction(async (tx) => {
+      const transcript =
+        session.transcript ??
+        (await tx.transcript.create({
+          data: {
+            tenantId: input.session.tenantId,
+            sessionId: input.session.id,
+            ownerType: "INTERVIEW_SESSION",
+            ownerId: input.session.id,
+            language: input.locale ?? input.session.candidateLocale ?? "tr-TR",
+            sttModel: input.sttModel ?? input.session.voiceInputProvider ?? "elevenlabs_convai_transcript",
+            ingestionMethod: "stream_segments",
+            ingestionStatus: "available",
+            qualityStatus: TranscriptQualityStatus.DRAFT
+          }
+        }));
+
+      await tx.transcriptSegment.deleteMany({
+        where: {
+          transcriptId: transcript.id
+        }
+      });
+
+      await tx.transcriptSegment.createMany({
+        data: input.segments.map((segment, index) => {
+          const startMs = index * 8000;
+          return {
+            tenantId: input.session.tenantId,
+            transcriptId: transcript.id,
+            speaker: segment.speaker,
+            startMs,
+            endMs: startMs + 7000,
+            text: segment.text,
+            confidence: segment.confidence ?? null
+          };
+        })
+      });
+
+      await tx.transcript.update({
+        where: {
+          id: transcript.id
+        },
+        data: {
+          language: input.locale ?? input.session.candidateLocale ?? "tr-TR",
+          sttModel: input.sttModel ?? input.session.voiceInputProvider ?? "elevenlabs_convai_transcript",
+          ingestionMethod: "stream_segments",
+          ingestionStatus: "available",
+          lastIngestedAt: new Date(),
+          qualityStatus: TranscriptQualityStatus.DRAFT,
+          finalizedAt: null,
+          qualityReviewedAt: null,
+          qualityReviewedBy: null,
+          reviewNotes: null,
+          version: {
+            increment: 1
+          }
+        }
+      });
+
+      return {
+        transcriptId: transcript.id,
+        created: !session.transcript,
+        segmentCount: input.segments.length
+      };
+    });
+
+    if (created) {
+      await Promise.all([
+        this.domainEventsService.append({
+          tenantId: input.session.tenantId,
+          aggregateType: "Transcript",
+          aggregateId: transcriptId,
+          eventType: "interview.transcript.created",
+          traceId: input.traceId,
+          payload: {
+            sessionId: input.session.id,
+            ownerType: "INTERVIEW_SESSION",
+            ownerId: input.session.id,
+            source: "elevenlabs_public_capture"
+          }
+        }),
+        this.auditWriterService.write({
+          tenantId: input.session.tenantId,
+          actorType: AuditActorType.SYSTEM,
+          action: "interview.transcript.created",
+          entityType: "Transcript",
+          entityId: transcriptId,
+          traceId: input.traceId,
+          metadata: {
+            sessionId: input.session.id,
+            source: "elevenlabs_public_capture"
+          }
+        })
+      ]);
+    }
+
+    await Promise.all([
+      this.domainEventsService.append({
+        tenantId: input.session.tenantId,
+        aggregateType: "Transcript",
+        aggregateId: transcriptId,
+        eventType: "interview.transcript.ingested",
+        traceId: input.traceId,
+        payload: {
+          sessionId: input.session.id,
+          segmentCount,
+          ingestionMethod: "stream_segments",
+          importedBy: "candidate_public_link",
+          replaceExisting: true,
+          source: "elevenlabs_public_capture"
+        }
+      }),
+      this.auditWriterService.write({
+        tenantId: input.session.tenantId,
+        actorType: AuditActorType.SYSTEM,
+        action: "interview.transcript.ingested",
+        entityType: "Transcript",
+        entityId: transcriptId,
+        traceId: input.traceId,
+        metadata: {
+          sessionId: input.session.id,
+          segmentCount,
+          ingestionMethod: "stream_segments",
+          replaceExisting: true,
+          source: "elevenlabs_public_capture"
+        }
+      })
+    ]);
   }
 
   private async appendAiPromptSegment(input: {
@@ -2817,6 +3594,178 @@ export class InterviewsService {
     }
   }
 
+  private buildReadinessPromptText(session: PublicSessionRow) {
+    const engineState = readInterviewEngineState(session.engineStateJson);
+    return engineState.readinessPromptText?.trim() || buildInterviewOpeningPrompt();
+  }
+
+  private async setSessionReadinessState(input: {
+    session: PublicSessionRow;
+    state: string;
+    promptText?: string | null;
+    confirmedAt?: Date | null;
+    declinedIncrement?: boolean;
+  }) {
+    const engineState = readInterviewEngineState(input.session.engineStateJson);
+    const nextEngineState: InterviewEngineState = {
+      ...engineState,
+      engineVersion: engineState.engineVersion ?? "voice_guided_v1",
+      state: input.state,
+      readinessRequired: true,
+      readinessPromptText:
+        input.promptText === undefined ? engineState.readinessPromptText ?? null : input.promptText,
+      readinessPromptAskedAt: input.promptText ? new Date().toISOString() : engineState.readinessPromptAskedAt,
+      readinessConfirmedAt:
+        input.confirmedAt === undefined
+          ? engineState.readinessConfirmedAt ?? null
+          : input.confirmedAt
+            ? input.confirmedAt.toISOString()
+            : null,
+      readinessDeclinedCount:
+        (engineState.readinessDeclinedCount ?? 0) + (input.declinedIncrement ? 1 : 0)
+    };
+
+    return this.prisma.interviewSession.update({
+      where: {
+        id: input.session.id
+      },
+      data: {
+        engineStateJson: nextEngineState as Prisma.InputJsonValue
+      },
+      include: PUBLIC_SESSION_INCLUDE
+    });
+  }
+
+  private async ensureReadinessPromptForRunningSession(
+    session: PublicSessionRow
+  ) {
+    const engineState = readInterviewEngineState(session.engineStateJson);
+    if (!isReadinessConfirmationPending(engineState)) {
+      return session;
+    }
+
+    if (engineState.state === "awaiting_readiness_confirmation") {
+      return session;
+    }
+
+    const promptText = this.buildReadinessPromptText(session);
+    await this.appendAiPromptSegment({
+      tenantId: session.tenantId,
+      session,
+      text: promptText
+    });
+
+    return this.setSessionReadinessState({
+      session,
+      state: "awaiting_readiness_confirmation",
+      promptText
+    });
+  }
+
+  private async handlePublicReadinessReply(input: {
+    session: PublicSessionRow;
+    answerText: string;
+    confidence?: number;
+    speechDurationMs?: number;
+    answerSource?: "voice_browser" | "manual_text" | "voice_provider";
+    locale?: string;
+    traceId?: string;
+  }) {
+    const transcript = await this.ensureRuntimeTranscript({
+      tenantId: input.session.tenantId,
+      session: input.session,
+      sttModel: input.session.voiceInputProvider ?? "browser_web_speech_api",
+      language: input.locale ?? input.session.candidateLocale ?? "tr-TR",
+      traceId: input.traceId
+    });
+
+    const lastSegment = transcript.segments[transcript.segments.length - 1] ?? null;
+    const window = nextSegmentWindow(lastSegment ? lastSegment.endMs : null);
+
+    await this.prisma.transcriptSegment.create({
+      data: {
+        tenantId: input.session.tenantId,
+        transcriptId: transcript.id,
+        speaker: "CANDIDATE",
+        startMs: window.startMs,
+        endMs:
+          input.speechDurationMs && input.speechDurationMs > 0
+            ? window.startMs + input.speechDurationMs
+            : window.endMs,
+        text: input.answerText,
+        confidence: input.confidence
+      }
+    });
+
+    await this.prisma.interviewSession.update({
+      where: {
+        id: input.session.id
+      },
+      data: {
+        lastCandidateActivityAt: new Date(),
+        candidateLocale: input.locale ?? input.session.candidateLocale ?? "tr-TR",
+        runtimeProviderMode: input.session.runtimeProviderMode,
+        voiceInputProvider: input.session.voiceInputProvider,
+        voiceOutputProvider: input.session.voiceOutputProvider
+      }
+    });
+
+    await this.prisma.transcript.update({
+      where: {
+        id: transcript.id
+      },
+      data: {
+        ingestionMethod: "stream_segments",
+        ingestionStatus: "available",
+        lastIngestedAt: new Date(),
+        qualityStatus: TranscriptQualityStatus.DRAFT,
+        finalizedAt: null,
+        qualityReviewedAt: null,
+        qualityReviewedBy: null,
+        reviewNotes: null,
+        version: {
+          increment: 1
+        }
+      }
+    });
+
+    const readiness = classifyInterviewReadinessReply(input.answerText);
+
+    if (readiness === "confirmed") {
+      const confirmedSession = await this.setSessionReadinessState({
+        session: input.session,
+        state: "interview_questions",
+        promptText: null,
+        confirmedAt: new Date()
+      });
+
+      return this.ensurePromptForRunningSession(confirmedSession, input.traceId);
+    }
+
+    const promptText = buildInterviewReadinessReprompt(readiness);
+    const pendingSession = await this.setSessionReadinessState({
+      session: input.session,
+      state: "awaiting_readiness_confirmation",
+      promptText,
+      declinedIncrement: readiness === "not_ready"
+    });
+
+    await this.appendAiPromptSegment({
+      tenantId: pendingSession.tenantId,
+      session: pendingSession,
+      text: promptText
+    });
+
+    const refreshedPendingSession = await this.prisma.interviewSession.findFirst({
+      where: {
+        id: pendingSession.id
+      },
+      include: PUBLIC_SESSION_INCLUDE
+    });
+
+    return refreshedPendingSession ?? pendingSession;
+  }
+
   private async ensurePromptForRunningSession(
     session: PublicSessionRow,
     traceId?: string
@@ -2832,9 +3781,15 @@ export class InterviewsService {
       return session;
     }
 
-    const template = this.normalizeTemplate(session.template.templateJson);
+    const pendingReadinessSession = await this.ensureReadinessPromptForRunningSession(session);
+    const pendingEngineState = readInterviewEngineState(pendingReadinessSession.engineStateJson);
+    if (isReadinessConfirmationPending(pendingEngineState)) {
+      return pendingReadinessSession;
+    }
+
+    const template = this.normalizeTemplate(pendingReadinessSession.template.templateJson);
     const answeredBlocks = new Set(
-      session.turns
+      pendingReadinessSession.turns
         .filter((turn) => turn.completionStatus === "ANSWERED")
         .map((turn) => turn.blockKey)
     );
@@ -2842,14 +3797,14 @@ export class InterviewsService {
     const nextBlock = template.blocks.find((block) => !answeredBlocks.has(block.key));
     if (!nextBlock) {
       await this.appendAiPromptSegment({
-        tenantId: session.tenantId,
-        session,
+        tenantId: pendingReadinessSession.tenantId,
+        session: pendingReadinessSession,
         text: template.closingPrompt
       });
 
       await this.complete({
-        tenantId: session.tenantId,
-        sessionId: session.id,
+        tenantId: pendingReadinessSession.tenantId,
+        sessionId: pendingReadinessSession.id,
         completedBy: "candidate_public_link",
         actorType: AuditActorType.SYSTEM,
         completionReasonCode: "candidate_completed",
@@ -2870,12 +3825,12 @@ export class InterviewsService {
     }
 
     await this.createTurnAndAskPrompt({
-      session,
+      session: pendingReadinessSession,
       block: nextBlock,
       kind: "PRIMARY",
       promptText:
-        session.turns.length === 0
-          ? `${template.introPrompt} ${nextBlock.prompt}`.trim()
+        pendingReadinessSession.turns.length === 0
+          ? buildInterviewFirstQuestionPrompt(nextBlock.prompt)
           : nextBlock.prompt,
       followUpDepth: 0,
       traceId
@@ -2916,8 +3871,10 @@ export class InterviewsService {
     }
 
     const followUpDepth = input.answeredTurn.followUpDepth;
+    const shouldDeepenAnswer =
+      !input.evaluation.isComplete || input.evaluation.quality !== "high";
     const canAskFollowUp =
-      !input.evaluation.isComplete && followUpDepth < (currentBlock.maxFollowUps ?? 0);
+      shouldDeepenAnswer && followUpDepth < (currentBlock.maxFollowUps ?? 0);
 
     if (canAskFollowUp) {
       await this.createTurnAndAskPrompt({
@@ -2951,6 +3908,7 @@ export class InterviewsService {
   private toPublicSessionView(
     session: PublicSessionRow
   ) {
+    const invitation = deriveInterviewInvitationState(session);
     const template = (() => {
       try {
         return this.normalizeTemplate(session.template.templateJson);
@@ -2962,6 +3920,7 @@ export class InterviewsService {
         } satisfies NormalizedInterviewTemplate;
       }
     })();
+    const engineState = readInterviewEngineState(session.engineStateJson);
     const orderedTurns = [...session.turns].sort((a, b) => a.sequenceNo - b.sequenceNo);
     const activeTurn = orderedTurns.find((turn) => turn.completionStatus === "ASKED" && !turn.answerText);
     const answeredBlocks = new Set(
@@ -3021,7 +3980,18 @@ export class InterviewsService {
             text: activeTurn.promptText,
             followUpDepth: activeTurn.followUpDepth
           }
-        : null,
+        : isReadinessConfirmationPending(engineState)
+          ? {
+              turnId: `readiness:${session.id}`,
+              sequenceNo: 0,
+              blockKey: "readiness",
+              questionKey: "session_readiness",
+              category: "session_opening",
+              kind: "READINESS",
+              text: this.buildReadinessPromptText(session),
+              followUpDepth: 0
+            }
+          : null,
       conversation: orderedTurns.map((turn) => ({
         id: turn.id,
         sequenceNo: turn.sequenceNo,
@@ -3057,7 +4027,170 @@ export class InterviewsService {
         endedAt: session.endedAt,
         abandonedAt: session.abandonedAt,
         completedReasonCode: session.completedReasonCode
+      },
+      invitation: invitation
+        ? {
+            state: invitation.state,
+            issuedAt: invitation.issuedAt,
+            expiresAt: invitation.expiresAt,
+            reminderCount: invitation.reminderCount,
+            reminder1SentAt: invitation.reminder1SentAt,
+            reminder2SentAt: invitation.reminder2SentAt,
+            expired: invitation.expired,
+            resumeAllowed: invitation.resumeAllowed
+          }
+        : null
+    };
+  }
+
+  private toSessionView(session: InterviewSessionRow) {
+    const invitation = deriveInterviewInvitationState(session);
+    const normalized = (() => {
+      try {
+        return this.normalizeTemplate(session.template.templateJson);
+      } catch {
+        return {
+          introPrompt: "",
+          closingPrompt: "",
+          blocks: []
+        } satisfies NormalizedInterviewTemplate;
       }
+      })();
+    const activeTurn = session.turns.find((turn) => turn.completionStatus === "ASKED" && !turn.answerText);
+    const answeredBlocks = new Set(
+      session.turns
+        .filter((turn) => turn.completionStatus === "ANSWERED")
+        .map((turn) => turn.blockKey)
+    );
+
+    return {
+      id: session.id,
+      tenantId: session.tenantId,
+      applicationId: session.applicationId,
+      candidateName: session.application?.candidate?.fullName ?? null,
+      jobTitle: session.application?.job?.title ?? null,
+      templateId: session.templateId,
+      status: session.status,
+      mode: session.mode,
+      scheduledAt: session.scheduledAt,
+      startedAt: session.startedAt,
+      endedAt: session.endedAt,
+      cancelledAt: session.cancelledAt,
+      cancelReasonCode: session.cancelReasonCode,
+      scheduleNote: session.scheduleNote,
+      scheduledBy: session.scheduledBy,
+      schedulingSource: session.schedulingSource,
+      interviewerName: session.interviewerName,
+      interviewerUserId: session.interviewerUserId,
+      interviewType: session.interviewType,
+      modeContextJson: session.modeContextJson,
+      meetingProvider: session.meetingProvider,
+      meetingProviderSource: session.meetingProviderSource,
+      meetingConnectionId: session.meetingConnectionId,
+      meetingJoinUrl: session.meetingJoinUrl,
+      meetingExternalRef: session.meetingExternalRef,
+      meetingCalendarEventRef: session.meetingCalendarEventRef,
+      candidateAccessToken:
+        session.candidateAccessToken && session.status !== "COMPLETED"
+          ? `${session.candidateAccessToken.slice(0, 5)}...`
+          : null,
+      candidateAccessExpiresAt: session.candidateAccessExpiresAt,
+      candidateInterviewUrl:
+        session.mode === "VOICE" && session.candidateAccessToken
+          ? this.buildCandidateInterviewUrl(session.id, session.candidateAccessToken)
+          : null,
+      invitation: invitation
+        ? {
+            state: invitation.state,
+            issuedAt: invitation.issuedAt,
+            expiresAt: invitation.expiresAt,
+            reminderCount: invitation.reminderCount,
+            reminder1SentAt: invitation.reminder1SentAt,
+            reminder2SentAt: invitation.reminder2SentAt,
+            expired: invitation.expired,
+            resumeAllowed: invitation.resumeAllowed
+          }
+        : null,
+      candidateLocale: session.candidateLocale,
+      runtimeMode: session.runtimeMode,
+      runtimeProviderMode: session.runtimeProviderMode,
+      voiceInputProvider: session.voiceInputProvider,
+      voiceOutputProvider: session.voiceOutputProvider,
+      currentQuestionIndex: session.currentQuestionIndex,
+      currentFollowUpCount: session.currentFollowUpCount,
+      currentQuestionKey: session.currentQuestionKey,
+      completedReasonCode: session.completedReasonCode,
+      abandonedAt: session.abandonedAt,
+      rescheduleCount: session.rescheduleCount,
+      lastRescheduledAt: session.lastRescheduledAt,
+      lastRescheduledBy: session.lastRescheduledBy,
+      lastRescheduleReasonCode: session.lastRescheduleReasonCode,
+      rubricKey: session.rubricKey,
+      rubricVersion: session.rubricVersion,
+      template: {
+        id: session.template.id,
+        name: session.template.name,
+        roleFamily: session.template.roleFamily,
+        version: session.template.version
+      },
+      transcript: session.transcript
+        ? {
+            id: session.transcript.id,
+            qualityStatus: session.transcript.qualityStatus,
+            qualityScore: session.transcript.qualityScore,
+            qualityReviewedAt: session.transcript.qualityReviewedAt,
+            qualityReviewedBy: session.transcript.qualityReviewedBy,
+            finalizedAt: session.transcript.finalizedAt,
+            ownerType: session.transcript.ownerType,
+            ownerId: session.transcript.ownerId,
+            ingestionMethod: session.transcript.ingestionMethod,
+            ingestionStatus: session.transcript.ingestionStatus,
+            reviewNotes: session.transcript.reviewNotes,
+            lastIngestedAt: session.transcript.lastIngestedAt,
+            segmentCount: session.transcript.segments.length,
+            previewSegments: session.transcript.segments.slice(-12)
+          }
+        : null,
+      turns: session.turns.map((turn) => ({
+        id: turn.id,
+        sequenceNo: turn.sequenceNo,
+        blockKey: turn.blockKey,
+        questionKey: turn.questionKey,
+        category: turn.category,
+        kind: turn.kind,
+        promptText: turn.promptText,
+        answerText: turn.answerText,
+        answerConfidence: turn.answerConfidence,
+        answerLatencyMs: turn.answerLatencyMs,
+        answerDurationMs: turn.answerDurationMs,
+        answerSource: turn.answerSource,
+        answerSubmittedAt: turn.answerSubmittedAt,
+        followUpDepth: turn.followUpDepth,
+        completionStatus: turn.completionStatus,
+        transitionDecision: turn.transitionDecision,
+        decisionReason: turn.decisionReason
+      })),
+      activeTurn: activeTurn
+        ? {
+            id: activeTurn.id,
+            sequenceNo: activeTurn.sequenceNo,
+            blockKey: activeTurn.blockKey,
+            questionKey: activeTurn.questionKey,
+            category: activeTurn.category,
+            promptText: activeTurn.promptText,
+            kind: activeTurn.kind
+          }
+        : null,
+      progress: {
+        answeredBlocks: answeredBlocks.size,
+        totalBlocks: normalized.blocks.length,
+        ratio:
+          normalized.blocks.length > 0
+            ? Number((answeredBlocks.size / normalized.blocks.length).toFixed(3))
+            : 0
+      },
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt
     };
   }
 
@@ -3186,11 +4319,239 @@ export class InterviewsService {
     }
   }
 
-  private async resolveTemplate(input: {
+  private buildMatchPresentation(
+    score: number | null,
+    strengths: string[],
+    reasoning: Prisma.JsonValue | null | undefined
+  ) {
+    if (score === null || !Number.isFinite(score)) {
+      return {
+        score: null,
+        label: "Henüz değerlendirilmedi",
+        tone: "neutral",
+        reasons: [] as string[]
+      };
+    }
+
+    const rounded = Math.max(0, Math.min(100, Math.round(score)));
+    const label =
+      rounded >= 80
+        ? "Güçlü Uyum"
+        : rounded >= 60
+          ? "Uyumlu"
+          : rounded >= 40
+            ? "Kısmi Uyum"
+            : "Düşük Uyum";
+    const tone =
+      rounded >= 80
+        ? "strong"
+        : rounded >= 60
+          ? "good"
+          : rounded >= 40
+            ? "partial"
+            : "weak";
+    const normalizedReasons = strengths.map((item) => sanitizeText(item)).filter(Boolean);
+
+    return {
+      score: rounded,
+      label,
+      tone,
+      reasons:
+        normalizedReasons.length > 0
+          ? normalizedReasons.slice(0, 3)
+          : typeof reasoning === "string" && reasoning.trim().length > 0
+            ? [sanitizeText(reasoning)]
+            : []
+    };
+  }
+
+  private estimateInterviewDuration(questionCount: number) {
+    const min = Math.max(10, questionCount * 2);
+    const max = Math.max(min + 4, questionCount * 3);
+
+    return { min, max };
+  }
+
+  private buildQuestionPromptFromSignal(signal: string) {
+    const normalized = signal.toLocaleLowerCase("tr-TR");
+
+    if (normalized.includes("vardiya")) {
+      return "Vardiya düzenine uyumunuz ve hangi saatlerde çalışabileceğiniz hakkında biraz daha detay verebilir misiniz?";
+    }
+
+    if (normalized.includes("lokasyon") || normalized.includes("ulaş")) {
+      return "Lokasyon ve ulaşım tarafında işe düzenli devam etmenizi etkileyebilecek bir durum var mı, biraz açabilir misiniz?";
+    }
+
+    if (normalized.includes("deneyim")) {
+      return "Bu rolde öne çıkan deneyiminizi biraz daha somut örneklerle anlatabilir misiniz?";
+    }
+
+    if (normalized.includes("maaş") || normalized.includes("ücret")) {
+      return "Ücret beklentiniz ve bu pozisyon için motivasyonunuz konusunda biraz daha detay paylaşabilir misiniz?";
+    }
+
+    if (normalized.includes("ekip") || normalized.includes("yönet") || normalized.includes("yonet")) {
+      return "Ekip içinde çalışma biçiminizi ve sorumluluk aldığınız durumları biraz daha detaylandırabilir misiniz?";
+    }
+
+    return `${sanitizeText(signal).replace(/[.!?]+$/g, "")} konusunu biraz daha detaylandırabilir misiniz?`;
+  }
+
+  private extractReportQuestionSignals(reportJson: Prisma.JsonValue | null | undefined) {
+    const root = asObject(reportJson);
+    const sections = asObject(root.sections);
+    const flags = Array.isArray(sections.flags) ? sections.flags : [];
+
+    return flags
+      .map((flag) => asObject(flag))
+      .map((flag) => ({
+        signal: typeof flag.note === "string" ? sanitizeText(flag.note) : "",
+        category: "rapor_riski",
+        reason: "AI raporundaki dikkat sinyalinden üretildi"
+      }))
+      .filter((item) => item.signal.length > 0);
+  }
+
+  private buildSuggestedQuestionDrafts(input: {
+    fitScore:
+      | {
+          overallScore: Prisma.Decimal;
+          strengthsJson: Prisma.JsonValue | null;
+          risksJson: Prisma.JsonValue | null;
+          missingInfoJson: Prisma.JsonValue | null;
+          reasoningJson: Prisma.JsonValue | null;
+        }
+      | null;
+    reportJson: Prisma.JsonValue | null | undefined;
+    existingPrompts: string[];
+  }): InterviewQuestionDraftView[] {
+    const existing = new Set(
+      input.existingPrompts
+        .map((prompt) => sanitizeText(prompt).toLocaleLowerCase("tr-TR"))
+        .filter(Boolean)
+    );
+
+    const rawSignals = [
+      ...asStringArray(input.fitScore?.missingInfoJson).map((signal) => ({
+        signal,
+        category: "eksik_bilgi",
+        reason: "Eksik bilgi alanından üretildi"
+      })),
+      ...asStringArray(input.fitScore?.risksJson).map((signal) => ({
+        signal,
+        category: "risk",
+        reason: "Risk sinyalinden üretildi"
+      })),
+      ...this.extractReportQuestionSignals(input.reportJson)
+    ];
+
+    const suggestions: InterviewQuestionDraftView[] = [];
+    const usedPrompts = new Set(existing);
+
+    for (const item of rawSignals) {
+      const prompt = this.buildQuestionPromptFromSignal(item.signal);
+      const normalizedPrompt = sanitizeText(prompt).toLocaleLowerCase("tr-TR");
+
+      if (!normalizedPrompt || usedPrompts.has(normalizedPrompt)) {
+        continue;
+      }
+
+      usedPrompts.add(normalizedPrompt);
+
+      suggestions.push({
+        id: `suggested_${suggestions.length + 1}`,
+        key: toSlugKey(item.signal, `suggested_${suggestions.length + 1}`),
+        questionKey: `suggested_question_${suggestions.length + 1}`,
+        category: item.category,
+        prompt,
+        followUps: [],
+        source: "suggested",
+        reason: item.reason
+      });
+
+      if (suggestions.length >= 4) {
+        break;
+      }
+    }
+
+    return suggestions;
+  }
+
+  private normalizeQuestionnaireDraft(
+    questions: InterviewQuestionDraftInput[]
+  ): InterviewTemplateBlock[] {
+    const normalized: InterviewTemplateBlock[] = questions
+      .map((item, index) => {
+        const prompt = sanitizeText(item.prompt);
+        if (!prompt) {
+          return null;
+        }
+
+        const key = toSlugKey(item.key ?? item.prompt, `draft_block_${index + 1}`);
+        const questionKey = sanitizeText(item.questionKey ?? `draft_question_${index + 1}`);
+        const category = sanitizeText(item.category ?? "ozel_soru");
+        const followUps = asStringArray(item.followUps).slice(0, 2);
+
+        return {
+          key,
+          questionKey,
+          category,
+          prompt,
+          followUps,
+          maxFollowUps: Math.min(Math.max(followUps.length, 1), 2),
+          minWords: ANSWER_TOO_SHORT_WORDS,
+          required: true
+        } as InterviewTemplateBlock;
+      })
+      .filter((item): item is InterviewTemplateBlock => Boolean(item));
+
+    if (normalized.length === 0) {
+      throw new BadRequestException("Interview soru listesi bos olamaz.");
+    }
+
+    return normalized;
+  }
+
+  private async createSessionQuestionnaireTemplate(input: {
+    tenantId: string;
+    baseTemplate: TemplateRecord;
+    questions: InterviewQuestionDraftInput[];
+  }) {
+    const baseTemplateNormalized = this.normalizeTemplate(input.baseTemplate.templateJson);
+    const blocks = this.normalizeQuestionnaireDraft(input.questions);
+
+    return this.prisma.interviewTemplate.create({
+      data: {
+        tenantId: input.tenantId,
+        name: `${input.baseTemplate.name} · Oturum ${new Date().toISOString()}`,
+        roleFamily: input.baseTemplate.roleFamily,
+        templateJson: {
+          introPrompt: baseTemplateNormalized.introPrompt,
+          closingPrompt: baseTemplateNormalized.closingPrompt,
+          blocks: blocks.map((block) => ({
+            key: block.key,
+            questionKey: block.questionKey,
+            category: block.category,
+            prompt: block.prompt,
+            followUps: block.followUps,
+            maxFollowUps: block.maxFollowUps,
+            minWords: block.minWords,
+            required: block.required
+          }))
+        } satisfies Prisma.InputJsonValue,
+        rubricJson: input.baseTemplate.rubricJson as Prisma.InputJsonValue,
+        version: input.baseTemplate.version,
+        isActive: false
+      }
+    });
+  }
+
+  private async resolveTemplateRecord(input: {
     tenantId: string;
     templateId?: string;
     roleFamily: string;
-  }) {
+  }): Promise<TemplateRecord> {
     if (input.templateId) {
       const byId = await this.prisma.interviewTemplate.findFirst({
         where: {
@@ -3200,6 +4561,10 @@ export class InterviewsService {
         },
         select: {
           id: true,
+          name: true,
+          roleFamily: true,
+          templateJson: true,
+          rubricJson: true,
           version: true
         }
       });
@@ -3222,6 +4587,10 @@ export class InterviewsService {
       },
       select: {
         id: true,
+        name: true,
+        roleFamily: true,
+        templateJson: true,
+        rubricJson: true,
         version: true
       }
     });
@@ -3240,6 +4609,10 @@ export class InterviewsService {
       },
       select: {
         id: true,
+        name: true,
+        roleFamily: true,
+        templateJson: true,
+        rubricJson: true,
         version: true
       }
     });
@@ -3381,141 +4754,39 @@ export class InterviewsService {
     });
   }
 
-  private toSessionView(session: InterviewSessionRow) {
-    const normalized = (() => {
-      try {
-        return this.normalizeTemplate(session.template.templateJson);
-      } catch {
-        return {
-          introPrompt: "",
-          closingPrompt: "",
-          blocks: []
-        } satisfies NormalizedInterviewTemplate;
-      }
-    })();
-    const activeTurn = session.turns.find((turn) => turn.completionStatus === "ASKED" && !turn.answerText);
-    const answeredBlocks = new Set(
-      session.turns
-        .filter((turn) => turn.completionStatus === "ANSWERED")
-        .map((turn) => turn.blockKey)
+  private toRuntimeProviderMode(
+    voiceInputProvider: string | null | undefined,
+    voiceOutputProvider: string | null | undefined
+  ) {
+    const providerKeys = [voiceInputProvider, voiceOutputProvider].filter(
+      (value): value is string =>
+        Boolean(
+          value &&
+            value !== "browser_web_speech_api" &&
+            value !== "browser_speech_synthesis" &&
+            value !== "manual_text_fallback" &&
+            value !== "text_prompt_only"
+        )
     );
+    const uniqueKeys = [...new Set(providerKeys)];
 
-    return {
-      id: session.id,
-      tenantId: session.tenantId,
-      applicationId: session.applicationId,
-      candidateName: session.application?.candidate?.fullName ?? null,
-      jobTitle: session.application?.job?.title ?? null,
-      templateId: session.templateId,
-      status: session.status,
-      mode: session.mode,
-      scheduledAt: session.scheduledAt,
-      startedAt: session.startedAt,
-      endedAt: session.endedAt,
-      cancelledAt: session.cancelledAt,
-      cancelReasonCode: session.cancelReasonCode,
-      scheduleNote: session.scheduleNote,
-      scheduledBy: session.scheduledBy,
-      schedulingSource: session.schedulingSource,
-      interviewerName: session.interviewerName,
-      interviewerUserId: session.interviewerUserId,
-      interviewType: session.interviewType,
-      modeContextJson: session.modeContextJson,
-      meetingProvider: session.meetingProvider,
-      meetingProviderSource: session.meetingProviderSource,
-      meetingConnectionId: session.meetingConnectionId,
-      meetingJoinUrl: session.meetingJoinUrl,
-      meetingExternalRef: session.meetingExternalRef,
-      meetingCalendarEventRef: session.meetingCalendarEventRef,
-      candidateAccessToken:
-        session.candidateAccessToken && session.status !== "COMPLETED"
-          ? `${session.candidateAccessToken.slice(0, 5)}...`
-          : null,
-      candidateAccessExpiresAt: session.candidateAccessExpiresAt,
-      candidateInterviewUrl:
-        session.mode === "VOICE" && session.candidateAccessToken
-          ? this.buildCandidateInterviewUrl(session.id, session.candidateAccessToken)
-          : null,
-      candidateLocale: session.candidateLocale,
-      runtimeMode: session.runtimeMode,
-      runtimeProviderMode: session.runtimeProviderMode,
-      voiceInputProvider: session.voiceInputProvider,
-      voiceOutputProvider: session.voiceOutputProvider,
-      currentQuestionIndex: session.currentQuestionIndex,
-      currentFollowUpCount: session.currentFollowUpCount,
-      currentQuestionKey: session.currentQuestionKey,
-      completedReasonCode: session.completedReasonCode,
-      abandonedAt: session.abandonedAt,
-      rescheduleCount: session.rescheduleCount,
-      lastRescheduledAt: session.lastRescheduledAt,
-      lastRescheduledBy: session.lastRescheduledBy,
-      lastRescheduleReasonCode: session.lastRescheduleReasonCode,
-      rubricKey: session.rubricKey,
-      rubricVersion: session.rubricVersion,
-      template: {
-        id: session.template.id,
-        name: session.template.name,
-        roleFamily: session.template.roleFamily,
-        version: session.template.version
-      },
-      transcript: session.transcript
-        ? {
-            id: session.transcript.id,
-            qualityStatus: session.transcript.qualityStatus,
-            qualityScore: session.transcript.qualityScore,
-            qualityReviewedAt: session.transcript.qualityReviewedAt,
-            qualityReviewedBy: session.transcript.qualityReviewedBy,
-            finalizedAt: session.transcript.finalizedAt,
-            ownerType: session.transcript.ownerType,
-            ownerId: session.transcript.ownerId,
-            ingestionMethod: session.transcript.ingestionMethod,
-            ingestionStatus: session.transcript.ingestionStatus,
-            reviewNotes: session.transcript.reviewNotes,
-            lastIngestedAt: session.transcript.lastIngestedAt,
-            segmentCount: session.transcript.segments.length,
-            previewSegments: session.transcript.segments.slice(-12)
-          }
-        : null,
-      turns: session.turns.map((turn) => ({
-        id: turn.id,
-        sequenceNo: turn.sequenceNo,
-        blockKey: turn.blockKey,
-        questionKey: turn.questionKey,
-        category: turn.category,
-        kind: turn.kind,
-        promptText: turn.promptText,
-        answerText: turn.answerText,
-        answerConfidence: turn.answerConfidence,
-        answerLatencyMs: turn.answerLatencyMs,
-        answerDurationMs: turn.answerDurationMs,
-        answerSource: turn.answerSource,
-        answerSubmittedAt: turn.answerSubmittedAt,
-        followUpDepth: turn.followUpDepth,
-        completionStatus: turn.completionStatus,
-        transitionDecision: turn.transitionDecision,
-        decisionReason: turn.decisionReason
-      })),
-      activeTurn: activeTurn
-        ? {
-            id: activeTurn.id,
-            sequenceNo: activeTurn.sequenceNo,
-            blockKey: activeTurn.blockKey,
-            questionKey: activeTurn.questionKey,
-            category: activeTurn.category,
-            promptText: activeTurn.promptText,
-            kind: activeTurn.kind
-          }
-        : null,
-      progress: {
-        answeredBlocks: answeredBlocks.size,
-        totalBlocks: normalized.blocks.length,
-        ratio:
-          normalized.blocks.length > 0
-            ? Number((answeredBlocks.size / normalized.blocks.length).toFixed(3))
-            : 0
-      },
-      createdAt: session.createdAt,
-      updatedAt: session.updatedAt
-    };
+    if (uniqueKeys.length === 0) {
+      return "manual_fallback";
+    }
+
+    if (uniqueKeys.length === 1) {
+      if (uniqueKeys[0] === "openai_speech") {
+        return "provider_backed_openai";
+      }
+
+      if (uniqueKeys[0] === "elevenlabs_speech") {
+        return "provider_backed_elevenlabs";
+      }
+
+      return `provider_backed_${uniqueKeys[0]}`;
+    }
+
+    return `provider_backed_mixed:${uniqueKeys.join("+")}`;
   }
+
 }

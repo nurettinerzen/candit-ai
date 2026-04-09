@@ -8,6 +8,7 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Permissions } from "../../common/decorators/permissions.decorator";
 import type { RequestContext } from "../../common/interfaces/request-context.interface";
 import type { RequestUser } from "../../common/interfaces/request-user.interface";
+import { BillingService } from "../billing/billing.service";
 import { IntegrationsService } from "./integrations.service";
 
 const INTEGRATION_PROVIDERS = [
@@ -78,7 +79,21 @@ class UpsertCredentialBody {
 
 @Controller("integrations")
 export class IntegrationsController {
-  constructor(@Inject(IntegrationsService) private readonly integrationsService: IntegrationsService) {}
+  constructor(
+    @Inject(IntegrationsService) private readonly integrationsService: IntegrationsService,
+    @Inject(BillingService) private readonly billingService: BillingService
+  ) {}
+
+  private async assertProviderAllowed(tenantId: string, provider: IntegrationProvider) {
+    if (
+      provider === "GOOGLE_CALENDAR" ||
+      provider === "GOOGLE_MEET" ||
+      provider === "CALENDLY" ||
+      provider === "MICROSOFT_CALENDAR"
+    ) {
+      await this.billingService.assertFeatureEnabled(tenantId, "calendarIntegrations");
+    }
+  }
 
   @Get("providers")
   @Permissions("integration.manage")
@@ -94,13 +109,14 @@ export class IntegrationsController {
 
   @Post("connections/:provider")
   @Permissions("integration.manage")
-  upsertConnection(
+  async upsertConnection(
     @CurrentTenant() tenantId: string,
     @CurrentUser() user: RequestUser,
     @CurrentContext() requestContext: RequestContext | undefined,
     @Param("provider") provider: IntegrationProvider,
     @Body() body: UpsertConnectionBody
   ) {
+    await this.assertProviderAllowed(tenantId, provider);
     return this.integrationsService.upsertConnection({
       tenantId,
       provider,
@@ -115,13 +131,14 @@ export class IntegrationsController {
 
   @Post("connections/:provider/credential")
   @Permissions("integration.manage")
-  upsertCredential(
+  async upsertCredential(
     @CurrentTenant() tenantId: string,
     @CurrentUser() user: RequestUser,
     @CurrentContext() requestContext: RequestContext | undefined,
     @Param("provider") provider: IntegrationProvider,
     @Body() body: UpsertCredentialBody
   ) {
+    await this.assertProviderAllowed(tenantId, provider);
     return this.integrationsService.upsertConnectionCredential({
       tenantId,
       provider,
@@ -136,12 +153,13 @@ export class IntegrationsController {
 
   @Post("connections/:provider/credential/refresh")
   @Permissions("integration.manage")
-  refreshCredential(
+  async refreshCredential(
     @CurrentTenant() tenantId: string,
     @CurrentUser() user: RequestUser,
     @CurrentContext() requestContext: RequestContext | undefined,
     @Param("provider") provider: IntegrationProvider
   ) {
+    await this.assertProviderAllowed(tenantId, provider);
     return this.integrationsService.refreshConnectionCredential({
       tenantId,
       provider,

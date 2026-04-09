@@ -1,6 +1,8 @@
+import "./bootstrap-env";
 import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { json, raw, urlencoded } from "express";
 import { AppModule } from "./app.module";
 import { RuntimeConfigService } from "./config/runtime-config.service";
 import { StructuredLoggerService } from "./common/logging/structured-logger.service";
@@ -16,6 +18,9 @@ async function bootstrap() {
     origin: runtimeConfig.corsOrigins,
     credentials: runtimeConfig.authTokenTransport === "cookie"
   });
+  app.use("/v1/billing/webhooks/stripe", raw({ type: "application/json" }));
+  app.use(json({ limit: "10mb" }));
+  app.use(urlencoded({ extended: true, limit: "10mb" }));
 
   app.setGlobalPrefix("v1");
   app.useGlobalPipes(

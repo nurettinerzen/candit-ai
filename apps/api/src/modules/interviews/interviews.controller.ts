@@ -9,6 +9,7 @@ import {
 import { Type } from "class-transformer";
 import {
   IsBoolean,
+  IsArray,
   IsIn,
   IsInt,
   IsISO8601,
@@ -17,7 +18,8 @@ import {
   IsOptional,
   IsString,
   Max,
-  Min
+  Min,
+  ValidateNested
 } from "class-validator";
 import type { IntegrationProvider } from "@prisma/client";
 import { CurrentContext } from "../../common/decorators/current-context.decorator";
@@ -292,6 +294,44 @@ class PublicAudioAnswerBody {
   @IsString()
   @IsOptional()
   locale?: string;
+}
+
+class PublicCompletionTranscriptSegmentBody {
+  @IsIn(TRANSCRIPT_SPEAKERS)
+  speaker!: (typeof TRANSCRIPT_SPEAKERS)[number];
+
+  @IsString()
+  text!: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  @IsOptional()
+  confidence?: number;
+}
+
+class PublicCompleteBody {
+  @IsString()
+  token!: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PublicCompletionTranscriptSegmentBody)
+  @IsOptional()
+  transcriptSegments?: PublicCompletionTranscriptSegmentBody[];
+
+  @IsString()
+  @IsOptional()
+  locale?: string;
+
+  @IsString()
+  @IsOptional()
+  sttModel?: string;
+
+  @IsString()
+  @IsOptional()
+  completionReasonCode?: string;
 }
 
 class PublicAbandonBody {
@@ -592,6 +632,24 @@ export class InterviewsController {
       audioBase64: body.audioBase64,
       mimeType: body.mimeType,
       locale: body.locale,
+      traceId: requestContext?.traceId
+    });
+  }
+
+  @Public()
+  @Post("public/sessions/:id/complete")
+  completePublicSession(
+    @Param("id") sessionId: string,
+    @Body() body: PublicCompleteBody,
+    @CurrentContext() requestContext: RequestContext | undefined
+  ) {
+    return this.interviewsService.completePublicSession({
+      sessionId,
+      accessToken: body.token,
+      transcriptSegments: body.transcriptSegments,
+      locale: body.locale,
+      sttModel: body.sttModel,
+      completionReasonCode: body.completionReasonCode,
       traceId: requestContext?.traceId
     });
   }

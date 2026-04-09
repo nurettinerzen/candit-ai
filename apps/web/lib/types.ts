@@ -4,7 +4,24 @@ export type JsonObject = {
   [key: string]: JsonValue;
 };
 
+export type AppUserRole = "owner" | "manager" | "staff";
+export type MemberStatus = "ACTIVE" | "INVITED" | "DISABLED";
+
 export type JobStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+
+export type MemberDirectoryItem = {
+  userId: string;
+  fullName: string;
+  email: string;
+  role: AppUserRole;
+  status: MemberStatus;
+  emailVerifiedAt: string | null;
+  invitedAt: string | null;
+  pendingInvitationExpiresAt: string | null;
+  hasPendingInvitation: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+};
 
 export type ApplicationStage =
   | "APPLIED"
@@ -29,6 +46,25 @@ export type InterviewSessionStatus =
   | "FAILED"
   | "NO_SHOW"
   | "CANCELLED";
+
+export type InterviewInvitationState =
+  | "INVITED"
+  | "REMINDER_SENT"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "EXPIRED"
+  | "FAILED";
+
+export type InterviewInvitationView = {
+  state: InterviewInvitationState;
+  issuedAt: string | null;
+  expiresAt: string | null;
+  reminderCount: number;
+  reminder1SentAt: string | null;
+  reminder2SentAt: string | null;
+  expired: boolean;
+  resumeAllowed: boolean;
+};
 
 export type MeetingProvider =
   | "CALENDLY"
@@ -147,6 +183,413 @@ export type CandidateCreateResponse = {
   candidate: Candidate;
 };
 
+export type SourcingProjectStatus = "ACTIVE" | "PAUSED" | "ARCHIVED";
+export type SourcingProspectStage =
+  | "NEW"
+  | "NEEDS_REVIEW"
+  | "GOOD_FIT"
+  | "SAVED"
+  | "CONTACTED"
+  | "REPLIED"
+  | "CONVERTED"
+  | "REJECTED"
+  | "ARCHIVED";
+
+export type ProspectFitLabel =
+  | "STRONG_MATCH"
+  | "GOOD_MATCH"
+  | "PARTIAL_MATCH"
+  | "WEAK_MATCH"
+  | "UNKNOWN";
+
+export type TalentSourceKind =
+  | "INTERNAL_CANDIDATE"
+  | "PUBLIC_PROFESSIONAL"
+  | "RECRUITER_IMPORT"
+  | "REFERRAL"
+  | "OTHER";
+
+export type ContactSuppressionStatus =
+  | "ALLOWED"
+  | "DO_NOT_CONTACT"
+  | "OPTED_OUT"
+  | "NEEDS_REVIEW";
+
+export type SourcingSourceRecord = {
+  id: string;
+  providerKey: string;
+  providerLabel: string;
+  displayName: string;
+  sourceUrl: string | null;
+  sourceKind: TalentSourceKind;
+  isVerified: boolean;
+};
+
+export type SourcingProspectView = {
+  id: string;
+  profileId: string;
+  stage: SourcingProspectStage;
+  fitLabel: ProspectFitLabel;
+  fitScore: number | null;
+  fitConfidence: number | null;
+  fullName: string;
+  headline: string | null;
+  summary: string | null;
+  locationText: string | null;
+  currentTitle: string | null;
+  currentCompany: string | null;
+  yearsOfExperience: number | null;
+  workModel: string | null;
+  email: string | null;
+  phone: string | null;
+  sourceKind: TalentSourceKind;
+  primarySourceLabel: string | null;
+  suppressionStatus: ContactSuppressionStatus;
+  doNotContactReason: string | null;
+  strengths: string[];
+  risks: string[];
+  missingInfo: string[];
+  skills: string[];
+  languages: string[];
+  education: string[];
+  experiences: string[];
+  evidence: Array<{
+    title: string;
+    text: string;
+    kind: "title" | "skills" | "location" | "experience" | "source";
+  }>;
+  discoveryQuality: {
+    label: "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+    score: number | null;
+    recruiterLabel: string;
+    summary: string;
+    matchedCriteria: string[];
+    reasons: string[];
+    warnings: string[];
+    pageType: string | null;
+  };
+  recruiterNote: string | null;
+  attachedCandidateId: string | null;
+  attachedApplicationId: string | null;
+  contactedAt: string | null;
+  repliedAt: string | null;
+  convertedAt: string | null;
+  sourceRecords: SourcingSourceRecord[];
+  outreachHistory: Array<{
+    id: string;
+    status: "DRAFT" | "READY_TO_SEND" | "SENT" | "FAILED" | "REPLIED" | "CANCELLED";
+    subject: string;
+    sentAt: string | null;
+    repliedAt: string | null;
+  }>;
+};
+
+export type SourcingOutreachTemplate = {
+  id: string;
+  name: string;
+  description: string | null;
+  subjectTemplate: string;
+  bodyTemplate: string;
+  isDefault: boolean;
+  sequence: Array<{
+    dayOffset: number;
+    label: string;
+  }>;
+};
+
+export type SourcingProjectSummary = {
+  id: string;
+  name: string;
+  status: SourcingProjectStatus;
+  personaSummary: string | null;
+  updatedAt: string;
+  job: {
+    id: string;
+    title: string;
+    roleFamily: string;
+    locationText: string | null;
+  } | null;
+  metrics: {
+    total: number;
+    needsReview: number;
+    goodFit: number;
+    contacted: number;
+    replied: number;
+    converted: number;
+    blocked: number;
+    avgFitScore: number | null;
+  };
+  sourceMix: Record<string, number>;
+};
+
+export type SourcingDiscoveryCriteria = {
+  roleTitle: string;
+  keyword: string | null;
+  locationText: string | null;
+  minYearsExperience: number | null;
+  skillTags: string[];
+  companyBackground: string[];
+  languages: string[];
+  workModel: string | null;
+  compensationMin: number | null;
+  compensationMax: number | null;
+  idealCandidateNotes: string | null;
+};
+
+export type SourcingExternalDiscoverySummary = {
+  totalCandidates: number;
+  createdProfiles: number;
+  mergedProfiles: number;
+  linkedProspects: number;
+  skippedResults: number;
+  existingCandidateMatches: number;
+  lastRunAt: string;
+  mode: "openai_web_search";
+  querySummary: string;
+  highQualityResults: number;
+  mediumQualityResults: number;
+  lowQualityResults: number;
+  filteredPatterns: string[];
+  digitalVisibility: "limited" | "standard";
+  queryHints: string[];
+  notes: string[];
+};
+
+export type SourcingImportSourceType =
+  | "recruiter_import"
+  | "public_profile_url"
+  | "agency_upload"
+  | "referral"
+  | "job_board_export";
+
+export type SourcingImportedLead = {
+  fullName: string;
+  headline?: string;
+  currentTitle?: string;
+  currentCompany?: string;
+  locationText?: string;
+  yearsOfExperience?: number;
+  workModel?: string;
+  email?: string;
+  phone?: string;
+  sourceUrl?: string;
+  skills?: string[];
+  languages?: string[];
+  notes?: string;
+  recruiterTags?: string[];
+  externalRef?: string;
+};
+
+export type SourcingLeadImportSummary = {
+  totalRecords: number;
+  processedRecords: number;
+  newProfiles: number;
+  mergedProfiles: number;
+  newProspects: number;
+  duplicateProspects: number;
+  existingCandidateMatches: number;
+  errorCount: number;
+  sourceType: SourcingImportSourceType;
+  sourceLabel: string;
+  errors: Array<{
+    index: number;
+    reason: string;
+    ref: string | null;
+  }>;
+};
+
+export type SourcingAttachmentContextView = {
+  projectId: string;
+  projectName: string;
+  prospectId: string;
+  stage: SourcingProspectStage;
+  primarySourceLabel: string | null;
+  sourceLabels: string[];
+  latestOutreach: {
+    status: "DRAFT" | "READY_TO_SEND" | "SENT" | "FAILED" | "REPLIED" | "CANCELLED" | null;
+    subject: string | null;
+    sentAt: string | null;
+    repliedAt: string | null;
+    reviewNote: string | null;
+    error: string | null;
+  } | null;
+};
+
+export type SourcingOverviewReadModel = {
+  summary: {
+    totalProjects: number;
+    activeProjects: number;
+    totalProspects: number;
+    savedProspects: number;
+    contacted: number;
+    replied: number;
+    converted: number;
+    rediscoveredCandidates: number;
+    doNotContactCount: number;
+  };
+  projects: SourcingProjectSummary[];
+  talentPool: {
+    totalProfiles: number;
+    bySource: Record<string, number>;
+    bySuppression: Record<string, number>;
+    recentProfiles: Array<{
+      id: string;
+      fullName: string;
+      headline: string | null;
+      locationText: string | null;
+      currentTitle: string | null;
+      sourceKind: TalentSourceKind;
+      suppressionStatus: ContactSuppressionStatus;
+      primarySource: {
+        providerLabel: string;
+        displayName: string;
+        sourceUrl: string | null;
+      } | null;
+    }>;
+  };
+  savedProspects: Array<{
+    id: string;
+    projectId: string;
+    projectName: string;
+    fullName: string;
+    headline: string | null;
+    currentTitle: string | null;
+    fitLabel: ProspectFitLabel;
+    fitScore: number | null;
+    sourceKind: TalentSourceKind;
+    suppressionStatus: ContactSuppressionStatus;
+    primarySource: {
+      providerLabel: string;
+      displayName: string;
+    } | null;
+  }>;
+  compliance: {
+    guidance: string;
+    supportedSourceKinds: TalentSourceKind[];
+  };
+};
+
+export type SourcingProjectDetailReadModel = {
+  project: {
+    id: string;
+    name: string;
+    status: SourcingProjectStatus;
+    personaSummary: string | null;
+    searchQuery: string | null;
+    notes: string | null;
+    createdAt: string;
+    updatedAt: string;
+    criteria: SourcingDiscoveryCriteria;
+    lastExternalDiscovery: SourcingExternalDiscoverySummary | null;
+    job: {
+      id: string;
+      title: string;
+      roleFamily: string;
+      locationText: string | null;
+      shiftType: string | null;
+      salaryMin: number | null;
+      salaryMax: number | null;
+      requirements: Array<{
+        id: string;
+        key: string;
+        value: string;
+        required: boolean;
+      }>;
+    } | null;
+  };
+  funnel: {
+    total: number;
+    byStage: Record<string, number>;
+    byFitLabel: Record<string, number>;
+    avgFitScore: number | null;
+  };
+  prospects: SourcingProspectView[];
+  filters: {
+    locations: string[];
+    workModels: string[];
+    sourceKinds: string[];
+    stages: string[];
+    fitLabels: string[];
+    companies: Array<{ label: string; count: number }>;
+    topSkills: Array<{ label: string; count: number }>;
+    educations: Array<{ label: string; count: number }>;
+    languages: Array<{ label: string; count: number }>;
+  };
+  outreachTemplates: SourcingOutreachTemplate[];
+  copilot: {
+    recommendedCandidates: Array<{
+      id: string;
+      fullName: string;
+      fitScore: number | null;
+      fitLabel: ProspectFitLabel;
+      reason: string;
+    }>;
+    searchRefinements: string[];
+    batchSuggestions: string[];
+    outreachSuggestions: string[];
+  };
+  rediscovery: {
+    internalMatches: number;
+    externalMatches: number;
+    existingCandidateLinked: number;
+  };
+  compliance: {
+    blockedProfiles: number;
+    message: string;
+  };
+  discovery: {
+    status:
+      | "NOT_RUN"
+      | "STRONG_RESULTS"
+      | "LIMITED_RESULTS"
+      | "LOW_QUALITY_RESULTS"
+      | "PUBLIC_DISCOVERY_WEAK";
+    recruiterMessage: string;
+    recruiterGuidance: string[];
+    roleHints: string[];
+    digitalVisibility: "limited" | "standard";
+    qualityCounts: {
+      high: number;
+      medium: number;
+      low: number;
+    };
+    filteredPatterns: string[];
+  };
+};
+
+export type SourcingDiscoverResult = {
+  summary: SourcingExternalDiscoverySummary;
+  project: SourcingProjectDetailReadModel;
+};
+
+export type SourcingLeadImportResult = {
+  summary: SourcingLeadImportSummary;
+  project: SourcingProjectDetailReadModel;
+};
+
+export type SourcingCreateProjectResult = {
+  created: boolean;
+  projectId: string;
+};
+
+export type SourcingAttachResult = {
+  candidateId: string;
+  applicationId: string;
+  projectId: string;
+  jobId: string;
+};
+
+export type SourcingOutreachResult = {
+  total: number;
+  results: Array<{
+    prospectId: string;
+    status: "DRAFT" | "READY_TO_SEND" | "SENT" | "FAILED" | "REPLIED" | "CANCELLED" | "BLOCKED" | "SKIPPED";
+    email: string | null;
+    error?: string;
+    messageId?: string;
+  }>;
+};
+
 export type AiEvidenceLink = {
   id: string;
   evidenceType: string;
@@ -171,6 +614,7 @@ export type AiReport = {
 
 export type ApplicationRecommendationArtifact = {
   id: string;
+  sessionId: string | null;
   recommendation: Recommendation;
   confidence: string | number;
   summaryText: string;
@@ -320,6 +764,262 @@ export type FeatureFlag = {
   value: JsonValue;
   description: string | null;
   updatedAt: string;
+};
+
+export type BillingPlanKey = "STARTER" | "GROWTH" | "ENTERPRISE";
+export type BillingQuotaKey =
+  | "SEATS"
+  | "ACTIVE_JOBS"
+  | "CANDIDATE_PROCESSING"
+  | "AI_INTERVIEWS";
+export type BillingFeatureKey =
+  | "advancedReporting"
+  | "calendarIntegrations"
+  | "brandedCandidateExperience"
+  | "customIntegrations";
+export type BillingAddonKey =
+  | "INTERVIEW_PACK_25"
+  | "CANDIDATE_PROCESSING_PACK_100"
+  | "PROFESSIONAL_ONBOARDING"
+  | "CUSTOM_INTEGRATION_SETUP";
+
+export type BillingPlanDefinition = {
+  key: BillingPlanKey;
+  label: string;
+  description: string;
+  monthlyAmountCents: number | null;
+  currency: string;
+  seatsIncluded: number;
+  activeJobsIncluded: number;
+  candidateProcessingIncluded: number;
+  aiInterviewsIncluded: number;
+  features: Record<BillingFeatureKey, boolean>;
+  supportLabel: string;
+  recommended?: boolean;
+};
+
+export type BillingAddonDefinition = {
+  key: BillingAddonKey;
+  label: string;
+  description: string;
+  amountCents: number;
+  currency: string;
+  quotaKey?: Exclude<BillingQuotaKey, "SEATS" | "ACTIVE_JOBS">;
+  quantity?: number;
+  serviceOnly?: boolean;
+};
+
+export type BillingQuotaOverview = {
+  key: BillingQuotaKey;
+  label: string;
+  included: number;
+  addOn: number;
+  limit: number;
+  used: number;
+  remaining: number;
+  utilizationPercent: number;
+  warningState: "healthy" | "warning" | "exceeded";
+};
+
+export type BillingCheckoutHistoryItem = {
+  id: string;
+  checkoutType: string;
+  status: string;
+  planKey: BillingPlanKey | null;
+  addOnKey: BillingAddonKey | null;
+  label: string | null;
+  checkoutUrl: string | null;
+  billingEmail: string | null;
+  amountCents: number | null;
+  currency: string;
+  createdAt: string;
+  completedAt: string | null;
+};
+
+export type BillingOverviewReadModel = {
+  stripeReady: boolean;
+  viewer: {
+    isInternalBillingAdmin: boolean;
+  };
+  account: {
+    tenantId: string;
+    billingEmail: string | null;
+    stripeCustomerId: string | null;
+    currentPlanKey: BillingPlanKey;
+    status: string;
+    currentPeriodStart: string;
+    currentPeriodEnd: string;
+    features: Record<BillingFeatureKey, boolean>;
+  };
+  currentPlan: BillingPlanDefinition & {
+    seatsIncluded: number;
+    activeJobsIncluded: number;
+    candidateProcessingIncluded: number;
+    aiInterviewsIncluded: number;
+  };
+  usage: {
+    currentPeriodStart: string;
+    currentPeriodEnd: string;
+    quotas: BillingQuotaOverview[];
+  };
+  planCatalog: BillingPlanDefinition[];
+  addOnCatalog: BillingAddonDefinition[];
+  warnings: string[];
+  recentCheckouts: BillingCheckoutHistoryItem[];
+};
+
+export type InternalAdminDashboardReadModel = {
+  summary: {
+    totalCustomers: number;
+    activeCustomers: number;
+    suspendedCustomers: number;
+    todayCandidateProcessing: number;
+    todayAiInterviews: number;
+    openAlerts: number;
+    enterpriseCustomers: number;
+  };
+  planDistribution: Array<{
+    key: BillingPlanKey;
+    label: string;
+    count: number;
+  }>;
+  quickLinks: {
+    customers: number;
+    redAlerts: number;
+    enterprise: number;
+  };
+};
+
+export type InternalAdminAlertCategory = "APPLICATION" | "SECURITY" | "ASSISTANT" | "OPERATIONS";
+export type InternalAdminAlertSeverity = "critical" | "warning";
+
+export type InternalAdminRedAlertReadModel = {
+  filters: {
+    windowDays: number;
+    category: "ALL" | InternalAdminAlertCategory;
+    severity: "ALL" | InternalAdminAlertSeverity;
+  };
+  summary: Array<{
+    key: InternalAdminAlertCategory;
+    label: string;
+    detail: string;
+    count: number;
+  }>;
+  items: Array<{
+    id: string;
+    tenantId: string;
+    tenantName: string;
+    category: InternalAdminAlertCategory;
+    severity: InternalAdminAlertSeverity;
+    source: string;
+    message: string;
+    repeats: number;
+    lastSeenAt: string;
+    status: "OPEN";
+  }>;
+};
+
+export type InternalAdminCustomerRow = {
+  tenantId: string;
+  tenantName: string;
+  tenantStatus: "ACTIVE" | "SUSPENDED" | "DELETED";
+  createdAt: string;
+  owner: {
+    userId: string;
+    fullName: string;
+    email: string;
+    status: MemberStatus;
+    lastLoginAt: string | null;
+  } | null;
+  billing: {
+    billingEmail: string | null;
+    currentPlanKey: BillingPlanKey;
+    status: string;
+    currentPeriodEnd: string;
+  };
+  usage: {
+    seats: BillingQuotaOverview | null;
+    activeJobs: BillingQuotaOverview | null;
+    candidateProcessing: BillingQuotaOverview | null;
+    aiInterviews: BillingQuotaOverview | null;
+  };
+  counts: {
+    jobs: number;
+    candidates: number;
+    applications: number;
+    interviews: number;
+  };
+};
+
+export type InternalAdminAccountListReadModel = {
+  summary: {
+    total: number;
+    active: number;
+    suspended: number;
+    starter: number;
+    growth: number;
+    enterprise: number;
+  };
+  rows: InternalAdminCustomerRow[];
+};
+
+export type InternalAdminAccountDetailReadModel = {
+  tenant: {
+    id: string;
+    name: string;
+    locale: string;
+    timezone: string;
+    status: "ACTIVE" | "SUSPENDED" | "DELETED";
+    createdAt: string;
+  };
+  owner: {
+    userId: string;
+    fullName: string;
+    email: string;
+    status: MemberStatus;
+    lastLoginAt: string | null;
+  } | null;
+  members: Array<{
+    userId: string;
+    fullName: string;
+    email: string;
+    role: "OWNER" | "MANAGER" | "STAFF";
+    status: MemberStatus;
+    lastLoginAt: string | null;
+    createdAt: string;
+  }>;
+  billing: BillingOverviewReadModel;
+  activity: {
+    candidateCount: number;
+    applicationCount: number;
+    interviewCount: number;
+    recentJobs: Array<{
+      id: string;
+      title: string;
+      status: JobStatus;
+      createdAt: string;
+    }>;
+    recentNotifications: Array<{
+      id: string;
+      channel: string;
+      subject: string | null;
+      toAddress: string;
+      status: string;
+      queuedAt: string;
+      errorMessage: string | null;
+    }>;
+    recentCheckouts: Array<{
+      id: string;
+      checkoutType: string;
+      status: string;
+      label: string | null;
+      billingEmail: string | null;
+      checkoutUrl: string | null;
+      amountCents: number | null;
+      currency: string;
+      createdAt: string;
+    }>;
+  };
 };
 
 export type AnalyticsFunnelRow = {
@@ -529,6 +1229,7 @@ export type InterviewSessionView = {
   candidateAccessToken: string | null;
   candidateAccessExpiresAt: string | null;
   candidateInterviewUrl: string | null;
+  invitation: InterviewInvitationView | null;
   candidateLocale: string | null;
   runtimeMode: string | null;
   runtimeProviderMode: string | null;
@@ -708,6 +1409,7 @@ export type PublicInterviewSessionView = {
     abandonedAt: string | null;
     completedReasonCode: string | null;
   };
+  invitation: InterviewInvitationView | null;
 };
 
 export type ApplicationDetailReadModel = {
@@ -726,6 +1428,9 @@ export type ApplicationDetailReadModel = {
     phone: string | null;
     email: string | null;
     source: string | null;
+    externalSource: string | null;
+    externalRef: string | null;
+    sourcing: SourcingAttachmentContextView | null;
     cvFiles: CandidateCvFile[];
   };
   job: {
@@ -799,12 +1504,13 @@ export type RecruiterApplicationsReadModel = {
       mode: InterviewMode;
       scheduledAt: string | null;
       schedulingSource: string | null;
+      invitation: InterviewInvitationView | null;
       meetingProvider: MeetingProvider | null;
       meetingProviderSource: string | null;
       runtimeProviderMode: string | null;
       voiceInputProvider: string | null;
       voiceOutputProvider: string | null;
-    };
+    } | null;
   }>;
 };
 
@@ -856,7 +1562,8 @@ export type JobInboxApplicant = {
   email: string | null;
   phone: string | null;
   locationText: string | null;
-  source: string;
+  source: string | null;
+  externalSource: string | null;
   externalRef: string | null;
   yearsOfExperience: number | null;
   stage: string;
@@ -881,6 +1588,8 @@ export type JobInboxApplicant = {
     status: string;
     mode: string;
     scheduledAt: string | null;
+    candidateInterviewUrl: string | null;
+    invitation: InterviewInvitationView | null;
   } | null;
   scheduling: {
     workflowId: string;
@@ -894,6 +1603,7 @@ export type JobInboxApplicant = {
   };
   humanDecision: HumanDecision | null;
   noteCount: number;
+  sourcing: SourcingAttachmentContextView | null;
 };
 
 export type JobInboxStats = {
@@ -908,6 +1618,27 @@ export type JobInboxStats = {
 export type JobInboxReadModel = {
   job: Job;
   stats: JobInboxStats;
+  commandCenter: {
+    sourcingProject: {
+      id: string;
+      name: string;
+      updatedAt: string;
+      metrics: {
+        totalProspects: number;
+        needsReview: number;
+        goodFit: number;
+        contacted: number;
+        replied: number;
+        converted: number;
+        blocked: number;
+        attachedApplicants: number;
+      };
+    } | null;
+    sourcedApplicants: number;
+    readyForInterviewInvite: number;
+    activeInterviewInvites: number;
+    outreachAwaitingReply: number;
+  };
   applicants: JobInboxApplicant[];
 };
 
@@ -921,10 +1652,59 @@ export type QuickActionType =
   | "trigger_screening"
   | "trigger_fit_score";
 
+export type InterviewQuestionDraftItem = {
+  id: string;
+  key: string;
+  questionKey: string;
+  category: string;
+  prompt: string;
+  followUps: string[];
+  source: "template" | "suggested" | "custom";
+  reason?: string;
+};
+
+export type InterviewQuestionnairePreview = {
+  candidate: {
+    id: string;
+    fullName: string;
+  };
+  job: {
+    id: string;
+    title: string;
+    roleFamily: string;
+  };
+  template: {
+    id: string;
+    name: string;
+    version: number;
+    roleFamily: string;
+  };
+  match: {
+    score: number | null;
+    label: string;
+    tone: "strong" | "good" | "partial" | "weak" | "neutral";
+    reasons: string[];
+  };
+  estimatedDuration: {
+    min: number;
+    max: number;
+  };
+  questions: InterviewQuestionDraftItem[];
+  suggestions: InterviewQuestionDraftItem[];
+};
+
 export type QuickActionPayload = {
   action: QuickActionType;
   reasonCode?: string;
   note?: string;
+  templateId?: string;
+  questionnaire?: Array<{
+    key?: string;
+    questionKey?: string;
+    category?: string;
+    prompt: string;
+    followUps?: string[];
+  }>;
 };
 
 export type QuickActionResult = {
@@ -935,6 +1715,7 @@ export type QuickActionResult = {
   schedulingLink?: string;
   interviewLink?: string;
   sessionId?: string;
+  expiresAt?: string | null;
 };
 
 export type BulkImportCandidate = {
@@ -997,6 +1778,7 @@ export type BulkApproveResult = {
     schedulingLink?: string;
     interviewLink?: string;
     sessionId?: string;
+    expiresAt?: string | null;
     error?: string;
   }>;
 };

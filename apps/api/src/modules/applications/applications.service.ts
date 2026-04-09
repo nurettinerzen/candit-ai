@@ -10,6 +10,7 @@ import {
   Recommendation
 } from "@prisma/client";
 import { AuditWriterService } from "../audit/audit-writer.service";
+import { BillingService } from "../billing/billing.service";
 import { DomainEventsService } from "../domain-events/domain-events.service";
 import { HumanApprovalService } from "../policy/human-approval.service";
 import { ReportsService } from "../reports/reports.service";
@@ -51,6 +52,7 @@ export class ApplicationsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditWriterService) private readonly auditWriterService: AuditWriterService,
+    @Inject(BillingService) private readonly billingService: BillingService,
     @Inject(DomainEventsService) private readonly domainEventsService: DomainEventsService,
     @Inject(HumanApprovalService) private readonly humanApprovalService: HumanApprovalService,
     @Inject(ReportsService) private readonly reportsService: ReportsService,
@@ -67,6 +69,8 @@ export class ApplicationsService {
   }
 
   async create(input: CreateApplicationInput) {
+    await this.billingService.assertCanProcessCandidate(input.tenantId);
+
     const [candidate, job] = await Promise.all([
       this.prisma.candidate.findFirst({
         where: { id: input.candidateId, tenantId: input.tenantId, deletedAt: null }
@@ -149,6 +153,11 @@ export class ApplicationsService {
           traceId: input.traceId
         });
       }
+
+      await this.billingService.recordCandidateProcessingUsage(
+        input.tenantId,
+        application.id
+      );
 
       return application;
     } catch (error) {

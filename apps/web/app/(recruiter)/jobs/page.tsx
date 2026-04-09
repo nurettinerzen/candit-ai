@@ -1,7 +1,9 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useUiText } from "../../../components/site-language-provider";
 import { JobStatusChip } from "../../../components/stage-chip";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { canPerformAction } from "../../../lib/auth/policy";
@@ -9,31 +11,54 @@ import { resolveActiveSession } from "../../../lib/auth/session";
 import { apiClient } from "../../../lib/api-client";
 import { formatDepartment } from "../../../lib/constants";
 import { formatCurrencyTry, formatDate } from "../../../lib/format";
-import type { Job, JobStatus } from "../../../lib/types";
+import type { BillingOverviewReadModel, Job, JobStatus } from "../../../lib/types";
 
 type StatusFilter = "" | JobStatus;
 
 export default function JobsPage() {
+  const { t, locale } = useUiText();
   const session = useMemo(() => resolveActiveSession(), []);
   const canCreateJob = canPerformAction(session, "job.create");
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [billing, setBilling] = useState<BillingOverviewReadModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [billingLoadError, setBillingLoadError] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
 
   const loadJobs = useCallback(async () => {
     setLoading(true);
     setError("");
+    setBillingLoadError("");
 
     try {
-      const rows = await apiClient.listJobs();
-      setJobs(rows);
+      const [jobsResult, billingResult] = await Promise.allSettled([
+        apiClient.listJobs(),
+        apiClient.billingOverview()
+      ]);
+
+      if (jobsResult.status === "fulfilled") {
+        setJobs(jobsResult.value);
+      } else {
+        throw jobsResult.reason;
+      }
+
+      if (billingResult.status === "fulfilled") {
+        setBilling(billingResult.value);
+      } else {
+        setBilling(null);
+        setBillingLoadError(
+          billingResult.reason instanceof Error
+            ? billingResult.reason.message
+            : t("Abonelik kullanımı şu an yüklenemedi.")
+        );
+      }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "İlanlar yüklenemedi.");
+      setError(loadError instanceof Error ? loadError.message : t("İlanlar yüklenemedi."));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadJobs();
@@ -53,45 +78,139 @@ export default function JobsPage() {
     return { total, published, draft, archived, totalApplicants };
   }, [jobs]);
 
-  function buildMetaLine(job: Job): string {
+  const activeJobsQuota = useMemo(
+    () => billing?.usage.quotas.find((quota) => quota.key === "ACTIVE_JOBS") ?? null,
+    [billing]
+  );
+
+  const hasPublishCapacity = activeJobsQuota ? activeJobsQuota.remaining > 0 : true;
+  const activeJobsWarning = activeJobsQuota?.warningState === "warning";
+  const activeJobsExceeded = activeJobsQuota?.warningState === "exceeded";
+
+  function buildLocationSalary(job: Job): string {
     const parts: string[] = [];
     if (job.locationText) parts.push(job.locationText);
     if (job.salaryMin || job.salaryMax) {
       parts.push(`${formatCurrencyTry(job.salaryMin)} – ${formatCurrencyTry(job.salaryMax)}`);
     }
-    if (job.workModel) parts.push(job.workModel);
-    return parts.join(" · ") || "—";
+    return parts.join(" · ") || t("—");
+  }
+
+  function formatShiftType(value: string | null): string {
+    if (!value) return "";
+    const map: Record<string, string> = {
+      tam_zamanli: "Tam Zamanlı",
+      yari_zamanli: "Yarı Zamanlı",
+      vardiyali: "Vardiyalı",
+      hibrit: "Hibrit",
+      full_time: "Tam Zamanlı",
+    };
+    return map[value] ?? value;
   }
 
   return (
     <section className="page-grid">
       <div className="section-head" style={{ marginBottom: 0 }}>
         <div>
-          <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}>İlan Merkezi</h1>
+          <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}>{t("İlan Merkezi")}</h1>
           <p className="small" style={{ margin: 0 }}>
-            İlan oluşturma, aday yönetimi ve işe alım süreçlerinizin merkezi.
+            {t("İlan oluşturma, aday yönetimi ve işe alım süreçlerinizin merkezi.")}
           </p>
         </div>
         <div className="row-actions">
           <button type="button" className="ghost-button" onClick={() => void loadJobs()}>
-            Yenile
+            {t("Yenile")}
           </button>
           {canCreateJob ? (
             <Link href="/jobs/new" className="button-link">
-              Yeni İlan Hazırla
+              {hasPublishCapacity ? t("Yeni İlan Hazırla") : t("Yeni İlan Taslağı Hazırla")}
             </Link>
           ) : null}
         </div>
       </div>
 
+      {!loading && activeJobsQuota ? (
+        <section
+          className="panel"
+          style={{
+            borderColor:
+              activeJobsExceeded
+                ? "rgba(239,68,68,0.35)"
+                : activeJobsWarning
+                  ? "rgba(245,158,11,0.35)"
+                  : "var(--border)"
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 16,
+              alignItems: "center",
+              flexWrap: "wrap"
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{t("Aktif ilan kotası")}</div>
+              <p className="small" style={{ margin: "6px 0 0" }}>
+                {locale === "en"
+                  ? `You are using ${activeJobsQuota.used} / ${activeJobsQuota.limit} active jobs this period.`
+                  : `Bu dönem ${activeJobsQuota.used} / ${activeJobsQuota.limit} aktif ilan kullanıyorsunuz.`}
+                {hasPublishCapacity
+                  ? t(" Yeni ilan hazırlayabilir ve uygun olduğunda yayına alabilirsiniz.")
+                  : t(" Yeni ilanı taslak olarak hazırlayabilirsiniz; yeniden yayına almak veya yayınlamak için önce slot açmanız ya da paketinizi yükseltmeniz gerekir.")}
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <span
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  border: "1px solid var(--border)",
+                  background:
+                    activeJobsExceeded
+                      ? "rgba(239,68,68,0.12)"
+                      : activeJobsWarning
+                        ? "rgba(245,158,11,0.12)"
+                        : "rgba(34,197,94,0.12)",
+                  color:
+                    activeJobsExceeded
+                      ? "var(--danger, #ef4444)"
+                      : activeJobsWarning
+                        ? "var(--warn, #f59e0b)"
+                        : "var(--success, #22c55e)",
+                  fontSize: 12,
+                  fontWeight: 700
+                }}
+              >
+                {activeJobsExceeded
+                  ? t("Limit doldu")
+                  : activeJobsWarning
+                    ? t("Limit yaklaşıyor")
+                    : t("Sağlıklı")}
+              </span>
+              <Link href={"/subscription" as Route} className="ghost-button" style={{ textDecoration: "none" }}>
+                {t("Aboneliği Gör")}
+              </Link>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {!loading && billingLoadError ? (
+        <section className="panel">
+          <ErrorState title={t("Abonelik görünürlüğü")} error={billingLoadError} />
+        </section>
+      ) : null}
+
       {/* Status filter pills with counts */}
       {!loading && !error && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {([
-            { label: `Tümü (${stats.total})`, value: "" as StatusFilter },
-            { label: `Yayında (${stats.published})`, value: "PUBLISHED" as StatusFilter },
-            { label: `Taslak (${stats.draft})`, value: "DRAFT" as StatusFilter },
-            { label: `Arşiv (${stats.archived})`, value: "ARCHIVED" as StatusFilter },
+            { label: `${t("Tümü")} (${stats.total})`, value: "" as StatusFilter },
+            { label: `${t("Yayında")} (${stats.published})`, value: "PUBLISHED" as StatusFilter },
+            { label: `${t("Taslak")} (${stats.draft})`, value: "DRAFT" as StatusFilter },
+            { label: `${t("Arşiv")} (${stats.archived})`, value: "ARCHIVED" as StatusFilter },
           ]).map((pill) => {
             const isActive = statusFilter === pill.value;
             return (
@@ -111,7 +230,7 @@ export default function JobsPage() {
                 }}
                 onClick={() => setStatusFilter(pill.value)}
               >
-                {pill.label}
+                {t(pill.label)}
               </button>
             );
           })}
@@ -120,7 +239,7 @@ export default function JobsPage() {
 
       {loading ? (
         <section className="panel">
-          <LoadingState message="İlanlar yükleniyor..." />
+          <LoadingState message={t("İlanlar yükleniyor...")} />
         </section>
       ) : null}
 
@@ -130,7 +249,7 @@ export default function JobsPage() {
             error={error}
             actions={
               <button type="button" className="ghost-button" onClick={() => void loadJobs()}>
-                Tekrar dene
+                {t("Tekrar dene")}
               </button>
             }
           />
@@ -139,7 +258,7 @@ export default function JobsPage() {
 
       {!loading && !error && filteredJobs.length === 0 ? (
         <section className="panel">
-          <EmptyState message="Bu filtreye uygun ilan bulunamadı." />
+          <EmptyState message={t("Bu filtreye uygun ilan bulunamadı.")} />
         </section>
       ) : null}
 
@@ -177,18 +296,23 @@ export default function JobsPage() {
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 600 }}>{job.title}</div>
                   <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 2 }}>
-                    {formatDepartment(job.roleFamily)}
+                    {t(formatDepartment(job.roleFamily))}
                   </div>
                 </div>
                 <JobStatusChip status={job.status} />
               </div>
 
-              {/* Meta line */}
-              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 14 }}>
-                {buildMetaLine(job)}
+              {/* Line 1: location + salary */}
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>
+                {buildLocationSalary(job)}
               </div>
 
-              {/* Footer */}
+              {/* Line 2: shift/work type */}
+              <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 14, minHeight: 16 }}>
+                    {t(formatShiftType(job.shiftType)) || "\u00A0"}
+                  </div>
+
+              {/* Footer: application count + date */}
               <div style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -200,7 +324,8 @@ export default function JobsPage() {
                   <strong style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginRight: 2 }}>
                     {job._count?.applications ?? 0}
                   </strong>
-                  başvuru
+                  {" "}
+                  {t("başvuru")}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
                   {formatDate(job.createdAt)}

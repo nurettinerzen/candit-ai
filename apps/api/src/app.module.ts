@@ -18,14 +18,18 @@ import { CandidatesModule } from "./modules/candidates/candidates.module";
 import { FeatureFlagsModule } from "./modules/feature-flags/feature-flags.module";
 import { HealthModule } from "./modules/health/health.module";
 import { IntegrationsModule } from "./modules/integrations/integrations.module";
+import { InternalAdminModule } from "./modules/internal-admin/internal-admin.module";
 import { InterviewsModule } from "./modules/interviews/interviews.module";
 import { JobsModule } from "./modules/jobs/jobs.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { RecommendationsModule } from "./modules/recommendations/recommendations.module";
 import { ReadModelsModule } from "./modules/read-models/read-models.module";
 import { ReportsModule } from "./modules/reports/reports.module";
+import { MembersModule } from "./modules/members/members.module";
+import { BillingModule } from "./modules/billing/billing.module";
 import { ScreeningModule } from "./modules/screening/screening.module";
 import { SchedulingModule } from "./modules/scheduling/scheduling.module";
+import { SourcingModule } from "./modules/sourcing/sourcing.module";
 import { TenantConfigModule } from "./modules/tenant-config/tenant-config.module";
 import { ElevenLabsModule } from "./modules/elevenlabs/elevenlabs.module";
 import { PrismaModule } from "./prisma/prisma.module";
@@ -51,10 +55,14 @@ import { PrismaModule } from "./prisma/prisma.module";
     AnalyticsModule,
     ScreeningModule,
     SchedulingModule,
+    SourcingModule,
     ReportsModule,
     RecommendationsModule,
+    MembersModule,
+    BillingModule,
     InterviewsModule,
     IntegrationsModule,
+    InternalAdminModule,
     NotificationsModule,
     ReadModelsModule,
     TenantConfigModule,

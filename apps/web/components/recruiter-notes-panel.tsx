@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useUiText } from "./site-language-provider";
+import { formatDate } from "../lib/format";
 import type { RecruiterNote } from "../lib/types";
 
 type RecruiterNotesPanelProps = {
@@ -18,6 +20,7 @@ export function RecruiterNotesPanel({
   canAdd = true,
   placeholder = "Not ekle..."
 }: RecruiterNotesPanelProps) {
+  const { t } = useUiText();
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,14 +37,14 @@ export function RecruiterNotesPanel({
 
   return (
     <div className="notes-panel">
-      <h4>Notlar ({notes.length})</h4>
+      <h4>{t("Notlar")} ({notes.length})</h4>
 
       {canAdd ? (
         <div className="notes-add">
           <textarea
             className="form-textarea"
             rows={2}
-            placeholder={placeholder}
+            placeholder={t(placeholder)}
             value={text}
             onChange={(e) => setText(e.target.value)}
             disabled={submitting}
@@ -52,25 +55,25 @@ export function RecruiterNotesPanel({
             onClick={handleSubmit}
             disabled={submitting || !text.trim()}
           >
-            {submitting ? "Kaydediliyor..." : "Notu Kaydet"}
+            {submitting ? t("Kaydediliyor...") : t("Notu Kaydet")}
           </button>
         </div>
       ) : (
         <p className="small" style={{ marginTop: 0 }}>
-          Not eklemek için ek yetki gerekiyor.
+          {t("Not eklemek için ek yetki gerekiyor.")}
         </p>
       )}
 
       {loading ? (
-        <p className="small">Yükleniyor...</p>
+        <p className="small">{t("Yükleniyor...")}</p>
       ) : notes.length === 0 ? (
-        <p className="small">Henüz not yok.</p>
+        <p className="small">{t("Henüz not yok.")}</p>
       ) : (
         <ul className="notes-list">
           {notes.map((n) => (
             <li key={n.id} className="note-item">
               <p>{n.noteText}</p>
-              <span className="small">{new Date(n.createdAt).toLocaleString("tr-TR")}</span>
+              <span className="small">{formatDate(n.createdAt)}</span>
             </li>
           ))}
         </ul>

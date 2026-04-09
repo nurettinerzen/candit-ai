@@ -9,6 +9,7 @@ import { Permissions } from "../../common/decorators/permissions.decorator";
 import type { RequestUser } from "../../common/interfaces/request-user.interface";
 import { IntegrationsService } from "./integrations.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { BillingService } from "../billing/billing.service";
 
 /**
  * Handles the full Google OAuth2 authorization code flow:
@@ -29,8 +30,22 @@ export class GoogleOAuthController {
   constructor(
     @Inject(ConfigService) private readonly configService: ConfigService,
     @Inject(IntegrationsService) private readonly integrationsService: IntegrationsService,
-    @Inject(PrismaService) private readonly prisma: PrismaService
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(BillingService) private readonly billingService: BillingService
   ) {}
+
+  private integrationsSettingsUrl(search: Record<string, string>) {
+    const webBaseUrl =
+      this.configService.get<string>("PUBLIC_WEB_BASE_URL")?.trim() || "http://localhost:3000";
+    const url = new URL(`${webBaseUrl.replace(/\/+$/, "")}/settings`);
+    url.searchParams.set("tab", "entegrasyonlar");
+
+    for (const [key, value] of Object.entries(search)) {
+      url.searchParams.set(key, value);
+    }
+
+    return url.toString();
+  }
 
   /**
    * Step 1: Redirect authenticated user to Google's consent screen.
@@ -38,11 +53,13 @@ export class GoogleOAuthController {
    */
   @Get("authorize")
   @Permissions("integration.manage")
-  authorize(
+  async authorize(
     @CurrentTenant() tenantId: string,
     @CurrentUser() user: RequestUser,
     @Res() res: ExpressResponse
   ) {
+    void user;
+    await this.billingService.assertFeatureEnabled(tenantId, "calendarIntegrations");
     const clientId = this.configService.get<string>("GOOGLE_OAUTH_CLIENT_ID")?.trim();
     const redirectUri = this.configService.get<string>("GOOGLE_OAUTH_REDIRECT_URI")?.trim();
 
@@ -92,21 +109,15 @@ export class GoogleOAuthController {
     @Query("error") error: string | undefined,
     @Res() res: ExpressResponse
   ) {
-    const webBaseUrl = this.configService.get<string>("PUBLIC_WEB_BASE_URL")?.trim() || "http://localhost:3000";
-
     // Google returned an error (user denied consent, etc.)
     if (error) {
       this.logger.warn(`Google OAuth error: ${error}`);
-      return res.redirect(
-        `${webBaseUrl}/settings/integrations?error=${encodeURIComponent(error)}`
-      );
+      return res.redirect(this.integrationsSettingsUrl({ error }));
     }
 
     if (!code || !state) {
       this.logger.warn("Google OAuth callback missing code or state");
-      return res.redirect(
-        `${webBaseUrl}/settings/integrations?error=missing_code_or_state`
-      );
+      return res.redirect(this.integrationsSettingsUrl({ error: "missing_code_or_state" }));
     }
 
     // Decode state to get tenantId + userId
@@ -121,9 +132,7 @@ export class GoogleOAuthController {
       }
     } catch {
       this.logger.warn("Google OAuth callback: invalid state parameter");
-      return res.redirect(
-        `${webBaseUrl}/settings/integrations?error=invalid_state`
-      );
+      return res.redirect(this.integrationsSettingsUrl({ error: "invalid_state" }));
     }
 
     // Exchange authorization code for tokens
@@ -146,16 +155,14 @@ export class GoogleOAuthController {
       });
     } catch (err) {
       this.logger.error("Google OAuth token exchange network error", err);
-      return res.redirect(
-        `${webBaseUrl}/settings/integrations?error=token_exchange_failed`
-      );
+      return res.redirect(this.integrationsSettingsUrl({ error: "token_exchange_failed" }));
     }
 
     if (!tokenResponse.ok) {
       const errorBody = await tokenResponse.text();
       this.logger.error(`Google OAuth token exchange failed: ${tokenResponse.status} ${errorBody.slice(0, 300)}`);
       return res.redirect(
-        `${webBaseUrl}/settings/integrations?error=token_exchange_http_${tokenResponse.status}`
+        this.integrationsSettingsUrl({ error: `token_exchange_http_${tokenResponse.status}` })
       );
     }
 
@@ -167,9 +174,7 @@ export class GoogleOAuthController {
 
     if (!accessToken) {
       this.logger.error("Google OAuth: no access_token in response");
-      return res.redirect(
-        `${webBaseUrl}/settings/integrations?error=no_access_token`
-      );
+      return res.redirect(this.integrationsSettingsUrl({ error: "no_access_token" }));
     }
 
     const expiresAt = expiresIn
@@ -194,15 +199,11 @@ export class GoogleOAuthController {
       this.logger.log(`Google OAuth tokens stored for tenant=${tenantId}, user=${userId}`);
     } catch (err) {
       this.logger.error("Failed to store Google OAuth credentials", err);
-      return res.redirect(
-        `${webBaseUrl}/settings/integrations?error=credential_storage_failed`
-      );
+      return res.redirect(this.integrationsSettingsUrl({ error: "credential_storage_failed" }));
     }
 
     // Redirect back to integrations page with success
-    return res.redirect(
-      `${webBaseUrl}/settings/integrations?google_connected=true`
-    );
+    return res.redirect(this.integrationsSettingsUrl({ google_connected: "true" }));
   }
 
   /**

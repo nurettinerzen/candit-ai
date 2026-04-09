@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ayarlar Sayfasi — UX Iyilestirme Plani</title>
+<style>
+  :root {
+    --bg: #0e0e14; --surface: #16161e; --border: #23232e;
+    --text: #e4e4e7; --text-dim: #71717a; --text-secondary: #a1a1aa;
+    --primary: #7c73fa; --success: #22c55e; --warn: #f59e0b; --danger: #ef4444;
+    --panel-bg: #1a1a24;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; padding: 32px 24px; max-width: 960px; margin: 0 auto; }
+
+  h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+  h2 { font-size: 20px; font-weight: 700; margin: 40px 0 12px; padding-top: 24px; border-top: 1px solid var(--border); }
+  h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+  p { color: var(--text-secondary); font-size: 14px; margin-bottom: 16px; }
+  .subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
+
+  .issue { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+  .issue-label { font-size: 11px; text-transform: uppercase; color: var(--danger); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .issue-text { font-size: 13px; color: var(--text); }
+
+  .fix { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.15); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+  .fix-label { font-size: 11px; text-transform: uppercase; color: var(--success); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .fix-text { font-size: 13px; color: var(--text); }
+
+  .panel { background: var(--panel-bg); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+
+  /* Tabs */
+  .tab-bar { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .tab-btn { padding: 10px 20px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-dim); font-size: 14px; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+  .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Before/After */
+  .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .before, .after { border-radius: 8px; padding: 16px; }
+  .before { background: rgba(239,68,68,0.04); border: 1px solid rgba(239,68,68,0.12); }
+  .after { background: rgba(34,197,94,0.04); border: 1px solid rgba(34,197,94,0.12); }
+  .compare-label { font-size: 10px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .before .compare-label { color: var(--danger); }
+  .after .compare-label { color: var(--success); }
+
+  /* Mock elements */
+  .mock-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; font-size: 13px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .badge { font-size: 11px; padding: 2px 10px; border-radius: 10px; font-weight: 600; }
+  .badge-on { background: rgba(34,197,94,0.12); color: var(--success); }
+  .badge-off { background: rgba(113,113,122,0.12); color: var(--text-dim); }
+  .badge-warn { background: rgba(245,158,11,0.12); color: var(--warn); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; color: var(--text-dim); border-bottom: 1px solid var(--border); font-weight: 600; letter-spacing: 0.3px; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+
+  code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; }
+
+  .note { font-size: 12px; color: var(--text-dim); font-style: italic; margin-top: 8px; }
+
+  @media (max-width: 700px) {
+    .comparison { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Ayarlar Sayfasi UX Iyilestirme</h1>
+<p class="subtitle">Mevcut sorunlar, oneriler ve yeni tasarim. 4 sekme tek tek inceleniyor.</p>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>1. Genel: Route Isimlendirmesi</h2>
+
+<div class="issue">
+  <div class="issue-label">Sorun</div>
+  <div class="issue-text">Tum route'lar Ingilizce (<code>/jobs</code>, <code>/candidates</code>, <code>/applications</code>) ama ayarlar sayfasi Turkce: <code>/ayarlar</code>. Tutarsizlik.</div>
+</div>
+<div class="fix">
+  <div class="fix-label">Cozum</div>
+  <div class="fix-text"><code>/ayarlar</code> → <code>/settings</code> olarak degisecek. Sidebar, policy ve tum linkler guncellenecek.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>2. Sekme Yapisi — Sadeleştirme</h2>
+
+<div class="issue">
+  <div class="issue-label">Sorun</div>
+  <div class="issue-text">4 sekme var: Baglanti, AI Ayarlari, Sistem Durumu, Denetim Kayitlari. "Sistem Durumu" ve "Baglanti" sekmeleri buyuk olcude ayni tur bilgiyi gosteriyor (provider durumu, entegrasyonlar). Denetim Kayitlari cok teknik — entity type/id ile filtreleme bir recruiter'in isine yaramaz.</div>
+</div>
+
+<div class="comparison">
+  <div class="before">
+    <div class="compare-label">Simdi (4 sekme)</div>
+    <div class="tab-bar" style="margin-bottom:0">
+      <span class="tab-btn active">Baglanti</span>
+      <span class="tab-btn">AI Ayarlari</span>
+      <span class="tab-btn">Sistem Durumu</span>
+      <span class="tab-btn">Denetim Kayitlari</span>
+    </div>
+  </div>
+  <div class="after">
+    <div class="compare-label">Sonra (3 sekme)</div>
+    <div class="tab-bar" style="margin-bottom:0">
+      <span class="tab-btn active">Entegrasyonlar</span>
+      <span class="tab-btn">AI Ozellikleri</span>
+      <span class="tab-btn">Sistem</span>
+    </div>
+  </div>
+</div>
+
+<div class="fix">
+  <div class="fix-label">Degisiklikler</div>
+  <div class="fix-text">
+    <strong>Baglanti + Sistem Durumu → "Entegrasyonlar"</strong>: Tek sekmede birlesir. Entegrasyon listesi + genel durum + altyapi bilgisi hepsi burada.<br><br>
+    <strong>AI Ayarlari → "AI Ozellikleri"</strong>: Sadece ozellik acma/kapama. Teknik provider listesi ve son gorev tablosu kaldirilir.<br><br>
+    <strong>Denetim Kayitlari → Kaldirilir</strong>: Recruiter icin gereksiz. Entity type/ID filtreleri developer tool'u. Admin paneline tasinir veya silinir.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>3. Sekme: Entegrasyonlar (Birlesik)</h2>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('tab-entegrasyon')">Entegrasyonlar</button>
+  <button class="tab-btn" onclick="showTab('tab-ai')">AI Ozellikleri</button>
+  <button class="tab-btn" onclick="showTab('tab-sistem')">Sistem</button>
+</div>
+
+<div id="tab-entegrasyon" class="tab-content active">
+  <div class="panel">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px">
+      <span class="status-dot" style="background:var(--success)"></span>
+      <span style="font-weight:600; font-size:16px">Tum sistemler aktif</span>
+    </div>
+
+    <h3>Bagli Servisler</h3>
+    <div class="mock-row">
+      <span>Zoom</span>
+      <span><span class="status-dot" style="background:var(--success)"></span>Bagli</span>
+    </div>
+    <div class="mock-row">
+      <div>
+        <span>Calendly</span>
+        <span style="font-size:11px; color:var(--text-dim); margin-left:8px">Yapilandirilmadi</span>
+      </div>
+      <span><span class="status-dot" style="background:var(--text-dim)"></span>Pasif</span>
+    </div>
+    <div class="mock-row">
+      <span>Google Calendar</span>
+      <span><span class="status-dot" style="background:var(--text-dim)"></span>Pasif</span>
+    </div>
+
+    <div style="border-top:1px solid var(--border); margin-top:16px; padding-top:16px">
+      <h3>Google Calendar Baglantisi</h3>
+      <p style="font-size:13px">Gorusmeleri otomatik takviminize eklemek icin baglayabilirsiniz.</p>
+      <button style="padding:8px 20px; background:var(--primary); color:#fff; border:none; border-radius:6px; font-weight:500; cursor:pointer">Google Calendar Bagla</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Altyapi Durumu</h3>
+    <p style="font-size:12px; color:var(--text-dim); margin-bottom:12px">Sistemin teknik bilesenlerinin durumu.</p>
+    <table>
+      <tbody>
+        <tr><td>CV Isleme</td><td><span class="badge badge-on">Aktif</span></td></tr>
+        <tr><td>Ses Sistemi</td><td><span class="badge badge-on">Aktif</span></td></tr>
+        <tr><td>E-posta Bildirimi</td><td><span class="badge badge-warn">Yapilandirilmadi</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="issue" style="margin-top:12px">
+    <div class="issue-label">Kalkan</div>
+    <div class="issue-text">
+      <strong>Provider key'leri</strong>: <code>parsing_extraction</code>, <code>screening_question_gen</code> gibi teknik key'ler recruiter'a bir sey ifade etmez. Bunlar yerine "CV Isleme", "Ses Sistemi" gibi okunabilir isimler kullanilacak.<br><br>
+      <strong>Runtime provider listesi</strong>: <code>parsing_extraction → ready</code> gibi satirlar kaldirilir. Sadece "aktif/pasif" ozet gosterilir.<br><br>
+      <strong>"Uyari" kutusundaki teknik mesajlar</strong>: <code>Calendly OAuth env vars are incomplete (ready-after-config state)</code> → "Calendly henuz yapilandirilmamis" seklinde okunabilir yapilir.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<div id="tab-ai" class="tab-content">
+  <h3 style="margin-top:16px">4. Sekme: AI Ozellikleri (Temizlenmis)</h3>
+
+  <div class="panel">
+    <h3>AI Davranis Kurallari</h3>
+    <p style="font-size:13px; color:var(--text-dim); margin-bottom:12px">AI'in sisteminizde nasil davrandigini belirleyen temel kurallar.</p>
+    <div class="mock-row">
+      <span>AI sadece yardimci rol ustlenir</span>
+      <span class="badge badge-on">Evet</span>
+    </div>
+    <div class="mock-row">
+      <span>Otomatik red</span>
+      <span class="badge badge-off">Kapali (kural geregi)</span>
+    </div>
+    <div class="mock-row">
+      <span>Kritik aksiyonlarda insan onayi</span>
+      <span class="badge badge-on">Zorunlu</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Ozellikler</h3>
+    <p style="font-size:13px; color:var(--text-dim); margin-bottom:12px">AI ozelliklerini acip kapatabilirsiniz.</p>
+    <table>
+      <thead><tr><th>Ozellik</th><th>Durum</th><th style="text-align:right">Islem</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>CV Analizi</strong><br><span style="font-size:11px; color:var(--text-dim)">Yuklenen CV'leri otomatik inceler</span></td>
+          <td><span class="badge badge-on">Acik</span></td>
+          <td style="text-align:right"><button style="padding:4px 12px; background:none; border:1px solid var(--border); border-radius:6px; color:var(--text-dim); cursor:pointer; font-size:12px">Kapat</button></td>
+        </tr>
+        <tr>
+          <td><strong>On Degerlendirme Destegi</strong><br><span style="font-size:11px; color:var(--text-dim)">Basvuru geldiginde AI on eleme yapar</span></td>
+          <td><span class="badge badge-on">Acik</span></td>
+          <td style="text-align:right"><button style="padding:4px 12px; background:none; border:1px solid var(--border); border-radius:6px; color:var(--text-dim); cursor:pointer; font-size:12px">Kapat</button></td>
+        </tr>
+        <tr>
+          <td><strong>Rapor Olusturma</strong><br><span style="font-size:11px; color:var(--text-dim)">Aday degerlendirme raporu uretir</span></td>
+          <td><span class="badge badge-on">Acik</span></td>
+          <td style="text-align:right"><button style="padding:4px 12px; background:none; border:1px solid var(--border); border-radius:6px; color:var(--text-dim); cursor:pointer; font-size:12px">Kapat</button></td>
+        </tr>
+        <tr>
+          <td><strong>Otomatik Red</strong><br><span style="font-size:11px; color:var(--text-dim)">Kural geregi kapali — acilmaz</span></td>
+          <td><span class="badge badge-off">Kapali</span></td>
+          <td style="text-align:right"><button disabled style="padding:4px 12px; background:none; border:1px solid var(--border); border-radius:6px; color:var(--text-dim); cursor:not-allowed; font-size:12px; opacity:0.4">Kilitli</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="issue">
+    <div class="issue-label">Kalkan</div>
+    <div class="issue-text">
+      <strong>AI Saglayicilari listesi</strong>: <code>anthropic → Aktif</code>, <code>openai → Devre Disi</code> gibi satirlar recruiter'a bir sey ifade etmez. Kaldirildi.<br><br>
+      <strong>"Son AI Gorev Calismalari" tablosu</strong>: 25 satirlik task run tablosu tamamen teknik. <code>SUCCEEDED</code>, <code>cv_parsing</code>, <code>screening_support</code> gibi developer terimleri. Recruiter bunu okumaz. Kaldirildi.<br><br>
+      <strong>Ozellik tablosundaki "Aciklama" sutunu</strong>: Bos veya <code>-</code> gosteriyordu. Simdi aciklama feature isminin altinda kisa bir satir olarak eklendi.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<div id="tab-sistem" class="tab-content">
+  <h3 style="margin-top:16px">5. Sekme: Sistem (Minimal)</h3>
+
+  <div class="panel">
+    <h3>Sistem Ozeti</h3>
+    <p style="font-size:13px; color:var(--text-dim)">Teknik bilesenler hakkinda ozet bilgi.</p>
+    <table>
+      <thead><tr><th>Bilesen</th><th>Durum</th><th>Detay</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>CV Isleme</td>
+          <td><span class="badge badge-on">Aktif</span></td>
+          <td style="color:var(--text-dim)">AI destekli</td>
+        </tr>
+        <tr>
+          <td>Ses Sistemi</td>
+          <td><span class="badge badge-on">Aktif</span></td>
+          <td style="color:var(--text-dim)">Realtime</td>
+        </tr>
+        <tr>
+          <td>Takvim</td>
+          <td><span class="badge badge-off">Pasif</span></td>
+          <td style="color:var(--text-dim)">Google Calendar baglanmadi</td>
+        </tr>
+        <tr>
+          <td>E-posta</td>
+          <td><span class="badge badge-warn">Yapilandirilmadi</span></td>
+          <td style="color:var(--text-dim)">SMTP ayari gerekli</td>
+        </tr>
+        <tr>
+          <td>AI Saglayici</td>
+          <td><span class="badge badge-on">Aktif</span></td>
+          <td style="color:var(--text-dim)">Anthropic</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note">Detayli teknik bilgi icin API dokumanina bakiniz.</p>
+  </div>
+
+  <div class="issue">
+    <div class="issue-label">Kalkan</div>
+    <div class="issue-text">
+      <strong>Runtime provider listesi</strong>: <code>parsing_extraction</code>, <code>screening_question_gen</code>, <code>speech_realtime</code> gibi teknik key'ler tek tek listelenmeyecek. Yerine "CV Isleme", "Ses Sistemi" gibi gruplar halinde ozet gosterilecek.<br><br>
+      <strong>Denetim Kayitlari sekmesi tamamen kaldiriliyor</strong>: Entity type, entity ID, JSON metadata — bunlar tamamen developer araci. Recruiter bunu kullanmaz. Gerekirse admin paneline tasinir.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>6. Ozet: Ne Degisiyor?</h2>
+
+<div class="panel">
+  <table>
+    <thead><tr><th>Degisiklik</th><th>Neden</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>/ayarlar</code> → <code>/settings</code></td>
+        <td>Route isimlendirmesi tutarliligi (diger routelar Ingilizce)</td>
+      </tr>
+      <tr>
+        <td>4 sekme → 3 sekme</td>
+        <td>Denetim Kayitlari recruiter'a gereksiz, Baglanti + Sistem birlesiyor</td>
+      </tr>
+      <tr>
+        <td>Teknik provider key'leri kaldirildi</td>
+        <td><code>parsing_extraction</code> recruiter'a bir sey ifade etmez</td>
+      </tr>
+      <tr>
+        <td>AI Saglayicilari listesi kaldirildi</td>
+        <td><code>anthropic → Aktif</code> recruiter'in bilmesi gereken bir sey degil</td>
+      </tr>
+      <tr>
+        <td>Son AI Gorev tablosu kaldirildi</td>
+        <td>25 satirlik task run tablosu developer araci</td>
+      </tr>
+      <tr>
+        <td>Uyari mesajlari okunabilir yapildi</td>
+        <td><code>OAuth env vars incomplete</code> → "Yapilandirilmadi"</td>
+      </tr>
+      <tr>
+        <td>Ozellik aciklamalari eklendi</td>
+        <td>Her AI ozelliginin altina kisa aciklama</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+  const tabs = document.querySelectorAll('.tab-bar')[1];
+  if (tabs) {
+    tabs.querySelectorAll('.tab-btn').forEach((btn, i) => {
+      const ids = ['tab-entegrasyon','tab-ai','tab-sistem'];
+      btn.classList.toggle('active', ids[i] === id);
+    });
+  }
+}
+</script>
+
+</body>
+</html>

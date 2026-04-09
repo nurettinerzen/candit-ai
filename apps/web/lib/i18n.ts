@@ -251,13 +251,277 @@ const TURKISH_WORD_FIXES: Array<[string, string]> = [
 ];
 
 const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
+  "Ürün": "Product",
+  "Hesap": "Account",
+  "İç Yönetim": "Internal Admin",
+  "Kaynak Bulma": "Sourcing",
+  "Kaynak Bulma (Beta)": "Sourcing (Beta)",
+  Beta: "Beta",
+  "İşe alım işletim paneli": "Recruiting operations console",
+  "Çıkış Yap": "Sign Out",
+  "Çıkış yapılıyor...": "Signing out...",
+  "Bu sayfa için gerekli yetkiniz bulunmuyor.": "You do not have permission to access this page.",
+  "Abonelik": "Subscription",
+  "Raporlar": "Reports",
+  "Yönetim": "Admin",
+  "Abonelik bilgileri yükleniyor...": "Loading subscription details...",
+  "Mevcut planınızı, kullanım durumunuzu ve ek paket satın alma akışlarını tek merkezden yönetin.":
+    "Manage your current plan, usage, and add-on purchases from one place.",
+  "Kullanım Durumu": "Usage Status",
+  "Aylık Maliyet": "Monthly Cost",
+  "Faturalandırma": "Billing",
+  "Aylık": "Monthly",
+  "aylık": "monthly",
+  "Sonraki Fatura": "Next Invoice",
+  "Dönem sonu": "Period end",
+  "Ek Paket Satın Al": "Buy Add-ons",
+  "Dahil kullanımınız bittiğinde ek paketler devreye girer.":
+    "Add-ons kick in when your included usage runs out.",
+  "Mevcut Plan": "Current Plan",
+  "Bize Ulaşın": "Contact Us",
+  "kullanıcı": "users",
+  "aktif ilan": "active jobs",
+  "aday işleme": "candidate processing",
+  "mülakat": "interviews",
+  "+ ek paket": "+ add-on",
+  "Kullanıcı limiti doldu.": "User limit reached.",
+  "Aktif ilan limiti doldu.": "Active job limit reached.",
+  "Aday işleme limiti doldu.": "Candidate processing limit reached.",
+  "AI mülakat limiti doldu.": "AI interview limit reached.",
+  "Kullanıcı kullanımınız %80 seviyesine ulaştı.": "User usage has reached 80%.",
+  "Aktif ilan kullanımınız %80 seviyesine ulaştı.": "Active job usage has reached 80%.",
+  "Aday işleme kullanımınız %80 seviyesine ulaştı.": "Candidate processing usage has reached 80%.",
+  "AI mülakat kullanımınız %80 seviyesine ulaştı.": "AI interview usage has reached 80%.",
+  "Admin": "Admin",
+  "Stripe ödeme sayfası yeni sekmede açıldı.": "Stripe checkout opened in a new tab.",
+  "User limit doldu.": "User limit reached.",
+  "Active job limit doldu.": "Active job limit reached.",
+  "Candidate processing limit doldu.": "Candidate processing limit reached.",
+  "AI interview limit doldu.": "AI interview limit reached.",
+  "User limit yaklaşıyor.": "User limit is approaching.",
+  "Active job limit yaklaşıyor.": "Active job limit is approaching.",
+  "Candidate processing limit yaklaşıyor.": "Candidate processing limit is approaching.",
+  "AI interview limit yaklaşıyor.": "AI interview limit is approaching.",
+  ACTIVE: "Active",
+  TRIALING: "Trial",
+  PAST_DUE: "Past due",
+  INCOMPLETE: "Incomplete",
+  CANCELED: "Canceled",
+  OPEN: "Open",
+  PAID: "Paid",
+  EXPIRED: "Expired",
+  FAILED: "Failed",
+  COMPLETE: "Complete",
+  PENDING: "Pending",
+  "Ek paket ödeme sayfası yeni sekmede açıldı.": "Add-on checkout opened in a new tab.",
+  "Fatura ve ödeme yönetimi yeni sekmede açıldı.": "Billing and payment management opened in a new tab.",
+  "Ödeme işlemi başarıyla tamamlandı.": "Payment completed successfully.",
+  "Ödeme akışı iptal edildi.": "Payment flow was canceled.",
+  "Abonelik verisi bulunamadı.": "Subscription data was not found.",
+  "Stripe kurulumu tamamlanmadığı için self servis satın alma işlemleri şu an pasif durumda.":
+    "Self-serve purchases are currently disabled because Stripe setup is incomplete.",
+  "İç yönetim panelini aç": "Open internal admin panel",
+  "Mevcut plan": "Current plan",
+  "Faturaları yönet": "Manage billing",
+  "Satın Al": "Buy",
+  "Açılıyor...": "Opening...",
+  "Dönem özeti": "Billing period summary",
+  "Başlangıç": "Start",
+  "Bitiş": "End",
+  "Fatura e-postası": "Billing email",
+  "Ödeme durumu": "Payment status",
+  "Özel teklif": "Custom pricing",
+  "Henüz eklenmedi": "Not added yet",
+  "Planda dahil olanlar": "Included in plan",
+  "Kullanım durumu": "Usage status",
+  "Sayaçlar ekip daveti, aktif ilan, aday işleme ve AI mülâkat akışlarına bağlı olarak güncellenir.":
+    "Counters update based on team invites, active jobs, candidate processing, and AI interview flows.",
+  "Paketler": "Plans",
+  "Mevcut": "Current",
+  "Popüler": "Popular",
+  "Growth'a geç": "Upgrade to Growth",
+  "Starter'a dön": "Switch to Starter",
+  "Deneme": "Trial",
+  "Aktif": "Active",
+  "Ödeme gecikti": "Payment overdue",
+  "İptal": "Canceled",
+  "Özel": "Custom",
+  "Durum": "Status",
+  "Tarih": "Date",
+  "Kaynak": "Source",
+  "Reddedilen": "Rejected",
+  "Aktif ilan": "Active jobs",
+  "Aday işleme": "Candidate processing",
+  "AI mülakat": "AI interviews",
+  "AI mülâkat": "AI interviews",
+  "Küçük ekipler ve düşük hacim için. Az sayıda aktif ilan ve temel recruiter operasyonu.":
+    "For small teams and lower volume. Includes a small number of active jobs and core recruiter operations.",
+  "Asıl satış paketi. Daha yüksek hacim, AI interview kapasitesi ve takvim entegrasyonları.":
+    "Core sales plan. Higher volume, AI interview capacity, and calendar integrations.",
+  "Büyük ekipler için özel kota, branded candidate experience, özel entegrasyon ve SLA.":
+    "For larger teams with custom quotas, branded candidate experience, custom integrations, and SLA.",
+  "E-posta desteği": "Email support",
+  "Öncelikli destek": "Priority support",
+  "Özel onboarding + SLA": "Custom onboarding + SLA",
+  "Ek AI mülakat paketi": "Extra AI interview pack",
+  "Mevcut dönem için +25 AI mülakat hakkı.": "+25 AI interview credits for the current period.",
+  "Ek Aday İşleme Paketi": "Extra candidate processing pack",
+  "Mevcut dönem için +100 aday işleme hakkı.": "+100 candidate processing credits for the current period.",
+  "Profesyonel Kurulum / Onboarding": "Professional setup / onboarding",
+  "Kurulum desteği, süreç tasarımı ve ekip onboarding hizmeti.":
+    "Setup support, process design, and team onboarding service.",
+  "Özel Entegrasyon Kurulumu": "Custom integration setup",
+  "Özel entegrasyon kurulumu ve teknik uyarlama hizmeti.":
+    "Custom integration setup and technical adaptation service.",
+  "Starter hızlı başlangıç için, Growth ise günlük operasyonu taşıyan ana plan olarak konumlanır.":
+    "Starter is for quick setup, while Growth is positioned as the main plan for day-to-day operations.",
+  "Önerilen": "Recommended",
+  "Takvim entegrasyonları açık": "Calendar integrations included",
+  "Takvim entegrasyonu yok": "No calendar integration",
+  "Gelişmiş raporlama açık": "Advanced reporting included",
+  "Temel raporlama": "Basic reporting",
+  "İç teklif akışını aç": "Open internal quote flow",
+  "Özel kota, SLA ve kurumsal entegrasyonlar için satış ekibiyle ilerlenir.":
+    "Custom quotas, SLA, and enterprise integrations are handled through sales.",
+  "Ek paketler": "Add-ons",
+  "Dönem içinde ek kullanım ihtiyacı doğduğunda satın alabileceğiniz self servis paketler.":
+    "Self-serve packages you can buy when you need additional usage during the billing period.",
+  "Kurulum ve hizmet paketi": "Setup and service package",
+  "Satın al": "Buy now",
+  "Dahil": "Included",
+  "Sağlıklı": "Healthy",
+  "Sınıra yaklaştı": "Near limit",
+  "Limit doldu": "Limit reached",
+  "Kalan": "Remaining",
+  "Kullanım": "Usage",
+  "Bu alan yalnızca iç yönetim ekibi için açıktır.": "This area is only available to the internal admin team.",
+  "Müşteri görünümüne dön": "Back to customer view",
+  "İç ekip için kullanıcılar, kırmızı alarm, abonelikler ve kurumsal teklif akışları tek merkezde.":
+    "Users, red alerts, subscriptions, and enterprise quote flows are managed here for the internal team.",
+  "Kullanıcılar": "Users",
+  "Kırmızı Alarm": "Red Alerts",
+  "Kritik uyarı görünmüyor": "No critical alerts visible",
+  "kritik uyarı": "critical alerts",
+  "Kurulum eksik": "Setup incomplete",
+  "Kırmızı alarm": "Red alerts",
+  "Sağlayıcı, teslimat ve abonelik uyarıları tek listede görünür.":
+    "Provider, delivery, and subscription alerts appear in a single list.",
+  "Aktif bir kritik uyarı bulunmuyor.": "There are no active critical alerts.",
+  "Kritik": "Critical",
+  "Uyarı": "Warning",
+  "Hesap içindeki aktif ekip, davet bekleyen kullanıcılar ve son oturum görünürlüğü.":
+    "View active team members, pending invitations, and last session activity in this account.",
+  "Toplam": "Total",
+  "Davet": "Invited",
+  "Pasif": "Inactive",
+  "Kullanıcı kaydı bulunamadı.": "No user records found.",
+  "Ad": "Name",
+  "Rol": "Role",
+  "Son giriş": "Last login",
+  "Henüz giriş yok": "No login yet",
+  "Mevcut plan, kullanım ve son oluşturulan ödeme kayıtları bu tenant bağlamında takip edilir.":
+    "Track the current plan, usage, and recently created payment records in this tenant context.",
+  "Plan özeti": "Plan summary",
+  "Dönem": "Period",
+  "Henüz ödeme bağlantısı oluşturulmadı.": "No payment links have been created yet.",
+  "Tür": "Type",
+  "İçerik": "Content",
+  "Tutar": "Amount",
+  "Bağlantı / gönderim": "Link / delivery",
+  "Ödeme": "Payment",
+  "Ödeme bağlantısını aç": "Open payment link",
+  "Bağlantı henüz hazır değil": "Link is not ready yet",
+  "Bağlantıyı gönder": "Send link",
+  "Kurumsal teklif, özel kota ve ödeme linki akışı yalnızca iç ekip tarafından buradan yönetilir.":
+    "Enterprise quotes, custom quotas, and payment link flows are managed here by the internal team only.",
+  "Seçili hesap bağlamı": "Selected account context",
+  "Varsayılan fatura e-postası": "Default billing email",
+  "Aylık tutar": "Monthly amount",
+  "Kullanıcı limiti": "User limit",
+  "Aktif ilan limiti": "Active job limit",
+  "Aday işleme limiti": "Candidate processing limit",
+  "AI mülâkat limiti": "AI interview limit",
+  "İşe alım operasyonunuzun günlük özeti.": "Your daily recruiting operations summary.",
+  "Aksiyonlar": "Actions",
+  "Önce tamamlanması gereken işler burada listelenir.":
+    "Items that should be completed first are listed here.",
+  "Şu anda öne çıkan aksiyon bulunmuyor.": "There are no standout actions right now.",
+  "Karar bekleyen başvurular": "Applications awaiting decision",
+  "Feedback bekleyen mülakatlar": "Interviews awaiting feedback",
+  "Bekleyen görüşme davetleri": "Pending interview invites",
+  "Devam eden görüşmeler": "Ongoing interviews",
+  "Sorunlu oturumlar": "Problematic sessions",
+  "Yaklaşan Görüşmeler": "Upcoming Interviews",
+  "Bugünkü yoğunluk ve sıradaki planlı görüşmeler.":
+    "Today's workload and the next scheduled interviews.",
+  "Bugün planlanan": "Scheduled today",
+  "Devam eden": "Running",
+  "Yaklaşan planlı görüşme bulunmuyor.": "There are no upcoming scheduled interviews.",
+  "Planlı": "Scheduled",
+  "Detaylar": "Details",
+  "Dikkat gerektiren konular var": "There are items that need attention",
+  "Şu anda kritik uyarı bulunmuyor.": "There are no critical alerts right now.",
+  "İş Kuyruğu": "Work Queue",
+  "Aksiyon gerektiren başvurular, öncelik sırasına göre.": "Applications requiring action, ordered by priority.",
+  "Tüm Adaylar": "All Candidates",
+  "Pozisyon": "Position",
+  "Güncelleme": "Updated",
+  "Detay": "Details",
+  "Bu ekran iş kuyruğudur. Aday profili ayrı sayfadadır; buradan ilan bazlı karar ekranına girilir.":
+    "This screen is the work queue. Candidate profiles live on separate pages; from here you enter the posting-based decision flow.",
+  "Manuel giriş gerekiyorsa yeni başvuruyu buradan oluşturabilirsiniz.":
+    "If manual entry is needed, you can create a new application here.",
+  "Tek linkli AI görüşme davetlerini, devam eden oturumları ve tamamlanan görüşmeleri takip edin.":
+    "Track single-link AI interview invites, live sessions, and completed interviews.",
+  "Bekleniyor": "Pending",
+  "Devam Ediyor": "In Progress",
+  "Başarısız": "Failed",
+  "Katılım Yok": "No Show",
+  "İptal Edildi": "Cancelled",
+  "Dikkat": "Attention",
+  "İlan oluşturma, aday yönetimi ve işe alım süreçlerinizin merkezi.":
+    "The central hub for job creation, candidate management, and hiring workflows.",
+  "Yeni ilan hazırlayabilir ve uygun olduğunda yayına alabilirsiniz.":
+    "You can prepare a new posting and publish it when you're ready.",
+  "Yeni ilanı taslak olarak hazırlayabilirsiniz; yeniden yayına almak veya yayınlamak için önce slot açmanız ya da paketinizi yükseltmeniz gerekir.":
+    "You can prepare the new posting as a draft; to publish or republish it, you must first free up a slot or upgrade your plan.",
+  "Aktif ilan kotası": "Active job quota",
+  "Limit yaklaşıyor": "Approaching limit",
+  "Kullanim ve limitler": "Usage and limits",
+  "Kullanımı yenile": "Refresh usage",
+  "Seat": "Seat",
+  "Aday isleme": "Candidate processing",
+  "AI interview": "AI interview",
+  "add-on": "add-on",
+  "Yaklaşıyor": "Approaching",
+  "Bağlı": "Connected",
+  "Yapılandırılmadı": "Not configured",
+  "Google Calendar başarıyla bağlandı!": "Google Calendar connected successfully!",
+  "Bağlantı hatası": "Connection error",
+  "Hesap sahipliği, ekip yetkileri, entegrasyonlar ve AI sistem davranışları.":
+    "Manage account ownership, team permissions, integrations, and AI system behavior.",
+  "Ayarlar": "Settings",
   Dil: "Language",
   "Operasyon Özeti": "Operations Summary",
   "Demo Senaryoları": "Demo Scenarios",
   "Planlanan Sonraki Yetenek": "Planned Next Capability",
   "İlan Merkezi": "Job Center",
   "Yeni İlan Hazırla": "Prepare New Posting",
+  "Yeni İlan Taslağı Hazırla": "Prepare New Draft Posting",
   "İlanı Kaydet": "Save Posting",
+  "Aboneliği Gör": "View Subscription",
+  "Aktif ilan kotası dolu": "Active job quota full",
+  "Abonelik görünürlüğü": "Subscription visibility",
+  "Pozisyon Komuta Merkezi": "Requisition Command Center",
+  "Kaynak Bulma Projesi": "Sourcing Project",
+  "Harici Kaynaklı Aday": "Externally Sourced Candidate",
+  "Kaynak Bulma’yı Aç": "Open Sourcing",
+  "Başvuru, mülakat ve recruiter karar akışı aynı yerden izlenir.":
+    "Application, interview, and recruiter decision flow are tracked in one place.",
+  "İçe aktarılan ve yeniden keşfedilen adaylar dahil":
+    "Includes imported and rediscovered candidates.",
+  "Bu ilanı taslakta tutabilir, slot açıldığında yayına alabilirsiniz.":
+    "You can keep this posting as a draft and publish it when a slot becomes available.",
   "Aday Havuzu": "Candidate Pool",
   "Yeni Aday Ekle": "Add New Candidate",
   "Başvuru Operasyon Paneli": "Application Operations Panel",
@@ -285,7 +549,6 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "Ayarlar & Bağlantılar": "Settings & Connections",
   "Bağlantılar": "Connections",
   "Sistem Durumu": "System Status",
-  Raporlar: "Reports",
   "Mülakatlar": "Interviews",
   "Genel Bakış": "Overview",
   "İnceleme Bekleyen": "Awaiting Review",
@@ -306,6 +569,122 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "Bazı bağlantılarda sorun var": "Some connections have issues",
   "Dikkat gerektiren konular": "Items needing attention",
   "Aranan Nitelikler": "Required Qualifications",
+  "Temel Bilgiler": "Basic Information",
+  "Çalışma Koşulları": "Work Conditions",
+  "Çalışma Modeli": "Work Model",
+  "Çalışma Şekli": "Work Type",
+  "Pozisyon Açıklaması": "Position Description",
+  "AI taslak oluştururken bu açıklamayı temel alır.":
+    "AI uses this description as the basis for the draft.",
+  "Pozisyonun temel sorumlulukları ve beklentiler...":
+    "Core responsibilities and expectations for the position...",
+  "Nitelik yazın...": "Enter qualification...",
+  "Tercih Edilen": "Preferred",
+  "Seçiniz": "Select",
+  "Ofisten (On-site)": "On-site",
+  Hibrit: "Hybrid",
+  Uzaktan: "Remote",
+  "Tam Zamanlı": "Full-time",
+  "Yarı Zamanlı": "Part-time",
+  Vardiyalı: "Shift-based",
+  Stajyer: "Intern",
+  Sözleşmeli: "Contract",
+  Operasyon: "Operations",
+  Satış: "Sales",
+  Pazarlama: "Marketing",
+  "İnsan Kaynakları": "Human Resources",
+  Finans: "Finance",
+  "Bilgi Teknolojileri": "Information Technology",
+  "Müşteri Hizmetleri": "Customer Service",
+  Üretim: "Production",
+  Lojistik: "Logistics",
+  Diğer: "Other",
+  "Vardiyalı çalışma düzenine uyum": "Adaptability to a shift-based work schedule",
+  "Depo veya saha operasyonu deneyimi": "Warehouse or field operations experience",
+  "Ağır yük kaldırma kapasitesi": "Ability to lift heavy loads",
+  "Satış hedeflerine yönelik çalışma deneyimi": "Experience working toward sales targets",
+  "CRM araçları kullanım bilgisi": "Familiarity with CRM tools",
+  "Aktif müşteri portföyü yönetimi": "Active client portfolio management",
+  "Dijital pazarlama kampanya yönetimi": "Digital marketing campaign management",
+  "Sosyal medya platformlarında içerik üretimi": "Content creation for social media platforms",
+  "Google Analytics veya benzeri araç deneyimi": "Experience with Google Analytics or similar tools",
+  "İşe alım süreçleri yönetimi": "Recruitment process management",
+  "SGK ve bordro mevzuatı bilgisi": "Knowledge of payroll and social security legislation",
+  "Çalışan ilişkileri ve oryantasyon deneyimi": "Employee relations and onboarding experience",
+  "Muhasebe ve finans raporlama deneyimi": "Accounting and financial reporting experience",
+  "ERP sistemi kullanım bilgisi (SAP, Logo vb.)": "Experience with ERP systems (SAP, Logo, etc.)",
+  "Bütçe planlama ve maliyet analizi": "Budget planning and cost analysis",
+  "Yazılım geliştirme veya sistem yönetimi deneyimi":
+    "Software development or systems administration experience",
+  "Versiyon kontrol ve CI/CD süreçleri bilgisi":
+    "Knowledge of version control and CI/CD processes",
+  "Ağ ve sunucu altyapısı yönetimi": "Network and server infrastructure management",
+  "Çağrı merkezi veya müşteri destek deneyimi": "Call center or customer support experience",
+  "Şikayet yönetimi ve çözüm odaklı yaklaşım":
+    "Complaint management and a solution-oriented approach",
+  "Çoklu iletişim kanallarında hizmet deneyimi":
+    "Experience serving across multiple communication channels",
+  "Üretim hattı operasyon deneyimi": "Production line operations experience",
+  "İş sağlığı ve güvenliği sertifikası": "Occupational health and safety certification",
+  "Kalite kontrol süreçleri bilgisi": "Knowledge of quality control processes",
+  "Sevkiyat ve depo yönetimi deneyimi": "Shipment and warehouse management experience",
+  "Rota planlama ve filo takibi bilgisi": "Knowledge of route planning and fleet tracking",
+  "Tedarik zinciri süreçlerine hakimiyet": "Familiarity with supply chain processes",
+  "Henüz yayınlanmadı": "Not published yet",
+  "Başvuru kabul ediliyor": "Accepting applications",
+  "Başvuru kapatıldı": "Applications closed",
+  "Bu ilanı taslak veya yayında olarak kaydedebilirsiniz.":
+    "You can save this posting as draft or published.",
+  "Şu anda yalnızca taslak oluşturabilirsiniz. Yayına almak için önce bir ilanı arşivleyin ya da planınızı yükseltin.":
+    "You can only create a draft right now. To publish it, archive a posting first or upgrade your plan.",
+  "Yukarıdaki bilgilere göre profesyonel ilan metni oluşturur. Taslağı düzenleyip harici platformlara kopyalayabilirsiniz.":
+    "Generates a professional job posting based on the information above. You can edit the draft and copy it to external platforms.",
+  "Aktif ilan kotanız dolu. İlanı taslak olarak kaydedebilir, daha sonra slot açıldığında yayına alabilirsiniz.":
+    "Your active job quota is full. You can save the posting as a draft and publish it later when a slot becomes available.",
+  "Aktif ilan kotanız dolu. Bu ilanı yeniden yayına almak için önce bir ilanı arşivleyin ya da planınızı yükseltin.":
+    "Your active job quota is full. To republish this posting, archive another posting first or upgrade your plan.",
+  "Arşivle": "Archive",
+  "Tekrar Yayınla": "Republish",
+  Yayınla: "Publish",
+  "Eksik / Uyarı": "Missing / Warning",
+  "Kaynak projesi": "Sourcing project",
+  "Doğrudan başvuru akışı": "Direct application flow",
+  "Aday görüşme linki": "Candidate interview link",
+  "Outreach:": "Outreach:",
+  "Mülakat Daveti Hazır": "Interview Invite Ready",
+  "Aktif Invite / Outreach": "Active Invites / Outreach",
+  Prospect: "Prospect",
+  "akışa bağlandı": "linked to the workflow",
+  invite: "invites",
+  "outreach yanıt bekliyor": "outreach awaiting reply",
+  "E-posta mevcut, tek tıkla AI invite gönderebilirsiniz":
+    "Email is available; you can send an AI invite in one click.",
+  "başarılı": "successful",
+  hata: "errors",
+  "Adayı Reddet": "Reject Candidate",
+  "Evet, Davet Gönder": "Yes, Send Invite",
+  "Evet, Reddet": "Yes, Reject",
+  "adayına tek linkli AI mülakat daveti gönderilecek. Bu akışta slot seçimi yoktur.":
+    "will receive a single-link AI interview invitation. There is no slot selection in this flow.",
+  "adayı reddedilecek.": "will be rejected.",
+  "Henüz değerlendirilmedi": "Not evaluated yet",
+  "Güçlü Uyum": "Strong Match",
+  Uyumlu: "Match",
+  "Kısmi Uyum": "Partial Match",
+  "Düşük Uyum": "Low Match",
+  "Son outreach konusu:": "Last outreach subject:",
+  "Otomatik değerlendirme sonuçları güncellendi.":
+    "Automatic evaluation results were updated.",
+  "Otomatik değerlendirme sonuçları da güncellendi.":
+    "Automatic evaluation results were also updated.",
+  "Otomatik güncelleme zaman aşımına uğradı. Süreç arka planda devam ediyor olabilir.":
+    "Automatic refresh timed out. The process may still continue in the background.",
+  "Bazı adayların son durumu ekrana geç yansıdı. Sayfa arka planda tekrar güncellenebilir.":
+    "Some candidates' latest status appeared late. The page may refresh again in the background.",
+  "Abonelik bilgileri yüklenemedi.": "Subscription details could not be loaded.",
+  "Plan değişikliği başlatılamadı.": "Plan change could not be started.",
+  "Ek paket satın alma akışı başlatılamadı.": "Add-on purchase flow could not be started.",
+  "Müşteri portalı açılamadı.": "Customer portal could not be opened.",
   "Nitelik Ekle": "Add Qualification",
   "Çalışma Modeli / Vardiya": "Work Model / Shift",
   "Maaş Alt Sınır (TRY)": "Salary Min (TRY)",
@@ -404,10 +783,7 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   Oturum: "Session",
   Evet: "Yes",
   Hayır: "No",
-  Durum: "Status",
-  Tarih: "Date",
   Aksiyon: "Action",
-  Kaynak: "Source",
   Telefon: "Phone",
   "E-posta": "Email",
   Lokasyon: "Location",
@@ -555,6 +931,157 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
 };
 
 Object.assign(EN_PHRASE_TRANSLATIONS, {
+  "Mevcut planinizi, kullanım durumunuzu ve ek paket satın alma akışlarını tek merkezden yönetin.":
+    "Manage your current plan, usage, and add-on purchases from one place.",
+  "Küçük ekipler ve düşük hacim için. Az sayıda aktif posting ve temel recruiter operasyonu.":
+    "For small teams and lower volume. Includes a small number of active postings and core recruiter operations.",
+  "Asıl satış paketi. Daha yüksek hacim, AI interview kapasitesi ve takvim entegrasyonları.":
+    "Core sales plan. Higher volume, AI interview capacity, and calendar integrations.",
+  "Faturaları yönet": "Manage billing",
+  "Admin paneli": "Admin panel",
+  "Fatura": "Invoice",
+  "Faturalama e-postası": "Billing email",
+  "Eksik ayar": "Incomplete setup",
+  "Aktif plan": "Current plan",
+  "Takvim entegrasyonu": "Calendar integration",
+  "Takvim entegrasyonları": "Calendar integrations",
+  "Yok": "None",
+  "Planlar": "Plans",
+  "Add-onlar": "Add-ons",
+  "Servis paketi": "Service package",
+  "Ödeme linki oluştur": "Create payment link",
+  "Ödeme bağlantıları": "Payment links",
+  "Ödeme linkini aç": "Open payment link",
+  "Link hazır değil": "Link not ready",
+  "Linki gönder": "Send link",
+  "Teklif oluştur": "Create quote",
+  "Limit asmadan once ek interview, ek aday isleme veya servis odakli paket satin alabilirsiniz.":
+    "Buy extra interview, candidate processing, or service-focused packages before hitting your limits.",
+  "Enterprise teklif oluştur": "Create enterprise quote",
+  "Owner burada custom limitleri belirler, ödeme linkini oluşturur ve isterse kullanıcıya e-posta ile gönderir.":
+    "The owner can define custom limits here, create the payment link, and optionally email it to the customer.",
+  "Calendar / Meet entegrasyonu": "Calendar / Meet integration",
+  "Branded candidate experience": "Branded candidate experience",
+  "Özel entegrasyon yetkisi": "Custom integration entitlement",
+  "Enterprise ödeme linki oluştur": "Create enterprise payment link",
+  "Oluşan checkout linklerini buradan izleyebilir ve kullanıcıya tekrar gönderebilirsiniz.":
+    "Track generated checkout links here and resend them to users.",
+  "Tür": "Type",
+  "Etiket": "Label",
+  "Bağlantı / Gönderim": "Link / delivery",
+  "Yeni Üye Davet Et": "Invite New User",
+  "Üye Listesi": "Member List",
+  "Owner olarak sisteme yeni menajer veya personel ekleyebilirsiniz.":
+    "As the owner, you can invite new managers or staff members.",
+  "Hesapta tek bir owner bulunur. Menajer operasyonu yönetir, personel günlük iş akışında çalışır.":
+    "There is one owner per account. Managers oversee operations and staff handle daily workflow.",
+  "Davet / Son Giriş": "Invite / Last Login",
+  "Davet:": "Invite:",
+  "Son giriş:": "Last login:",
+  "Aktifleştir": "Activate",
+  "Pasifleştir": "Deactivate",
+  "Daveti Tekrar Gönder": "Resend Invitation",
+  "Owner Yap": "Make Owner",
+  "Devrediliyor...": "Transferring...",
+  "İşleniyor...": "Processing...",
+  "Tüm sistemler aktif": "All systems active",
+  "Bazı bağlantılarda sorun var": "Some connections have issues",
+  "Bağlı Servisler": "Connected Services",
+  "Henüz entegrasyon bağlantısı yapılmamış.": "No integrations have been connected yet.",
+  "Google Calendar Bağlantısı": "Google Calendar Connection",
+  "Görüşmeleri takvime otomatik yansıtmak için bağlayabilirsiniz.":
+    "Connect it to sync interviews to your calendar automatically.",
+  "AI Davranış Kuralları": "AI Behavior Rules",
+  "AI yardımcı rolde kalır, kritik kararlar insanda olur.":
+    "AI remains assistive and critical decisions stay with humans.",
+  "AI Özellikleri": "AI Features",
+  "Owner hesabıyla AI destek özelliklerini açıp kapatabilirsiniz.":
+    "You can enable or disable AI support features with the owner account.",
+  "Özellik": "Feature",
+  "Kilitli": "Locked",
+  "Son AI Görevleri": "Recent AI Tasks",
+  "Kapsam": "Scope",
+  "Zaman": "Time",
+  "Sistem Özeti": "System Summary",
+  "Teknik bileşenlerin genel durumu ve servis hazırlığı.":
+    "Overall status of technical components and service readiness.",
+  "Bileşen": "Component",
+  "Hazır": "Ready",
+  "İlan Merkezi": "Job Center",
+  "Yayında": "Published",
+  "Taslak": "Draft",
+  "Arşiv": "Archived",
+  "başvuru": "applications",
+  "Bu dönem": "This period",
+  "aktif ilan kullanıyorsunuz.": "active jobs are in use.",
+  "aktif": "active",
+  "davet bekliyor": "pending invites",
+  "uyarı": "alerts",
+  "Ödeme linki gönderilecek e-posta": "Email to receive the payment link",
+  "Stripe Portalı": "Stripe Portal",
+  "Ödeme bağlantısı": "Payment link",
+  "Ödeme bağlantısı gönderilemedi.": "Payment link could not be sent.",
+  "Ödeme bağlantısı henüz hazır değil": "Payment link is not ready yet",
+  "Plan ödeme linki hazırlandı.": "Plan checkout link is ready.",
+  "Add-on ödeme linki hazırlandı.": "Add-on checkout link is ready.",
+  "Stripe müşteri portalı açıldı.": "Stripe customer portal opened.",
+  "Enterprise teklif ödeme linki hazırlandı.": "Enterprise quote payment link is ready.",
+  "Ödeme linki göndermek için e-posta giriniz.": "Enter an email address to send the payment link.",
+  "Ödeme linki gönderilemedi.": "Payment link could not be sent.",
+  "Kurumsal teklif için ödeme sayfası oluşturuldu.": "Enterprise checkout page created.",
+  "Kurumsal teklif oluşturulamadı.": "Enterprise quote could not be created.",
+  "Ayarlar yuklenemedi.": "Settings could not be loaded.",
+  "Odeme linki gondermek icin e-posta giriniz.": "Enter an email address to send the payment link.",
+  "Odeme linki gonderilemedi.": "Payment link could not be sent.",
+  "Odeme linki olustur": "Create payment link",
+  "Odeme linkini ac": "Open payment link",
+  "Linki gonder": "Send link",
+  "Hazirlaniyor...": "Preparing...",
+  "Gonderiliyor...": "Sending...",
+  "Stripe musteri portali acildi.": "Stripe customer portal opened.",
+  "Plan odeme linki hazirlandi.": "Plan checkout link is ready.",
+  "Add-on odeme linki hazirlandi.": "Add-on checkout link is ready.",
+  "Enterprise teklif odeme linki hazirlandi.": "Enterprise quote payment link is ready.",
+  "Ayarlar": "Settings",
+  "Gelişmiş raporlama": "Advanced reporting",
+  "Markalı aday deneyimi": "Branded candidate experience",
+  "Özel entegrasyonlar": "Custom integrations",
+  "Fatura bilgileri": "Billing details",
+  "Kota limitleri": "Quota limits",
+  "Aylık tutar (kuruş)": "Monthly amount (cents)",
+  "Aylık tutar (cent)": "Monthly amount (cents)",
+  "Kullanımı yenile": "Refresh usage",
+  "Seat limiti aktif ve davet bekleyen ekip kullanıcılarını kapsar. AI interview kotası davet oluştuğunda tüketilir.":
+    "The seat limit includes active and invited team members. AI interview quota is consumed when an invite is created.",
+  "Dönem bilgisi": "Billing period",
+  "Stripe hazırlığı": "Stripe readiness",
+  "Limitler tek merkezden izlenir. Kritik noktalarda sistem blok koyar ve upgrade / add-on önerir.":
+    "Limits are tracked from one place. The system blocks at critical points and recommends upgrades or add-ons.",
+  "Starter giriş paketi, Growth ise asıl satış paketi olarak konumlandı.":
+    "Starter is the entry plan, while Growth is positioned as the main sales plan.",
+  "Fatura / teklif e-postası": "Billing / quote email",
+  "Teklif notu / SLA / onboarding kapsamı": "Quote note / SLA / onboarding scope",
+  "Odeme bağlantıları": "Payment links",
+  "Kullanıcı": "User",
+  "Kullanıcılar": "Users",
+  "Adaylar": "Candidates",
+  "Genel Bakış": "Overview",
+  "Detaya git": "Go to details",
+  "Aday": "Candidate",
+  "Güncelleme": "Updated",
+  "Aktif Görüşme": "Active Interviews",
+  "Feedback bekleyen mülakatlar": "Interviews awaiting feedback",
+  "Abonelik kullanımı şu an yüklenemedi.": "Subscription usage could not be loaded right now.",
+  "Yeni ilan hazırlayabilir ve uygun olduğunda yayına alabilirsiniz.":
+    "You can prepare a new job and publish it when a slot becomes available.",
+  "Yeni ilanı taslak olarak hazırlayabilirsiniz; yeniden yayına almak veya yayınlamak için önce slot açmanız ya da paketinizi yükseltmeniz gerekir.":
+    "You can prepare the new job as a draft; to republish or publish it, you need to free up a slot or upgrade your plan first.",
+  "Şu anda aksiyon gerektiren başvuru bulunmuyor.":
+    "There are no applications requiring action right now.",
+  "Bu dönem aktif ilan kullanıyorsunuz.": "Active jobs are in use this period."
+});
+
+Object.assign(EN_PHRASE_TRANSLATIONS, {
   "\u26A0\uFE0F Katılmadı": "\u26A0\uFE0F No-show",
   "\u2705 İlerlet": "\u2705 Advance",
   "\u2705 Tamamlandı": "\u2705 Completed",
@@ -682,6 +1209,12 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Cevap gönderilemedi.": "Response could not be submitted.",
   "CODE: açıklama": "CODE: description",
   "CSV Yükle": "Upload CSV",
+  "CSV Aktarım": "CSV import",
+  "Manuel Giriş": "Manual entry",
+  "Referans": "Referral",
+  "Doğrudan Başvuru": "Walk-in application",
+  "Ajans": "Agency",
+  "Kariyer Portalı": "Career portal",
   "CV inceleme hatası": "CV review error",
   "CV inceleme işlemi başlatılamadı.": "CV review process could not be started.",
   "CV incelemesi başarısız oldu.": "CV review failed.",
@@ -711,7 +1244,6 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Devre Dışı": "Disabled",
   "Dış Kaynak Adı": "External Source Name",
   "Dosya Seç": "Select File",
-  "Doğrudan Başvuru": "Direct Application",
   "Düşük güven": "Low confidence",
   "Ek inceleme gerekli.": "Additional review required.",
   "Eğitim geçmişi eksik": "Education history is missing",
@@ -1374,6 +1906,354 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "AI output cannot apply automatic decisions. All stage-impacting decisions require recruiter/hiring manager approval and an audit trail."
 });
 
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  "AI ile İlan Taslağı": "AI Posting Draft",
+  "Pozisyon bilgilerini girin. AI taslak oluşturup harici platformlara kopyalayabilirsiniz.":
+    "Enter the position details. AI can generate a draft and you can copy it to external platforms.",
+  "Departman seçtiğinizde önerilen nitelikler otomatik eklenir. Dilediğiniz gibi düzenleyebilirsiniz.":
+    "Recommended qualifications are added automatically when you select a department. You can edit them as you like.",
+  "İlan Durumu": "Job Posting Status",
+  "Maaş Alt Sınır (₺)": "Minimum Salary (₺)",
+  "Maaş Üst Sınır (₺)": "Maximum Salary (₺)",
+  "Örn: Depo Operasyon Personeli": "E.g. Warehouse Operations Staff",
+  "Örn: İstanbul, Ankara, Bursa": "E.g. Istanbul, Ankara, Bursa",
+  "Örn: 28000": "E.g. 28000",
+  "Örn: 36000": "E.g. 36000",
+  "Örn: Daha samimi bir dil kullan, maaş bilgisini vurgula":
+    "E.g. Use a friendlier tone and emphasize the salary",
+  "Taslağı beğenmediyseniz notunuzu yazıp tekrar oluşturun.":
+    "If you don't like the draft, leave a note and generate it again.",
+  "Yayında slotunuz dolu olduğu için bu ilanı önce taslak olarak hazırlayabilirsiniz.":
+    "Your published slots are full, so you can prepare this posting as a draft first.",
+  "Mülakat daveti": "Interview invitation",
+  "Gönderilen AI mülakat linki": "Sent AI interview link",
+  "Gönderilen AI mülakat linkini aç": "Open the sent AI interview link",
+  "Son geçerlilik": "Valid until",
+  "AI Ön Eleme Sırada": "AI Pre-screening Queued",
+  "AI Ön Eleme Başlayacak": "AI Pre-screening Starting",
+  "Başvuru yeni eklendi; screening ve fit score hazırlanacak.":
+    "The application was just added; screening and fit score are being prepared.",
+  "Skor ve recruiter review paketi hazırlanıyor.":
+    "The score and recruiter review pack are being prepared.",
+  "Sourcing outreach gönderilmiş. Yanıt gelirse hızlıca akışa alın.":
+    "Sourcing outreach has been sent. Move the candidate into the flow quickly if they reply.",
+  "AI değerlendirmesini inceleyip recruiter kararını verin.":
+    "Review the AI evaluation and make the recruiter decision.",
+  "Ön eleme tamamlandı. Tek tıkla AI first interview gönderebilirsiniz.":
+    "Pre-screening is complete. You can send the AI first interview in one click.",
+  "İlan arşivlenecek ve yeni başvuru kabul edilmeyecek. Onaylıyor musunuz?":
+    "This posting will be archived and no new applications will be accepted. Do you confirm?",
+  "CV Yükle": "Upload CV",
+  "Toplu CV Yükle": "Bulk CV Upload",
+  "PDF ve DOCX başta olmak üzere CV dosyalarını topluca bırakın. Sistem aday kaydını oluşturur, CV'yi parse eder ve değerlendirme zincirini kuyruğa alır.":
+    "Drop CV files in bulk, especially PDF and DOCX. The system creates candidate records, parses the CV, and queues the evaluation chain.",
+  "Yalnızca PDF, DOC, DOCX veya TXT dosyaları yüklenebilir.":
+    "Only PDF, DOC, DOCX, or TXT files can be uploaded.",
+  "En az bir CV dosyası ekleyin.": "Add at least one CV file.",
+  "CV yükleme işlemi tamamlanamadı.": "CV upload could not be completed.",
+  "CV dosyalarını buraya bırakın": "Drop CV files here",
+  Kaldır: "Remove",
+  "✓ İlerlet — Güçlü uyum tespit edildi": "Advance — Strong fit detected",
+  "🔍 İncele — Detaylı değerlendirme önerilir": "Review — Detailed evaluation is recommended",
+  "✕ Reddet — Uyum düşük": "Reject — Low fit",
+  "Taslak oluşturuldu": "Draft created",
+  "Yanıt geldi": "Reply received",
+  "Gönderime hazır": "Ready to send",
+  "Gönderim başarısız": "Send failed",
+  "Gönderim iptal edildi": "Sending canceled",
+  "Outreach bilgisi yok": "No outreach information",
+  "AI Ön Eleme Bekleniyor": "Awaiting AI Pre-screening",
+  "Ön eleme tamamlandı; AI first interview daveti göndermeye hazır.":
+    "Pre-screening is complete; ready to send the AI first interview invitation.",
+  "AI mülakat tamamlandı; raporu inceleyip recruiter kararını verin.":
+    "The AI interview is complete; review the report and make the recruiter decision.",
+  "Sourcing outreach gönderildi; yanıt gelirse hızlıca değerlendirin.":
+    "Sourcing outreach has been sent; review quickly if a reply comes in.",
+  "Applicant akışı screening ve fit score adımlarını sürdürüyor.":
+    "The applicant flow is continuing through screening and fit score steps.",
+  "Bağlı değil": "Not connected",
+  "Seçili ilan": "Selected job",
+  "yıl deneyim": "years experience",
+  "Yüklenen CV'leri otomatik inceler ve özet çıkarır.":
+    "Automatically reviews uploaded CVs and creates a summary.",
+  "Başvuru geldiğinde AI ön eleme yapar.": "Runs AI pre-screening when an application arrives.",
+  "Aday değerlendirme raporu üretir.": "Generates candidate evaluation reports.",
+  "Uygunluk önerisi ve skor hesaplar.": "Calculates fit suggestions and scores.",
+  "Yeni başvurularda otomatik ön eleme başlatır.":
+    "Automatically starts pre-screening for new applications.",
+  "Aşama geçişlerinde otomatik AI incelemesi yapar.":
+    "Runs automatic AI review on stage transitions.",
+  "Kural gereği kapalı tutulur.": "Kept disabled by policy.",
+  "Davet Bekliyor": "Invite Pending",
+  "Ayarlar yüklenemedi.": "Settings could not be loaded.",
+  "Feature flag güncellenemedi.": "Feature flag could not be updated.",
+  "Davet gönderilemedi.": "Invitation could not be sent.",
+  "Davet tekrar gönderilemedi.": "Invitation could not be resent.",
+  "Rol güncellenemedi.": "Role could not be updated.",
+  "Durum güncellenemedi.": "Status could not be updated.",
+  "Sahiplik devredilemedi.": "Ownership could not be transferred.",
+  "kullanıcısını pasifleştirmek istiyor musunuz?":
+    "do you want to deactivate this user?",
+  "kullanıcısını yeni hesap sahibi yapmak istiyor musunuz?":
+    "do you want to make this user the new account owner?",
+  "Plan ödeme linki hazırlandı.": "Plan payment link is ready.",
+  "Plan ödeme bağlantısı oluşturulamadı.": "Plan payment link could not be created.",
+  "Add-on ödeme linki hazırlandı.": "Add-on payment link is ready.",
+  "Add-on ödeme bağlantısı oluşturulamadı.": "Add-on payment link could not be created.",
+  "Stripe müşteri portalı açıldı.": "Stripe customer portal opened.",
+  "Müşteri portalı açılamadı.": "Customer portal could not be opened.",
+  "Enterprise teklif ödeme linki hazırlandı.": "Enterprise quote payment link is ready.",
+  "Enterprise teklif bağlantısı oluşturulamadı.": "Enterprise quote link could not be created.",
+  "Ödeme linki göndermek için e-posta giriniz.":
+    "Enter an email to send the payment link.",
+  "Ödeme linki gönderilemedi.": "Payment link could not be sent.",
+  "Calendly henüz yapılandırılmamış.": "Calendly is not configured yet.",
+  "Henüz yapılandırılmamış.": "Not configured yet."
+});
+
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  "Rapor verileri yüklenemedi.": "Report data could not be loaded.",
+  "Raporlar yükleniyor...": "Loading reports...",
+  "İşe alım süreçlerinizin performansını ve dönüşüm oranlarını takip edin.":
+    "Track the performance and conversion rates of your hiring workflows.",
+  "Aktif İlanlar": "Active job postings",
+  "Değerlendirme Güveni": "Evaluation confidence",
+  "Ön eleme oranı": "Screening rate",
+  "Mülakata geçiş oranı": "Interview progression rate",
+  "İşe alınan aday sayısı": "Number of hires",
+  "Ortalama süre": "Average time",
+  "Medyan süre": "Median time",
+  "İşe alım süresi verisi henüz oluşmadı.": "Time-to-hire data is not available yet.",
+  "Transkript kalitesi (ort.)": "Transcript quality (avg.)",
+  "Rapor güveni (ort.)": "Report confidence (avg.)",
+  "Transkript örneklemi": "Transcript sample size",
+  "Rapor örneklemi": "Report sample size",
+  "Görüşme kalitesi verisi henüz oluşmadı.": "Interview quality data is not available yet.",
+  "AI destek merkezi yüklenemedi.": "AI support center could not be loaded.",
+  "Sağlayıcı bulunamadı.": "No provider was found.",
+  "LLM yoksa deterministic fallback kullanılır.": "A deterministic fallback is used when no LLM is available.",
+  "Gerçek model çağrısı kullanılır.": "A live model call is used.",
+  "AI sadece yardımcı": "AI is advisory only",
+  "Otomatik red": "Automatic rejection",
+  "Hayır (kural)": "No (policy)",
+  "Kritik aksiyonlarda insan onayı": "Human approval for critical actions",
+  "Infrastructure Readiness": "Infrastructure Readiness",
+  "CV Extraction": "CV Extraction",
+  "Speech Runtime": "Speech Runtime",
+  "Calendly OAuth": "Calendly OAuth",
+  "Google OAuth": "Google OAuth",
+  "Email Provider": "Email Provider",
+  "Demo akışında kullanılan AI bayrakları. `ai.auto_reject.enabled` kural gereği açılamaz.":
+    "AI flags used in the demo flow. `ai.auto_reject.enabled` cannot be enabled by policy.",
+  "Bu alanda sadece hesap sahibi değişiklik yapabilir. Siz salt okunur görünümdesiniz.":
+    "Only the account owner can make changes in this area. You are in read-only mode.",
+  "Feature flag güncellenemedi.": "The feature flag could not be updated.",
+  "Outreach Composer": "Outreach Composer",
+  Alıcılar: "Recipients",
+  Template: "Template",
+  "Mail konusu": "Email subject",
+  "Recruiter review sonrası tekli veya bulk e-posta gönderin.":
+    "Send single or bulk emails after recruiter review.",
+  "Recruiter Review Notu": "Recruiter Review Note",
+  "Bu mesaj neden uygun, hangi segment için gidiyor?":
+    "Why is this message appropriate, and which segment is it for?",
+  "Sequence Foundation": "Sequence Foundation",
+  "Taslak Olarak Kaydet": "Save as Draft",
+  Gönder: "Send",
+  "Discovery Kalitesi": "Discovery Quality",
+  "Sayfa tipi": "Page type",
+  "Özet Profil": "Profile Summary",
+  "Güncel rol": "Current role",
+  "Neden Uygun?": "Why is this a fit?",
+  "Henüz belirgin güçlü sinyal yok.": "There are no strong signals yet.",
+  "Riskler ve Eksikler": "Risks and Gaps",
+  "Kanıtlar": "Evidence",
+  "Beceriler ve Diller": "Skills and Languages",
+  "Kaynak Provenance": "Source Provenance",
+  "Outreach Geçmişi": "Outreach History",
+  "Hızlı değerlendirme notu...": "Quick evaluation note...",
+  "Akışa Alındı": "Moved into workflow",
+  "Uygun Değil": "Not a Fit",
+  "Giriş başarısız.": "Sign-in failed.",
+  "Hesabınıza giriş yapın": "Sign in to your account",
+  "Kullanıcı Adı / E-posta": "Username / Email",
+  "Giriş yapılıyor...": "Signing in...",
+  "Giriş Yap": "Sign In",
+  "Demo hesabıyla giriş yap": "Sign in with demo account",
+  "Ana sayfaya dön": "Back to home",
+  "Hesap oluştur": "Create account",
+  "Şifre en az 8 karakter olmalıdır.": "Password must be at least 8 characters.",
+  "Şifre tekrar alanı eşleşmiyor.": "Password confirmation does not match.",
+  "Hesap oluşturulamadı.": "Account could not be created.",
+  "Hesap Oluştur": "Create Account",
+  "İlk kullanıcı otomatik olarak owner olur. Aktif auth modu:":
+    "The first user becomes the owner automatically. Active auth mode:",
+  "Şirket Adı": "Company Name",
+  "Hesap oluşturuluyor...": "Creating account...",
+  "Zaten hesabınız varsa": "If you already have an account,",
+  "giriş yapın": "sign in",
+  "Landing sayfasına dönmek için": "To go back to the landing page,",
+  buraya: "here",
+  "tıklayın": "click",
+  "Veriler yüklenemedi.": "Data could not be loaded.",
+  "Kullanım ve limitler": "Usage and limits",
+  "Aktif + davet bekleyen ekip hesabı": "Active and pending invited team accounts",
+  "Henüz ekip üyesi bulunmuyor.": "There are no team members yet.",
+  "Davet Gönder": "Send Invite",
+  "Ad Soyad": "Full Name",
+  "Evet": "Yes",
+  "Son AI görevi bulunmuyor.": "No recent AI task was found.",
+  "Dikkat gerektiren konular:": "Items requiring attention:",
+  "Yönetim verileri yüklenemedi.": "Admin data could not be loaded.",
+  "Yönetim verileri yükleniyor...": "Loading admin data...",
+  "Abonelikler": "Subscriptions",
+  "Kurumsal": "Enterprise",
+  "Seçili hesap": "Selected account",
+  "Tenant": "Tenant",
+  "Kota özeti": "Quota summary",
+  "Eksik kurulum": "Incomplete setup",
+  "Özellikler": "Features",
+  "İç not": "Internal note",
+  "SLA, onboarding kapsamı veya teklif notu": "SLA, onboarding scope, or proposal note",
+  "ör. satin-alma@firma.com": "e.g. procurement@company.com",
+  "ör. finans@firma.com": "e.g. finance@company.com",
+  "ör. 199900": "e.g. 199900",
+  "ör. 25": "e.g. 25",
+  "ör. 40": "e.g. 40",
+  "ör. 2500": "e.g. 2500",
+  "ör. 400": "e.g. 400",
+  "Tüm adaylar ve başvuruları tek ekranda.": "View all candidates and their applications on one screen.",
+  "Aday adı, e-posta veya telefon...": "Candidate name, email, or phone...",
+  "Tüm Durumlar": "All statuses",
+  "Tüm İlanlar": "All job postings",
+  "Tüm Kaynaklar": "All sources",
+  "Filtreye uygun sonuç bulunamadı.": "No results match the filters.",
+  "CSV/TSV dosyası çözümlenemedi. Başlık satırı ve en az bir veri satırı gerekli.":
+    "The CSV/TSV file could not be parsed. A header row and at least one data row are required.",
+  "Mapping sonrası geçerli lead bulunamadı.": "No valid lead remained after mapping.",
+  "Import tamamlanamadı.": "Import could not be completed.",
+  "En az bir public profile URL girin.": "Enter at least one public profile URL.",
+  "URL ingestion tamamlanamadı.": "URL ingestion could not be completed.",
+  "Ad soyad zorunlu.": "Full name is required.",
+  "Lead oluşturulamadı.": "Lead could not be created.",
+  "Recruiter-Assisted Lead Ingestion": "Recruiter-Assisted Lead Ingestion",
+  "CSV/job board export, public profile URL ve tekli lead oluşturma ile sourcing projesine gerçek aday ekleyin.":
+    "Add real candidates to the sourcing project with CSV/job board exports, public profile URLs, and single lead creation.",
+  "CV paketi elinizdeyse applicant flow’a geçirmek için":
+    "If you already have a CV package and want to move it into the applicant flow,",
+  "İlan Merkezi üzerindeki toplu CV yükleme": "use the bulk CV upload flow in Job Center",
+  "CSV, TSV veya dış job board export dosyasını yükleyin; alan eşlemesini gözden geçirip project’e alın.":
+    "Upload a CSV, TSV, or external job board export; review field mapping and add it to the project.",
+  "Hızlı preset": "Quick preset",
+  "Opsiyonel kaynak etiketi": "Optional source label",
+  "CSV / Export Dosyası Seç": "Choose CSV / Export File",
+  "Önizleme": "Preview",
+  "Unvan yok": "No title",
+  "İletişim yok": "No contact details",
+  "Lead Listesini Project’e Al": "Import Lead List into Project",
+  "Public Profile URL Paste": "Public Profile URL Paste",
+  "Kişisel site, portfolio, GitHub benzeri public profile URL’lerini yapıştırın. Sistem kişi profili doğrularsa project’e alır.":
+    "Paste personal site, portfolio, or public profile URLs such as GitHub. If the system validates a person profile, it adds it to the project.",
+  "Recruiter notu / neden bu URL'leri ekliyorum?":
+    "Recruiter note / why am I adding these URLs?",
+  "URL'ler işleniyor...": "Processing URLs...",
+  "URL'leri Prospect Olarak İşle": "Process URLs as Prospects",
+  "Tekli Manual Lead": "Single Manual Lead",
+  "Recruiter’ın dışarıda bulduğu tekil lead’i hızlıca sourcing project’e ekleyin.":
+    "Quickly add a single lead the recruiter found externally to the sourcing project.",
+  "Lead ekleniyor...": "Adding lead...",
+  "Tekli Lead Oluştur": "Create Single Lead",
+  "İşlenen kayıt": "Processed records",
+  "Yeni profil / Yeni prospect": "New profiles / New prospects",
+  "Merge / Duplicate": "Merged / Duplicate",
+  "Mevcut candidate eşleşmesi": "Existing candidate matches",
+  "İlk hata": "First error",
+  "AI mülakat ayarları": "AI interview settings",
+  "Soru listesi yüklenemedi.": "Question list could not be loaded.",
+  "Template yüklenemedi.": "Template could not be loaded.",
+  "En az bir soru bırakmalısınız.": "You must keep at least one question.",
+  "Davet gönderilemedi.": "Invite could not be sent.",
+  "Soru listesi hazırlanıyor...": "Preparing question list...",
+  "Eşleşme": "Match",
+  "Adayı Kaydet": "Save Candidate",
+  "Form doğrulama": "Form validation",
+  "Aday adı en az 2 karakter olmalı.": "Candidate name must be at least 2 characters.",
+  "Aday oluşturulamadı.": "Candidate could not be created.",
+  "Yeni Aday Kaydı": "New Candidate Record",
+  "Aday Havuzuna Dön": "Back to Candidate Pool",
+  "Vazgeç": "Cancel",
+  "Audit log verisi alınamadı.": "Audit log data could not be retrieved.",
+  "Entity tipi (opsiyonel)": "Entity type (optional)",
+  "Entity ID (opsiyonel)": "Entity ID (optional)",
+  Metadata: "Metadata",
+  "Sourcing ekranı yüklenemedi.": "Sourcing screen could not be loaded.",
+  "Sourcing projesi açılamadı.": "Sourcing project could not be opened.",
+  "Sourcing görünümü hazırlanıyor...": "Preparing sourcing view...",
+  "Requisition bağlantılı talent discovery, rediscovery ve outreach foundation.":
+    "Requisition-linked talent discovery, rediscovery, and outreach foundation.",
+  "Henüz sourcing projesi yok. İlan seçerek başlayın.":
+    "There is no sourcing project yet. Start by selecting a job posting.",
+  "Henüz kaydedilmiş prospect yok.": "There are no saved prospects yet.",
+  "AI destekli ön görüşmenize buradan katılabilirsiniz.":
+    "You can join your AI-assisted pre-interview here.",
+  "Görüşme Odası": "Interview Room",
+  "Hazırlık Ekranına Dön": "Back to Preparation Screen",
+  "Görüşme oturumu hazırlanıyor...": "Preparing interview session...",
+  "Oturum hatası": "Session error",
+  "Tahmini Süre": "Estimated Duration",
+  "Son Geçerlilik": "Valid Until",
+  "Aynı linki geçerlilik süresi boyunca kullanabilirsiniz. Görüşme tamamlandığında bağlantı tekrar açılamaz.":
+    "You can use the same link until it expires. Once the interview is completed, the link cannot be opened again.",
+  "Görüşme öncesi öneriler": "Pre-interview tips",
+  "Sessiz bir ortamda olduğunuzdan emin olun": "Make sure you are in a quiet environment",
+  "Hoparlör ve mikrofonunuzun çalıştığını kontrol edin":
+    "Check that your speaker and microphone are working",
+  "Görüşmeyi tek seferde tamamlamayı planlayın":
+    "Plan to complete the interview in one sitting",
+  "Sorular sesli gelir, doğal bir şekilde yanıt verin":
+    "Questions are asked aloud; answer naturally",
+  "Görüşmeye Devam Et": "Continue Interview",
+  "Görüşmeyi Başlat": "Start Interview",
+  "Görüşme Davetinin Süresi Doldu": "Interview Invitation Expired",
+  "Bu link artık kullanılamaz. Yeni bir görüşme daveti gerekirse işe alım ekibiyle iletişime geçilmelidir.":
+    "This link can no longer be used. If a new interview invitation is needed, contact the hiring team.",
+  "Görüşme Sonlandı": "Interview Ended",
+  "Oturum tamamlanmadan sonlandı. Gerekirse yeni bir görüşme bağlantısı için işe alım ekibiyle iletişime geçebilirsiniz.":
+    "The session ended before it was completed. If needed, you can contact the hiring team for a new interview link.",
+  "Teşekkür ederiz. Görüşme sonuçlarınız değerlendirilecektir.":
+    "Thank you. Your interview results will be reviewed.",
+  "Merkezi aday profiline yönlendiriliyor...": "Redirecting to the central candidate profile...",
+  "Başvuru oluşturmak için bir iş ilanı seçmelisiniz.":
+    "You must select a job posting to create an application.",
+  "CV inceleniyor...": "CV is being analyzed...",
+  "Bu CV zaten inceleniyor.": "This CV is already being analyzed.",
+  "CV incelemesi tamamlandı.": "CV analysis completed.",
+  "CV incelemesi başarısız oldu.": "CV analysis failed.",
+  "İnceleme devam ediyor, sayfayı yenileyerek kontrol edebilirsiniz.":
+    "Analysis is still running. Refresh the page to check again.",
+  "CV inceleme işlemi başlatılamadı.": "CV analysis could not be started.",
+  "Yüklemek için bir CV dosyası seçin.": "Select a CV file to upload.",
+  "CV yüklenemedi.": "CV could not be uploaded.",
+  "İlan detayı yükleniyor...": "Loading job detail...",
+  "Aday adı, e-posta veya telefon ara": "Search candidate name, email, or phone",
+  "Minimum skor": "Minimum score",
+  "Sıralama": "Sort",
+  "Skor ↓": "Score ↓",
+  "Skor ↑": "Score ↑",
+  "Tarih (Yeni)": "Date (Newest)",
+  "Tarih (Eski)": "Date (Oldest)",
+  "İşlem": "Action",
+  "En az 1 geçerli aday gerekli.": "At least one valid candidate is required.",
+  "Bir hata oluştu.": "An error occurred.",
+  "Toplu Aday Ekle": "Add Candidates in Bulk",
+  "Her satıra bir aday. Alanlar noktalı virgül veya tab ile ayrılır:":
+    "One candidate per line. Separate fields with semicolons or tabs:",
+  "Ad Soyad; Telefon; E-posta; Lokasyon; Deneyim (yıl)":
+    "Full Name; Phone; Email; Location; Experience (years)",
+  "Dış Kaynak Adı": "External Source Name",
+  "Kaynak adı": "Source name"
+});
+
 const EN_WORD_TRANSLATIONS: Array<[string, string]> = [
   ["Başvuru", "Application"],
   ["Başvurular", "Applications"],
@@ -1533,11 +2413,20 @@ function applyRegexTranslations(value: string, patterns: Array<[RegExp, string]>
   return next;
 }
 
+function normalizeWhitespace(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
 const EN_TO_TR_PHRASE_TRANSLATIONS: Record<string, string> = Object.entries(
   EN_PHRASE_TRANSLATIONS
 ).reduce<Record<string, string>>((acc, [tr, en]) => {
-  if (!acc[en]) {
-    acc[en] = tr;
+  const normalizedEnglish = en.trim();
+  const isSafeReversePhrase =
+    normalizedEnglish.length >= 3 &&
+    /[\p{L}\p{N}]/u.test(normalizedEnglish);
+
+  if (isSafeReversePhrase && !acc[normalizedEnglish]) {
+    acc[normalizedEnglish] = tr;
   }
   return acc;
 }, {});
@@ -1588,14 +2477,48 @@ export function normalizeTurkishUiText(text: string) {
     return text;
   }
 
-  const canonicalized = applyPhraseMap(text, EN_TO_TR_PHRASE_TRANSLATIONS);
+  const compactText = normalizeWhitespace(text);
+  const canonicalized = applyPhraseMap(compactText, EN_TO_TR_PHRASE_TRANSLATIONS);
   const phraseFixed = applyPhraseMap(canonicalized, TURKISH_PHRASE_FIXES);
-  return applyPhraseMap(phraseFixed, TURKISH_WORD_FIX_MAP);
+  return normalizeWhitespace(applyPhraseMap(phraseFixed, TURKISH_WORD_FIX_MAP));
 }
 
 function translateTurkishUiToEnglish(text: string) {
-  const phraseTranslated = applyPhraseMap(applyPhraseMap(text, EN_PHRASE_TRANSLATIONS), EN_WORD_TRANSLATION_MAP);
-  const regexTranslated = applyRegexTranslations(phraseTranslated, [
+  const normalizedText = normalizeWhitespace(text);
+  const phraseTranslated = applyPhraseMap(normalizedText, EN_PHRASE_TRANSLATIONS);
+  const shouldApplyWordMap =
+    normalizedText.length <= 48 &&
+    normalizedText.split(/\s+/).length <= 4;
+  const wordAwareText = shouldApplyWordMap
+    ? applyPhraseMap(phraseTranslated, EN_WORD_TRANSLATION_MAP)
+    : phraseTranslated;
+  const regexTranslated = applyRegexTranslations(wordAwareText, [
+    [/Tümü\s*\((\d+)\)/giu, "All ($1)"],
+    [/Yayında\s*\((\d+)\)/giu, "Published ($1)"],
+    [/Taslak\s*\((\d+)\)/giu, "Draft ($1)"],
+    [/Arşiv\s*\((\d+)\)/giu, "Archived ($1)"],
+    [/Bu dönem\s+(\d+)\s*\/\s*(\d+)\s+aktif ilan kullanıyorsunuz\./giu, "You are using $1 / $2 active jobs this period."],
+    [/(\d+)\s+başvuru/giu, "$1 applications"],
+    [/(\d+)\s+ödeme kaydı/giu, "$1 payment records"],
+    [/(\d+)\s+kritik uyarı/giu, "$1 critical alerts"],
+    [/Ödeme bağlantısı\s+(.+?)\s+adresine gönderildi\./giu, "Payment link sent to $1."],
+    [/Kullanıcı kullanımınız %(\d+)\s+seviyesine ulaştı\./giu, "User usage has reached $1%."],
+    [/Aktif ilan kullanımınız %(\d+)\s+seviyesine ulaştı\./giu, "Active job usage has reached $1%."],
+    [/Aday işleme kullanımınız %(\d+)\s+seviyesine ulaştı\./giu, "Candidate processing usage has reached $1%."],
+    [/AI mülakat kullanımınız %(\d+)\s+seviyesine ulaştı\./giu, "AI interview usage has reached $1%."],
+    [/Davet:\s*/giu, "Invite: "],
+    [/Son giriş:\s*/giu, "Last login: "],
+    [/Son geçerlilik:\s*(.+)/giu, "Valid until: $1"],
+    [/^(.+)\s+için davet gönderiliyor\.$/giu, "Sending invite for $1."],
+    [/(\d+)\s+kişi/giu, "$1 people"],
+    [/Gün\s+(\d+)/giu, "Day $1"],
+    [/(\d+)\s+yıl deneyim/giu, "$1 years experience"],
+    [/(\d+)\s+aday algılandı/giu, "$1 candidates detected"],
+    [/(\d+)\s+Aday Ekle/giu, "Add $1 Candidates"],
+    [
+      /(\d+)\s+satır algılandı\.\s+Alan eşlemesini kontrol edin;\s+sonraki aynı format import’larda mapping otomatik hatırlanır\./giu,
+      "$1 rows detected. Review the field mapping; the same format will be remembered for future imports."
+    ],
     [
       /Belge teyidi sonras[ıi]\s+candidate yeniden de[ğg]erlendirilsin\.?/giu,
       "Reassess the candidate after document verification."
@@ -1634,11 +2557,15 @@ function translateTurkishUiToEnglish(text: string) {
     ]
   ]);
 
-  return regexTranslated
+  return normalizeWhitespace(regexTranslated
     .replace(/(\d+)\s+gün/giu, "$1 days")
+    .replace(/(\d+)\s*-\s*(\d+)\s+dk/giu, "$1-$2 min")
+    .replace(/(\d+)\s+dk/giu, "$1 min")
+    .replace(/(\d+)\s+sa\s+(\d+)\s+dk/giu, "$1 hr $2 min")
+    .replace(/(\d+)\s+sa/giu, "$1 hr")
     .replace(/(\d+)\s+segment/giu, "$1 segments")
     .replace(/kuyruğa alındı\./giu, "has been queued.")
-    .replace(/\s{2,}/g, " ");
+    .replace(/\s{2,}/g, " "));
 }
 
 export function transformUiText(text: string, locale: SiteLocale) {
@@ -1648,4 +2575,8 @@ export function transformUiText(text: string, locale: SiteLocale) {
   }
 
   return translateTurkishUiToEnglish(normalized);
+}
+
+export function translateUiText(text: string, locale: SiteLocale) {
+  return transformUiText(text, locale);
 }

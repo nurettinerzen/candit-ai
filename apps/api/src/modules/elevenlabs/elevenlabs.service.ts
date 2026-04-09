@@ -3,6 +3,8 @@ import { RuntimeConfigService } from "../../config/runtime-config.service";
 import { InterviewsService } from "../interviews/interviews.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { ChatCompletionMessage, SessionMeta } from "./dto/chat-completion.dto";
+import { deriveInterviewInvitationState } from "../interviews/interview-invitation-state.util";
+import { buildInterviewOpeningPrompt } from "../interviews/interview-opening.util";
 
 /**
  * Bridge between ElevenLabs Conversational AI and the existing InterviewsService.
@@ -106,7 +108,10 @@ export class ElevenLabsService {
           }
         });
 
-        const promptText = view.activePrompt?.text ?? "Merhaba, gorusmeye baslamaya hazir misiniz?";
+        const promptText =
+          view.activePrompt?.kind === "READINESS"
+            ? ""
+            : view.activePrompt?.text ?? buildInterviewOpeningPrompt();
         return {
           text: promptText,
           sessionComplete: false,
@@ -174,7 +179,14 @@ export class ElevenLabsService {
     sessionId: string;
     accessToken: string;
     traceId?: string;
-  }): Promise<{ signedUrl: string; agentId: string }> {
+  }): Promise<{
+    signedUrl: string;
+    agentId: string;
+    systemPrompt: string;
+    firstMessage: string;
+    dynamicVariables: Record<string, string | number | boolean>;
+    contextualUpdate: string;
+  }> {
     const config = this.runtimeConfig.elevenLabsConfig;
 
     if (!config.apiKey || !config.agentId) {
@@ -188,6 +200,12 @@ export class ElevenLabsService {
       where: { id: input.sessionId, candidateAccessToken: input.accessToken },
       include: {
         template: true,
+        turns: {
+          orderBy: {
+            sequenceNo: "asc"
+          },
+          take: 10
+        },
         application: {
           include: {
             candidate: { select: { fullName: true } },
@@ -201,34 +219,94 @@ export class ElevenLabsService {
       throw new NotFoundException("Görüşme oturumu bulunamadı.");
     }
 
+    const invitation = deriveInterviewInvitationState(session);
+    if (
+      session.status === "COMPLETED" ||
+      session.status === "FAILED" ||
+      session.status === "CANCELLED" ||
+      session.status === "NO_SHOW" ||
+      invitation?.expired
+    ) {
+      throw new NotFoundException("Görüşme bağlantısı artık aktif değil.");
+    }
+
     // Build session metadata for the system prompt
     const sessionMeta = `[SESSION_META:sessionId=${session.id},token=${input.accessToken}]`;
 
     // Parse template for context
     let templateInfo = "";
+    let questionPack = "";
     try {
       const tmpl = session.template.templateJson as Record<string, unknown>;
       const blocks = Array.isArray(tmpl.blocks) ? tmpl.blocks : [];
       templateInfo = `Bu gorusmede ${blocks.length} ana soru var.`;
+      questionPack = blocks
+        .map((block, index) => {
+          const row = block && typeof block === "object" ? (block as Record<string, unknown>) : {};
+          const prompt =
+            typeof row.prompt === "string"
+              ? row.prompt
+              : typeof row.text === "string"
+                ? row.text
+                : "";
+
+          return prompt.trim().length > 0 ? `${index + 1}. ${prompt.trim()}` : "";
+        })
+        .filter(Boolean)
+        .join("\n");
     } catch {
       templateInfo = "";
+      questionPack = "";
     }
 
+    const readinessConfirmedAt = (() => {
+      const engineState =
+        session.engineStateJson && typeof session.engineStateJson === "object"
+          ? (session.engineStateJson as Record<string, unknown>)
+          : {};
+
+      return typeof engineState.readinessConfirmedAt === "string" &&
+        engineState.readinessConfirmedAt.trim().length > 0
+        ? engineState.readinessConfirmedAt
+        : null;
+    })();
+
+    const hasAskedTurn = session.turns.some(
+      (turn) => turn.completionStatus === "ASKED" && !turn.answerText
+    );
+
+    const firstMessage =
+      !readinessConfirmedAt && !hasAskedTurn ? buildInterviewOpeningPrompt() : "";
+
     const systemPrompt = [
-      "Sen bir profesyonel is gorusmesi asistanisın. Turkce konus.",
+      "Sen sirketimizin yapay zeka destekli ilk mulakat asistanisin. Turkce konus.",
+      "Asla kendini insan ismiyle tanitma.",
+      "Ilk acilista adayin hazir oldugunu teyit etmeden ilk mulakat sorusuna gecme.",
+      "Aday hazir oldugunu soylediginde gorusmeye tek bir soruyla basla ve her adimda yalnizca bir soru sor.",
       `Aday: ${session.application.candidate.fullName}`,
       `Pozisyon: ${session.application.job.title}`,
       templateInfo,
       "Sorulari arka uctan alacaksin. Adayin yanitlarini degerlendirmek icin arka uca ileteceksin.",
       "Sorulari aynen sor, kendi yorumlarini ekleme.",
-      "Adayin yanitini tam dinle, araya girme.",
-      "Kibar ve profesyonel ol. Gorusme bittiyse kibarca vedaas et.",
+      "Adayin yanitini tam dinle, araya girme ve gereksiz bekleme yaratma.",
+      "Cevaplardan sonra 'anliyorum', 'evet', 'hmm', 'tamam' gibi dolgu kelimeleriyle baslama. Ya tam ve akici bir gecis kur ya da dogrudan sonraki soruya gec.",
       "ONEMLI: Parantez icindeki yonergeleri (ornegin '(sicak bir sekilde)', '(merakla)' gibi) ASLA sesli okuma.",
-      "Aday konustuktan sonra yarim yamalak onay sozcukleri (hmm, anliyorum, evet gibi) soyleme. Ya tam bir cevap ver ya da dogrudan sonraki soruya gec.",
+      "Gorusme tamamlandiginda kisa ve net bir kapanis yap: Bu gorusmenin sirket ekibi tarafindan incelenecegini, olumlu olursa insan yonetimli bir sonraki mulakat icin iletisime gecilecegini belirt.",
       sessionMeta
     ]
       .filter(Boolean)
       .join("\n");
+
+    const dynamicVariables = {
+      candidate_name: session.application.candidate.fullName,
+      job_title: session.application.job.title,
+      interview_question_pack: questionPack || "Varsayilan soru akisini uygula.",
+      interview_question_count: questionPack ? questionPack.split("\n").length : 0
+    } satisfies Record<string, string | number | boolean>;
+
+    const contextualUpdate = questionPack
+      ? `Bu görüşmede öncelik verilecek ana soru başlıkları şunlardır:\n${questionPack}\nBu sırayı görüşmenin ana iskeleti olarak kullan. Gerekirse kısa takip soruları sor ama listedeki kapsamı koru.`
+      : "Varsayılan soru akışını kullan ve görüşmeyi tek tek sorularla doğal biçimde ilerlet.";
 
     // Request signed URL from ElevenLabs API
     const response = await fetch(
@@ -256,14 +334,25 @@ export class ElevenLabsService {
       throw new Error("ElevenLabs signed_url bos dondu.");
     }
 
-    // Store ElevenLabs metadata on the session
+    const shouldPromoteToRunning = session.status === "SCHEDULED";
+
     await this.prisma.interviewSession.update({
       where: { id: session.id },
       data: {
         elevenLabsAgentId: config.agentId,
         runtimeProviderMode: "elevenlabs_conversational_ai",
         voiceInputProvider: "elevenlabs_stt",
-        voiceOutputProvider: "elevenlabs_tts"
+        voiceOutputProvider: "elevenlabs_tts",
+        ...(shouldPromoteToRunning
+          ? {
+              status: "RUNNING",
+              invitationStatus: invitation ? "IN_PROGRESS" : session.invitationStatus,
+              startedAt: session.startedAt ?? new Date(),
+              lastCandidateActivityAt: new Date()
+            }
+          : {
+              lastCandidateActivityAt: new Date()
+            })
       }
     });
 
@@ -271,6 +360,13 @@ export class ElevenLabsService {
       `ElevenLabs signed URL created: session=${session.id}, agent=${config.agentId}`
     );
 
-    return { signedUrl, agentId: config.agentId };
+    return {
+      signedUrl,
+      agentId: config.agentId,
+      systemPrompt,
+      firstMessage,
+      dynamicVariables,
+      contextualUpdate
+    };
   }
 }

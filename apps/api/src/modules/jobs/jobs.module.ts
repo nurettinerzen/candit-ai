@@ -3,6 +3,7 @@ import { AiOrchestrationModule } from "../ai-orchestration/ai-orchestration.modu
 import { ApplicationsModule } from "../applications/applications.module";
 import { AuditModule } from "../audit/audit.module";
 import { CandidatesModule } from "../candidates/candidates.module";
+import { BillingModule } from "../billing/billing.module";
 import { DomainEventsModule } from "../domain-events/domain-events.module";
 import { JobsController } from "./jobs.controller";
 import { JobsService } from "./jobs.service";
@@ -13,6 +14,7 @@ import { ApplicantInboxService } from "./applicant-inbox.service";
     AuditModule,
     DomainEventsModule,
     AiOrchestrationModule,
+    BillingModule,
     CandidatesModule,
     ApplicationsModule
   ],

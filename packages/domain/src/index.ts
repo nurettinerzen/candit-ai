@@ -1,9 +1,7 @@
 export const ROLES = [
-  "admin",
-  "recruiter",
-  "hiring_manager",
-  "candidate",
-  "agency_recruiter"
+  "owner",
+  "manager",
+  "staff"
 ] as const;
 
 export type Role = (typeof ROLES)[number];

@@ -11,8 +11,8 @@ export function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-export function formatCurrencyTry(value?: string | null) {
-  if (!value) {
+export function formatCurrencyTry(value?: string | number | null) {
+  if (value === null || value === undefined || value === "") {
     return "-";
   }
 

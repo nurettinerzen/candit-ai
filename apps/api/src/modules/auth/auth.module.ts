@@ -2,14 +2,17 @@ import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { RuntimeConfigModule } from "../../config/runtime-config.module";
+import { NotificationsModule } from "../notifications/notifications.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
+import { GoogleAuthController } from "./google-auth.controller";
 import { SessionResolverService } from "./session-resolver.service";
 
 @Module({
   imports: [
     ConfigModule,
     RuntimeConfigModule,
+    NotificationsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -21,7 +24,7 @@ import { SessionResolverService } from "./session-resolver.service";
       })
     })
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, GoogleAuthController],
   providers: [AuthService, SessionResolverService],
   exports: [AuthService, SessionResolverService, JwtModule]
 })

@@ -17,6 +17,9 @@ export type EvidenceLink = {
 export type StructuredTaskSections = {
   facts: string[];
   interpretation: string[];
+  interviewSummary?: string;
+  strengths?: string[];
+  weaknesses?: string[];
   recommendationSummary: string;
   recommendationAction: string;
   recommendedOutcome?: string;
@@ -27,7 +30,11 @@ export type StructuredTaskSections = {
   uncertaintyReasons: string[];
 };
 
-export function defaultOutputSchema(schemaName: string) {
+export function defaultOutputSchema(
+  schemaName: string,
+  options?: { includeInterviewInsights?: boolean }
+) {
+  const includeInterviewInsights = options?.includeInterviewInsights === true;
   return {
     $schema: "http://json-schema.org/draft-07/schema#",
     title: schemaName,
@@ -36,6 +43,7 @@ export function defaultOutputSchema(schemaName: string) {
     required: [
       "facts",
       "interpretation",
+      ...(includeInterviewInsights ? ["interviewSummary", "strengths", "weaknesses"] : []),
       "recommendation",
       "flags",
       "missingInformation",
@@ -56,6 +64,23 @@ export function defaultOutputSchema(schemaName: string) {
         minItems: 1,
         maxItems: 10
       },
+      ...(includeInterviewInsights
+        ? {
+            interviewSummary: {
+              type: "string"
+            },
+            strengths: {
+              type: "array",
+              items: { type: "string" },
+              maxItems: 8
+            },
+            weaknesses: {
+              type: "array",
+              items: { type: "string" },
+              maxItems: 8
+            }
+          }
+        : {}),
       recommendation: {
         type: "object",
         additionalProperties: false,
@@ -139,6 +164,9 @@ export function normalizeStructuredSections(
   return {
     facts: toStringArray(source.facts, fallback.facts),
     interpretation: toStringArray(source.interpretation, fallback.interpretation),
+    interviewSummary: toStringValue(source.interviewSummary, fallback.interviewSummary ?? ""),
+    strengths: toStringArray(source.strengths, fallback.strengths ?? []),
+    weaknesses: toStringArray(source.weaknesses, fallback.weaknesses ?? []),
     recommendationSummary: toStringValue(recommendation.summary, fallback.recommendationSummary),
     recommendationAction: toStringValue(recommendation.action, fallback.recommendationAction),
     recommendedOutcome: normalizedOutcome,
@@ -158,6 +186,9 @@ export function toOutputJson(input: {
   fallback: boolean;
   facts: string[];
   interpretation: string[];
+  interviewSummary?: string;
+  strengths?: string[];
+  weaknesses?: string[];
   recommendation: {
     summary: string;
     action: string;
@@ -184,6 +215,9 @@ export function toOutputJson(input: {
     sections: {
       facts: input.facts,
       interpretation: input.interpretation,
+      interviewSummary: input.interviewSummary,
+      strengths: input.strengths ?? [],
+      weaknesses: input.weaknesses ?? [],
       recommendation: input.recommendation,
       flags: input.flags,
       missingInformation: input.missingInformation

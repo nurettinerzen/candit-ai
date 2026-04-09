@@ -4,9 +4,15 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { ChangeEvent, FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useUiText } from "../../../../components/site-language-provider";
 import { ErrorState, LoadingState } from "../../../../components/ui-states";
 import { apiClient } from "../../../../lib/api-client";
-import { getRecruiterStageMeta } from "../../../../lib/constants";
+import { getRecruiterStageMeta, formatDepartment } from "../../../../lib/constants";
+import {
+  applicationDetailHref,
+  decodeRouteEntityId,
+  pickCanonicalApplicationId
+} from "../../../../lib/entity-routes";
 import { formatDate } from "../../../../lib/format";
 import type { CandidateWithApplications, Job } from "../../../../lib/types";
 
@@ -14,7 +20,6 @@ function toRecord(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {} as Record<string, unknown>;
   }
-
   return value as Record<string, unknown>;
 }
 
@@ -52,34 +57,22 @@ function readParsedSummary(profileJson: unknown) {
   };
 }
 
-function cvStatusLabel(status: string | null | undefined): { text: string; className: string } {
+function cvStatusText(status: string | null | undefined): { text: string; color: string } {
   switch (status) {
-    case "SUCCEEDED":
-      return { text: "İncelendi", className: "badge success" };
-    case "FAILED":
-      return { text: "İncelenemedi", className: "badge danger" };
+    case "SUCCEEDED": return { text: "İncelendi", color: "var(--success, #22c55e)" };
+    case "FAILED": return { text: "İncelenemedi", color: "var(--danger, #ef4444)" };
     case "RUNNING":
-      return { text: "İnceleniyor…", className: "badge warn" };
     case "QUEUED":
-      return { text: "Sırada", className: "badge warn" };
-    case "PENDING":
-      return { text: "Bekliyor", className: "badge warn" };
-    default:
-      return { text: "Henüz incelenmedi", className: "badge" };
+    case "PENDING": return { text: "İnceleniyor...", color: "var(--warn, #f59e0b)" };
+    default: return { text: "Henüz incelenmedi", color: "var(--text-dim)" };
   }
 }
 
-function confidenceBadge(confidence: string | number | null | undefined) {
-  const val = typeof confidence === "string" ? parseFloat(confidence) : (confidence ?? 0);
-  if (val >= 0.8) return <span className="badge success">Yüksek güven</span>;
-  if (val >= 0.5) return <span className="badge warn">Orta güven</span>;
-  return <span className="badge danger">Düşük güven</span>;
-}
-
 export default function CandidateDetailPage() {
+  const { t } = useUiText();
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const candidateId = params.id;
+  const candidateId = decodeRouteEntityId(params.id);
   const [candidate, setCandidate] = useState<CandidateWithApplications | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJobId, setSelectedJobId] = useState("");
@@ -95,32 +88,38 @@ export default function CandidateDetailPage() {
   const [triggeringParseForCvFileId, setTriggeringParseForCvFileId] = useState<string | null>(null);
   const [parseError, setParseError] = useState("");
   const [parseMessage, setParseMessage] = useState("");
+  const [redirectingToApplication, setRedirectingToApplication] = useState(false);
 
   const loadCandidate = useCallback(async () => {
     setLoading(true);
     setError("");
-
     try {
       const [candidatePayload, jobRows] = await Promise.all([
         apiClient.getCandidate(candidateId),
         apiClient.listJobs()
       ]);
+      const canonicalApplicationId = pickCanonicalApplicationId(candidatePayload.applications);
+      if (canonicalApplicationId) {
+        setRedirectingToApplication(true);
+        router.replace(applicationDetailHref(canonicalApplicationId));
+        return;
+      }
       setCandidate(candidatePayload);
       setJobs(jobRows);
       setSelectedJobId("");
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Aday detayı yüklenemedi.");
+      setError(loadError instanceof Error ? loadError.message : t("Aday detayı yüklenemedi."));
     } finally {
       setLoading(false);
     }
-  }, [candidateId]);
+  }, [candidateId, router, t]);
 
   useEffect(() => {
     void loadCandidate();
   }, [loadCandidate]);
 
   const existingJobIds = useMemo(
-    () => new Set(candidate?.applications.map((application) => application.jobId) ?? []),
+    () => new Set(candidate?.applications.map((a) => a.jobId) ?? []),
     [candidate]
   );
 
@@ -140,24 +139,17 @@ export default function CandidateDetailPage() {
   async function handleCreateApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setApplicationError("");
-
     if (!selectedJobId) {
-      setApplicationError("Başvuru açmak için bir iş ilanı seçmelisiniz.");
+      setApplicationError(t("Başvuru açmak için bir iş ilanı seçmelisiniz."));
       return;
     }
-
     setSubmittingApplication(true);
     try {
-      const created = await apiClient.createApplication({
-        candidateId,
-        jobId: selectedJobId
-      });
-      router.push(`/applications/${created.id}`);
+      const created = await apiClient.createApplication({ candidateId, jobId: selectedJobId });
+      router.push(applicationDetailHref(created.id));
       router.refresh();
     } catch (submitError) {
-      setApplicationError(
-        submitError instanceof Error ? submitError.message : "Başvuru oluşturulamadı."
-      );
+      setApplicationError(submitError instanceof Error ? submitError.message : t("Başvuru oluşturulamadı."));
     } finally {
       setSubmittingApplication(false);
     }
@@ -166,28 +158,17 @@ export default function CandidateDetailPage() {
   function handleCvFileSelection(event: ChangeEvent<HTMLInputElement>) {
     setCvUploadError("");
     setCvUploadMessage("");
-    const file = event.target.files?.[0] ?? null;
-    setSelectedCvFile(file);
+    setSelectedCvFile(event.target.files?.[0] ?? null);
   }
 
   async function handleTriggerParsing(cvFileId?: string) {
     setParseError("");
     setParseMessage("");
     setTriggeringParseForCvFileId(cvFileId ?? "latest");
-
     try {
-      const response = await apiClient.triggerCandidateCvParsing(candidateId, {
-        cvFileId
-      });
-
-      setParseMessage(
-        response.idempotent
-          ? "Bu CV zaten inceleniyor."
-          : "CV inceleniyor, lütfen bekleyin..."
-      );
+      const response = await apiClient.triggerCandidateCvParsing(candidateId, { cvFileId });
+      setParseMessage(response.idempotent ? t("Bu CV zaten inceleniyor.") : t("CV inceleniyor..."));
       await loadCandidate();
-
-      // Poll for completion — check every 3s, stop after 60s
       let elapsed = 0;
       const pollInterval = setInterval(async () => {
         elapsed += 3000;
@@ -199,23 +180,15 @@ export default function CandidateDetailPage() {
           if (status === "SUCCEEDED" || status === "FAILED" || elapsed >= 60000) {
             clearInterval(pollInterval);
             setParseMessage(
-              status === "SUCCEEDED"
-                ? "CV incelemesi tamamlandı."
-                : status === "FAILED"
-                  ? "CV incelemesi başarısız oldu."
-                  : "İnceleme devam ediyor, sayfayı yenileyerek kontrol edebilirsiniz."
+              status === "SUCCEEDED" ? t("CV incelemesi tamamlandı.")
+                : status === "FAILED" ? t("CV incelemesi başarısız oldu.")
+                : t("İnceleme devam ediyor, sayfayı yenileyerek kontrol edebilirsiniz.")
             );
           }
-        } catch {
-          clearInterval(pollInterval);
-        }
+        } catch { clearInterval(pollInterval); }
       }, 3000);
     } catch (triggerError) {
-      setParseError(
-        triggerError instanceof Error
-          ? triggerError.message
-          : "CV inceleme işlemi başlatılamadı."
-      );
+      setParseError(triggerError instanceof Error ? triggerError.message : t("CV inceleme işlemi başlatılamadı."));
     } finally {
       setTriggeringParseForCvFileId(null);
     }
@@ -225,376 +198,331 @@ export default function CandidateDetailPage() {
     event.preventDefault();
     setCvUploadError("");
     setCvUploadMessage("");
-
-    if (!selectedCvFile) {
-      setCvUploadError("Yüklemek için bir CV dosyası seçin.");
-      return;
-    }
-
+    if (!selectedCvFile) { setCvUploadError(t("Yüklemek için bir CV dosyası seçin.")); return; }
     setUploadingCv(true);
     try {
       const uploaded = await apiClient.uploadCandidateCv(candidateId, selectedCvFile);
-      setCvUploadMessage(`${uploaded.originalName} yüklendi. Sistem CV'yi inceliyor...`);
+      setCvUploadMessage(t(`${uploaded.originalName} yüklendi.`));
       setSelectedCvFile(null);
       await loadCandidate();
-      // Auto-trigger parse after upload
       void handleTriggerParsing(uploaded.id);
     } catch (uploadError) {
-      setCvUploadError(uploadError instanceof Error ? uploadError.message : "CV yüklenemedi.");
+      setCvUploadError(uploadError instanceof Error ? uploadError.message : t("CV yüklenemedi."));
     } finally {
       setUploadingCv(false);
     }
   }
 
+  if (loading || redirectingToApplication) {
+    return <LoadingState message={t("Merkezi aday profiline yönlendiriliyor...")} />;
+  }
+  if (error) return <ErrorState error={error} actions={<button className="ghost-button" onClick={() => void loadCandidate()}>{t("Tekrar dene")}</button>} />;
+  if (!candidate) return null;
+
+  const hasCv = candidate.cvFiles.length > 0;
+  const primaryCv = candidate.cvFiles.find((f) => f.isPrimary) ?? candidate.cvFiles[0];
+
   return (
-    <section className="panel">
-      <div className="section-head">
-        <div>
-          <h2 style={{ marginBottom: 4 }}>Aday Profili</h2>
-          <p className="small" style={{ marginTop: 0 }}>
-            Aday bilgileri, CV belgeleri ve bağlı başvurular.
-          </p>
-        </div>
-        <div className="row-actions">
-          <button type="button" className="ghost-button" onClick={() => void loadCandidate()}>
-            Yenile
-          </button>
-          <Link href="/candidates" className="ghost-button">
-            Aday Havuzu
-          </Link>
-        </div>
+    <div className="page-grid">
+      {/* Breadcrumb */}
+      <div style={{ marginBottom: 16 }}>
+        <Link href="/candidates" className="text-muted text-sm" style={{ textDecoration: "none" }}>
+          ← Aday Havuzu
+        </Link>
+        <span className="text-muted text-sm"> / {candidate.fullName}</span>
       </div>
 
-      {loading ? <LoadingState message="Aday detayı yükleniyor..." /> : null}
-      {!loading && error ? (
-        <ErrorState
-          error={error}
-          actions={
-            <button type="button" className="ghost-button" onClick={() => void loadCandidate()}>
-              Tekrar dene
-            </button>
-          }
-        />
-      ) : null}
-      {!loading && !error && candidate ? (
-        <>
-          <div className="details-grid">
-            <div>
-              <p className="small">Ad Soyad</p>
-              <strong>{candidate.fullName}</strong>
-            </div>
-            <div>
-              <p className="small">E-posta</p>
-              <strong>{candidate.email ?? "-"}</strong>
-            </div>
-            <div>
-              <p className="small">Telefon</p>
-              <strong>{candidate.phone ?? "-"}</strong>
-            </div>
-            <div>
-              <p className="small">Kaynak</p>
-              <strong>{candidate.source ?? "-"}</strong>
-            </div>
-            <div>
-              <p className="small">Kayıt Tarihi</p>
-              <strong>{formatDate(candidate.createdAt)}</strong>
-            </div>
-          </div>
-          <details style={{ marginTop: 8 }}>
-            <summary className="small" style={{ cursor: "pointer", color: "var(--text-muted)" }}>Teknik Bilgi</summary>
-            <p className="small" style={{ margin: "4px 0 0" }}>Aday ID: <code>{candidate.id}</code></p>
-          </details>
+      {/* Two column layout */}
+      <div className="detail-grid">
 
-          {candidate.cvFiles.length === 0 && (
-            <div className="alert-box" style={{ marginTop: 16 }}>
-              <strong>⚠ CV Eksik:</strong> Bu aday için henüz CV yüklenmemiştir.
-              AI değerlendirmesi yapabilmek için aşağıdan CV yüklemeniz gerekir.
+        {/* ═══ LEFT COLUMN ═══ */}
+        <div>
+
+          {/* Candidate Info Card */}
+          <section className="panel" style={{ marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+              <div>
+                <h2 style={{ fontSize: 22, fontWeight: 700 }}>{candidate.fullName}</h2>
+                <p className="text-sm text-muted" style={{ marginTop: 4 }}>
+                  {candidate.source ? `Kaynak: ${candidate.source}` : ""}
+                  {candidate.source ? " · " : ""}
+                  Kayıt: {formatDate(candidate.createdAt)}
+                </p>
+              </div>
+              <button className="ghost-button" onClick={() => void loadCandidate()}>Yenile</button>
+            </div>
+
+            <div className="info-grid-3" style={{ borderTop: "1px solid var(--border)" }}>
+              <InfoCell label={t("E-posta")} value={candidate.email ?? "—"} />
+              <InfoCell label={t("Telefon")} value={candidate.phone ?? "—"} />
+              <InfoCell label={t("CV Durumu")} value={hasCv ? t("Mevcut") : t("Yok")} success={hasCv} />
+            </div>
+          </section>
+
+          {/* CV Eksik Uyarısı */}
+          {!hasCv && (
+            <div style={{
+              padding: "12px 16px", borderRadius: 8, fontSize: 13, marginBottom: 16,
+              background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",
+              color: "var(--warn, #f59e0b)",
+            }}>
+              Bu aday için henüz CV yüklenmemiştir. AI değerlendirmesi yapabilmek için sağ taraftan CV yükleyin.
             </div>
           )}
 
-          <section className="panel nested-panel" style={{ marginTop: 16, ...(candidate.cvFiles.length === 0 ? { borderLeft: "3px solid var(--color-warning, #f59e0b)" } : {}) }}>
-            <div className="section-head" style={{ marginBottom: 8 }}>
-              <div>
-                <h3 style={{ margin: 0 }}>CV Belgeleri</h3>
-                <p className="small" style={{ margin: "4px 0 0" }}>
-                  AI sadece destekleyici çıkarım üretir. Nihai karar recruiter tarafındadır.
-                </p>
-              </div>
-            </div>
+          {/* CV Özeti */}
+          <section className="panel" style={{ marginBottom: 16 }}>
+            <h3 style={{ marginBottom: 4 }}>CV Özeti</h3>
+            <p className="small text-muted" style={{ marginBottom: 12 }}>AI tarafından çıkarılan özet bilgiler.</p>
 
-            {cvUploadError ? <ErrorState title="CV yükleme hatası" error={cvUploadError} /> : null}
-            {cvUploadMessage ? <p className="small">{cvUploadMessage}</p> : null}
-            <form className="inline-grid create-application-grid" onSubmit={handleCvUpload}>
+            {!parsedSummary ? (
+              <p className="text-sm text-muted">Henüz CV incelemesi yapılmadı.</p>
+            ) : (
+              <>
+                <p style={{ fontSize: 14, lineHeight: 1.8, marginBottom: 14 }}>{parsedSummary.shortSummary}</p>
+
+                <div style={{ fontSize: 13, marginBottom: 14 }}>
+                  <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.3px", marginBottom: 4 }}>
+                    İş Deneyimi Özeti
+                  </div>
+                  <p style={{ lineHeight: 1.7 }}>{parsedSummary.coreWorkHistorySummary}</p>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
+                  <div>
+                    <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.3px", marginBottom: 6 }}>
+                      Güçlü Yönler
+                    </div>
+                    {parsedSummary.likelyFitSignals.length === 0 ? (
+                      <p className="text-sm text-muted">Belirtilmedi.</p>
+                    ) : (
+                      <ul style={{ paddingLeft: 16, fontSize: 13, lineHeight: 1.8 }}>
+                        {parsedSummary.likelyFitSignals.map((item, i) => <li key={i}>{item}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.3px", marginBottom: 6 }}>
+                      Görüşmede Sorulması Gerekenler
+                    </div>
+                    {parsedSummary.recruiterFollowUpTopics.length === 0 ? (
+                      <p className="text-sm text-muted">Belirtilmedi.</p>
+                    ) : (
+                      <ul style={{ paddingLeft: 16, fontSize: 13, lineHeight: 1.8 }}>
+                        {parsedSummary.recruiterFollowUpTopics.map((item, i) => <li key={i}>{item}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+
+                {parsedSummary.missingCriticalInformation.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.3px", marginBottom: 6 }}>
+                      Eksik Bilgiler
+                    </div>
+                    <ul style={{ paddingLeft: 16, fontSize: 13, lineHeight: 1.8 }}>
+                      {parsedSummary.missingCriticalInformation.map((item, i) => <li key={i}>{item}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+
+          {/* Başvurular */}
+          <section className="panel" style={{ marginBottom: 16 }}>
+            <h3 style={{ marginBottom: 4 }}>Başvurular</h3>
+            <p className="small text-muted" style={{ marginBottom: 12 }}>Bu adayın bağlı olduğu ilanlar.</p>
+
+            {candidate.applications.length === 0 ? (
+              <p className="text-sm text-muted">Henüz başvuru yok.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {candidate.applications.map((application) => {
+                  const stageMeta = getRecruiterStageMeta(application.currentStage, application.humanDecision);
+                  return (
+                    <Link
+                      key={application.id}
+                      href={applicationDetailHref(application.id)}
+                      style={{
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        padding: "12px 16px", borderRadius: 8, textDecoration: "none", color: "inherit",
+                        background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)",
+                        transition: "all 0.15s",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(99,102,241,0.3)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{application.job.title}</div>
+                        <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 2 }}>
+                          {formatDate(application.stageUpdatedAt)}
+                        </div>
+                      </div>
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                        fontSize: 12, fontWeight: 600, color: stageMeta.color,
+                      }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: stageMeta.color }} />
+                        {stageMeta.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* ═══ RIGHT COLUMN (Sticky) ═══ */}
+        <div style={{ position: "sticky", top: 24 }}>
+
+          {/* CV Dosyaları */}
+          <section className="panel" style={{ marginBottom: 16 }}>
+            <h3 style={{ marginBottom: 4 }}>CV Dosyaları</h3>
+            <p className="small text-muted" style={{ marginBottom: 12 }}>Yüklenen özgeçmiş belgeleri.</p>
+
+            {cvUploadError && (
+              <div style={{ padding: "8px 12px", borderRadius: 6, marginBottom: 8, fontSize: 12, background: "rgba(239,68,68,0.1)", color: "var(--danger, #ef4444)" }}>
+                {cvUploadError}
+              </div>
+            )}
+            {cvUploadMessage && (
+              <div style={{ padding: "8px 12px", borderRadius: 6, marginBottom: 8, fontSize: 12, background: "rgba(34,197,94,0.1)", color: "var(--success, #22c55e)" }}>
+                {cvUploadMessage}
+              </div>
+            )}
+            {parseError && (
+              <div style={{ padding: "8px 12px", borderRadius: 6, marginBottom: 8, fontSize: 12, background: "rgba(239,68,68,0.1)", color: "var(--danger, #ef4444)" }}>
+                {parseError}
+              </div>
+            )}
+            {parseMessage && (
+              <div style={{ padding: "8px 12px", borderRadius: 6, marginBottom: 8, fontSize: 12, background: "rgba(34,197,94,0.1)", color: "var(--success, #22c55e)" }}>
+                {parseMessage}
+              </div>
+            )}
+
+            {/* CV Listesi */}
+            {candidate.cvFiles.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+                {candidate.cvFiles.map((cvFile) => {
+                  const taskStatus = cvFile.latestParseTask?.status ?? null;
+                  const statusInfo = cvStatusText(taskStatus);
+                  const isRunning = taskStatus === "PENDING" || taskStatus === "QUEUED" || taskStatus === "RUNNING";
+                  const isFallback = cvFile.parsedProfile?.providerMode === "deterministic_fallback";
+                  const extractionFailed = cvFile.parsedProfile?.extractionStatus === "FAILED";
+
+                  return (
+                    <div key={cvFile.id} style={{
+                      padding: "12px 14px", borderRadius: 8,
+                      background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)",
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <strong style={{ fontSize: 13 }}>{cvFile.originalName}</strong>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: statusInfo.color }}>{statusInfo.text}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 8 }}>
+                        {(cvFile.sizeBytes / 1024).toFixed(0)} KB · {formatDate(cvFile.uploadedAt)}
+                      </div>
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        style={{ fontSize: 12, padding: "4px 10px", width: "100%" }}
+                        disabled={triggeringParseForCvFileId !== null || isRunning}
+                        onClick={() => void handleTriggerParsing(cvFile.id)}
+                      >
+                        {triggeringParseForCvFileId === cvFile.id ? "Hazırlanıyor..."
+                          : isRunning ? "İnceleniyor..."
+                          : isFallback || extractionFailed ? "Tekrar İncele"
+                          : taskStatus === "SUCCEEDED" ? "Yeniden İncele"
+                          : "CV'yi İncele"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* CV Yükleme */}
+            <form onSubmit={handleCvUpload} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <input
                 className="input"
                 type="file"
                 accept=".pdf,.doc,.docx,.txt"
                 onChange={handleCvFileSelection}
+                style={{ fontSize: 12 }}
               />
-              <button type="submit" className="button-link" disabled={uploadingCv}>
+              <button type="submit" className="button-link" style={{ fontSize: 12, padding: "8px 0" }} disabled={uploadingCv}>
                 {uploadingCv ? "Yükleniyor..." : "CV Ekle"}
               </button>
             </form>
-            <p className="small" style={{ marginBottom: 0 }}>
-              Desteklenen formatlar:{" "}
-              {candidate.uploadPolicy.allowedExtensions.join(", ").toUpperCase()} - Maksimum{" "}
-              {(candidate.uploadPolicy.maxSizeBytes / 1024 / 1024).toFixed(1)} MB
+            <p className="text-sm text-muted" style={{ marginTop: 6, fontSize: 11 }}>
+              {candidate.uploadPolicy.allowedExtensions.join(", ").toUpperCase()} · Maks {(candidate.uploadPolicy.maxSizeBytes / 1024 / 1024).toFixed(0)} MB
             </p>
-
-            {parseError ? <ErrorState title="CV inceleme hatası" error={parseError} /> : null}
-            {parseMessage ? <p className="small">{parseMessage}</p> : null}
-
-            {candidate.cvFiles.length === 0 ? (
-              <p className="small" style={{ marginTop: 12 }}>
-                Bu aday için henüz CV dosyası yüklenmedi.
-              </p>
-            ) : (
-              <table className="table" style={{ marginTop: 12 }}>
-                <thead>
-                  <tr>
-                    <th>Dosya</th>
-                    <th>Yükleme</th>
-                    <th>CV Durumu</th>
-                    <th>Aksiyon</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {candidate.cvFiles.map((cvFile) => {
-                    const taskStatus = cvFile.latestParseTask?.status ?? null;
-                    const statusInfo = cvStatusLabel(taskStatus);
-                    const isRunning = taskStatus === "PENDING" || taskStatus === "QUEUED" || taskStatus === "RUNNING";
-                    const providerMode = cvFile.parsedProfile?.providerMode;
-                    const isFallback = providerMode === "deterministic_fallback";
-                    const extractionFailed = cvFile.parsedProfile?.extractionStatus === "FAILED";
-
-                    return (
-                      <tr key={cvFile.id}>
-                        <td>
-                          <strong>{cvFile.originalName}</strong>
-                          <p className="small" style={{ margin: "6px 0 0" }}>
-                            {cvFile.mimeType} | {(cvFile.sizeBytes / 1024).toFixed(1)} KB
-                          </p>
-                          <p className="small" style={{ margin: "4px 0 0" }}>
-                            {cvFile.isPrimary ? (
-                              <span className="badge">Birincil</span>
-                            ) : null}{" "}
-                            {cvFile.isLatest ? <span className="badge">En yeni</span> : null}
-                          </p>
-                        </td>
-                        <td>
-                          <p style={{ margin: 0 }}>{formatDate(cvFile.uploadedAt)}</p>
-                          <p className="small" style={{ margin: "4px 0 0" }}>
-                            Yükleyen: {cvFile.uploadedBy}
-                          </p>
-                        </td>
-                        <td>
-                          <span className={statusInfo.className}>{statusInfo.text}</span>
-
-                          {cvFile.parsedProfile ? (
-                            <>
-                              <p className="small" style={{ margin: "6px 0 0" }}>
-                                {confidenceBadge(cvFile.parsedProfile.parseConfidence)}
-                              </p>
-                              {extractionFailed ? (
-                                <p className="small" style={{ margin: "4px 0 0" }}>
-                                  <span className="badge danger">Metin okunamadı</span>
-                                </p>
-                              ) : null}
-                              {cvFile.parsedProfile.requiresManualReview ? (
-                                <p className="small" style={{ margin: "4px 0 0", color: "var(--color-warning)" }}>
-                                  ⚠ Bu CV&apos;nin içeriğini doğrudan kontrol etmenizi öneriyoruz.
-                                </p>
-                              ) : null}
-                            </>
-                          ) : !isRunning ? (
-                            <p className="small" style={{ margin: "6px 0 0" }}>
-                              Henüz incelenmedi
-                            </p>
-                          ) : null}
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="ghost-button"
-                            disabled={triggeringParseForCvFileId !== null || isRunning}
-                            onClick={() => void handleTriggerParsing(cvFile.id)}
-                          >
-                            {triggeringParseForCvFileId === cvFile.id
-                              ? "Hazırlanıyor..."
-                              : isRunning
-                                ? "İnceleniyor..."
-                                : isFallback || extractionFailed
-                                  ? "Tekrar İncele"
-                                  : taskStatus === "SUCCEEDED"
-                                    ? "Yeniden İncele"
-                                    : "CV'yi İncele"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
           </section>
 
-          <section className="panel nested-panel" style={{ marginTop: 16 }}>
-            <h3 style={{ marginTop: 0 }}>CV Özeti</h3>
-            {!candidate.latestParsedProfile || !parsedSummary ? (
-              <p className="small">Bu aday için henüz CV incelemesi yapılmadı.</p>
-            ) : (
-              <>
-                <div className="details-grid">
-                  <div>
-                    <p className="small">İnceleme Güveni</p>
-                    {confidenceBadge(candidate.latestParsedProfile.parseConfidence)}
-                  </div>
-                  <div>
-                    <p className="small">Oluşturulma</p>
-                    <strong>{formatDate(candidate.latestParsedProfile.createdAt)}</strong>
-                  </div>
-                </div>
-                <p style={{ marginTop: 10 }}>{parsedSummary.shortSummary}</p>
-                <p className="small section-label">İş Deneyimi Özeti</p>
-                <p style={{ marginTop: 0 }}>{parsedSummary.coreWorkHistorySummary}</p>
-                <div className="mini-grid">
-                  <div>
-                    <p className="small section-label">Güçlü Yönler</p>
-                    {parsedSummary.likelyFitSignals.length === 0 ? (
-                      <p className="small">Belirtilmedi.</p>
-                    ) : (
-                      <ul className="plain-list">
-                        {parsedSummary.likelyFitSignals.map((item, index) => (
-                          <li key={`fit-${index}`}>{item}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  <div>
-                    <p className="small section-label">Görüşmede Sorulması Gerekenler</p>
-                    {parsedSummary.recruiterFollowUpTopics.length === 0 ? (
-                      <p className="small">Belirtilmedi.</p>
-                    ) : (
-                      <ul className="plain-list">
-                        {parsedSummary.recruiterFollowUpTopics.map((item, index) => (
-                          <li key={`followup-${index}`}>{item}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-                <p className="small section-label">Eksik Bilgiler</p>
-                {parsedSummary.missingCriticalInformation.length === 0 ? (
-                  <p className="small">Eksik bilgi işaretlenmedi.</p>
-                ) : (
-                  <ul className="plain-list">
-                    {parsedSummary.missingCriticalInformation.map((item, index) => (
-                      <li key={`missing-${index}`}>{item}</li>
-                    ))}
-                  </ul>
-                )}
-                <details className="history-item" style={{ marginTop: 8 }}>
-                  <summary>Teknik Detay (JSON)</summary>
-                  <pre className="code-block">
-                    {JSON.stringify(candidate.latestParsedProfile.profileJson, null, 2)}
-                  </pre>
-                </details>
-              </>
-            )}
-          </section>
+          {/* Adayı İlana Bağla */}
+          <section className="panel" style={{ marginBottom: 16 }}>
+            <h3 style={{ marginBottom: 4 }}>Adayı İlana Bağla</h3>
+            <p className="small text-muted" style={{ marginBottom: 12 }}>Yeni bir ilana başvuru oluşturun.</p>
 
-          <div className="panel nested-panel" style={{ marginTop: 16 }}>
-            <h3 style={{ marginTop: 0 }}>Adayı İlana Bağla</h3>
-            {applicationError ? <ErrorState title="Başvuru hatası" error={applicationError} /> : null}
-            <form className="inline-grid create-application-grid" onSubmit={handleCreateApplication}>
-              <select
-                className="select"
-                value={selectedJobId}
-                onChange={(event) => setSelectedJobId(event.target.value)}
-                required
-              >
-                <option value="">İlan seçiniz</option>
-                {availableJobs.map((job) => (
-                  <option key={job.id} value={job.id}>
-                    {job.title}
-                  </option>
-                ))}
-              </select>
-              <button type="submit" className="button-link" disabled={submittingApplication}>
-                {submittingApplication ? "Oluşturuluyor..." : "Başvuru Aç"}
-              </button>
-            </form>
+            {applicationError && (
+              <div style={{ padding: "8px 12px", borderRadius: 6, marginBottom: 8, fontSize: 12, background: "rgba(239,68,68,0.1)", color: "var(--danger, #ef4444)" }}>
+                {applicationError}
+              </div>
+            )}
+
             {availableJobs.length === 0 ? (
-              <p className="small" style={{ marginBottom: 0 }}>
-                Aday tüm aktif ilanlara zaten bağlanmış.
-              </p>
-            ) : null}
-          </div>
+              <p className="text-sm text-muted">Tüm aktif ilanlara zaten bağlı.</p>
+            ) : (
+              <form onSubmit={handleCreateApplication} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <select
+                  className="select"
+                  value={selectedJobId}
+                  onChange={(e) => setSelectedJobId(e.target.value)}
+                  required
+                  style={{ fontSize: 13, padding: "8px 12px" }}
+                >
+                  <option value="">İlan seçiniz</option>
+                  {availableJobs.map((job) => (
+                    <option key={job.id} value={job.id}>{job.title}</option>
+                  ))}
+                </select>
+                <button type="submit" className="button-link" style={{ fontSize: 12, padding: "8px 0" }} disabled={submittingApplication}>
+                  {submittingApplication ? "Oluşturuluyor..." : "Başvuru Aç"}
+                </button>
+              </form>
+            )}
+          </section>
 
-          <h3>Başvurular</h3>
-          {candidate.applications.length === 0 ? (
-            <p className="small">Bu aday için henüz başvuru yok.</p>
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>İlan</th>
-                  <th>Aşama</th>
-                  <th>Son Güncelleme</th>
-                  <th>İşlem</th>
-                </tr>
-              </thead>
-              <tbody>
-                {candidate.applications.map((application) => {
-                        const stageMeta = getRecruiterStageMeta(
-                          application.currentStage,
-                          application.humanDecision
-                        );
+          <Link
+            href="/candidates"
+            className="text-xs text-muted"
+            style={{ textDecoration: "none", display: "inline-block", marginTop: 4 }}
+          >
+            ← Aday Havuzuna dön
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-                  return (
-                    <tr key={application.id}>
-                      <td>
-                        <Link href={`/jobs/${application.jobId}`} style={{ fontWeight: 500 }}>
-                          {application.job.title}
-                        </Link>
-                      </td>
-                      <td>
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 6,
-                            color: stageMeta.color,
-                            fontWeight: 600,
-                            fontSize: 12
-                          }}
-                        >
-                          <span
-                            aria-hidden="true"
-                            style={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: "50%",
-                              background: stageMeta.color
-                            }}
-                          />
-                          {stageMeta.label}
-                        </span>
-                      </td>
-                      <td style={{ color: "var(--text-secondary)" }}>{formatDate(application.stageUpdatedAt)}</td>
-                      <td>
-                        <Link href={`/applications/${application.id}`} className="table-action-link" style={{ fontSize: 12 }}>
-                          Başvuruyu Aç
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </>
-      ) : null}
-    </section>
+/* ── Sub-components ── */
+
+function InfoCell({ label, value, success }: { label: string; value: string; success?: boolean }) {
+  return (
+    <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)" }}>
+      <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.3px", marginBottom: 3 }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 13, fontWeight: 600, wordBreak: "break-all",
+        color: success ? "var(--success, #22c55e)" : undefined,
+      }}>
+        {value}
+      </div>
+    </div>
   );
 }

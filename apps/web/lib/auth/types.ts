@@ -11,4 +11,6 @@ export type WebAuthSession = {
   refreshToken?: string;
   sessionId?: string;
   email?: string;
+  emailVerifiedAt?: string | null;
+  avatarUrl?: string | null;
 };

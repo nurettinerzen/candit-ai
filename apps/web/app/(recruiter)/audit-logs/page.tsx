@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useUiText } from "../../../components/site-language-provider";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { apiClient } from "../../../lib/api-client";
 import { compactJson, formatDate, truncate } from "../../../lib/format";
 import type { AuditLog } from "../../../lib/types";
 
 export default function AuditLogsPage() {
+  const { t } = useUiText();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [entityType, setEntityType] = useState("");
   const [entityId, setEntityId] = useState("");
@@ -26,11 +28,11 @@ export default function AuditLogsPage() {
       });
       setLogs(rows);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Audit log verisi alınamadı.");
+      setError(loadError instanceof Error ? loadError.message : t("Audit log verisi alınamadı."));
     } finally {
       setLoading(false);
     }
-  }, [entityId, entityType, limit]);
+  }, [entityId, entityType, limit, t]);
 
   useEffect(() => {
     void loadLogs();
@@ -40,13 +42,13 @@ export default function AuditLogsPage() {
     <section className="panel">
       <div className="section-head">
         <div>
-          <h2 style={{ marginBottom: 4 }}>Denetim Kayitlari</h2>
+          <h2 style={{ marginBottom: 4 }}>{t("Denetim Kayıtları")}</h2>
           <p className="small" style={{ marginTop: 0 }}>
-            Recruiter kararlarinin ve AI sistem aksiyonlarinin izlenebilirligi.
+            {t("Recruiter kararlarının ve AI sistem aksiyonlarının izlenebilirliği.")}
           </p>
         </div>
         <button type="button" className="ghost-button" onClick={() => void loadLogs()}>
-          Yenile
+          {t("Yenile")}
         </button>
       </div>
 
@@ -61,13 +63,13 @@ export default function AuditLogsPage() {
           className="input"
           value={entityType}
           onChange={(event) => setEntityType(event.target.value)}
-          placeholder="Entity tipi (opsiyonel)"
+          placeholder={t("Entity tipi (opsiyonel)")}
         />
         <input
           className="input"
           value={entityId}
           onChange={(event) => setEntityId(event.target.value)}
-          placeholder="Entity ID (opsiyonel)"
+          placeholder={t("Entity ID (opsiyonel)")}
         />
         <input
           className="input"
@@ -76,36 +78,36 @@ export default function AuditLogsPage() {
           max={200}
           value={limit}
           onChange={(event) => setLimit(event.target.value)}
-          placeholder="Limit"
+          placeholder={t("Limit")}
         />
         <button type="submit" className="ghost-button">
-          Uygula
+          {t("Uygula")}
         </button>
       </form>
 
-      {loading ? <LoadingState message="Audit kayıtları yükleniyor..." /> : null}
+      {loading ? <LoadingState message={t("Audit kayıtları yükleniyor...")} /> : null}
       {!loading && error ? (
         <ErrorState
           error={error}
           actions={
             <button type="button" className="ghost-button" onClick={() => void loadLogs()}>
-              Tekrar dene
+              {t("Tekrar dene")}
             </button>
           }
         />
       ) : null}
       {!loading && !error && logs.length === 0 ? (
-        <EmptyState message="Filtreye uygun audit kaydı bulunamadı." />
+        <EmptyState message={t("Filtreye uygun audit kaydı bulunamadı.")} />
       ) : null}
       {!loading && !error && logs.length > 0 ? (
         <table className="table">
           <thead>
             <tr>
-              <th>Tarih</th>
-              <th>Aksiyon</th>
+              <th>{t("Tarih")}</th>
+              <th>{t("Aksiyon")}</th>
               <th>Entity</th>
               <th>Actor</th>
-              <th>Metadata</th>
+              <th>{t("Metadata")}</th>
             </tr>
           </thead>
           <tbody>

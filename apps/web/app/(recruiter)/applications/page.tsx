@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useUiText } from "../../../components/site-language-provider";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { canPerformAction } from "../../../lib/auth/policy";
 import { resolveActiveSession } from "../../../lib/auth/session";
@@ -13,7 +13,9 @@ import {
   getRecruiterStageMeta,
   getRecruiterStatus
 } from "../../../lib/constants";
+import { applicationDetailHref } from "../../../lib/entity-routes";
 import { formatDate } from "../../../lib/format";
+import { getInterviewInvitationMeta } from "../../../lib/interview-invitation";
 import type {
   Candidate,
   Job,
@@ -21,32 +23,17 @@ import type {
 } from "../../../lib/types";
 
 type QueueState = {
-  key: "decision" | "feedback" | "today_interview" | "in_progress";
+  key: "decision" | "feedback" | "invite_pending" | "in_progress";
   helper: string;
   priority: number;
 };
 
-function isSameCalendarDay(value: string | null | undefined) {
-  if (!value) {
-    return false;
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return false;
-  }
-
-  const now = new Date();
-
-  return (
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  );
-}
-
 function resolveQueueState(application: RecruiterApplicationsReadModel["items"][number]): QueueState {
   const recruiterStatus = getRecruiterStatus(application.stage, application.humanDecision);
+  const interviewMeta = getInterviewInvitationMeta(
+    application.interview?.invitation ?? null,
+    application.interview?.status ?? null
+  );
 
   if (
     application.interview?.status === "COMPLETED" &&
@@ -82,11 +69,12 @@ function resolveQueueState(application: RecruiterApplicationsReadModel["items"][
 
   if (
     application.interview?.status === "SCHEDULED" &&
-    isSameCalendarDay(application.interview?.scheduledAt)
+    (application.interview?.invitation?.state === "INVITED" ||
+      application.interview?.invitation?.state === "REMINDER_SENT")
   ) {
     return {
-      key: "today_interview",
-      helper: "Bugün planlanmış bir mülakat var.",
+      key: "invite_pending",
+      helper: `${interviewMeta.label}. Adayın linkten görüşmeyi başlatması bekleniyor.`,
       priority: 3
     };
   }
@@ -99,6 +87,7 @@ function resolveQueueState(application: RecruiterApplicationsReadModel["items"][
 }
 
 export default function ApplicationsPage() {
+  const { t } = useUiText();
   const router = useRouter();
   const session = useMemo(() => resolveActiveSession(), []);
   const canCreateApplication = canPerformAction(session, "candidate.create");
@@ -113,6 +102,7 @@ export default function ApplicationsPage() {
   const [error, setError] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [activeCard, setActiveCard] = useState<"ready" | "decision" | "interview" | "all">("all");
 
   const loadPageData = useCallback(async () => {
     setLoading(true);
@@ -156,7 +146,7 @@ export default function ApplicationsPage() {
       setCandidateId("");
       setJobId("");
       await loadPageData();
-      router.push(`/applications/${created.id}`);
+      router.push(applicationDetailHref(created.id));
       router.refresh();
     } catch (submitErr) {
       setSubmitError(
@@ -169,49 +159,42 @@ export default function ApplicationsPage() {
 
   const prioritizedApplications = useMemo(() => {
     const filtered = applications.filter((application) => {
-      if (jobFilter && application.job.id !== jobFilter) {
-        return false;
-      }
+      if (jobFilter && application.job.id !== jobFilter) return false;
 
       if (stageFilter) {
-        const status = getRecruiterStatus(
-          application.stage,
-          application.humanDecision
-        );
-        if (status !== stageFilter) {
-          return false;
-        }
+        const status = getRecruiterStatus(application.stage, application.humanDecision);
+        if (status !== stageFilter) return false;
       }
 
+      if (activeCard === "ready") return resolveQueueState(application).key === "feedback";
+      if (activeCard === "decision") return resolveQueueState(application).key === "decision";
+      if (activeCard === "interview") return application.stage === "INTERVIEW_SCHEDULED";
       return true;
     });
 
     return [...filtered].sort((left, right) => {
       const leftState = resolveQueueState(left);
       const rightState = resolveQueueState(right);
-
-      if (leftState.priority !== rightState.priority) {
-        return leftState.priority - rightState.priority;
-      }
-
+      if (leftState.priority !== rightState.priority) return leftState.priority - rightState.priority;
       return new Date(right.stageUpdatedAt).getTime() - new Date(left.stageUpdatedAt).getTime();
     });
-  }, [applications, jobFilter, stageFilter]);
+  }, [applications, jobFilter, stageFilter, activeCard]);
 
-  const decisionWaitingCount = useMemo(
-    () => applications.filter((application) => resolveQueueState(application).key === "decision").length,
-    [applications]
-  );
+  type CardKey = "ready" | "decision" | "interview" | "all";
 
-  const plannedInterviewCount = useMemo(
-    () => applications.filter((application) => application.stage === "INTERVIEW_SCHEDULED").length,
-    [applications]
-  );
+  const cardCounts = useMemo(() => ({
+    ready: applications.filter((a) => resolveQueueState(a).key === "feedback").length,
+    decision: applications.filter((a) => resolveQueueState(a).key === "decision").length,
+    interview: applications.filter((a) => a.stage === "INTERVIEW_SCHEDULED").length,
+    all: applications.length,
+  }), [applications]);
 
-  const rejectedCount = useMemo(
-    () => applications.filter((application) => application.stage === "REJECTED").length,
-    [applications]
-  );
+  const CARDS: Array<{ key: CardKey; label: string; color: string; activeColor: string }> = [
+    { key: "ready", label: "Değerlendirme Hazır", color: "var(--success, #22c55e)", activeColor: "rgba(34,197,94,0.12)" },
+    { key: "decision", label: "Karar Bekleyen", color: "var(--warn, #f59e0b)", activeColor: "rgba(245,158,11,0.12)" },
+    { key: "interview", label: "Görüşme Bekleyen", color: "var(--primary, #7c73fa)", activeColor: "rgba(124,115,250,0.12)" },
+    { key: "all", label: "Tümü", color: "var(--text-secondary)", activeColor: "var(--primary-light, rgba(124,115,250,0.12))" },
+  ];
 
   return (
     <section className="page-grid">
@@ -220,31 +203,43 @@ export default function ApplicationsPage() {
           <div>
             <h2 style={{ marginBottom: 4 }}>Başvurular</h2>
             <p className="small" style={{ marginTop: 0 }}>
-              Bu ekran iş kuyruğudur. Aday profili ayrı sayfadadır; buradan ilan bazlı karar ekranına girilir.
+              {t("Bu ekran iş kuyruğudur. Aday profili ayrı sayfadadır; buradan ilan bazlı karar ekranına girilir.")}
             </p>
           </div>
           <button type="button" className="ghost-button" onClick={() => void loadPageData()}>
-            Yenile
+            {t("Yenile")}
           </button>
         </div>
 
-        <div className="kpi-grid" style={{ marginBottom: 18 }}>
-          <article className="kpi-card">
-            <p className="small">Toplam Kayıt</p>
-            <p className="kpi-value">{applications.length}</p>
-          </article>
-          <article className="kpi-card">
-            <p className="small">Karar Bekleyen</p>
-            <p className="kpi-value">{decisionWaitingCount}</p>
-          </article>
-          <article className="kpi-card">
-            <p className="small">Mülakat Planlandı</p>
-            <p className="kpi-value">{plannedInterviewCount}</p>
-          </article>
-          <article className="kpi-card">
-            <p className="small">Reddedildi</p>
-            <p className="kpi-value">{rejectedCount}</p>
-          </article>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 18 }}>
+          {CARDS.map((card) => {
+            const isActive = activeCard === card.key;
+            const count = cardCounts[card.key];
+            return (
+              <button
+                key={card.key}
+                type="button"
+                onClick={() => setActiveCard(card.key)}
+                style={{
+                  cursor: "pointer",
+                  padding: "16px 18px",
+                  borderRadius: 12,
+                  border: isActive ? `1.5px solid ${card.color}` : "1px solid var(--border)",
+                  background: isActive ? card.activeColor : "var(--surface)",
+                  textAlign: "left",
+                  fontFamily: "inherit",
+                  transition: "all 0.15s",
+                }}
+              >
+                <div style={{ fontSize: 26, fontWeight: 700, color: count > 0 ? card.color : "var(--text-dim)", lineHeight: 1 }}>
+                  {count}
+                </div>
+                <div style={{ fontSize: 12, color: isActive ? card.color : "var(--text-secondary)", marginTop: 6, fontWeight: isActive ? 600 : 400 }}>
+                  {t(card.label)}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         <form
@@ -255,16 +250,16 @@ export default function ApplicationsPage() {
           }}
         >
           <select className="select" value={stageFilter} onChange={(event) => setStageFilter(event.target.value)}>
-            <option value="">Tüm durumlar</option>
+            <option value="">{t("Tüm durumlar")}</option>
             {RECRUITER_STATUS_FILTERS.map((status) => (
               <option key={status.value} value={status.value}>
-                {status.label}
+                {t(status.label)}
               </option>
             ))}
           </select>
 
           <select className="select" value={jobFilter} onChange={(event) => setJobFilter(event.target.value)}>
-            <option value="">Tüm ilanlar</option>
+            <option value="">{t("Tüm ilanlar")}</option>
             {jobs.map((job) => (
               <option key={job.id} value={job.id}>
                 {job.title}
@@ -273,11 +268,11 @@ export default function ApplicationsPage() {
           </select>
 
           <button type="submit" className="ghost-button">
-            Filtreyi Uygula
+            {t("Filtreyi Uygula")}
           </button>
         </form>
 
-        {loading ? <LoadingState message="Başvurular yükleniyor..." /> : null}
+        {loading ? <LoadingState message={t("Başvurular yükleniyor...")} /> : null}
         {!loading && error ? (
           <ErrorState
             error={error}
@@ -289,18 +284,17 @@ export default function ApplicationsPage() {
           />
         ) : null}
         {!loading && !error && prioritizedApplications.length === 0 ? (
-          <EmptyState message="Filtreye uygun başvuru bulunamadı." />
+          <EmptyState message={t("Filtreye uygun başvuru bulunamadı.")} />
         ) : null}
         {!loading && !error && prioritizedApplications.length > 0 ? (
           <div className="table-responsive">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Aday</th>
-                  <th>İlan</th>
-                  <th>Durum</th>
-                  <th>Son Güncelleme</th>
-                  <th>İşlem</th>
+                  <th>{t("Aday")}</th>
+                  <th>{t("İlan")}</th>
+                  <th>{t("Durum")}</th>
+                  <th>{t("Son Güncelleme")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -311,31 +305,27 @@ export default function ApplicationsPage() {
                   );
 
                   return (
-                    <tr key={application.id}>
+                    <tr
+                      key={application.id}
+                      onClick={() => { window.location.href = applicationDetailHref(application.id); }}
+                      style={{ cursor: "pointer" }}
+                    >
                       <td>
-                        <div style={{ display: "grid", gap: 4 }}>
-                          <Link href={`/candidates/${application.candidate.id}`}>
-                            {application.candidate.fullName}
-                          </Link>
-                          {application.candidate.email ? (
-                            <span className="small">{application.candidate.email}</span>
-                          ) : null}
-                        </div>
+                        <div style={{ fontWeight: 500 }}>{application.candidate.fullName}</div>
+                        {application.candidate.email ? (
+                          <div className="small text-muted">{application.candidate.email}</div>
+                        ) : null}
                       </td>
-                      <td>
-                        <div style={{ display: "grid", gap: 4 }}>
-                          <Link href={`/jobs/${application.job.id}`}>{application.job.title}</Link>
-                          <span className="small">{application.job.status}</span>
-                        </div>
-                      </td>
+                      <td>{application.job.title}</td>
                       <td>
                         <span
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
-                            gap: 8,
+                            gap: 6,
                             color: stageMeta.color,
-                            fontWeight: 600
+                            fontWeight: 600,
+                            fontSize: 13,
                           }}
                         >
                           <span
@@ -347,19 +337,10 @@ export default function ApplicationsPage() {
                               background: stageMeta.color
                             }}
                           />
-                          {stageMeta.label}
+                          {t(stageMeta.label)}
                         </span>
                       </td>
                       <td>{formatDate(application.stageUpdatedAt)}</td>
-                      <td>
-                        <Link
-                          href={`/applications/${application.id}`}
-                          className="table-action-link"
-                          style={{ whiteSpace: "nowrap" }}
-                        >
-                          Başvuruyu Aç
-                        </Link>
-                      </td>
                     </tr>
                   );
                 })}
@@ -374,9 +355,9 @@ export default function ApplicationsPage() {
           <>
             <div className="section-head" style={{ marginBottom: 12 }}>
               <div>
-                <h3 style={{ margin: 0 }}>Yeni Başvuru Aç</h3>
+                <h3 style={{ margin: 0 }}>{t("Yeni Başvuru Aç")}</h3>
                 <p className="small" style={{ margin: "4px 0 0" }}>
-                  Manuel giriş gerekiyorsa yeni başvuruyu buradan oluşturabilirsiniz.
+                  {t("Manuel giriş gerekiyorsa yeni başvuruyu buradan oluşturabilirsiniz.")}
                 </p>
               </div>
             </div>

@@ -1,14 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useUiText } from "../../../components/site-language-provider";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { apiClient } from "../../../lib/api-client";
+import { applicationDetailHref } from "../../../lib/entity-routes";
 import { formatDate } from "../../../lib/format";
+import { getInterviewInvitationMeta } from "../../../lib/interview-invitation";
 import type { InterviewSessionStatus, InterviewSessionView } from "../../../lib/types";
 
 const INTERVIEW_STATUS_LABELS: Record<InterviewSessionStatus, string> = {
-  SCHEDULED: "Planlandı",
+  SCHEDULED: "Bekleniyor",
   RUNNING: "Devam Ediyor",
   COMPLETED: "Tamamlandı",
   FAILED: "Başarısız",
@@ -16,39 +18,30 @@ const INTERVIEW_STATUS_LABELS: Record<InterviewSessionStatus, string> = {
   CANCELLED: "İptal Edildi",
 };
 
-type TabKey = "INCELEME_BEKLEYEN" | "BEKLEYEN" | "BUGUN" | "AKTIF" | "SORUNLU" | "TUMU";
+type TabKey = "HAZIR" | "DEVAM" | "DIKKAT" | "TUMU";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "INCELEME_BEKLEYEN", label: "İnceleme Bekleyen" },
-  { key: "BEKLEYEN", label: "Randevu Bekleyen" },
-  { key: "BUGUN", label: "Bugün" },
-  { key: "AKTIF", label: "Devam Eden" },
-  { key: "SORUNLU", label: "Sorunlu" },
-  { key: "TUMU", label: "Tümü" },
+type StatCard = {
+  key: TabKey;
+  label: string;
+  color: string;
+  activeColor: string;
+};
+
+const STAT_CARDS: StatCard[] = [
+  { key: "HAZIR", label: "Hazır", color: "var(--success, #22c55e)", activeColor: "rgba(34,197,94,0.12)" },
+  { key: "DEVAM", label: "Devam Eden", color: "var(--warn, #f59e0b)", activeColor: "rgba(245,158,11,0.12)" },
+  { key: "DIKKAT", label: "Dikkat", color: "var(--risk, #ef4444)", activeColor: "rgba(239,68,68,0.12)" },
+  { key: "TUMU", label: "Tümü", color: "var(--text-secondary)", activeColor: "var(--primary-light, rgba(124,115,250,0.12))" },
 ];
 
-function isToday(dateStr: string | null): boolean {
-  if (!dateStr) return false;
-  const d = new Date(dateStr);
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear()
-    && d.getMonth() === now.getMonth()
-    && d.getDate() === now.getDate();
-}
 
 function filterByTab(sessions: InterviewSessionView[], tab: TabKey): InterviewSessionView[] {
   switch (tab) {
-    case "INCELEME_BEKLEYEN":
+    case "HAZIR":
       return sessions.filter((s) => s.status === "COMPLETED");
-    case "BEKLEYEN":
-      return sessions.filter((s) => s.status === "SCHEDULED");
-    case "BUGUN":
-      return sessions.filter((s) =>
-        (s.status === "SCHEDULED" || s.status === "RUNNING") && isToday(s.scheduledAt)
-      );
-    case "AKTIF":
-      return sessions.filter((s) => s.status === "RUNNING");
-    case "SORUNLU":
+    case "DEVAM":
+      return sessions.filter((s) => s.status === "RUNNING" || s.status === "SCHEDULED");
+    case "DIKKAT":
       return sessions.filter((s) => s.status === "FAILED" || s.status === "NO_SHOW" || s.status === "CANCELLED");
     case "TUMU":
     default:
@@ -75,43 +68,9 @@ function statusBadgeClass(status: InterviewSessionStatus): string {
   }
 }
 
-function renderProgress(session: InterviewSessionView): string {
-  if (session.status === "RUNNING") {
-    if (session.progress && session.progress.totalBlocks > 0) {
-      return `${session.progress.answeredBlocks}/${session.progress.totalBlocks} (${Math.round(session.progress.ratio * 100)}%)`;
-    }
-    return "Devam Ediyor";
-  }
-  if (session.status === "COMPLETED") {
-    return "Tamamlandı";
-  }
-  return "—";
-}
-
-function renderNextAction(session: InterviewSessionView) {
-  switch (session.status) {
-    case "SCHEDULED":
-      return <span className="text-muted">Aday bekleniyor</span>;
-    case "RUNNING":
-      return <span style={{ color: "var(--warn-text)" }}>Görüşme devam ediyor</span>;
-    case "COMPLETED":
-      return (
-        <Link href={`/applications/${session.applicationId}`} className="table-action-link">
-          Sonuçları İncele
-        </Link>
-      );
-    case "FAILED":
-      return <span style={{ color: "var(--risk)" }}>Yeniden planlanmalı</span>;
-    case "NO_SHOW":
-      return <span style={{ color: "var(--warn-text)" }}>Aday katılmadı</span>;
-    case "CANCELLED":
-      return <span className="text-muted">İptal edildi</span>;
-    default:
-      return "—";
-  }
-}
 
 export default function InterviewsPage() {
+  const { t } = useUiText();
   const [activeTab, setActiveTab] = useState<TabKey>("TUMU");
   const [allSessions, setAllSessions] = useState<InterviewSessionView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,15 +95,20 @@ export default function InterviewsPage() {
 
   const counts = useMemo(() => {
     const total = allSessions.length;
-    const reviewPending = allSessions.filter((s) => s.status === "COMPLETED").length;
-    const scheduled = allSessions.filter((s) => s.status === "SCHEDULED").length;
-    const today = allSessions.filter((s) =>
-      (s.status === "SCHEDULED" || s.status === "RUNNING") && isToday(s.scheduledAt)
-    ).length;
-    const running = allSessions.filter((s) => s.status === "RUNNING").length;
-    const problematic = allSessions.filter((s) => s.status === "FAILED" || s.status === "NO_SHOW" || s.status === "CANCELLED").length;
-    return { total, reviewPending, scheduled, today, running, problematic };
+    const ready = allSessions.filter((s) => s.status === "COMPLETED").length;
+    const ongoing = allSessions.filter((s) => s.status === "RUNNING" || s.status === "SCHEDULED").length;
+    const attention = allSessions.filter((s) => s.status === "FAILED" || s.status === "NO_SHOW" || s.status === "CANCELLED").length;
+    return { total, ready, ongoing, attention };
   }, [allSessions]);
+
+  const countForCard = (key: TabKey): number => {
+    switch (key) {
+      case "HAZIR": return counts.ready;
+      case "DEVAM": return counts.ongoing;
+      case "DIKKAT": return counts.attention;
+      case "TUMU": return counts.total;
+    }
+  };
 
   const sessions = useMemo(() => filterByTab(allSessions, activeTab), [allSessions, activeTab]);
 
@@ -152,69 +116,44 @@ export default function InterviewsPage() {
     <section className="page-grid">
       <div className="section-head" style={{ marginBottom: 0 }}>
         <div>
-          <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}>Mülakatlar</h1>
+          <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}>{t("Mülakatlar")}</h1>
           <p className="small" style={{ margin: 0 }}>
-            Planlanan, devam eden ve tamamlanan görüşmeleri takip edin. İnceleme bekleyenlere öncelik verin.
+            {t("Tek linkli AI görüşme davetlerini, devam eden oturumları ve tamamlanan görüşmeleri takip edin.")}
           </p>
         </div>
         <button type="button" className="ghost-button" onClick={() => void loadSessions()}>
-          Yenile
+          {t("Yenile")}
         </button>
       </div>
 
-      {/* KPI Stats Bar */}
+      {/* Filter Cards */}
       {!loading && !error && (
-        <div className="inbox-stats">
-          <div className="inbox-stat">
-            <span className="inbox-stat-value">{counts.total}</span>
-            <span className="inbox-stat-label">Toplam</span>
-          </div>
-          <div className="inbox-stat">
-            <span className="inbox-stat-value" style={{ color: counts.reviewPending > 0 ? "var(--success)" : undefined }}>{counts.reviewPending}</span>
-            <span className="inbox-stat-label">İnceleme Bekleyen</span>
-          </div>
-          <div className="inbox-stat">
-            <span className="inbox-stat-value">{counts.scheduled}</span>
-            <span className="inbox-stat-label">Planlanmış</span>
-          </div>
-          <div className="inbox-stat">
-            <span className="inbox-stat-value">{counts.today}</span>
-            <span className="inbox-stat-label">Bugün</span>
-          </div>
-          <div className="inbox-stat">
-            <span className="inbox-stat-value">{counts.running}</span>
-            <span className="inbox-stat-label">Devam Eden</span>
-          </div>
-          <div className="inbox-stat">
-            <span className="inbox-stat-value" style={{ color: counts.problematic > 0 ? "var(--risk)" : undefined }}>{counts.problematic}</span>
-            <span className="inbox-stat-label">Sorunlu</span>
-          </div>
-        </div>
-      )}
-
-      {/* Tab Filter Pills */}
-      {!loading && !error && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.key;
-            const count = filterByTab(allSessions, tab.key).length;
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+          {STAT_CARDS.map((card) => {
+            const isActive = activeTab === card.key;
+            const count = countForCard(card.key);
             return (
               <button
-                key={tab.key}
+                key={card.key}
                 type="button"
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => setActiveTab(card.key)}
                 style={{
                   cursor: "pointer",
-                  padding: "6px 14px",
-                  fontSize: 13,
-                  fontWeight: isActive ? 600 : 400,
-                  border: isActive ? "1px solid var(--primary-border)" : "1px solid var(--border)",
-                  background: isActive ? "var(--primary-light)" : "var(--surface)",
-                  color: isActive ? "var(--primary)" : "var(--text-secondary)",
-                  borderRadius: 20,
+                  padding: "16px 18px",
+                  borderRadius: 12,
+                  border: isActive ? `1.5px solid ${card.color}` : "1px solid var(--border)",
+                  background: isActive ? card.activeColor : "var(--surface)",
+                  textAlign: "left",
+                  fontFamily: "inherit",
+                  transition: "all 0.15s",
                 }}
               >
-                {tab.label} ({count})
+                <div style={{ fontSize: 26, fontWeight: 700, color: count > 0 ? card.color : "var(--text-dim)", lineHeight: 1 }}>
+                  {count}
+                </div>
+                <div style={{ fontSize: 12, color: isActive ? card.color : "var(--text-secondary)", marginTop: 6, fontWeight: isActive ? 600 : 400 }}>
+                  {t(card.label)}
+                </div>
               </button>
             );
           })}
@@ -224,7 +163,7 @@ export default function InterviewsPage() {
       {/* States */}
       {loading ? (
         <section className="panel">
-          <LoadingState message="Mülakat oturumları yükleniyor..." />
+          <LoadingState message={t("Mülakat oturumları yükleniyor...")} />
         </section>
       ) : null}
       {!loading && error ? (
@@ -233,7 +172,7 @@ export default function InterviewsPage() {
             error={error}
             actions={
               <button type="button" className="ghost-button" onClick={() => void loadSessions()}>
-                Tekrar dene
+                {t("Tekrar dene")}
               </button>
             }
           />
@@ -241,7 +180,7 @@ export default function InterviewsPage() {
       ) : null}
       {!loading && !error && sessions.length === 0 ? (
         <section className="panel">
-          <EmptyState message="Bu filtreye uygun mülakat oturumu bulunamadı." />
+          <EmptyState message={t("Bu filtreye uygun mülakat oturumu bulunamadı.")} />
         </section>
       ) : null}
 
@@ -252,35 +191,40 @@ export default function InterviewsPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Aday</th>
-                  <th>İlan</th>
-                  <th>Durum</th>
-                  <th>Planlanan Tarih</th>
-                  <th>İlerleme</th>
-                  <th>Sonraki Adım</th>
+                  <th>{t("Aday")}</th>
+                  <th>{t("İlan")}</th>
+                  <th>{t("Durum")}</th>
+                  <th>{t("Tarih")}</th>
                 </tr>
               </thead>
               <tbody>
-                {sessions.map((session) => (
-                  <tr key={session.id}>
-                    <td>
-                      <Link href={`/applications/${session.applicationId}`} style={{ fontWeight: 500 }}>
-                        {session.candidateName ?? session.applicationId.slice(0, 8) + "..."}
-                      </Link>
-                    </td>
-                    <td style={{ color: "var(--text-secondary)" }}>
-                      {session.jobTitle ?? "—"}
-                    </td>
-                    <td>
-                      <span className={statusBadgeClass(session.status)}>
-                        {INTERVIEW_STATUS_LABELS[session.status]}
-                      </span>
-                    </td>
-                    <td>{session.scheduledAt ? formatDate(session.scheduledAt) : "—"}</td>
-                    <td>{renderProgress(session)}</td>
-                    <td>{renderNextAction(session)}</td>
-                  </tr>
-                ))}
+                {sessions.map((session) => {
+                  const displayDate = session.endedAt ?? session.startedAt ?? session.scheduledAt;
+                  return (
+                    <tr
+                      key={session.id}
+                      onClick={() => window.location.href = applicationDetailHref(session.applicationId)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <td style={{ fontWeight: 500 }}>
+                        {session.candidateName ?? "—"}
+                      </td>
+                      <td style={{ color: "var(--text-secondary)" }}>
+                        {session.jobTitle ?? "—"}
+                      </td>
+                      <td>
+                        <span className={statusBadgeClass(session.status)}>
+                          {session.invitation
+                            ? t(getInterviewInvitationMeta(session.invitation, session.status).label)
+                            : t(INTERVIEW_STATUS_LABELS[session.status])}
+                        </span>
+                      </td>
+                      <td>
+                        {displayDate ? formatDate(displayDate) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

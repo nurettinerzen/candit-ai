@@ -1,43 +1,174 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { AUTH_SESSION_MODE, AUTH_TOKEN_TRANSPORT } from "../lib/auth/runtime";
-import { canAccessRoute, canPerformAction, type AppPermission } from "../lib/auth/policy";
-import { resolveActiveSession, resolveSessionFromServer } from "../lib/auth/session";
+import { AUTH_SESSION_MODE } from "../lib/auth/runtime";
+import {
+  canAccessRoute,
+  canPerformAction,
+  getPrimaryRole,
+  getRoleLabel,
+  isInternalOnlyRoute,
+  isInternalAdminSession,
+  type AppPermission
+} from "../lib/auth/policy";
+import {
+  logoutCurrentSession,
+  resolveActiveSession,
+  resolveSessionFromServer
+} from "../lib/auth/session";
 import type { WebAuthSession } from "../lib/auth/types";
+import { useUiText } from "./site-language-provider";
+import { PublicLanding } from "./public-landing";
 import { SiteSettingsSwitcher } from "./site-language-provider";
 
 type NavItem = {
   href:
-    | "/"
-    | "/applications"
+    | "/dashboard"
     | "/jobs"
+    | "/sourcing"
     | "/interviews"
     | "/candidates"
-    | "/raporlar"
-    | "/ayarlar";
+    | "/reports"
+    | "/subscription"
+    | "/admin"
+    | "/admin/red-alert"
+    | "/admin/users"
+    | "/admin/enterprise"
+    | "/settings";
   label: string;
-  icon: string;
   permission: AppPermission;
+  internalOnly?: boolean;
+  badge?: string;
 };
 
-const primaryNavItems: NavItem[] = [
-  { href: "/", label: "Genel Bakış", icon: "📊", permission: "job.read" },
-  { href: "/jobs", label: "İlan Merkezi", icon: "💼", permission: "job.read" },
-  { href: "/interviews", label: "Mülakatlar", icon: "🎙️", permission: "interview.read" },
-  { href: "/candidates", label: "Aday Havuzu", icon: "👥", permission: "candidate.read" },
-  { href: "/raporlar", label: "Raporlar", icon: "📈", permission: "job.read" },
-  { href: "/ayarlar", label: "Ayarlar & Bağlantılar", icon: "⚙️", permission: "ai.task.read" },
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+const primaryNavGroups: NavGroup[] = [
+  {
+    label: "Ürün",
+    items: [
+      { href: "/dashboard", label: "Genel Bakış", permission: "job.read" },
+      { href: "/jobs", label: "İlan Merkezi", permission: "job.read" },
+      { href: "/interviews", label: "Mülakatlar", permission: "interview.read" },
+      { href: "/candidates", label: "Aday Havuzu", permission: "candidate.read" },
+      { href: "/reports", label: "Raporlar", permission: "report.read" }
+    ]
+  },
+  {
+    label: "Hesap",
+    items: [
+      { href: "/subscription", label: "Abonelik", permission: "tenant.manage" },
+      { href: "/settings", label: "Ayarlar & Bağlantılar", permission: "user.manage" }
+    ]
+  },
+  {
+    label: "İç Yönetim",
+    items: [
+      { href: "/admin", label: "Yönetici Paneli", permission: "tenant.manage", internalOnly: true },
+      { href: "/admin/red-alert", label: "Kırmızı Alarm", permission: "tenant.manage", internalOnly: true },
+      { href: "/admin/users", label: "Kullanıcılar", permission: "tenant.manage", internalOnly: true },
+      { href: "/admin/enterprise", label: "Kurumsal", permission: "tenant.manage", internalOnly: true },
+      { href: "/sourcing", label: "Kaynak Bulma", permission: "job.read", internalOnly: true, badge: "Beta" }
+    ]
+  }
 ];
 
-function isActive(pathname: string, href: string) {
-  if (href === "/") {
-    return pathname === "/";
+function resolveActiveNavHref(pathname: string): NavItem["href"] | null {
+  if (pathname === "/dashboard") {
+    return "/dashboard";
   }
 
-  return pathname === href || pathname.startsWith(`${href}/`);
+  if (pathname === "/jobs" || pathname.startsWith("/jobs/")) {
+    return "/jobs";
+  }
+
+  if (pathname === "/sourcing" || pathname.startsWith("/sourcing/")) {
+    return "/sourcing";
+  }
+
+  if (pathname === "/interviews" || pathname.startsWith("/interviews/")) {
+    return "/interviews";
+  }
+
+  if (
+    pathname === "/candidates" ||
+    pathname.startsWith("/candidates/")
+  ) {
+    return "/candidates";
+  }
+
+  if (
+    pathname === "/applications" ||
+    pathname.startsWith("/applications/") ||
+    pathname.startsWith("/gorusme/") ||
+    pathname.startsWith("/randevu/")
+  ) {
+    return "/jobs";
+  }
+
+  if (
+    pathname === "/reports" ||
+    pathname.startsWith("/reports/") ||
+    pathname === "/raporlar" ||
+    pathname.startsWith("/raporlar/")
+  ) {
+    return "/reports";
+  }
+
+  if (
+    pathname === "/subscription" ||
+    pathname.startsWith("/subscription/") ||
+    pathname === "/abonelik" ||
+    pathname.startsWith("/abonelik/") ||
+    pathname === "/dashboard/subscription" ||
+    pathname.startsWith("/dashboard/subscription/")
+  ) {
+    return "/subscription";
+  }
+
+  if (
+    pathname === "/admin" ||
+    pathname === "/yonetim" ||
+    pathname.startsWith("/yonetim/") ||
+    pathname === "/dashboard/admin" ||
+    pathname.startsWith("/dashboard/admin/")
+  ) {
+    return "/admin";
+  }
+
+  if (pathname === "/admin/red-alert" || pathname.startsWith("/admin/red-alert/")) {
+    return "/admin/red-alert";
+  }
+
+  if (pathname === "/admin/users" || pathname.startsWith("/admin/users/")) {
+    return "/admin/users";
+  }
+
+  if (pathname === "/admin/enterprise" || pathname.startsWith("/admin/enterprise/")) {
+    return "/admin/enterprise";
+  }
+
+  if (
+    pathname === "/settings" ||
+    pathname.startsWith("/settings/") ||
+    pathname === "/ayarlar" ||
+    pathname.startsWith("/ayarlar/") ||
+    pathname === "/ai-support" ||
+    pathname.startsWith("/ai-support/") ||
+    pathname === "/ai-destek" ||
+    pathname.startsWith("/ai-destek/") ||
+    pathname === "/audit-logs" ||
+    pathname.startsWith("/audit-logs/")
+  ) {
+    return "/settings";
+  }
+
+  return null;
 }
 
 function getInitials(label: string): string {
@@ -51,20 +182,23 @@ function getInitials(label: string): string {
 
 export function RecruiterShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isJobDetailPage = pathname.startsWith("/jobs/") && pathname !== "/jobs" && pathname !== "/jobs/new";
+  const router = useRouter();
+  const { t } = useUiText();
+  const isDetailPage =
+    (pathname.startsWith("/jobs/") && pathname !== "/jobs" && pathname !== "/jobs/new") ||
+    (pathname.startsWith("/sourcing/") && pathname !== "/sourcing") ||
+    (pathname.startsWith("/candidates/") && pathname !== "/candidates" && pathname !== "/candidates/new") ||
+    (pathname.startsWith("/applications/") && pathname !== "/applications");
   const [session, setSession] = useState<WebAuthSession | null>(() => resolveActiveSession());
   const [checkingCookieSession, setCheckingCookieSession] = useState(
-    AUTH_TOKEN_TRANSPORT === "cookie" && (AUTH_SESSION_MODE === "jwt" || AUTH_SESSION_MODE === "hybrid")
+    AUTH_SESSION_MODE === "jwt" || AUTH_SESSION_MODE === "hybrid"
   );
 
   useEffect(() => {
     let cancelled = false;
 
     async function hydrateFromServer() {
-      if (
-        AUTH_TOKEN_TRANSPORT !== "cookie" ||
-        (AUTH_SESSION_MODE !== "jwt" && AUTH_SESSION_MODE !== "hybrid")
-      ) {
+      if (AUTH_SESSION_MODE !== "jwt" && AUTH_SESSION_MODE !== "hybrid") {
         setCheckingCookieSession(false);
         return;
       }
@@ -91,14 +225,30 @@ export function RecruiterShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    if (canAccessRoute(session, pathname)) {
+      return;
+    }
+
+    if (!isInternalOnlyRoute(pathname)) {
+      return;
+    }
+
+    router.replace("/dashboard");
+  }, [pathname, router, session]);
+
   if (checkingCookieSession) {
     return (
       <div className="app-layout">
         <main>
           <section className="panel" style={{ maxWidth: 480, margin: "80px auto" }}>
-            <div className="loading-state">
+              <div className="loading-state">
               <div className="loading-spinner" />
-              <p className="loading-text">Oturum kontrol ediliyor...</p>
+              <p className="loading-text">{t("Oturum kontrol ediliyor...")}</p>
             </div>
           </section>
         </main>
@@ -107,27 +257,23 @@ export function RecruiterShell({ children }: { children: ReactNode }) {
   }
 
   if (!session) {
-    return (
-      <div className="app-layout">
-        <main>
-          <section className="panel" style={{ maxWidth: 480, margin: "80px auto", textAlign: "center" }}>
-            <div style={{ padding: "20px 0" }}>
-              <div style={{ fontSize: 40, marginBottom: 16 }}>🔒</div>
-              <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>Oturum gerekli</h2>
-              <p className="small" style={{ margin: "0 0 20px" }}>
-                Recruiter paneli için aktif bir oturum bulunamadı.
-              </p>
-              <Link href="/auth/login" className="button-link">
-                Giriş ekranına git
-              </Link>
-            </div>
-          </section>
-        </main>
-      </div>
-    );
+    if (pathname === "/") {
+      // Root page kendi landing'ini gösterecek
+      return <>{children}</>;
+    }
+
+    // Session yok ve panel sayfasindayiz — login'e yonlendir
+    if (typeof window !== "undefined") {
+      window.location.href = "/auth/login";
+    }
+    return null;
   }
 
   if (!canAccessRoute(session, pathname)) {
+    if (isInternalOnlyRoute(pathname)) {
+      return null;
+    }
+
     return (
       <div className="app-layout">
         <aside className="sidebar">
@@ -137,10 +283,9 @@ export function RecruiterShell({ children }: { children: ReactNode }) {
           <div className="main-content-inner">
             <section className="panel" style={{ maxWidth: 480, margin: "40px auto", textAlign: "center" }}>
               <div style={{ padding: "20px 0" }}>
-                <div style={{ fontSize: 40, marginBottom: 16 }}>🚫</div>
-                <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>Yetki yok</h2>
+                <h2 style={{ margin: "0 0 8px", fontSize: 18 }}>{t("Yetki yok")}</h2>
                 <p className="small" style={{ margin: 0 }}>
-                  Bu sayfa için gerekli yetkiniz bulunmuyor.
+                  {t("Bu sayfa için gerekli yetkiniz bulunmuyor.")}
                 </p>
               </div>
             </section>
@@ -157,7 +302,7 @@ export function RecruiterShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="main-content">
-        <div className={`main-content-inner${isJobDetailPage ? " main-content-inner-wide" : ""}`}>
+        <div className={`main-content-inner${isDetailPage ? " main-content-inner-wide" : ""}`}>
           {children}
         </div>
       </div>
@@ -172,42 +317,100 @@ function SidebarContent({
   session: WebAuthSession;
   pathname: string;
 }) {
+  const router = useRouter();
+  const { t } = useUiText();
+  const primaryRole = getPrimaryRole(session);
+  const activeNavHref = resolveActiveNavHref(pathname);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+
+    try {
+      await logoutCurrentSession(session);
+      window.location.href = "/auth/login";
+    } catch {
+      setLoggingOut(false);
+    }
+  }
+
   return (
     <>
       <div className="sidebar-header">
         <div className="sidebar-brand">
-          <div className="sidebar-logo">AI</div>
+          <div className="sidebar-logo">C</div>
           <div className="sidebar-brand-text">
-            <span className="sidebar-brand-name">AI Recruiter</span>
-            <span className="sidebar-brand-desc">İşe alım işletim paneli</span>
+            <span className="sidebar-brand-name">Candit.ai</span>
+            <span className="sidebar-brand-desc">{t("İşe alım işletim paneli")}</span>
           </div>
         </div>
       </div>
 
       <nav className="sidebar-nav">
-        {primaryNavItems.filter((item) => canPerformAction(session, item.permission)).map((item) => (
-          <Link
-            key={item.href}
-            href={item.href as any}
-            className={isActive(pathname, item.href) ? "nav-link active" : "nav-link"}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            {item.label}
-          </Link>
-        ))}
+        {primaryNavGroups.map((group) => {
+          const items = group.items
+            .filter((item) => canPerformAction(session, item.permission))
+            .filter((item) => !item.internalOnly || isInternalAdminSession(session));
+
+          if (items.length === 0) {
+            return null;
+          }
+
+          return (
+            <div key={group.label}>
+              <p className="sidebar-section-label">{t(group.label)}</p>
+              {items.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href as any}
+                  className={activeNavHref === item.href ? "nav-link active" : "nav-link"}
+                >
+                  <span>{t(item.label)}</span>
+                  {item.badge ? <span className="nav-badge">{t(item.badge)}</span> : null}
+                </Link>
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
-      <div className="sidebar-controls">
-        <SiteSettingsSwitcher variant="sidebar" />
-      </div>
-
       <div className="sidebar-session">
-        <div className="sidebar-session-info">
-          <div className="sidebar-avatar">{getInitials(session.userLabel)}</div>
-          <div className="sidebar-user-details">
-            <span className="sidebar-user-name">{session.userLabel}</span>
-            <span className="sidebar-user-role">{session.roles}</span>
-          </div>
+        <div className="sidebar-session-card" data-open={accountOpen ? "true" : "false"}>
+          <button
+            type="button"
+            className="sidebar-session-trigger"
+            onClick={() => setAccountOpen((current) => !current)}
+            aria-expanded={accountOpen}
+          >
+            <div className="sidebar-session-info">
+              <div className="sidebar-avatar">{getInitials(session.userLabel)}</div>
+              <div className="sidebar-user-details">
+                <span className="sidebar-user-name">{session.userLabel}</span>
+                <span className="sidebar-user-role">
+                  {primaryRole ? getRoleLabel(primaryRole) : session.roles}
+                </span>
+              </div>
+            </div>
+            <span className="sidebar-session-chevron" aria-hidden="true">
+              {accountOpen ? "▾" : "▸"}
+            </span>
+          </button>
+
+          {accountOpen ? (
+            <div className="sidebar-session-panel">
+              <div className="sidebar-session-meta">{t("Tenant")}: {session.tenantId}</div>
+              <SiteSettingsSwitcher variant="account" />
+              <button
+                type="button"
+                className="ghost-button sidebar-session-logout"
+                onClick={() => void handleLogout()}
+                disabled={loggingOut}
+              >
+                {loggingOut ? t("Çıkış yapılıyor...") : t("Çıkış Yap")}
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </>

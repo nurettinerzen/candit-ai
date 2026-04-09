@@ -55,6 +55,9 @@ export class SessionResolverService {
       tenantId: payload.tenantId,
       roles: payload.roles,
       email: payload.email,
+      fullName: payload.fullName,
+      emailVerifiedAt: payload.emailVerifiedAt,
+      avatarUrl: payload.avatarUrl,
       authMode: "jwt",
       sessionId: payload.sid
     } satisfies RequestUser;
@@ -86,7 +89,9 @@ export class SessionResolverService {
 
     const userId = request.header("x-user-id")?.trim();
     const tenantId = request.header("x-tenant-id")?.trim();
-    const rawRoles = request.header("x-roles") ?? "recruiter";
+    const rawRoles = request.header("x-roles") ?? "manager";
+    const fullName = request.header("x-user-label")?.trim() || request.header("x-user-name")?.trim();
+    const email = request.header("x-user-email")?.trim().toLowerCase();
 
     if (!userId || !tenantId) {
       return null;
@@ -99,6 +104,10 @@ export class SessionResolverService {
         .split(",")
         .map((value) => value.trim())
         .filter(Boolean) as Role[],
+      fullName: fullName || undefined,
+      email: email || undefined,
+      emailVerifiedAt: null,
+      avatarUrl: null,
       authMode: "dev_header"
     } satisfies RequestUser;
   }

@@ -10,6 +10,7 @@ import {
 } from "../applications/fit-score-read-model.util";
 import { AuditWriterService } from "../audit/audit-writer.service";
 import { CandidatesService } from "../candidates/candidates.service";
+import { deriveInterviewInvitationState } from "../interviews/interview-invitation-state.util";
 
 function deriveCandidateNameFromFilename(originalName: string) {
   const base = originalName.replace(/\.[^.]+$/, "");
@@ -74,7 +75,20 @@ export class ApplicantInboxService {
         interviewSessions: {
           orderBy: { createdAt: "desc" },
           take: 1,
-          select: { id: true, status: true, mode: true, scheduledAt: true }
+          select: {
+            id: true,
+            status: true,
+            mode: true,
+            scheduledAt: true,
+            schedulingSource: true,
+            invitationStatus: true,
+            invitationIssuedAt: true,
+            invitationReminderCount: true,
+            invitationReminder1SentAt: true,
+            invitationReminder2SentAt: true,
+            candidateAccessExpiresAt: true,
+            meetingJoinUrl: true
+          }
         },
         aiTaskRuns: {
           where: { taskType: "SCREENING_SUPPORT" },
@@ -111,6 +125,121 @@ export class ApplicantInboxService {
       latestHumanDecisionByApplicationId.set(approval.entityId, readHumanDecision(approval.metadata));
     }
 
+    const sourcingAttachments = applicationIds.length > 0
+      ? await this.prisma.sourcingProjectProspect.findMany({
+          where: {
+            tenantId,
+            attachedApplicationId: { in: applicationIds }
+          },
+          include: {
+            project: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            talentProfile: {
+              select: {
+                primarySourceLabel: true,
+                sourceRecords: {
+                  orderBy: { createdAt: "desc" },
+                  take: 3,
+                  select: {
+                    providerLabel: true
+                  }
+                }
+              }
+            },
+            outreachMessages: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: {
+                status: true,
+                subject: true,
+                sentAt: true,
+                repliedAt: true,
+                reviewNote: true,
+                sendError: true
+              }
+            }
+          },
+          orderBy: { updatedAt: "desc" }
+        })
+      : [];
+
+    const sourcingByApplicationId = new Map<string, {
+      projectId: string;
+      projectName: string;
+      prospectId: string;
+      stage: string;
+      primarySourceLabel: string | null;
+      sourceLabels: string[];
+      latestOutreach: {
+        status: string | null;
+        subject: string | null;
+        sentAt: string | null;
+        repliedAt: string | null;
+        reviewNote: string | null;
+        error: string | null;
+      } | null;
+    }>();
+
+    for (const prospect of sourcingAttachments) {
+      if (!prospect.attachedApplicationId || sourcingByApplicationId.has(prospect.attachedApplicationId)) {
+        continue;
+      }
+
+      const latestOutreach = prospect.outreachMessages[0] ?? null;
+
+      sourcingByApplicationId.set(prospect.attachedApplicationId, {
+        projectId: prospect.project.id,
+        projectName: prospect.project.name,
+        prospectId: prospect.id,
+        stage: prospect.stage,
+        primarySourceLabel: prospect.talentProfile.primarySourceLabel ?? null,
+        sourceLabels: [...new Set(
+          prospect.talentProfile.sourceRecords
+            .map((record) => record.providerLabel?.trim())
+            .filter((label): label is string => Boolean(label))
+        )],
+        latestOutreach: latestOutreach
+          ? {
+              status: latestOutreach.status,
+              subject: latestOutreach.subject,
+              sentAt: latestOutreach.sentAt?.toISOString() ?? null,
+              repliedAt: latestOutreach.repliedAt?.toISOString() ?? null,
+              reviewNote: latestOutreach.reviewNote ?? null,
+              error: latestOutreach.sendError ?? null
+            }
+          : null
+      });
+    }
+
+    const sourcingProject = await this.prisma.sourcingProject.findFirst({
+      where: {
+        tenantId,
+        jobId,
+        archivedAt: null
+      },
+      select: {
+        id: true,
+        name: true,
+        updatedAt: true,
+        prospects: {
+          select: {
+            stage: true,
+            attachedApplicationId: true,
+            talentProfile: {
+              select: {
+                suppressionStatus: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { updatedAt: "desc" }
+    });
+
     // Collect CV status per candidate
     const candidateIds = [...new Set(applications.map(a => a.candidateId))];
     const cvFiles = await this.prisma.cVFile.findMany({
@@ -135,6 +264,7 @@ export class ApplicantInboxService {
       const latestInterview = app.interviewSessions[0] ?? null;
       const latestScheduling = app.schedulingWorkflows[0] ?? null;
       const cv = cvMap.get(app.candidateId) ?? { hasCv: false, isParsed: false, cvFileId: null };
+      const invitation = deriveInterviewInvitationState(latestInterview);
 
       return {
         applicationId: app.id,
@@ -144,6 +274,7 @@ export class ApplicantInboxService {
         phone: app.candidate.phone,
         locationText: app.candidate.locationText,
         source: app.candidate.source,
+        externalSource: app.candidate.externalSource,
         externalRef: app.candidate.externalRef,
         yearsOfExperience: app.candidate.yearsOfExperience ? Number(app.candidate.yearsOfExperience) : null,
         stage: app.currentStage,
@@ -167,7 +298,9 @@ export class ApplicantInboxService {
           sessionId: latestInterview.id,
           status: latestInterview.status,
           mode: latestInterview.mode,
-          scheduledAt: latestInterview.scheduledAt?.toISOString() ?? null
+          scheduledAt: latestInterview.scheduledAt?.toISOString() ?? null,
+          candidateInterviewUrl: latestInterview.meetingJoinUrl ?? null,
+          invitation
         } : null,
         cvStatus: cv,
         scheduling: latestScheduling ? {
@@ -176,7 +309,18 @@ export class ApplicantInboxService {
           status: latestScheduling.status
         } : null,
         humanDecision: latestHumanDecisionByApplicationId.get(app.id) ?? null,
-        noteCount: app.recruiterNotes.length
+        noteCount: app.recruiterNotes.length,
+        sourcing: sourcingByApplicationId.get(app.id)
+          ? {
+              projectId: sourcingByApplicationId.get(app.id)!.projectId,
+              projectName: sourcingByApplicationId.get(app.id)!.projectName,
+              prospectId: sourcingByApplicationId.get(app.id)!.prospectId,
+              stage: sourcingByApplicationId.get(app.id)!.stage,
+              primarySourceLabel: sourcingByApplicationId.get(app.id)!.primarySourceLabel,
+              sourceLabels: sourcingByApplicationId.get(app.id)!.sourceLabels,
+              latestOutreach: sourcingByApplicationId.get(app.id)!.latestOutreach
+            }
+          : null
       };
     });
 
@@ -225,6 +369,51 @@ export class ApplicantInboxService {
       }
     }
 
+    const sourcedApplicants = applicants.filter((applicant) => Boolean(applicant.sourcing)).length;
+    const readyForInterviewInvite = applicants.filter((applicant) => {
+      if (!applicant.email || applicant.interview) {
+        return false;
+      }
+
+      return (
+        applicant.stage === ApplicationStage.APPLIED ||
+        applicant.stage === ApplicationStage.SCREENING ||
+        applicant.stage === ApplicationStage.RECRUITER_REVIEW
+      );
+    }).length;
+    const activeInterviewInvites = applicants.filter((applicant) => {
+      const invitationState = applicant.interview?.invitation?.state;
+      return invitationState === "INVITED" || invitationState === "REMINDER_SENT" || invitationState === "IN_PROGRESS";
+    }).length;
+    const outreachAwaitingReply = applicants.filter((applicant) => applicant.sourcing?.latestOutreach?.status === "SENT").length;
+
+    const sourcingProjectMetrics = sourcingProject
+      ? sourcingProject.prospects.reduce(
+          (acc, prospect) => {
+            acc.totalProspects += 1;
+            acc.attachedApplicants += prospect.attachedApplicationId ? 1 : 0;
+            acc.blocked += prospect.talentProfile.suppressionStatus !== "ALLOWED" ? 1 : 0;
+
+            if (prospect.stage === "NEEDS_REVIEW") acc.needsReview += 1;
+            if (prospect.stage === "GOOD_FIT") acc.goodFit += 1;
+            if (prospect.stage === "CONTACTED") acc.contacted += 1;
+            if (prospect.stage === "REPLIED") acc.replied += 1;
+            if (prospect.stage === "CONVERTED") acc.converted += 1;
+            return acc;
+          },
+          {
+            totalProspects: 0,
+            needsReview: 0,
+            goodFit: 0,
+            contacted: 0,
+            replied: 0,
+            converted: 0,
+            blocked: 0,
+            attachedApplicants: 0
+          }
+        )
+      : null;
+
     return {
       job: {
         id: job.id,
@@ -246,6 +435,20 @@ export class ApplicantInboxService {
         avgFitScore: scoredTotal > 0 ? Math.round(scoreSum / scoredTotal) : null,
         scoredCount: scoredTotal,
         unscoredCount
+      },
+      commandCenter: {
+        sourcingProject: sourcingProject && sourcingProjectMetrics
+          ? {
+              id: sourcingProject.id,
+              name: sourcingProject.name,
+              updatedAt: sourcingProject.updatedAt.toISOString(),
+              metrics: sourcingProjectMetrics
+            }
+          : null,
+        sourcedApplicants,
+        readyForInterviewInvite,
+        activeInterviewInvites,
+        outreachAwaitingReply
       },
       applicants
     };

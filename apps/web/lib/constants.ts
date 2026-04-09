@@ -1,4 +1,12 @@
-import type { ApplicationStage, HumanDecision, JobStatus } from "./types";
+import type {
+  ApplicationStage,
+  ContactSuppressionStatus,
+  HumanDecision,
+  JobStatus,
+  ProspectFitLabel,
+  SourcingProspectStage,
+  TalentSourceKind
+} from "./types";
 import type { AiTaskType } from "./types";
 
 export const JOB_STATUSES: JobStatus[] = ["DRAFT", "PUBLISHED", "ARCHIVED"];
@@ -18,7 +26,7 @@ export const STAGE_LABELS: Record<ApplicationStage, string> = {
   INTERVIEW_SCHEDULED: "AI Mülakat",
   INTERVIEW_COMPLETED: "Değerlendirme Hazır",
   RECRUITER_REVIEW: "Ön Eleme Tamamlandı",
-  HIRING_MANAGER_REVIEW: "İK Mülakatı",
+  HIRING_MANAGER_REVIEW: "Menajer İncelemesi",
   OFFER: "Teklif",
   REJECTED: "Reddedildi",
   HIRED: "İşe Alındı"
@@ -61,7 +69,7 @@ export const PIPELINE_STAGE_META: Record<string, { label: string; color: string 
   },
   // Legacy stages — kept for backward compatibility
   HIRING_MANAGER_REVIEW: {
-    label: "İK Mülakatı",
+    label: "Menajer İncelemesi",
     color: "var(--accent-primary, #8b5cf6)"
   },
   OFFER: {
@@ -156,7 +164,7 @@ export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
 };
 
 export const DECISION_LABELS: Record<"advance" | "hold" | "reject", string> = {
-  advance: "Yönetici İncelemesine Geçir",
+  advance: "Menajer İncelemesine Gecir",
   hold: "Beklet",
   reject: "Reddet"
 };
@@ -190,6 +198,11 @@ export const AI_TASK_TYPES: AiTaskType[] = [
 export const SOURCE_LABELS: Record<string, string> = {
   manual: "Manuel",
   csv_import: "CSV İçe Aktarma",
+  recruiter_import: "Recruiter Import",
+  public_profile_url: "Public Profile URL",
+  agency_upload: "Ajans Yüklemesi",
+  job_board_export: "Job Board Export",
+  public_web_discovery: "Public Web Discovery",
   kariyer_net: "Kariyer.net",
   linkedin: "LinkedIn",
   eleman_net: "Eleman.net",
@@ -198,7 +211,52 @@ export const SOURCE_LABELS: Record<string, string> = {
   email: "E-posta",
   phone: "Telefon",
   agency: "Ajans",
-  other: "Diğer"
+  other: "Diğer",
+  internal_rediscovery: "İç Havuz Rediscovery",
+  public_professional: "Kamuya Açık Profesyonel Profil"
+};
+
+export const TALENT_SOURCE_LABELS: Record<TalentSourceKind, string> = {
+  INTERNAL_CANDIDATE: "İç Aday Havuzu",
+  PUBLIC_PROFESSIONAL: "Kamuya Açık Profesyonel",
+  RECRUITER_IMPORT: "Recruiter Import",
+  REFERRAL: "Referans",
+  OTHER: "Diğer"
+};
+
+export const SUPPRESSION_LABELS: Record<ContactSuppressionStatus, string> = {
+  ALLOWED: "İletişime Açık",
+  DO_NOT_CONTACT: "Do Not Contact",
+  OPTED_OUT: "Opt-out",
+  NEEDS_REVIEW: "İzin Kontrolü Gerekli"
+};
+
+export const PROSPECT_FIT_LABELS: Record<ProspectFitLabel, string> = {
+  STRONG_MATCH: "Güçlü Uyum",
+  GOOD_MATCH: "İyi Uyum",
+  PARTIAL_MATCH: "Kısmi Uyum",
+  WEAK_MATCH: "Zayıf Uyum",
+  UNKNOWN: "Belirsiz"
+};
+
+export const PROSPECT_FIT_TONES: Record<ProspectFitLabel, string> = {
+  STRONG_MATCH: "var(--success, #22c55e)",
+  GOOD_MATCH: "var(--primary, #5046e5)",
+  PARTIAL_MATCH: "var(--warn, #f59e0b)",
+  WEAK_MATCH: "var(--risk, #ef4444)",
+  UNKNOWN: "var(--text-secondary, #64748b)"
+};
+
+export const SOURCING_STAGE_META: Record<SourcingProspectStage, { label: string; color: string }> = {
+  NEW: { label: "Yeni", color: "var(--text-secondary, #64748b)" },
+  NEEDS_REVIEW: { label: "İnceleme Bekliyor", color: "var(--warn, #f59e0b)" },
+  GOOD_FIT: { label: "İyi Uyum", color: "var(--success, #22c55e)" },
+  SAVED: { label: "Kaydedildi", color: "var(--primary, #5046e5)" },
+  CONTACTED: { label: "İletişime Geçildi", color: "var(--info, #3b82f6)" },
+  REPLIED: { label: "Yanıtladı", color: "var(--success, #10b981)" },
+  CONVERTED: { label: "Akışa Alındı", color: "var(--accent, #2563eb)" },
+  REJECTED: { label: "Uygun Değil", color: "var(--risk, #ef4444)" },
+  ARCHIVED: { label: "Arşiv", color: "var(--text-dim, #94a3b8)" }
 };
 
 export const FIT_SCORE_LABELS: Record<string, string> = {

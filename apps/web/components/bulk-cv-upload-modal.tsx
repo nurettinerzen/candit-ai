@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useSiteLanguage } from "./site-language-provider";
+import { useUiText } from "./site-language-provider";
 import { SOURCE_LABELS } from "../lib/constants";
 
 type BulkCvUploadModalProps = {
@@ -35,7 +35,7 @@ function dedupeFiles(files: File[]) {
 }
 
 export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModalProps) {
-  const { locale } = useSiteLanguage();
+  const { locale, t } = useUiText();
   const [files, setFiles] = useState<File[]>([]);
   const [source, setSource] = useState("kariyer_net");
   const [externalSource, setExternalSource] = useState("");
@@ -68,7 +68,7 @@ export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModal
           remove: "Remove",
           cancel: "Cancel",
           submitBusy: "Queueing...",
-          submitIdle: `${files.length} Upload CV`
+          submitIdle: `Upload ${files.length} CV${files.length === 1 ? "" : "s"}`
         }
       : {
           title: "Toplu CV Yükle",
@@ -193,7 +193,7 @@ export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModal
             <select className="form-select" value={source} onChange={(event) => setSource(event.target.value)}>
               {IMPORT_SOURCES.map((item) => (
                 <option key={item} value={item}>
-                  {SOURCE_LABELS[item] ?? item}
+                  {t(SOURCE_LABELS[item] ?? item)}
                 </option>
               ))}
             </select>

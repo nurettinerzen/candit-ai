@@ -27,6 +27,13 @@ function toBool(value: string | undefined, fallback: boolean) {
   return fallback;
 }
 
+function toCsvList(value: string | undefined) {
+  return value
+    ?.split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean) ?? [];
+}
+
 @Injectable()
 export class RuntimeConfigService {
   constructor(@Inject(ConfigService) private readonly configService: ConfigService) {}
@@ -144,6 +151,26 @@ export class RuntimeConfigService {
     return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 14;
   }
 
+  get invitationTtlHours() {
+    const raw = Number(this.configService.get<string>("AUTH_INVITATION_TTL_HOURS") ?? "72");
+    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 72;
+  }
+
+  get emailVerificationTtlHours() {
+    const raw = Number(this.configService.get<string>("AUTH_EMAIL_VERIFICATION_TTL_HOURS") ?? "48");
+    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 48;
+  }
+
+  get passwordResetTtlHours() {
+    const raw = Number(this.configService.get<string>("AUTH_PASSWORD_RESET_TTL_HOURS") ?? "2");
+    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 2;
+  }
+
+  get oauthRelayTtlHours() {
+    const raw = Number(this.configService.get<string>("AUTH_OAUTH_RELAY_TTL_HOURS") ?? "1");
+    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 1;
+  }
+
   assertProductionSafety() {
     if (!this.isProduction) {
       return;
@@ -173,10 +200,20 @@ export class RuntimeConfigService {
   }
 
   get corsOrigins() {
-    return (this.configService.get<string>("CORS_ORIGIN") ?? "http://localhost:3000")
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean);
+    const configured = this.configService.get<string>("CORS_ORIGIN")?.trim();
+
+    if (configured && configured.length > 0) {
+      return configured
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+    }
+
+    if (this.runtimeMode === "development") {
+      return ["http://localhost:3000", "http://localhost:3100"];
+    }
+
+    return ["http://localhost:3000"];
   }
 
   get publicWebBaseUrl() {
@@ -223,15 +260,22 @@ export class RuntimeConfigService {
       this.configService.get<string>("SPEECH_STT_PROVIDER")?.trim().toLowerCase() ?? "browser";
     const preferredTtsProvider =
       this.configService.get<string>("SPEECH_TTS_PROVIDER")?.trim().toLowerCase() ?? "browser";
+    const bothBrowser =
+      preferredSttProvider === "browser" && preferredTtsProvider === "browser";
+    const providerMode = bothBrowser
+      ? "browser_fallback"
+      : preferredSttProvider === preferredTtsProvider
+        ? `provider_backed_${preferredSttProvider}`
+        : "provider_backed_mixed";
 
     return {
       preferredSttProvider,
       preferredTtsProvider,
-      providerMode:
-        preferredSttProvider === "openai" && preferredTtsProvider === "openai"
-          ? "provider_backed"
-          : "browser_fallback",
-      openAiSpeechReady: this.openAiConfig.apiKeyConfigured
+      providerMode,
+      openAiSpeechReady: this.openAiConfig.apiKeyConfigured,
+      elevenLabsSpeechReady: Boolean(
+        toOptionalString(this.configService.get<string>("ELEVENLABS_API_KEY"))
+      )
     };
   }
 
@@ -280,6 +324,26 @@ export class RuntimeConfigService {
     };
   }
 
+  get googleAuthConfig() {
+    return {
+      clientId:
+        toOptionalString(this.configService.get<string>("GOOGLE_AUTH_CLIENT_ID")) ??
+        toOptionalString(this.configService.get<string>("GOOGLE_OAUTH_CLIENT_ID")) ??
+        "",
+      clientSecret:
+        toOptionalString(this.configService.get<string>("GOOGLE_AUTH_CLIENT_SECRET")) ??
+        toOptionalString(this.configService.get<string>("GOOGLE_OAUTH_CLIENT_SECRET")) ??
+        "",
+      redirectUri:
+        toOptionalString(this.configService.get<string>("GOOGLE_AUTH_REDIRECT_URI")) ?? "",
+      scopes:
+        toOptionalString(this.configService.get<string>("GOOGLE_AUTH_SCOPES"))
+          ?.split(",")
+          .map((value) => value.trim())
+          .filter(Boolean) ?? ["openid", "email", "profile"]
+    };
+  }
+
   get elevenLabsConfig() {
     const apiKey = toOptionalString(this.configService.get<string>("ELEVENLABS_API_KEY"));
     const agentId = toOptionalString(this.configService.get<string>("ELEVENLABS_AGENT_ID"));
@@ -303,12 +367,92 @@ export class RuntimeConfigService {
     };
   }
 
+  get stripeBillingConfig() {
+    return {
+      apiKey: toOptionalString(this.configService.get<string>("STRIPE_SECRET_KEY")) ?? "",
+      apiKeyConfigured: Boolean(
+        toOptionalString(this.configService.get<string>("STRIPE_SECRET_KEY"))
+      ),
+      webhookSecret:
+        toOptionalString(this.configService.get<string>("STRIPE_WEBHOOK_SECRET")) ?? "",
+      portalConfigurationId:
+        toOptionalString(this.configService.get<string>("STRIPE_BILLING_PORTAL_CONFIGURATION_ID")) ??
+        null,
+      planPriceIds: {
+        STARTER:
+          toOptionalString(this.configService.get<string>("STRIPE_PRICE_STARTER_MONTHLY")) ?? "",
+        GROWTH:
+          toOptionalString(this.configService.get<string>("STRIPE_PRICE_GROWTH_MONTHLY")) ?? "",
+        ENTERPRISE:
+          toOptionalString(this.configService.get<string>("STRIPE_PRICE_ENTERPRISE_MONTHLY")) ?? ""
+      },
+      addOnPriceIds: {
+        INTERVIEW_PACK_25:
+          toOptionalString(this.configService.get<string>("STRIPE_PRICE_INTERVIEW_PACK_25")) ?? "",
+        CANDIDATE_PROCESSING_PACK_100:
+          toOptionalString(
+            this.configService.get<string>("STRIPE_PRICE_CANDIDATE_PROCESSING_PACK_100")
+          ) ?? "",
+        PROFESSIONAL_ONBOARDING:
+          toOptionalString(this.configService.get<string>("STRIPE_PRICE_PROFESSIONAL_ONBOARDING")) ??
+          "",
+        CUSTOM_INTEGRATION_SETUP:
+          toOptionalString(
+            this.configService.get<string>("STRIPE_PRICE_CUSTOM_INTEGRATION_SETUP")
+          ) ?? ""
+      }
+    };
+  }
+
+  get internalBillingAdminEmailAllowlist() {
+    const configured = [
+      ...toCsvList(this.configService.get<string>("INTERNAL_ADMIN_EMAIL_ALLOWLIST")),
+      ...toCsvList(this.configService.get<string>("INTERNAL_BILLING_ADMIN_EMAIL_ALLOWLIST"))
+    ];
+
+    if (configured.length > 0) {
+      return Array.from(new Set(configured));
+    }
+
+    return this.isProduction ? [] : ["owner@demo.local"];
+  }
+
+  get internalBillingAdminDomainAllowlist() {
+    return [
+      ...toCsvList(this.configService.get<string>("INTERNAL_ADMIN_DOMAIN_ALLOWLIST")),
+      ...toCsvList(this.configService.get<string>("INTERNAL_BILLING_ADMIN_DOMAIN_ALLOWLIST"))
+    ].map((domain) => domain.replace(/^@+/, ""));
+  }
+
+  isInternalAdmin(email?: string | null) {
+    const normalizedEmail = email?.trim().toLowerCase();
+    if (!normalizedEmail) {
+      return false;
+    }
+
+    if (this.internalBillingAdminEmailAllowlist.includes(normalizedEmail)) {
+      return true;
+    }
+
+    const emailDomain = normalizedEmail.split("@")[1];
+    if (!emailDomain) {
+      return false;
+    }
+
+    return this.internalBillingAdminDomainAllowlist.includes(emailDomain);
+  }
+
+  isInternalBillingAdmin(email?: string | null) {
+    return this.isInternalAdmin(email);
+  }
+
   get providerReadiness() {
     const openAi = this.openAiConfig;
     const calendly = this.calendlyConfig;
     const google = this.googleCalendarConfig;
     const email = this.emailRuntimeConfig;
     const speech = this.speechRuntimeConfig;
+    const stripe = this.stripeBillingConfig;
 
     return {
       parsing: {
@@ -341,6 +485,9 @@ export class RuntimeConfigService {
       notifications: {
         emailProvider: email.provider,
         ready: email.provider !== "resend" || email.resendApiConfigured
+      },
+      billing: {
+        ready: stripe.apiKeyConfigured
       },
       elevenLabs: {
         configured: this.elevenLabsConfig.isConfigured,
@@ -381,6 +528,10 @@ export class RuntimeConfigService {
 
     if (!readiness.notifications.ready) {
       warnings.push("Email provider selected but provider credentials are missing.");
+    }
+
+    if (!readiness.billing.ready) {
+      warnings.push("STRIPE_SECRET_KEY missing; self-serve billing links cannot be created.");
     }
 
     if (!readiness.elevenLabs.configured) {
@@ -432,6 +583,10 @@ export class RuntimeConfigService {
       email_notifications: {
         ready: readiness.notifications.ready,
         mode: readiness.notifications.emailProvider
+      },
+      stripe_billing: {
+        ready: readiness.billing.ready,
+        mode: readiness.billing.ready ? "stripe_checkout" : "not_configured"
       },
       elevenlabs_voice: {
         ready: readiness.elevenLabs.configured,

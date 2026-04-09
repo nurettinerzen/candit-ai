@@ -16,6 +16,7 @@ import {
   type Prisma
 } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
+import { hashPassword } from "../src/modules/auth/password";
 
 const prisma = new PrismaClient();
 
@@ -40,7 +41,7 @@ function candidateInterviewUrl(sessionId: keyof typeof sessionAccessTokens) {
   const base = process.env.PUBLIC_WEB_BASE_URL?.trim() || "http://localhost:3000";
   const normalizedBase = base.replace(/\/+$/, "");
   const token = sessionAccessTokens[sessionId];
-  return `${normalizedBase}/gorusme/${sessionId}?token=${token}`;
+  return `${normalizedBase}/interview/${sessionId}?token=${token}`;
 }
 
 function resolveWorkspaceRoot() {
@@ -91,24 +92,27 @@ async function writeSeedCvFile(storageKey: string, content: string) {
 }
 
 async function upsertUsers() {
+  const defaultPassword = process.env.DEV_LOGIN_PASSWORD ?? "demo12345";
+  const passwordHash = await hashPassword(defaultPassword);
+  const passwordSetAt = new Date();
   const users = [
     {
       id: "usr_admin_demo",
-      email: "admin@demo.local",
-      fullName: "Demo Admin",
-      role: Role.ADMIN
+      email: "owner@demo.local",
+      fullName: "Demo Owner",
+      role: Role.OWNER
     },
     {
       id: "usr_recruiter_demo",
-      email: "recruiter@demo.local",
-      fullName: "Demo Recruiter",
-      role: Role.RECRUITER
+      email: "manager@demo.local",
+      fullName: "Demo Manager",
+      role: Role.MANAGER
     },
     {
       id: "usr_hm_demo",
-      email: "hm@demo.local",
-      fullName: "Demo Hiring Manager",
-      role: Role.HIRING_MANAGER
+      email: "staff@demo.local",
+      fullName: "Demo Staff",
+      role: Role.STAFF
     }
   ];
 
@@ -119,31 +123,21 @@ async function upsertUsers() {
         tenantId,
         fullName: user.fullName,
         email: user.email.toLowerCase(),
-        status: UserStatus.ACTIVE
+        role: user.role,
+        status: UserStatus.ACTIVE,
+        passwordHash,
+        passwordSetAt
       },
       create: {
         id: user.id,
         tenantId,
         email: user.email.toLowerCase(),
         fullName: user.fullName,
-        status: UserStatus.ACTIVE
-      }
-    });
-
-    await prisma.userRoleBinding.upsert({
-      where: {
-        tenantId_userId_role: {
-          tenantId,
-          userId: user.id,
-          role: user.role
-        }
+        role: user.role,
+        status: UserStatus.ACTIVE,
+        passwordHash,
+        passwordSetAt
       },
-      update: {},
-      create: {
-        tenantId,
-        userId: user.id,
-        role: user.role
-      }
     });
   }
 }
@@ -3011,6 +3005,642 @@ async function upsertApprovalsAuditAndEvents() {
   }
 }
 
+async function upsertSourcingData() {
+  const externalProfileIds = [
+    "tp_demo_esra_public",
+    "tp_demo_burcu_public",
+    "tp_demo_selin_public",
+    "tp_demo_kerem_public"
+  ] as const;
+  const seededProspectIds = [
+    "srcprospect_demo_esra",
+    "srcprospect_demo_burcu",
+    "srcprospect_demo_kerem"
+  ] as const;
+
+  await prisma.sourcingProject.deleteMany({
+    where: {
+      tenantId,
+      id: {
+        not: "srcprj_demo_warehouse"
+      }
+    }
+  });
+
+  const liveDiscoveredProfiles = await prisma.talentProfile.findMany({
+    where: {
+      tenantId,
+      sourceRecords: {
+        some: {
+          providerKey: {
+            in: [
+              "openai_web_search",
+              "job_board_export",
+              "public_profile_url",
+              "recruiter_import",
+              "agency_upload",
+              "referral"
+            ]
+          }
+        }
+      }
+    },
+    select: {
+      id: true,
+      candidateId: true
+    }
+  });
+
+  const liveDiscoveredProfileIds = liveDiscoveredProfiles.map((profile) => profile.id);
+  const liveDiscoveredCandidateIds = [...new Set(liveDiscoveredProfiles.map((profile) => profile.candidateId).filter(Boolean))] as string[];
+
+  if (liveDiscoveredCandidateIds.length > 0) {
+    await prisma.candidate.deleteMany({
+      where: {
+        tenantId,
+        id: {
+          in: liveDiscoveredCandidateIds
+        }
+      }
+    });
+  }
+
+  if (liveDiscoveredProfileIds.length > 0) {
+    await prisma.talentProfile.deleteMany({
+      where: {
+        tenantId,
+        id: {
+          in: liveDiscoveredProfileIds
+        }
+      }
+    });
+  }
+
+  const internalRediscoveryProfiles = [
+    {
+      id: "tp_internal_ahmet_pool",
+      candidateId: "cand_demo_ahmet",
+      fullName: "Ahmet Kaya",
+      email: "ahmet.kaya@example.com",
+      phone: "905551112233",
+      headline: "Depo operasyon ve vardiya deneyimi",
+      summary:
+        "Ic aday havuzundan yeniden yuzeye cikan profil. Depo operasyon, gece vardiyasi ve fiziksel is temposu sinyalleri mevcut.",
+      locationText: "Istanbul",
+      currentTitle: "Depo Operasyon Personeli",
+      currentCompany: "Ic Aday Havuzu",
+      yearsOfExperience: 3,
+      workModel: "vardiyali",
+      skills: ["depo operasyon", "vardiya uyumu", "stok toplama", "yukleme bosaltma"],
+      languages: ["Turkce"],
+      education: ["Meslek Lisesi"],
+      experiences: [
+        "2022 - 2024 | Depo Personeli | Marmara Lojistik",
+        "2020 - 2022 | Sevkiyat Destek | Bolge Dagitim"
+      ],
+      sourceRecordId: "tps_internal_ahmet_pool"
+    },
+    {
+      id: "tp_internal_zeynep_pool",
+      candidateId: "cand_demo_zeynep",
+      fullName: "Zeynep Demir",
+      email: "zeynep.demir@example.com",
+      phone: "905559991122",
+      headline: "Perakende ve kasa operasyon deneyimi",
+      summary:
+        "Ic aday havuzunda bulunan retail profili. Musteri iletisim ve kasa deneyimi nedeniyle rediscovery icin uygun.",
+      locationText: "Ankara",
+      currentTitle: "Kasiyer",
+      currentCompany: "Ic Aday Havuzu",
+      yearsOfExperience: 3,
+      workModel: "tam_zamanli",
+      skills: ["kasa islemleri", "musteri iletisim", "vardiya uyumu"],
+      languages: ["Turkce"],
+      education: ["Anadolu Lisesi"],
+      experiences: [
+        "2022 - 2024 | Kasiyer | Mahalle Market",
+        "2021 - 2022 | Satis Danismani | Perakende Magaza"
+      ],
+      sourceRecordId: "tps_internal_zeynep_pool"
+    }
+  ] as const;
+
+  for (const profile of internalRediscoveryProfiles) {
+    await prisma.talentProfile.upsert({
+      where: { id: profile.id },
+      update: {
+        tenantId,
+        candidateId: profile.candidateId,
+        fullName: profile.fullName,
+        normalizedEmail: profile.email.toLowerCase(),
+        normalizedPhone: profile.phone.replace(/[^\d+]/g, ""),
+        email: profile.email,
+        phone: profile.phone,
+        headline: profile.headline,
+        summary: profile.summary,
+        locationText: profile.locationText,
+        currentTitle: profile.currentTitle,
+        currentCompany: profile.currentCompany,
+        yearsOfExperience: profile.yearsOfExperience,
+        workModel: profile.workModel,
+        sourceKind: "INTERNAL_CANDIDATE",
+        primarySourceLabel: "Ic aday havuzu",
+        suppressionStatus: "ALLOWED",
+        doNotContactReason: null,
+        skillTagsJson: profile.skills as Prisma.InputJsonValue,
+        languageTagsJson: profile.languages as Prisma.InputJsonValue,
+        educationJson: profile.education as Prisma.InputJsonValue,
+        experienceJson: profile.experiences as Prisma.InputJsonValue,
+        contactSignalsJson: {
+          hasEmail: true,
+          hasPhone: true
+        },
+        sourceMetadataJson: {
+          syncMode: "seed_internal_rediscovery",
+          candidateId: profile.candidateId
+        },
+        lastEnrichedAt: hoursAgo(4)
+      },
+      create: {
+        id: profile.id,
+        tenantId,
+        candidateId: profile.candidateId,
+        fullName: profile.fullName,
+        normalizedEmail: profile.email.toLowerCase(),
+        normalizedPhone: profile.phone.replace(/[^\d+]/g, ""),
+        email: profile.email,
+        phone: profile.phone,
+        headline: profile.headline,
+        summary: profile.summary,
+        locationText: profile.locationText,
+        currentTitle: profile.currentTitle,
+        currentCompany: profile.currentCompany,
+        yearsOfExperience: profile.yearsOfExperience,
+        workModel: profile.workModel,
+        sourceKind: "INTERNAL_CANDIDATE",
+        primarySourceLabel: "Ic aday havuzu",
+        suppressionStatus: "ALLOWED",
+        doNotContactReason: null,
+        skillTagsJson: profile.skills as Prisma.InputJsonValue,
+        languageTagsJson: profile.languages as Prisma.InputJsonValue,
+        educationJson: profile.education as Prisma.InputJsonValue,
+        experienceJson: profile.experiences as Prisma.InputJsonValue,
+        contactSignalsJson: {
+          hasEmail: true,
+          hasPhone: true
+        },
+        sourceMetadataJson: {
+          syncMode: "seed_internal_rediscovery",
+          candidateId: profile.candidateId
+        },
+        lastEnrichedAt: hoursAgo(4)
+      }
+    });
+
+    await prisma.talentProfileSource.upsert({
+      where: { id: profile.sourceRecordId },
+      update: {
+        tenantId,
+        talentProfileId: profile.id,
+        sourceKind: "INTERNAL_CANDIDATE",
+        providerKey: "candidate_pool_seed",
+        providerLabel: "Ic Aday Havuzu",
+        displayName: `${profile.fullName} rediscovery`,
+        externalRef: profile.candidateId,
+        sourceUrl: `/candidates/${profile.candidateId}`,
+        isPrimary: true,
+        isVerified: true,
+        metadataJson: {
+          lawfulBasis: "internal_candidate_pool",
+          complianceNote: "Seed ic rediscovery kaydi"
+        }
+      },
+      create: {
+        id: profile.sourceRecordId,
+        tenantId,
+        talentProfileId: profile.id,
+        sourceKind: "INTERNAL_CANDIDATE",
+        providerKey: "candidate_pool_seed",
+        providerLabel: "Ic Aday Havuzu",
+        displayName: `${profile.fullName} rediscovery`,
+        externalRef: profile.candidateId,
+        sourceUrl: `/candidates/${profile.candidateId}`,
+        isPrimary: true,
+        isVerified: true,
+        metadataJson: {
+          lawfulBasis: "internal_candidate_pool",
+          complianceNote: "Seed ic rediscovery kaydi"
+        }
+      }
+    });
+  }
+
+  const previouslyLinkedDemoCandidates = await prisma.talentProfile.findMany({
+    where: {
+      tenantId,
+      id: {
+        in: [...externalProfileIds]
+      }
+    },
+    select: {
+      candidateId: true
+    }
+  });
+
+  const demoCandidateIdsToDelete = [...new Set(
+    previouslyLinkedDemoCandidates
+      .map((profile) => profile.candidateId)
+      .filter((candidateId): candidateId is string => Boolean(candidateId))
+  )];
+
+  if (demoCandidateIdsToDelete.length > 0) {
+    await prisma.candidate.deleteMany({
+      where: {
+        tenantId,
+        id: {
+          in: demoCandidateIdsToDelete
+        }
+      }
+    });
+  }
+
+  const externalProfiles = [
+    {
+      id: "tp_demo_esra_public",
+      fullName: "Esra Yildirim",
+      email: "esra.yildirim@talent.demo",
+      phone: "+90 541 330 20 10",
+      headline: "Depo Operasyon Uzmani",
+      summary:
+        "Stok yönetimi, ekip koordinasyonu ve vardiya planlamasında deneyimli operasyon profili.",
+      locationText: "Istanbul",
+      currentTitle: "Depo Vardiya Sorumlusu",
+      currentCompany: "Marmara Dagitim",
+      yearsOfExperience: 6,
+      workModel: "vardiyali",
+      sourceKind: "PUBLIC_PROFESSIONAL",
+      primarySourceLabel: "Demo public professional profile",
+      skills: ["stok yonetimi", "forklift", "vardiya planlama", "ekip koordinasyonu"],
+      languages: ["Turkce"],
+      education: ["Anadolu Universitesi - Lojistik"],
+      experiences: [
+        "2022 - 2026 | Depo Vardiya Sorumlusu | Marmara Dagitim",
+        "2019 - 2022 | Depo Operasyon Uzmani | Kuzey Sevkiyat"
+      ],
+      sourceRecord: {
+        id: "tps_demo_esra",
+        displayName: "Operasyon portföy kaydı"
+      }
+    },
+    {
+      id: "tp_demo_burcu_public",
+      fullName: "Burcu Gunes",
+      email: "burcu.gunes@talent.demo",
+      phone: "+90 541 551 22 44",
+      headline: "Depo ve sevkiyat operasyon uzmanı",
+      summary:
+        "Sevkiyat hazırlama, el terminali kullanımı ve depo düzeni tarafında operasyonel deneyim sunar.",
+      locationText: "Istanbul",
+      currentTitle: "Sevkiyat Operasyon Uzmani",
+      currentCompany: "Anadolu Fulfillment",
+      yearsOfExperience: 4,
+      workModel: "hibrit",
+      sourceKind: "PUBLIC_PROFESSIONAL",
+      primarySourceLabel: "Demo public professional profile",
+      skills: ["sevkiyat", "el terminali", "stok sayimi", "vardiya uyumu"],
+      languages: ["Turkce", "Temel Ingilizce"],
+      education: ["Meslek Lisesi - Lojistik"],
+      experiences: [
+        "2023 - 2026 | Sevkiyat Operasyon Uzmani | Anadolu Fulfillment",
+        "2021 - 2023 | Depo Personeli | Ege Tedarik"
+      ],
+      sourceRecord: {
+        id: "tps_demo_burcu",
+        displayName: "Profesyonel açık profil özeti"
+      }
+    },
+    {
+      id: "tp_demo_selin_public",
+      fullName: "Selin Acar",
+      email: "selin.acar@talent.demo",
+      phone: "+90 542 771 10 20",
+      headline: "Perakende kasiyer ve mağaza operasyonu",
+      summary:
+        "Müşteri karşılama, kasa kapanışı ve hızlı vardiya adaptasyonu bulunan retail profili.",
+      locationText: "Ankara",
+      currentTitle: "Kasa Operasyon Sorumlusu",
+      currentCompany: "Duru Market",
+      yearsOfExperience: 5,
+      workModel: "tam_zamanli",
+      sourceKind: "PUBLIC_PROFESSIONAL",
+      primarySourceLabel: "Demo public professional profile",
+      skills: ["kasa islemleri", "musteri iletisim", "raf duzeni", "hafta sonu vardiya"],
+      languages: ["Turkce"],
+      education: ["Acikogretim - Isletme"],
+      experiences: [
+        "2022 - 2026 | Kasa Operasyon Sorumlusu | Duru Market",
+        "2019 - 2022 | Kasiyer | Kent AVM"
+      ],
+      sourceRecord: {
+        id: "tps_demo_selin",
+        displayName: "Retail public profile"
+      }
+    },
+    {
+      id: "tp_demo_kerem_public",
+      fullName: "Kerem Oz",
+      email: "kerem.oz@talent.demo",
+      phone: "+90 543 889 44 55",
+      headline: "Müşteri destek ve ticket çözümleme",
+      summary:
+        "Telefon ve mesaj destek kanallarında ilk seviye çözüm, kayıt açma ve SLA takibi deneyimi.",
+      locationText: "Izmir",
+      currentTitle: "Musteri Destek Uzmani",
+      currentCompany: "Nova Destek Merkezi",
+      yearsOfExperience: 3,
+      workModel: "hibrit",
+      sourceKind: "PUBLIC_PROFESSIONAL",
+      primarySourceLabel: "Demo public professional profile",
+      skills: ["ticket yonetimi", "musteri iletisim", "whatsapp destek", "crm"],
+      languages: ["Turkce", "Ingilizce"],
+      education: ["Ege Universitesi - Iletisim"],
+      experiences: [
+        "2023 - 2026 | Musteri Destek Uzmani | Nova Destek Merkezi",
+        "2021 - 2023 | Call Center Agent | Hedef Cagri"
+      ],
+      sourceRecord: {
+        id: "tps_demo_kerem",
+        displayName: "Support public profile"
+      }
+    }
+  ] as const;
+
+  for (const profile of externalProfiles) {
+    await prisma.talentProfile.upsert({
+      where: { id: profile.id },
+      update: {
+        tenantId,
+        candidateId: null,
+        fullName: profile.fullName,
+        normalizedEmail: profile.email.toLowerCase(),
+        normalizedPhone: profile.phone.replace(/[^\d+]/g, ""),
+        email: profile.email,
+        phone: profile.phone,
+        headline: profile.headline,
+        summary: profile.summary,
+        locationText: profile.locationText,
+        currentTitle: profile.currentTitle,
+        currentCompany: profile.currentCompany,
+        yearsOfExperience: profile.yearsOfExperience,
+        workModel: profile.workModel,
+        sourceKind: profile.sourceKind as never,
+        primarySourceLabel: profile.primarySourceLabel,
+        suppressionStatus: "ALLOWED",
+        doNotContactReason: null,
+        skillTagsJson: profile.skills as Prisma.InputJsonValue,
+        languageTagsJson: profile.languages as Prisma.InputJsonValue,
+        educationJson: profile.education as Prisma.InputJsonValue,
+        experienceJson: profile.experiences as Prisma.InputJsonValue,
+        contactSignalsJson: {
+          hasEmail: true,
+          hasPhone: true
+        },
+        marketSignalsJson: {
+          profileMode: "public_professional"
+        },
+        lastEnrichedAt: hoursAgo(8)
+      },
+      create: {
+        id: profile.id,
+        tenantId,
+        candidateId: null,
+        fullName: profile.fullName,
+        normalizedEmail: profile.email.toLowerCase(),
+        normalizedPhone: profile.phone.replace(/[^\d+]/g, ""),
+        email: profile.email,
+        phone: profile.phone,
+        headline: profile.headline,
+        summary: profile.summary,
+        locationText: profile.locationText,
+        currentTitle: profile.currentTitle,
+        currentCompany: profile.currentCompany,
+        yearsOfExperience: profile.yearsOfExperience,
+        workModel: profile.workModel,
+        sourceKind: profile.sourceKind as never,
+        primarySourceLabel: profile.primarySourceLabel,
+        suppressionStatus: "ALLOWED",
+        doNotContactReason: null,
+        skillTagsJson: profile.skills as Prisma.InputJsonValue,
+        languageTagsJson: profile.languages as Prisma.InputJsonValue,
+        educationJson: profile.education as Prisma.InputJsonValue,
+        experienceJson: profile.experiences as Prisma.InputJsonValue,
+        contactSignalsJson: {
+          hasEmail: true,
+          hasPhone: true
+        },
+        marketSignalsJson: {
+          profileMode: "public_professional"
+        },
+        lastEnrichedAt: hoursAgo(8)
+      }
+    });
+
+    await prisma.talentProfileSource.upsert({
+      where: { id: profile.sourceRecord.id },
+      update: {
+        tenantId,
+        talentProfileId: profile.id,
+        sourceKind: profile.sourceKind as never,
+        providerKey: "demo_public_profile",
+        providerLabel: "Demo Public Professional Profile",
+        displayName: profile.sourceRecord.displayName,
+        isPrimary: true,
+        isVerified: true,
+        metadataJson: {
+          lawfulBasis: "public_professional_demo_seed",
+          complianceNote: "Demo seed verisi"
+        }
+      },
+      create: {
+        id: profile.sourceRecord.id,
+        tenantId,
+        talentProfileId: profile.id,
+        sourceKind: profile.sourceKind as never,
+        providerKey: "demo_public_profile",
+        providerLabel: "Demo Public Professional Profile",
+        displayName: profile.sourceRecord.displayName,
+        isPrimary: true,
+        isVerified: true,
+        metadataJson: {
+          lawfulBasis: "public_professional_demo_seed",
+          complianceNote: "Demo seed verisi"
+        }
+      }
+    });
+  }
+
+  await prisma.sourcingProject.upsert({
+    where: { id: "srcprj_demo_warehouse" },
+    update: {
+      tenantId,
+      jobId: "job_demo_warehouse",
+      name: "Depo Operasyon Sourcing",
+      personaSummary:
+        "Istanbul lokasyonunda vardiya düzenine uyumlu, stok ve sevkiyat sinyali güçlü adayları topla.",
+      searchQuery: "Depo Operasyon Personeli · warehouse · Istanbul",
+      filtersJson: {
+        location: "Istanbul",
+        roleFamily: "warehouse",
+        shiftType: "vardiyali"
+      },
+      notes:
+        "Öncelik: hızlı başlayabilecek adaylar. Outreach öncesi suppression görünürlüğünü mutlaka kontrol et.",
+      createdBy: recruiterId
+    },
+    create: {
+      id: "srcprj_demo_warehouse",
+      tenantId,
+      jobId: "job_demo_warehouse",
+      name: "Depo Operasyon Sourcing",
+      personaSummary:
+        "Istanbul lokasyonunda vardiya düzenine uyumlu, stok ve sevkiyat sinyali güçlü adayları topla.",
+      searchQuery: "Depo Operasyon Personeli · warehouse · Istanbul",
+      filtersJson: {
+        location: "Istanbul",
+        roleFamily: "warehouse",
+        shiftType: "vardiyali"
+      },
+      notes:
+        "Öncelik: hızlı başlayabilecek adaylar. Outreach öncesi suppression görünürlüğünü mutlaka kontrol et.",
+      createdBy: recruiterId
+    }
+  });
+
+  await prisma.sourcingOutreachMessage.deleteMany({
+    where: {
+      tenantId,
+      projectProspectId: {
+        in: [...seededProspectIds]
+      }
+    }
+  });
+
+  const seededProspects = [
+    {
+      id: "srcprospect_demo_esra",
+      talentProfileId: "tp_demo_esra_public",
+      stage: "GOOD_FIT"
+    },
+    {
+      id: "srcprospect_demo_burcu",
+      talentProfileId: "tp_demo_burcu_public",
+      stage: "CONTACTED"
+    },
+    {
+      id: "srcprospect_demo_kerem",
+      talentProfileId: "tp_demo_kerem_public",
+      stage: "REPLIED"
+    }
+  ] as const;
+
+  for (const prospect of seededProspects) {
+    await prisma.sourcingProjectProspect.upsert({
+      where: { id: prospect.id },
+      update: {
+        tenantId,
+        projectId: "srcprj_demo_warehouse",
+        talentProfileId: prospect.talentProfileId,
+        attachedCandidateId: null,
+        attachedApplicationId: null,
+        stage: prospect.stage as never,
+        recruiterNote: null,
+        contactState: null,
+        lastReviewedAt: null,
+        contactedAt: prospect.stage === "CONTACTED" || prospect.stage === "REPLIED" ? hoursAgo(18) : null,
+        repliedAt: prospect.stage === "REPLIED" ? hoursAgo(4) : null,
+        convertedAt: null
+      },
+      create: {
+        id: prospect.id,
+        tenantId,
+        projectId: "srcprj_demo_warehouse",
+        talentProfileId: prospect.talentProfileId,
+        attachedCandidateId: null,
+        attachedApplicationId: null,
+        stage: prospect.stage as never,
+        recruiterNote: null,
+        contactState: null,
+        lastReviewedAt: null,
+        contactedAt: prospect.stage === "CONTACTED" || prospect.stage === "REPLIED" ? hoursAgo(18) : null,
+        repliedAt: prospect.stage === "REPLIED" ? hoursAgo(4) : null,
+        convertedAt: null
+      }
+    });
+  }
+
+  await prisma.sourcingOutreachMessage.upsert({
+    where: { id: "srcmsg_demo_burcu_1" },
+    update: {
+      tenantId,
+      projectProspectId: "srcprospect_demo_burcu",
+      channel: "email",
+      stepIndex: 0,
+      status: "SENT",
+      subject: "Depo Operasyon Personeli rolü için kısa bir tanışma",
+      body: "Merhaba Burcu, profilinizi Depo Operasyon Personeli rolü için değerlendirmek istiyoruz.",
+      reviewedBy: recruiterId,
+      sentBy: recruiterId,
+      sentAt: hoursAgo(18)
+    },
+    create: {
+      id: "srcmsg_demo_burcu_1",
+      tenantId,
+      projectProspectId: "srcprospect_demo_burcu",
+      channel: "email",
+      stepIndex: 0,
+      status: "SENT",
+      subject: "Depo Operasyon Personeli rolü için kısa bir tanışma",
+      body: "Merhaba Burcu, profilinizi Depo Operasyon Personeli rolü için değerlendirmek istiyoruz.",
+      reviewedBy: recruiterId,
+      sentBy: recruiterId,
+      sentAt: hoursAgo(18)
+    }
+  });
+
+  await prisma.sourcingOutreachMessage.upsert({
+    where: { id: "srcmsg_demo_kerem_1" },
+    update: {
+      tenantId,
+      projectProspectId: "srcprospect_demo_kerem",
+      channel: "email",
+      stepIndex: 0,
+      status: "REPLIED",
+      subject: "Müşteri destek benzeri rol için kısa bir tanışma",
+      body: "Merhaba Kerem, yeni açılan destek rolümüz için iletişime geçiyoruz.",
+      reviewedBy: recruiterId,
+      sentBy: recruiterId,
+      sentAt: hoursAgo(20),
+      repliedAt: hoursAgo(4)
+    },
+    create: {
+      id: "srcmsg_demo_kerem_1",
+      tenantId,
+      projectProspectId: "srcprospect_demo_kerem",
+      channel: "email",
+      stepIndex: 0,
+      status: "REPLIED",
+      subject: "Müşteri destek benzeri rol için kısa bir tanışma",
+      body: "Merhaba Kerem, yeni açılan destek rolümüz için iletişime geçiyoruz.",
+      reviewedBy: recruiterId,
+      sentBy: recruiterId,
+      sentAt: hoursAgo(20),
+      repliedAt: hoursAgo(4)
+    }
+  });
+
+  console.log("Sourcing demo data: 4 public talent profiles, 1 sourcing project, 3 seeded outreach states.");
+}
+
 async function seed() {
   await prisma.tenant.upsert({
     where: { id: tenantId },
@@ -3051,9 +3681,10 @@ async function seed() {
   await upsertApplications();
   await upsertInterviewFoundation();
   await upsertSchedulingWorkflowSeeds();
-  await upsertCvData();
   await upsertAiArtifacts();
   await upsertWorkflowJobsAndTaskRuns();
+  await upsertCvData();
+  await upsertSourcingData();
   await upsertApplicationRecommendations();
   await upsertApprovalsAuditAndEvents();
   await upsertInboxDemoData();
@@ -3061,9 +3692,9 @@ async function seed() {
   console.log("Seed tamamlandi.");
   console.log("Tenant ID:", tenantId);
   console.log("Demo kullanicilar:");
-  console.log("- admin@demo.local (admin)");
-  console.log("- recruiter@demo.local (recruiter)");
-  console.log("- hm@demo.local (hiring_manager)");
+  console.log("- owner@demo.local (owner)");
+  console.log("- manager@demo.local (manager)");
+  console.log("- staff@demo.local (staff)");
   console.log("Sifre (.env DEV_LOGIN_PASSWORD): demo12345");
   console.log("Demo basvurular:");
   console.log("- app_demo_mehmet_support: interview yok (aday intake asamasi)");
@@ -3291,7 +3922,7 @@ async function upsertInboxDemoData() {
   });
 
   console.log(`Scheduling workflow demo: swf_demo_zeynep (token: ${demoToken})`);
-  console.log(`Demo scheduling URL: http://localhost:3000/randevu/swf_demo_zeynep?token=${demoToken}`);
+  console.log(`Demo scheduling URL: http://localhost:3000/schedule/swf_demo_zeynep?token=${demoToken}`);
 }
 
 seed()

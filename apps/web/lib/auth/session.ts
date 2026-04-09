@@ -5,8 +5,70 @@ import {
   DEMO_SESSION_DEFAULTS,
   ENABLE_DEMO_SESSION
 } from "./runtime";
-import { clearStoredSession, persistSession, readStoredSession } from "./session-store";
+import {
+  clearStoredSession,
+  isExplicitlyLoggedOut,
+  persistSession,
+  readLastTenantId,
+  readStoredSession,
+  setExplicitlyLoggedOut
+} from "./session-store";
 import type { WebAuthSession } from "./types";
+
+type AuthResponsePayload = {
+  accessToken?: string;
+  refreshToken?: string;
+  emailVerification?: {
+    ok?: boolean;
+    expiresAt?: string;
+    previewUrl?: string | null;
+  };
+  session?: { id?: string };
+  user?: {
+    id?: string;
+    tenantId?: string;
+    email?: string | null;
+    fullName?: string | null;
+    roles?: string[];
+    emailVerifiedAt?: string | null;
+    avatarUrl?: string | null;
+  };
+  message?: string;
+};
+
+function buildSessionFromPayload(
+  payload: AuthResponsePayload,
+  authMode: "jwt" | "jwt_cookie"
+): WebAuthSession {
+  return {
+    tenantId: payload.user?.tenantId ?? "",
+    userId: payload.user?.id ?? "",
+    roles: (payload.user?.roles ?? ["manager"]).join(","),
+    userLabel: payload.user?.fullName ?? payload.user?.email ?? payload.user?.id ?? "",
+    authMode,
+    accessToken: payload.accessToken,
+    refreshToken: payload.refreshToken,
+    sessionId: payload.session?.id,
+    email: payload.user?.email ?? undefined,
+    emailVerifiedAt: payload.user?.emailVerifiedAt ?? null,
+    avatarUrl: payload.user?.avatarUrl ?? null
+  };
+}
+
+function buildPublicApiUrl(path: string, query?: Record<string, string | undefined>) {
+  const base = API_BASE_URL.endsWith("/") ? API_BASE_URL : `${API_BASE_URL}/`;
+  const url = new URL(path.replace(/^\//, ""), base);
+
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value && value.trim().length > 0) {
+        url.searchParams.set(key, value);
+      }
+    }
+  }
+
+  return url.toString();
+}
 
 export function getDemoSession(): WebAuthSession {
   return {
@@ -14,7 +76,8 @@ export function getDemoSession(): WebAuthSession {
     userId: DEMO_SESSION_DEFAULTS.userId,
     roles: DEMO_SESSION_DEFAULTS.roles,
     userLabel: DEMO_SESSION_DEFAULTS.userLabel,
-    authMode: "dev_header"
+    authMode: "dev_header",
+    email: DEMO_SESSION_DEFAULTS.email
   };
 }
 
@@ -42,9 +105,11 @@ export function resolveActiveSession(): WebAuthSession | null {
       return stored;
     }
 
+    if (isExplicitlyLoggedOut()) return null;
     return ENABLE_DEMO_SESSION ? getDemoSession() : null;
   }
 
+  if (isExplicitlyLoggedOut()) return null;
   return getDemoSession();
 }
 
@@ -84,12 +149,14 @@ export function buildAuthHeaders(session: WebAuthSession | null): Record<string,
   return {
     "x-tenant-id": session.tenantId,
     "x-user-id": session.userId,
-    "x-roles": session.roles
+    "x-roles": session.roles,
+    "x-user-label": session.userLabel,
+    ...(session.email ? { "x-user-email": session.email } : {})
   };
 }
 
 export async function loginWithPassword(input: {
-  tenantId: string;
+  tenantId?: string;
   email: string;
   password: string;
 }): Promise<WebAuthSession> {
@@ -103,19 +170,7 @@ export async function loginWithPassword(input: {
     cache: "no-store"
   });
 
-  const payload = (await response.json()) as {
-    accessToken?: string;
-    refreshToken?: string;
-    session?: { id?: string };
-    user?: {
-      id?: string;
-      tenantId?: string;
-      email?: string;
-      fullName?: string;
-      roles?: string[];
-    };
-    message?: string;
-  };
+  const payload = (await response.json()) as AuthResponsePayload;
 
   if (!response.ok || !payload.user?.id || !payload.user.tenantId) {
     throw new Error(payload?.message ?? `Giriş başarısız (${response.status}).`);
@@ -127,21 +182,309 @@ export async function loginWithPassword(input: {
     throw new Error("Giriş cevabı access token içermiyor.");
   }
 
-  const session: WebAuthSession = {
-    tenantId: payload.user.tenantId,
-    userId: payload.user.id,
-    roles: (payload.user.roles ?? ["recruiter"]).join(","),
-    userLabel: payload.user.fullName ?? payload.user.email ?? payload.user.id,
-    authMode: isCookieTransport ? "jwt_cookie" : "jwt",
-    accessToken: payload.accessToken,
-    refreshToken: payload.refreshToken,
-    sessionId: payload.session?.id,
-    email: payload.user.email
-  };
+  const session = buildSessionFromPayload(payload, isCookieTransport ? "jwt_cookie" : "jwt");
 
+  setExplicitlyLoggedOut(false);
   persistSession(session);
 
   return session;
+}
+
+export async function resolveInvitation(token: string) {
+  const response = await fetch(
+    `${API_BASE_URL}/auth/invitations/resolve?token=${encodeURIComponent(token)}`,
+    {
+      method: "GET",
+      cache: "no-store"
+    }
+  );
+
+  const payload = (await response.json()) as {
+    invitation?: {
+      tenantId: string;
+      tenantName: string;
+      email: string;
+      fullName: string;
+      role: string;
+      expiresAt: string;
+      status: "pending" | "accepted" | "revoked" | "expired";
+    };
+    message?: string;
+  };
+
+  if (!response.ok || !payload.invitation) {
+    throw new Error(payload.message ?? `Davet doğrulanamadı (${response.status}).`);
+  }
+
+  return payload.invitation;
+}
+
+export async function acceptInvitation(input: {
+  token: string;
+  password: string;
+  fullName?: string;
+}): Promise<WebAuthSession> {
+  const response = await fetch(`${API_BASE_URL}/auth/invitations/accept`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
+    body: JSON.stringify(input),
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as AuthResponsePayload;
+
+  if (!response.ok || !payload.user?.id || !payload.user.tenantId) {
+    throw new Error(payload.message ?? `Davet kabul edilemedi (${response.status}).`);
+  }
+
+  const isCookieTransport = AUTH_TOKEN_TRANSPORT === "cookie";
+
+  if (!isCookieTransport && !payload.accessToken) {
+    throw new Error("Davet kabul cevabı access token içermiyor.");
+  }
+
+  const session = buildSessionFromPayload(payload, isCookieTransport ? "jwt_cookie" : "jwt");
+  persistSession(session);
+  return session;
+}
+
+export async function signupWithPassword(input: {
+  companyName: string;
+  fullName: string;
+  email: string;
+  password: string;
+}): Promise<{
+  session: WebAuthSession;
+  emailVerification?: {
+    ok?: boolean;
+    expiresAt?: string;
+    previewUrl?: string | null;
+  };
+}> {
+  const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
+    body: JSON.stringify(input),
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as AuthResponsePayload;
+
+  if (!response.ok || !payload.user?.id || !payload.user.tenantId) {
+    throw new Error(payload.message ?? `Hesap olusturulamadi (${response.status}).`);
+  }
+
+  const isCookieTransport = AUTH_TOKEN_TRANSPORT === "cookie";
+
+  if (!isCookieTransport && !payload.accessToken) {
+    throw new Error("Kayit cevabi access token icermiyor.");
+  }
+
+  const session = buildSessionFromPayload(payload, isCookieTransport ? "jwt_cookie" : "jwt");
+  persistSession(session);
+  return {
+    session,
+    emailVerification: payload.emailVerification
+  };
+}
+
+export async function requestPasswordReset(input: { email: string; tenantId?: string }) {
+  const response = await fetch(`${API_BASE_URL}/auth/password/forgot`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(input),
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as {
+    ok?: boolean;
+    expiresAt?: string;
+    previewUrl?: string | null;
+    message?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(payload.message ?? `Sifre sifirlama talebi basarisiz (${response.status}).`);
+  }
+
+  return payload;
+}
+
+export async function resolvePasswordReset(token: string) {
+  const response = await fetch(
+    `${API_BASE_URL}/auth/password/reset/resolve?token=${encodeURIComponent(token)}`,
+    {
+      method: "GET",
+      cache: "no-store"
+    }
+  );
+
+  const payload = (await response.json()) as {
+    reset?: {
+      email: string;
+      fullName: string;
+      expiresAt: string;
+      status: "pending" | "used" | "revoked" | "expired";
+    };
+    message?: string;
+  };
+
+  if (!response.ok || !payload.reset) {
+    throw new Error(payload.message ?? `Sifre sifirlama baglantisi dogrulanamadi (${response.status}).`);
+  }
+
+  return payload.reset;
+}
+
+export async function resetPasswordWithToken(input: {
+  token: string;
+  password: string;
+}): Promise<WebAuthSession> {
+  const response = await fetch(`${API_BASE_URL}/auth/password/reset`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
+    body: JSON.stringify(input),
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as AuthResponsePayload;
+
+  if (!response.ok || !payload.user?.id || !payload.user.tenantId) {
+    throw new Error(payload.message ?? `Sifre sifirlanamadi (${response.status}).`);
+  }
+
+  const isCookieTransport = AUTH_TOKEN_TRANSPORT === "cookie";
+
+  if (!isCookieTransport && !payload.accessToken) {
+    throw new Error("Sifre sifirlama cevabi access token icermiyor.");
+  }
+
+  const session = buildSessionFromPayload(payload, isCookieTransport ? "jwt_cookie" : "jwt");
+  persistSession(session);
+  return session;
+}
+
+export async function resendEmailVerification(session: WebAuthSession | null) {
+  const response = await fetch(`${API_BASE_URL}/auth/email-verification/resend`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...buildAuthHeaders(session)
+    },
+    credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
+    body: JSON.stringify({}),
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as {
+    ok?: boolean;
+    expiresAt?: string;
+    previewUrl?: string | null;
+    message?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(payload.message ?? `Dogrulama e-postasi gonderilemedi (${response.status}).`);
+  }
+
+  return payload;
+}
+
+export async function confirmEmailVerification(token: string) {
+  const response = await fetch(`${API_BASE_URL}/auth/email-verification/confirm`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ token }),
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as {
+    ok?: boolean;
+    user?: {
+      emailVerifiedAt?: string | null;
+    };
+    message?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(payload.message ?? `E-posta dogrulanamadi (${response.status}).`);
+  }
+
+  return payload;
+}
+
+export async function exchangeGoogleOauthToken(token: string): Promise<WebAuthSession> {
+  const response = await fetch(`${API_BASE_URL}/auth/oauth/exchange`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
+    body: JSON.stringify({ token }),
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as AuthResponsePayload;
+
+  if (!response.ok || !payload.user?.id || !payload.user.tenantId) {
+    throw new Error(payload.message ?? `Google oturumu tamamlanamadi (${response.status}).`);
+  }
+
+  const isCookieTransport = AUTH_TOKEN_TRANSPORT === "cookie";
+
+  if (!isCookieTransport && !payload.accessToken) {
+    throw new Error("Google oturum cevabi access token icermiyor.");
+  }
+
+  const session = buildSessionFromPayload(payload, isCookieTransport ? "jwt_cookie" : "jwt");
+  persistSession(session);
+  return session;
+}
+
+export async function getAuthProviders() {
+  const response = await fetch(`${API_BASE_URL}/auth/providers`, {
+    method: "GET",
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as {
+    google?: {
+      enabled?: boolean;
+    };
+  };
+
+  if (!response.ok) {
+    throw new Error(`Auth provider bilgisi okunamadi (${response.status}).`);
+  }
+
+  return payload;
+}
+
+export function getGoogleAuthAuthorizeUrl(input: {
+  intent: "login" | "signup";
+  tenantId?: string | null;
+  companyName?: string | null;
+  returnTo?: string;
+}) {
+  return buildPublicApiUrl("auth/google/authorize", {
+    intent: input.intent,
+    tenantId: input.tenantId ?? undefined,
+    companyName: input.companyName ?? undefined,
+    returnTo: input.returnTo ?? "/dashboard"
+  });
 }
 
 export async function refreshJwtSession(session: WebAuthSession): Promise<WebAuthSession | null> {
@@ -211,7 +554,10 @@ export async function refreshJwtSession(session: WebAuthSession): Promise<WebAut
 }
 
 export async function resolveSessionFromServer(currentSession: WebAuthSession | null) {
-  if (AUTH_TOKEN_TRANSPORT !== "cookie") {
+  if (
+    AUTH_TOKEN_TRANSPORT !== "cookie" &&
+    (!currentSession || (currentSession.authMode !== "jwt" && currentSession.authMode !== "jwt_cookie"))
+  ) {
     return currentSession;
   }
 
@@ -233,7 +579,10 @@ export async function resolveSessionFromServer(currentSession: WebAuthSession | 
       id?: string;
       tenantId?: string;
       email?: string | null;
+      fullName?: string | null;
       roles?: string[];
+      emailVerifiedAt?: string | null;
+      avatarUrl?: string | null;
     };
     session?: {
       id?: string | null;
@@ -244,15 +593,15 @@ export async function resolveSessionFromServer(currentSession: WebAuthSession | 
     return null;
   }
 
-  const session: WebAuthSession = {
-    tenantId: payload.user.tenantId,
-    userId: payload.user.id,
-    roles: (payload.user.roles ?? ["recruiter"]).join(","),
-    userLabel: payload.user.email ?? payload.user.id,
-    email: payload.user.email ?? undefined,
-    sessionId: payload.session?.id ?? undefined,
-    authMode: "jwt_cookie"
-  };
+  const session = buildSessionFromPayload(
+    {
+      user: payload.user,
+      session: {
+        id: payload.session?.id ?? undefined
+      }
+    },
+    "jwt_cookie"
+  );
 
   persistSession(session);
   return session;
@@ -260,8 +609,47 @@ export async function resolveSessionFromServer(currentSession: WebAuthSession | 
 
 export function clearAuthSession() {
   clearStoredSession();
+  setExplicitlyLoggedOut(true);
+}
+
+export function loginWithDemoSession(): WebAuthSession {
+  setExplicitlyLoggedOut(false);
+  const session = getDemoSession();
+  persistSession(session);
+  return session;
 }
 
 export function saveSession(session: WebAuthSession) {
   persistSession(session);
+}
+
+export function getLastTenantId() {
+  return readLastTenantId();
+}
+
+export async function logoutCurrentSession(session: WebAuthSession | null) {
+  if (session) {
+    try {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...buildAuthHeaders(session)
+        },
+        credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
+        body: JSON.stringify({
+          refreshToken:
+            session.authMode === "jwt" && AUTH_TOKEN_TRANSPORT !== "cookie"
+              ? session.refreshToken
+              : undefined
+        }),
+        cache: "no-store"
+      });
+    } catch {
+      // Best-effort logout; local session is still cleared below.
+    }
+  }
+
+  clearStoredSession();
+  setExplicitlyLoggedOut(true);
 }

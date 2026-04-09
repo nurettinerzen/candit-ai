@@ -54,7 +54,7 @@ corepack pnpm dev
 - `/audit-logs` filters and lists entity logs.
 
 ## Demo Credentials
-- `admin@demo.local`
-- `recruiter@demo.local`
-- `hm@demo.local`
+- `owner@demo.local`
+- `manager@demo.local`
+- `staff@demo.local`
 - Password: `.env` `DEV_LOGIN_PASSWORD` (default: `demo12345`)

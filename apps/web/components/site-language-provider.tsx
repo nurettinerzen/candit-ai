@@ -13,6 +13,7 @@ import {
   DEFAULT_SITE_LOCALE,
   SITE_LOCALE_STORAGE_KEY,
   normalizeSiteLocale,
+  translateUiText,
   transformUiText,
   type SiteLocale
 } from "../lib/i18n";
@@ -172,23 +173,52 @@ const TOOLBAR_LABELS: Record<
   }
 };
 
-export function SiteSettingsSwitcher({ variant = "floating" }: { variant?: "floating" | "sidebar" }) {
+export function SiteSettingsSwitcher({
+  variant = "floating"
+}: {
+  variant?: "floating" | "sidebar" | "account";
+}) {
   const language = useSiteLanguage();
   const theme = useTheme();
   const labels = TOOLBAR_LABELS[language.locale];
-  const selectId = variant === "sidebar" ? "site-language-select-sidebar" : "site-language-select";
+  const selectId =
+    variant === "sidebar"
+      ? "site-language-select-sidebar"
+      : variant === "account"
+        ? "site-language-select-account"
+        : "site-language-select";
 
   return (
     <div
-      className={`language-switcher${variant === "sidebar" ? " language-switcher-sidebar" : ""}`}
+      className={`language-switcher${
+        variant === "sidebar"
+          ? " language-switcher-sidebar"
+          : variant === "account"
+            ? " language-switcher-account"
+            : ""
+      }`}
       role="group"
       aria-label={labels.settings}
     >
-      <div className={`theme-switcher${variant === "sidebar" ? " theme-switcher-sidebar" : ""}`}>
+      <div
+        className={`theme-switcher${
+          variant === "sidebar"
+            ? " theme-switcher-sidebar"
+            : variant === "account"
+              ? " theme-switcher-account"
+              : ""
+        }`}
+      >
         {THEME_OPTIONS.map((opt) => (
           <button
             key={opt.mode}
-            className={`theme-btn${variant === "sidebar" ? " theme-btn-sidebar" : ""}`}
+            className={`theme-btn${
+              variant === "sidebar"
+                ? " theme-btn-sidebar"
+                : variant === "account"
+                  ? " theme-btn-account"
+                  : ""
+            }`}
             data-active={theme.mode === opt.mode}
             onClick={() => theme.setMode(opt.mode)}
             title={labels.theme[opt.mode]}
@@ -203,7 +233,13 @@ export function SiteSettingsSwitcher({ variant = "floating" }: { variant?: "floa
       </label>
       <select
         id={selectId}
-        className={`language-switcher-select${variant === "sidebar" ? " language-switcher-select-sidebar" : ""}`}
+        className={`language-switcher-select${
+          variant === "sidebar"
+            ? " language-switcher-select-sidebar"
+            : variant === "account"
+              ? " language-switcher-select-account"
+              : ""
+        }`}
         value={language.locale}
         onChange={(event) => language.setLocale(normalizeSiteLocale(event.target.value))}
       >
@@ -323,4 +359,17 @@ export function useSiteLanguage() {
   }
 
   return value;
+}
+
+export function useUiText() {
+  const { locale, setLocale } = useSiteLanguage();
+
+  return useMemo(
+    () => ({
+      locale,
+      setLocale,
+      t: (value: string) => translateUiText(value, locale)
+    }),
+    [locale, setLocale]
+  );
 }

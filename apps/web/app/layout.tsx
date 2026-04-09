@@ -5,8 +5,8 @@ import { SiteLanguageProvider } from "../components/site-language-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Mavi Yaka AI Recruiter",
-  description: "Türkiye odaklı AI destekli recruiter işletim paneli"
+  title: "Candit.ai",
+  description: "AI destekli işe alım platformu"
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

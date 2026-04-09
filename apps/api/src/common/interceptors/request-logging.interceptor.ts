@@ -1,6 +1,7 @@
 import {
   CallHandler,
   ExecutionContext,
+  HttpException,
   Inject,
   Injectable,
   NestInterceptor,
@@ -43,6 +44,13 @@ export class RequestLoggingInterceptor implements NestInterceptor {
         error: (error: unknown) => {
           const durationMs = Date.now() - startedAt;
           const user = req.user;
+          const responseStatus = context.switchToHttp().getResponse<{ statusCode: number }>().statusCode;
+          const statusCode =
+            error instanceof HttpException
+              ? error.getStatus()
+              : responseStatus >= 400
+                ? responseStatus
+                : 500;
 
           this.logger?.error("api.request.failed", {
             requestId: requestContext?.requestId,
@@ -50,7 +58,7 @@ export class RequestLoggingInterceptor implements NestInterceptor {
             traceId: requestContext?.traceId,
             method: req.method,
             path: req.originalUrl,
-            statusCode: context.switchToHttp().getResponse<{ statusCode: number }>().statusCode,
+            statusCode,
             durationMs,
             tenantId: user?.tenantId,
             userId: user?.userId,

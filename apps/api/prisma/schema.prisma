@@ -20,11 +20,9 @@ enum UserStatus {
 }
 
 enum Role {
-  ADMIN
-  RECRUITER
-  HIRING_MANAGER
-  CANDIDATE
-  AGENCY_RECRUITER
+  OWNER
+  MANAGER
+  STAFF
 }
 
 enum JobStatus {
@@ -186,6 +184,16 @@ enum AuthSessionStatus {
   EXPIRED
 }
 
+enum AuthProvider {
+  GOOGLE
+}
+
+enum AuthActionTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  OAUTH_LOGIN_RELAY
+}
+
 enum TranscriptQualityStatus {
   DRAFT
   REVIEW_REQUIRED
@@ -202,6 +210,103 @@ enum NotificationDeliveryStatus {
   QUEUED
   SENT
   FAILED
+}
+
+enum BillingPlanKey {
+  STARTER
+  GROWTH
+  ENTERPRISE
+}
+
+enum BillingAccountStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+enum BillingQuotaKey {
+  SEATS
+  ACTIVE_JOBS
+  CANDIDATE_PROCESSING
+  AI_INTERVIEWS
+}
+
+enum BillingGrantSource {
+  PLAN
+  ADDON
+  MANUAL
+}
+
+enum BillingCheckoutType {
+  PLAN_SUBSCRIPTION
+  ADDON_PURCHASE
+  ENTERPRISE_OFFER
+}
+
+enum BillingCheckoutStatus {
+  OPEN
+  COMPLETED
+  EXPIRED
+  FAILED
+}
+
+enum BillingAddonKey {
+  INTERVIEW_PACK_25
+  CANDIDATE_PROCESSING_PACK_100
+  PROFESSIONAL_ONBOARDING
+  CUSTOM_INTEGRATION_SETUP
+}
+
+enum SourcingProjectStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum SourcingProspectStage {
+  NEW
+  NEEDS_REVIEW
+  GOOD_FIT
+  SAVED
+  CONTACTED
+  REPLIED
+  CONVERTED
+  REJECTED
+  ARCHIVED
+}
+
+enum ProspectFitLabel {
+  STRONG_MATCH
+  GOOD_MATCH
+  PARTIAL_MATCH
+  WEAK_MATCH
+  UNKNOWN
+}
+
+enum TalentSourceKind {
+  INTERNAL_CANDIDATE
+  PUBLIC_PROFESSIONAL
+  RECRUITER_IMPORT
+  REFERRAL
+  OTHER
+}
+
+enum ContactSuppressionStatus {
+  ALLOWED
+  DO_NOT_CONTACT
+  OPTED_OUT
+  NEEDS_REVIEW
+}
+
+enum OutreachMessageStatus {
+  DRAFT
+  READY_TO_SEND
+  SENT
+  FAILED
+  REPLIED
+  CANCELLED
 }
 
 model Tenant {
@@ -228,13 +333,177 @@ model Tenant {
   domainEvents             DomainEvent[]
   authSessions             AuthSession[]
   authRefreshTokens        AuthRefreshToken[]
+  authActionTokens         AuthActionToken[]
+  memberInvitations        MemberInvitation[]
+  userIdentities           UserIdentity[]
   externalIdentityMappings ExternalIdentityMapping[]
   integrationConnections   IntegrationConnection[]
   integrationCredentials   IntegrationCredential[]
   notificationDeliveries   NotificationDelivery[]
   schedulingWorkflows      SchedulingWorkflow[]
+  sourcingProjects         SourcingProject[]
+  talentProfiles           TalentProfile[]
+  talentProfileSources     TalentProfileSource[]
+  sourcingProjectProspects SourcingProjectProspect[]
+  sourcingOutreachTemplates SourcingOutreachTemplate[]
+  sourcingOutreachMessages SourcingOutreachMessage[]
+  billingAccount           TenantBillingAccount?
+  billingSubscriptions     TenantBillingSubscription[]
+  billingQuotaGrants       BillingQuotaGrant[]
+  billingUsageEvents       BillingUsageEvent[]
+  billingCheckoutSessions  BillingCheckoutSession[]
 
   @@index([createdAt(sort: Desc)])
+}
+
+model TenantBillingAccount {
+  id                    String               @id @default(uuid())
+  tenantId              String               @unique
+  billingEmail          String?
+  stripeCustomerId      String?              @unique
+  currentPlanKey        BillingPlanKey       @default(STARTER)
+  status                BillingAccountStatus @default(TRIALING)
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  stripeSubscriptionId  String?              @unique
+  lastCheckoutSessionId String?
+  currency              String               @default("usd")
+  featuresJson          Json?
+  planSnapshotJson      Json?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscriptions     TenantBillingSubscription[]
+  quotaGrants       BillingQuotaGrant[]
+  usageEvents       BillingUsageEvent[]
+  checkoutSessions  BillingCheckoutSession[]
+
+  @@index([currentPlanKey, status])
+}
+
+model TenantBillingSubscription {
+  id                         String               @id @default(uuid())
+  tenantId                   String
+  accountId                  String
+  planKey                    BillingPlanKey
+  status                     BillingAccountStatus
+  stripeSubscriptionId       String?              @unique
+  stripePriceId              String?
+  stripeCheckoutSessionId    String?
+  stripeCustomerId           String?
+  billingEmail               String?
+  periodStart                DateTime
+  periodEnd                  DateTime
+  seatsIncluded              Int
+  activeJobsIncluded         Int
+  candidateProcessingIncluded Int
+  aiInterviewsIncluded       Int
+  featuresJson               Json?
+  metadataJson               Json?
+  createdBy                  String?
+  createdAt                  DateTime             @default(now())
+  updatedAt                  DateTime             @updatedAt
+  canceledAt                 DateTime?
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account     TenantBillingAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  quotaGrants BillingQuotaGrant[]
+
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([accountId, createdAt(sort: Desc)])
+}
+
+model BillingQuotaGrant {
+  id             String             @id @default(uuid())
+  tenantId       String
+  accountId      String
+  subscriptionId String?
+  quotaKey       BillingQuotaKey
+  source         BillingGrantSource
+  label          String
+  quantity       Int
+  expiresAt      DateTime?
+  metadataJson   Json?
+  createdBy      String?
+  createdAt      DateTime           @default(now())
+
+  tenant       Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account      TenantBillingAccount      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  subscription TenantBillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, quotaKey, createdAt(sort: Desc)])
+  @@index([accountId, quotaKey, createdAt(sort: Desc)])
+  @@index([expiresAt])
+}
+
+model BillingUsageEvent {
+  id          String          @id @default(uuid())
+  tenantId    String
+  accountId   String
+  quotaKey    BillingQuotaKey
+  quantity    Int             @default(1)
+  entityType  String
+  entityId    String
+  uniqueKey   String          @unique
+  occurredAt  DateTime        @default(now())
+  periodStart DateTime?
+  periodEnd   DateTime?
+  metadataJson Json?
+
+  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account TenantBillingAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, quotaKey, occurredAt(sort: Desc)])
+  @@index([accountId, quotaKey, occurredAt(sort: Desc)])
+  @@index([entityType, entityId])
+}
+
+model BillingTrialClaim {
+  id              String   @id @default(uuid())
+  normalizedEmail String   @unique
+  emailDomain     String?
+  firstTenantId   String
+  firstUserId     String?
+  claimedAt       DateTime @default(now())
+  lastSeenAt      DateTime @updatedAt
+  metadataJson    Json?
+
+  @@index([emailDomain, claimedAt(sort: Desc)])
+  @@index([firstTenantId, claimedAt(sort: Desc)])
+}
+
+model BillingCheckoutSession {
+  id                     String                @id @default(uuid())
+  tenantId               String
+  accountId              String
+  checkoutType           BillingCheckoutType
+  status                 BillingCheckoutStatus @default(OPEN)
+  stripeCheckoutSessionId String?              @unique
+  stripeCustomerId       String?
+  stripeSubscriptionId   String?
+  planKey                BillingPlanKey?
+  addOnKey               BillingAddonKey?
+  label                  String?
+  billingEmail           String?
+  checkoutUrl            String?
+  successUrl             String?
+  cancelUrl              String?
+  amountCents            Int?
+  currency               String                @default("usd")
+  payloadJson            Json?
+  createdBy              String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  completedAt            DateTime?
+  expiresAt              DateTime?
+
+  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  account TenantBillingAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, checkoutType, createdAt(sort: Desc)])
+  @@index([accountId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
 }
 
 model Workspace {
@@ -252,35 +521,75 @@ model Workspace {
 }
 
 model User {
-  id        String     @id @default(uuid())
-  tenantId  String
-  email     String
-  fullName  String
-  status    UserStatus @default(INVITED)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  deletedAt DateTime?
+  id            String     @id @default(uuid())
+  tenantId      String
+  email         String
+  fullName      String
+  role          Role
+  status        UserStatus @default(INVITED)
+  passwordHash  String?
+  passwordSetAt DateTime?
+  emailVerifiedAt DateTime?
+  avatarUrl     String?
+  lastLoginAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
 
-  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  roleBindings      UserRoleBinding[]
-  authSessions      AuthSession[]
-  authRefreshTokens AuthRefreshToken[]
+  tenant                 Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  authSessions           AuthSession[]
+  authRefreshTokens      AuthRefreshToken[]
+  authActionTokens       AuthActionToken[]
+  identities             UserIdentity[]
+  memberInvitations      MemberInvitation[]  @relation("InvitationUser")
+  sentMemberInvitations  MemberInvitation[]  @relation("InvitationInviter")
 
   @@unique([tenantId, email])
+  @@index([tenantId, role])
   @@index([tenantId, createdAt(sort: Desc)])
 }
 
-model UserRoleBinding {
+model UserIdentity {
+  id              String       @id @default(uuid())
+  tenantId        String
+  userId          String
+  provider        AuthProvider
+  providerSubject String
+  email           String?
+  displayName     String?
+  avatarUrl       String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerSubject])
+  @@unique([userId, provider])
+  @@index([tenantId, provider, email])
+}
+
+model MemberInvitation {
   id        String   @id @default(uuid())
   tenantId  String
   userId    String
+  invitedBy String
+  email     String
   role      Role
+  tokenHash String   @unique
+  expiresAt DateTime
+  acceptedAt DateTime?
+  revokedAt DateTime?
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    User   @relation("InvitationUser", fields: [userId], references: [id], onDelete: Cascade)
+  inviter User   @relation("InvitationInviter", fields: [invitedBy], references: [id], onDelete: Restrict)
 
-  @@unique([tenantId, userId, role])
-  @@index([tenantId, role])
+  @@index([tenantId, email, createdAt(sort: Desc)])
+  @@index([tenantId, userId, createdAt(sort: Desc)])
+  @@index([tenantId, role, createdAt(sort: Desc)])
 }
 
 model AuthSession {
@@ -334,6 +643,28 @@ model AuthRefreshToken {
   @@index([revokedAt])
 }
 
+model AuthActionToken {
+  id         String              @id @default(uuid())
+  tenantId   String?
+  userId     String?
+  email      String
+  type       AuthActionTokenType
+  tokenHash  String              @unique
+  payloadJson Json?
+  expiresAt  DateTime
+  consumedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email, type, createdAt(sort: Desc)])
+  @@index([userId, type, createdAt(sort: Desc)])
+  @@index([expiresAt])
+}
+
 model Job {
   id           String    @id @default(uuid())
   tenantId     String
@@ -356,6 +687,7 @@ model Job {
   requirements JobRequirement[]
   applications CandidateApplication[]
   aiTaskRuns   AiTaskRun[]
+  sourcingProjects SourcingProject[]
 
   @@index([tenantId, createdAt(sort: Desc)])
   @@index([tenantId, status])
@@ -428,6 +760,7 @@ model Candidate {
   cvExtractionRuns CVExtractionRun[]
   consentRecords   ConsentRecord[]
   aiTaskRuns       AiTaskRun[]
+  talentProfile    TalentProfile?
 
   @@index([tenantId, createdAt(sort: Desc)])
   @@index([tenantId, email])
@@ -457,6 +790,187 @@ model CandidateApplication {
 
   @@unique([tenantId, candidateId, jobId])
   @@index([tenantId, jobId, currentStage])
+}
+
+model TalentProfile {
+  id                   String                   @id @default(uuid())
+  tenantId             String
+  candidateId          String?                  @unique
+  fullName             String
+  normalizedEmail      String?
+  normalizedPhone      String?
+  email                String?
+  phone                String?
+  headline             String?
+  summary              String?
+  locationText         String?
+  currentTitle         String?
+  currentCompany       String?
+  yearsOfExperience    Decimal?
+  workModel            String?
+  salaryExpectationMin Decimal?
+  salaryExpectationMax Decimal?
+  sourceKind           TalentSourceKind        @default(OTHER)
+  primarySourceLabel   String?
+  suppressionStatus    ContactSuppressionStatus @default(ALLOWED)
+  doNotContactReason   String?
+  skillTagsJson        Json?
+  languageTagsJson     Json?
+  educationJson        Json?
+  experienceJson       Json?
+  contactSignalsJson   Json?
+  marketSignalsJson    Json?
+  sourceMetadataJson   Json?
+  lastEnrichedAt       DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  tenant        Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  candidate     Candidate?                @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  sourceRecords TalentProfileSource[]
+  projectLinks  SourcingProjectProspect[]
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, sourceKind])
+  @@unique([tenantId, normalizedEmail])
+  @@unique([tenantId, normalizedPhone])
+}
+
+model TalentProfileSource {
+  id             String            @id @default(uuid())
+  tenantId       String
+  talentProfileId String
+  sourceKind     TalentSourceKind
+  providerKey    String
+  providerLabel  String
+  displayName    String
+  externalRef    String?
+  sourceUrl      String?
+  isPrimary      Boolean           @default(false)
+  isVerified     Boolean           @default(false)
+  lastSeenAt     DateTime?
+  metadataJson   Json?
+  createdAt      DateTime          @default(now())
+
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  talentProfile TalentProfile @relation(fields: [talentProfileId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, talentProfileId, createdAt(sort: Desc)])
+  @@index([tenantId, sourceKind, providerKey])
+}
+
+model SourcingProject {
+  id             String               @id @default(uuid())
+  tenantId       String
+  jobId          String?
+  name           String
+  personaSummary String?
+  searchQuery    String?
+  filtersJson    Json?
+  notes          String?
+  status         SourcingProjectStatus @default(ACTIVE)
+  stageGoalsJson Json?
+  createdBy      String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  archivedAt     DateTime?
+
+  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  job               Job?                      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  prospects         SourcingProjectProspect[]
+  outreachTemplates SourcingOutreachTemplate[]
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, jobId])
+  @@index([tenantId, status])
+}
+
+model SourcingProjectProspect {
+  id                   String               @id @default(uuid())
+  tenantId             String
+  projectId            String
+  talentProfileId      String
+  attachedCandidateId  String?
+  attachedApplicationId String?
+  stage                SourcingProspectStage @default(NEEDS_REVIEW)
+  fitLabel             ProspectFitLabel     @default(UNKNOWN)
+  fitScore             Decimal?
+  fitConfidence        Decimal?
+  strengthsJson        Json?
+  risksJson            Json?
+  missingInfoJson      Json?
+  evidenceJson         Json?
+  recruiterNote        String?
+  contactState         String?
+  sourceSnapshotJson   Json?
+  lastReviewedAt       DateTime?
+  contactedAt          DateTime?
+  repliedAt            DateTime?
+  convertedAt          DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  tenant          Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project         SourcingProject          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  talentProfile   TalentProfile            @relation(fields: [talentProfileId], references: [id], onDelete: Cascade)
+  outreachMessages SourcingOutreachMessage[]
+
+  @@unique([tenantId, projectId, talentProfileId])
+  @@index([tenantId, projectId, stage])
+  @@index([tenantId, attachedCandidateId])
+  @@index([tenantId, attachedApplicationId])
+}
+
+model SourcingOutreachTemplate {
+  id              String    @id @default(uuid())
+  tenantId        String
+  projectId       String?
+  name            String
+  description     String?
+  subjectTemplate String
+  bodyTemplate    String
+  sequenceJson    Json?
+  isDefault       Boolean   @default(false)
+  createdBy       String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant   Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project  SourcingProject?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  messages SourcingOutreachMessage[]
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, projectId])
+}
+
+model SourcingOutreachMessage {
+  id                String               @id @default(uuid())
+  tenantId          String
+  projectProspectId String
+  templateId        String?
+  channel           String               @default("email")
+  stepIndex         Int                  @default(0)
+  status            OutreachMessageStatus @default(DRAFT)
+  subject           String
+  body              String
+  reviewNote        String?
+  providerKey       String?
+  providerMessageId String?
+  sendError         String?
+  reviewedBy        String?
+  sentBy            String?
+  scheduledAt       DateTime?
+  sentAt            DateTime?
+  repliedAt         DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  projectProspect SourcingProjectProspect @relation(fields: [projectProspectId], references: [id], onDelete: Cascade)
+  template       SourcingOutreachTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, projectProspectId, createdAt(sort: Desc)])
+  @@index([tenantId, status, createdAt(sort: Desc)])
 }
 
 model CandidateStageHistory {
@@ -571,6 +1085,11 @@ model InterviewSession {
   meetingCalendarEventRef      String?
   candidateAccessToken         String?                @unique
   candidateAccessExpiresAt     DateTime?
+  invitationStatus             String?
+  invitationIssuedAt           DateTime?
+  invitationReminderCount      Int                    @default(0)
+  invitationReminder1SentAt    DateTime?
+  invitationReminder2SentAt    DateTime?
   candidateLocale              String                 @default("tr-TR")
   runtimeMode                  String                 @default("guided_voice_turn_v1")
   runtimeProviderMode          String                 @default("browser_native")
@@ -616,6 +1135,7 @@ model InterviewSession {
 
   @@index([tenantId, status, scheduledAt])
   @@index([tenantId, applicationId, endedAt(sort: Desc)])
+  @@index([tenantId, invitationStatus, candidateAccessExpiresAt])
 }
 
 model InterviewTurn {

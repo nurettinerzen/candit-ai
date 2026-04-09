@@ -4,6 +4,7 @@ import { AiOrchestrationService } from "../ai-orchestration/ai-orchestration.ser
 import { AnalyticsService } from "../analytics/analytics.service";
 import { AuditService } from "../audit/audit.service";
 import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
+import { deriveInterviewInvitationState } from "../interviews/interview-invitation-state.util";
 import { InterviewsService } from "../interviews/interviews.service";
 import { IntegrationsService } from "../integrations/integrations.service";
 import { RecommendationsService } from "../recommendations/recommendations.service";
@@ -263,6 +264,12 @@ export class ReadModelsService {
             mode: true,
             scheduledAt: true,
             schedulingSource: true,
+            invitationStatus: true,
+            invitationIssuedAt: true,
+            invitationReminderCount: true,
+            invitationReminder1SentAt: true,
+            invitationReminder2SentAt: true,
+            candidateAccessExpiresAt: true,
             meetingProvider: true,
             meetingProviderSource: true,
             runtimeProviderMode: true,
@@ -306,6 +313,7 @@ export class ReadModelsService {
         const recommendation = application.recommendations[0] ?? null;
         const latestTask = application.aiTaskRuns[0] ?? null;
         const latestInterview = application.interviewSessions[0] ?? null;
+        const invitation = deriveInterviewInvitationState(latestInterview);
 
         return {
           id: application.id,
@@ -331,6 +339,7 @@ export class ReadModelsService {
                 mode: latestInterview.mode,
                 scheduledAt: latestInterview.scheduledAt,
                 schedulingSource: latestInterview.schedulingSource,
+                invitation,
                 meetingProvider: latestInterview.meetingProvider,
                 meetingProviderSource: latestInterview.meetingProviderSource,
                 runtimeProviderMode: latestInterview.runtimeProviderMode,
@@ -376,7 +385,7 @@ export class ReadModelsService {
       throw new NotFoundException("Basvuru bulunamadi.");
     }
 
-    const [screeningRuns, reports, recommendations, interviewSessions, aiTaskRuns, auditLogs] =
+    const [screeningRuns, reports, recommendations, interviewSessions, aiTaskRuns, auditLogs, sourcingAttachment] =
       await Promise.all([
         this.screeningService.listByApplication(tenantId, applicationId, 10),
         this.reportsService.listByApplication(tenantId, applicationId, 10),
@@ -392,7 +401,46 @@ export class ReadModelsService {
           },
           take: 30
         }),
-        this.auditService.list(tenantId, "CandidateApplication", applicationId, 100)
+        this.auditService.list(tenantId, "CandidateApplication", applicationId, 100),
+        this.prisma.sourcingProjectProspect.findFirst({
+          where: {
+            tenantId,
+            attachedApplicationId: applicationId
+          },
+          include: {
+            project: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
+            talentProfile: {
+              select: {
+                primarySourceLabel: true,
+                sourceRecords: {
+                  orderBy: { createdAt: "desc" },
+                  take: 3,
+                  select: {
+                    providerLabel: true
+                  }
+                }
+              }
+            },
+            outreachMessages: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: {
+                status: true,
+                subject: true,
+                sentAt: true,
+                repliedAt: true,
+                reviewNote: true,
+                sendError: true
+              }
+            }
+          },
+          orderBy: { updatedAt: "desc" }
+        })
       ]);
 
     const sessionIds = interviewSessions.map((session) => session.id);
@@ -527,6 +575,7 @@ export class ReadModelsService {
       candidateAccessToken: session.candidateAccessToken,
       candidateAccessExpiresAt: session.candidateAccessExpiresAt,
       candidateInterviewUrl: session.candidateInterviewUrl,
+      invitation: session.invitation,
       candidateLocale: session.candidateLocale,
       runtimeMode: session.runtimeMode,
       runtimeProviderMode: session.runtimeProviderMode,
@@ -592,6 +641,32 @@ export class ReadModelsService {
         phone: baseApplication.candidate.phone,
         email: baseApplication.candidate.email,
         source: baseApplication.candidate.source,
+        externalSource: baseApplication.candidate.externalSource,
+        externalRef: baseApplication.candidate.externalRef,
+        sourcing: sourcingAttachment
+          ? {
+              projectId: sourcingAttachment.project.id,
+              projectName: sourcingAttachment.project.name,
+              prospectId: sourcingAttachment.id,
+              stage: sourcingAttachment.stage,
+              primarySourceLabel: sourcingAttachment.talentProfile.primarySourceLabel ?? null,
+              sourceLabels: [...new Set(
+                sourcingAttachment.talentProfile.sourceRecords
+                  .map((record) => record.providerLabel?.trim())
+                  .filter((label): label is string => Boolean(label))
+              )],
+              latestOutreach: sourcingAttachment.outreachMessages[0]
+                ? {
+                    status: sourcingAttachment.outreachMessages[0].status,
+                    subject: sourcingAttachment.outreachMessages[0].subject,
+                    sentAt: sourcingAttachment.outreachMessages[0].sentAt?.toISOString() ?? null,
+                    repliedAt: sourcingAttachment.outreachMessages[0].repliedAt?.toISOString() ?? null,
+                    reviewNote: sourcingAttachment.outreachMessages[0].reviewNote ?? null,
+                    error: sourcingAttachment.outreachMessages[0].sendError ?? null
+                  }
+                : null
+            }
+          : null,
         cvFiles: baseApplication.candidate.cvFiles ?? []
       },
       job: {

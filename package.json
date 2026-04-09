@@ -9,6 +9,7 @@
     "lint": "corepack pnpm -r --if-present lint",
     "test": "corepack pnpm -r --if-present test",
     "format": "corepack pnpm -r --if-present format",
+    "i18n:audit": "node scripts/translate-audit.mjs",
     "db:generate": "corepack pnpm --filter @ai-interviewer/api prisma:generate",
     "db:migrate": "corepack pnpm --filter @ai-interviewer/api prisma:migrate:dev",
     "db:seed": "corepack pnpm --filter @ai-interviewer/api prisma:seed"

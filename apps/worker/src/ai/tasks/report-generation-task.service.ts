@@ -21,6 +21,10 @@ import {
   type EvidenceLink,
   type StructuredTaskSections
 } from "./task-output.utils.js";
+import {
+  analyzeInterviewTranscript,
+  type InterviewTranscriptSignals
+} from "./interview-signal.utils.js";
 
 export class ReportGenerationTaskService {
   constructor(
@@ -83,6 +87,7 @@ export class ReportGenerationTaskService {
     }
 
     const transcriptSegments = session.transcript?.segments ?? [];
+    const transcriptSignals = analyzeInterviewTranscript(transcriptSegments);
     const latestScreeningTask = await this.prisma.aiTaskRun.findFirst({
       where: {
         tenantId: context.tenantId,
@@ -106,17 +111,20 @@ export class ReportGenerationTaskService {
       applicationId,
       sessionId: session.id,
       transcriptSegments,
+      transcriptSignals,
       latestScreeningOutput: latestScreeningTask?.outputJson ?? null
     });
 
     const generation = await this.provider.generate({
       taskType: "REPORT_GENERATION",
       schemaName: "report_generation_v1_tr",
-      schema: defaultOutputSchema("report_generation_v1_tr"),
+      schema: defaultOutputSchema("report_generation_v1_tr", {
+        includeInterviewInsights: true
+      }),
       promptVersion,
       preferProviderKey: context.taskRun.providerKey,
       systemPrompt:
-        "Turkce recruiter raporu uret. Cikti sadece karar destegi olsun, otomatik nihai karar verme. Facts/interpretation/recommendation net ayrilsin.",
+        "Türkçe recruiter odaklı AI mülakat raporu üret. Yalnızca mevcut interview session transcriptine dayan; CV ve screening verilerini sadece ikincil bağlam olarak kullan. Çıktı dili doğal, sade ve recruiter'ın doğrudan kullanabileceği yorum tonunda olsun; teknik kural, sinyal, heuristic ya da model içi değerlendirme dili kullanma. interviewSummary, strengths, weaknesses ve missingInformation alanları yalnızca bu mülakattan türemeli. Aday yanıtları yüzeysel, kaçamak, şaka yollu veya rol sahipliğini göstermiyorsa bunu net ama doğal bir risk yorumu olarak ifade et. Zayıf mülakatta ADVANCE önerme. Facts/interpretation/recommendation net ayrışsın ve denetlenebilir kalsın.",
       userPrompt: JSON.stringify({
         task: "REPORT_GENERATION",
         locale: "tr-TR",
@@ -156,19 +164,46 @@ export class ReportGenerationTaskService {
           startMs: segment.startMs,
           endMs: segment.endMs
         })),
+        transcriptSignals: {
+          candidateSegmentCount: transcriptSignals.candidateSegmentCount,
+          averageWordsPerAnswer: transcriptSignals.averageWordsPerAnswer,
+          evasiveAnswerCount: transcriptSignals.evasiveAnswerCount,
+          lowSignalRatio: transcriptSignals.lowSignalRatio,
+          severity: transcriptSignals.severity,
+          shouldBlockAdvance: transcriptSignals.shouldBlockAdvance,
+          interviewSummary: transcriptSignals.interviewSummary,
+          weaknesses: transcriptSignals.weaknesses
+        },
         latestScreeningOutput: latestScreeningTask?.outputJson ?? null,
         instructions: [
-          "recruiter'in okuyabilecegi net bir rapor tonu kullan",
+          "recruiter'in okuyabilecegi net ve doğal bir rapor tonu kullan",
           "evidenceLinks alaninda transcript segment id'si varsa kullan",
-          "recommendedOutcome sadece ADVANCE/HOLD/REVIEW olabilir"
+          "recommendedOutcome sadece ADVANCE/HOLD/REVIEW olabilir",
+          "strengths ve weaknesses sadece mevcut mulakat kanitlarindan cikmali",
+          "mulakat cevabi zayifsa recommendation ve confidence'i asagi cek",
+          "flags alanindaki note metinleri recruiter'a hitap eden doğal risk cümleleri olsun",
+          "recommendation summary, interviewSummary, facts ve interpretation birbirini tekrar etmesin",
+          "facts alanina aday adi gibi zaten bilinen kimlik bilgilerini yazma",
+          "missingInformation alanina risklerin aynisini tekrar etme; yalnizca recruiter'in ayrıca teyit etmesi gereken acik sorulari yaz",
+          "facts, strengths ve interpretation alanlarina CV veya profil özeti koyma; yalnızca görüşmede gerçekten söylenen ya da söylenemeyen şeyleri yaz",
+          "yıl deneyim, genel profil gücü, liderlik geçmişi gibi resume özetlerini bu alanlara taşıma"
         ]
       })
     });
 
-    const sections = normalizeStructuredSections(generation.output, fallbackSections);
-    const confidence = this.policy.normalizeConfidence(sections.confidence, fallbackSections.confidence);
+    const sections = this.applyInterviewSignals(
+      normalizeStructuredSections(generation.output, fallbackSections),
+      transcriptSignals
+    );
+    const confidence = Math.min(
+      this.policy.normalizeConfidence(sections.confidence, fallbackSections.confidence),
+      transcriptSignals.maxConfidence
+    );
     const uncertaintyLevel = this.policy.uncertaintyLevel(confidence);
-    const recommendation = this.policy.normalizeRecommendation(sections.recommendedOutcome);
+    const recommendation = this.limitRecommendation(
+      this.policy.normalizeRecommendation(sections.recommendedOutcome),
+      transcriptSignals.maxRecommendation
+    );
     const overallScore = this.policy.normalizeConfidence(confidence * 0.9 + 0.05, 0.5);
 
     const reportJson = {
@@ -176,6 +211,9 @@ export class ReportGenerationTaskService {
       sections: {
         facts: sections.facts,
         interpretation: sections.interpretation,
+        interviewSummary: sections.interviewSummary,
+        strengths: sections.strengths ?? [],
+        weaknesses: sections.weaknesses ?? [],
         recommendation: {
           summary: sections.recommendationSummary,
           action: sections.recommendationAction,
@@ -260,6 +298,9 @@ export class ReportGenerationTaskService {
         fallback: generation.mode === "deterministic_fallback",
         facts: sections.facts,
         interpretation: sections.interpretation,
+        interviewSummary: sections.interviewSummary,
+        strengths: sections.strengths,
+        weaknesses: sections.weaknesses,
         recommendation: {
           summary: sections.recommendationSummary,
           action: sections.recommendationAction,
@@ -399,6 +440,7 @@ export class ReportGenerationTaskService {
     applicationId: string;
     sessionId: string;
     transcriptSegments: TranscriptSegment[];
+    transcriptSignals: InterviewTranscriptSignals;
     latestScreeningOutput: Prisma.JsonValue | null;
   }): StructuredTaskSections {
     const segment = input.transcriptSegments.find((item) => item.speaker === "CANDIDATE");
@@ -420,6 +462,9 @@ export class ReportGenerationTaskService {
           ? "Screening support ciktilari rapor olustururken referans alindi."
           : "Screening support ciktilari bulunamadi; rapor temel sinyal setiyle hazirlandi."
       ],
+      interviewSummary: input.transcriptSignals.interviewSummary,
+      strengths: input.transcriptSignals.strengths,
+      weaknesses: input.transcriptSignals.weaknesses,
       recommendationSummary:
         "Rapor recruiter karar destegi icindir; nihai stage/karar insan onayi ile verilmelidir.",
       recommendationAction:
@@ -433,12 +478,15 @@ export class ReportGenerationTaskService {
             input.transcriptSegments.length === 0
               ? "Transcript yok; rapor guvenirligi sinirlidir."
               : "Rapor otomatik karara donusturulmeden recruiter tarafindan incelenmelidir."
-        }
+        },
+        ...input.transcriptSignals.flags
       ],
-      missingInformation:
-        input.transcriptSegments.length === 0
+      missingInformation: [
+        ...(input.transcriptSegments.length === 0
           ? ["transcript_segments", "interview_evidence"]
-          : ["detayli_referans_kontrolu"],
+          : ["detayli_referans_kontrolu"]),
+        ...input.transcriptSignals.missingInformation
+      ],
       evidenceLinks: [
         {
           sourceType: "application",
@@ -461,6 +509,88 @@ export class ReportGenerationTaskService {
           ? ["Transcript parcali oldugu icin baglamin tamami teyit edilmedi."]
           : ["Transcript olmadan rapor cogu alanda varsayimsaldir."]
     };
+  }
+
+  private applyInterviewSignals(
+    sections: StructuredTaskSections,
+    signals: InterviewTranscriptSignals
+  ): StructuredTaskSections {
+    return {
+      ...sections,
+      interviewSummary:
+        sections.interviewSummary && sections.interviewSummary.trim().length > 0
+          ? sections.interviewSummary
+          : signals.interviewSummary,
+      strengths:
+        sections.strengths && sections.strengths.length > 0 ? sections.strengths : signals.strengths,
+      weaknesses: this.uniqueStrings([...(sections.weaknesses ?? []), ...signals.weaknesses]),
+      flags: this.uniqueFlags([...sections.flags, ...signals.flags]),
+      missingInformation: this.uniqueStrings([
+        ...sections.missingInformation,
+        ...signals.missingInformation
+      ]),
+      recommendedOutcome: this.limitRecommendation(
+        this.policy.normalizeRecommendation(sections.recommendedOutcome),
+        signals.maxRecommendation
+      ),
+      confidence: Math.min(sections.confidence, signals.maxConfidence)
+    };
+  }
+
+  private limitRecommendation(
+    recommendation: Recommendation,
+    maxRecommendation: "ADVANCE" | "HOLD" | "REVIEW"
+  ): Recommendation {
+    if (maxRecommendation === "REVIEW") {
+      return Recommendation.REVIEW;
+    }
+
+    if (maxRecommendation === "HOLD" && recommendation === Recommendation.ADVANCE) {
+      return Recommendation.HOLD;
+    }
+
+    return recommendation;
+  }
+
+  private uniqueStrings(values: string[]) {
+    const normalized = new Set<string>();
+    const output: string[] = [];
+
+    for (const value of values.map((item) => item.trim()).filter(Boolean)) {
+      const key = value
+        .toLocaleLowerCase("tr-TR")
+        .replace(/[ıİ]/g, "i")
+        .replace(/[şŞ]/g, "s")
+        .replace(/[ğĞ]/g, "g")
+        .replace(/[üÜ]/g, "u")
+        .replace(/[öÖ]/g, "o")
+        .replace(/[çÇ]/g, "c")
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "");
+
+      if (normalized.has(key)) {
+        continue;
+      }
+
+      normalized.add(key);
+      output.push(value);
+    }
+
+    return output.slice(0, 8);
+  }
+
+  private uniqueFlags(
+    values: Array<{ code: string; severity: "low" | "medium" | "high"; note: string }>
+  ) {
+    const seen = new Set<string>();
+    return values.filter((value) => {
+      const key = `${value.code}:${value.note}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
   }
 
   private async persistEvidenceLinks(input: {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ApplicationStage, QuickActionType } from "../lib/types";
 import { getStageActions } from "../lib/constants";
+import { useUiText } from "./site-language-provider";
 
 type QuickActionMenuProps = {
   stage: ApplicationStage;
@@ -12,6 +13,7 @@ type QuickActionMenuProps = {
 };
 
 export function QuickActionMenu({ stage, onAction, disabled }: QuickActionMenuProps) {
+  const { t } = useUiText();
   const actions = getStageActions(stage);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -86,7 +88,7 @@ export function QuickActionMenu({ stage, onAction, disabled }: QuickActionMenuPr
         disabled={disabled}
         aria-expanded={open}
       >
-        <span>İşlem</span>
+        <span>{t("İşlem")}</span>
         <span className="action-dropdown-caret" aria-hidden="true">▾</span>
       </button>
       {open && createPortal(
@@ -111,7 +113,7 @@ export function QuickActionMenu({ stage, onAction, disabled }: QuickActionMenuPr
                 style={{ color: a.color }}
               >
                 <span className="action-dropdown-icon">{a.icon}</span>
-                {a.label}
+                {t(a.label)}
               </button>
             </li>
           ))}

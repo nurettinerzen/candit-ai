@@ -133,7 +133,11 @@ export class ElevenLabsController {
 
     return {
       signedUrl: result.signedUrl,
-      agentId: result.agentId
+      agentId: result.agentId,
+      systemPrompt: result.systemPrompt,
+      firstMessage: result.firstMessage,
+      dynamicVariables: result.dynamicVariables,
+      contextualUpdate: result.contextualUpdate
     };
   }
 }

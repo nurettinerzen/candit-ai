@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AiOrchestrationModule } from "../ai-orchestration/ai-orchestration.module";
 import { AuditModule } from "../audit/audit.module";
+import { BillingModule } from "../billing/billing.module";
 import { DomainEventsModule } from "../domain-events/domain-events.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { InterviewsModule } from "../interviews/interviews.module";
@@ -16,6 +17,7 @@ import { RecruiterNotesService } from "./recruiter-notes.service";
 @Module({
   imports: [
     AuditModule,
+    BillingModule,
     DomainEventsModule,
     PolicyModule,
     AiOrchestrationModule,

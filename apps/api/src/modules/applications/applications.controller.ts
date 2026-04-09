@@ -8,8 +8,8 @@ import {
   Query
 , Inject} from "@nestjs/common";
 import { ApplicationStage } from "@prisma/client";
-import { Transform } from "class-transformer";
-import { IsArray, IsIn, IsOptional, IsString, MinLength } from "class-validator";
+import { Transform, Type } from "class-transformer";
+import { IsArray, IsIn, IsOptional, IsString, MinLength, ValidateNested } from "class-validator";
 import { Permissions } from "../../common/decorators/permissions.decorator";
 import { CurrentContext } from "../../common/decorators/current-context.decorator";
 import { CurrentTenant } from "../../common/decorators/current-tenant.decorator";
@@ -80,6 +80,29 @@ class BulkApproveInterviewBody {
   applicationIds!: string[];
 }
 
+class InterviewQuestionDraftItemBody {
+  @IsString()
+  @MinLength(3)
+  prompt!: string;
+
+  @IsString()
+  @IsOptional()
+  key?: string;
+
+  @IsString()
+  @IsOptional()
+  questionKey?: string;
+
+  @IsString()
+  @IsOptional()
+  category?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  followUps?: string[];
+}
+
 class QuickActionBody {
   @IsIn(["shortlist", "reject", "hold", "trigger_screening", "trigger_fit_score", "invite_interview", "advance"])
   action!: string;
@@ -91,6 +114,22 @@ class QuickActionBody {
   @IsString()
   @IsOptional()
   note?: string;
+
+  @IsString()
+  @IsOptional()
+  templateId?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => InterviewQuestionDraftItemBody)
+  @IsOptional()
+  questionnaire?: InterviewQuestionDraftItemBody[];
+}
+
+class InterviewQuestionnaireQuery {
+  @IsString()
+  @IsOptional()
+  templateId?: string;
 }
 
 @Controller("applications")
@@ -194,6 +233,20 @@ export class ApplicationsController {
     return this.recruiterNotesService.list(tenantId, applicationId);
   }
 
+  @Get(":id/interview-questionnaire")
+  @Permissions("candidate.read")
+  previewInterviewQuestionnaire(
+    @Param("id") applicationId: string,
+    @CurrentTenant() tenantId: string,
+    @Query() query: InterviewQuestionnaireQuery
+  ) {
+    return this.applicationAutomationService.previewInterviewQuestionnaire({
+      tenantId,
+      applicationId,
+      templateId: query.templateId
+    });
+  }
+
   @Post(":id/notes")
   @Permissions("candidate.create")
   addNote(
@@ -231,6 +284,8 @@ export class ApplicationsController {
           applicationId,
           candidateId: app.candidateId,
           jobId: app.jobId,
+          templateId: body.templateId,
+          questionnaire: body.questionnaire,
           requestedBy: user.userId,
           traceId
         });
@@ -300,6 +355,8 @@ export class ApplicationsController {
           applicationId,
           candidateId: app.candidateId,
           jobId: app.jobId,
+          templateId: undefined,
+          questionnaire: undefined,
           requestedBy: user.userId,
           traceId: requestContext?.traceId
         });

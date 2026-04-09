@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res, UnauthorizedException , Inject} from "@nestjs/common";
+import { Body, Controller, Get, Post, Query, Req, Res, UnauthorizedException , Inject} from "@nestjs/common";
 import { IsEmail, IsOptional, IsString, MinLength } from "class-validator";
 import type { Request, Response } from "express";
 import { CurrentContext } from "../../common/decorators/current-context.decorator";
@@ -14,6 +14,7 @@ class LoginRequest {
   email!: string;
 
   @IsString()
+  @IsOptional()
   tenantId!: string;
 
   @IsString()
@@ -31,6 +32,59 @@ class LogoutRequest {
   @IsString()
   @IsOptional()
   refreshToken?: string;
+}
+
+class AcceptInvitationRequest {
+  @IsString()
+  token!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+
+  @IsString()
+  @IsOptional()
+  fullName?: string;
+}
+
+class SignupRequest {
+  @IsString()
+  @MinLength(2)
+  companyName!: string;
+
+  @IsString()
+  @MinLength(2)
+  fullName!: string;
+
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+}
+
+class ForgotPasswordRequest {
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @IsOptional()
+  tenantId?: string;
+}
+
+class ResolveTokenRequest {
+  @IsString()
+  token!: string;
+}
+
+class ResetPasswordRequest {
+  @IsString()
+  token!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
 }
 
 function parseCookieHeader(raw: string | undefined) {
@@ -65,6 +119,117 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response
   ) {
     const result = await this.authService.login(body, {
+      ipAddress: request.ip,
+      userAgent: request.header("user-agent") ?? undefined
+    });
+
+    if (this.runtimeConfig.authTokenTransport === "cookie") {
+      this.writeAuthCookies(response, result.accessToken, result.refreshToken);
+
+      return {
+        user: result.user,
+        session: result.session
+      };
+    }
+
+    return result;
+  }
+
+  @Post("signup")
+  @Public()
+  async signup(
+    @Body() body: SignupRequest,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.authService.signup(body, {
+      ipAddress: request.ip,
+      userAgent: request.header("user-agent") ?? undefined
+    });
+
+    if (this.runtimeConfig.authTokenTransport === "cookie") {
+      this.writeAuthCookies(response, result.accessToken, result.refreshToken);
+
+      return {
+        user: result.user,
+        session: result.session,
+        emailVerification: result.emailVerification
+      };
+    }
+
+    return result;
+  }
+
+  @Get("providers")
+  @Public()
+  getProviders() {
+    const googleAuth = this.runtimeConfig.googleAuthConfig;
+
+    return {
+      google: {
+        enabled: Boolean(googleAuth.clientId && googleAuth.clientSecret && googleAuth.redirectUri)
+      }
+    };
+  }
+
+  @Post("password/forgot")
+  @Public()
+  forgotPassword(@Body() body: ForgotPasswordRequest) {
+    return this.authService.requestPasswordReset(body);
+  }
+
+  @Get("password/reset/resolve")
+  @Public()
+  resolvePasswordReset(@Query("token") token: string) {
+    return this.authService.resolvePasswordReset(token);
+  }
+
+  @Post("password/reset")
+  @Public()
+  async resetPassword(
+    @Body() body: ResetPasswordRequest,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.authService.resetPassword(body, {
+      ipAddress: request.ip,
+      userAgent: request.header("user-agent") ?? undefined
+    });
+
+    if (this.runtimeConfig.authTokenTransport === "cookie") {
+      this.writeAuthCookies(response, result.accessToken, result.refreshToken);
+
+      return {
+        user: result.user,
+        session: result.session
+      };
+    }
+
+    return result;
+  }
+
+  @Post("email-verification/resend")
+  resendEmailVerification(@CurrentUser() user: RequestUser) {
+    return this.authService.sendEmailVerification({
+      userId: user.userId,
+      tenantId: user.tenantId
+    });
+  }
+
+  @Post("email-verification/confirm")
+  @Public()
+  confirmEmailVerification(@Body() body: ResolveTokenRequest) {
+    return this.authService.confirmEmailVerification(body.token);
+  }
+
+  @Post("oauth/exchange")
+  @Public()
+  async exchangeOauthRelay(
+    @Body() body: ResolveTokenRequest,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.authService.exchangeOauthRelay(body.token, {
       ipAddress: request.ip,
       userAgent: request.header("user-agent") ?? undefined
     });
@@ -148,7 +313,10 @@ export class AuthController {
         id: user.userId,
         tenantId: user.tenantId,
         roles: user.roles,
-        email: user.email ?? null
+        email: user.email ?? null,
+        fullName: user.fullName ?? null,
+        emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
+        avatarUrl: user.avatarUrl ?? null
       },
       session: {
         authMode: user.authMode,
@@ -162,6 +330,36 @@ export class AuthController {
       },
       traceId: requestContext?.traceId
     };
+  }
+
+  @Get("invitations/resolve")
+  @Public()
+  resolveInvitation(@Query("token") token: string) {
+    return this.authService.resolveInvitation(token);
+  }
+
+  @Post("invitations/accept")
+  @Public()
+  async acceptInvitation(
+    @Body() body: AcceptInvitationRequest,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.authService.acceptInvitation(body, {
+      ipAddress: request.ip,
+      userAgent: request.header("user-agent") ?? undefined
+    });
+
+    if (this.runtimeConfig.authTokenTransport === "cookie") {
+      this.writeAuthCookies(response, result.accessToken, result.refreshToken);
+
+      return {
+        user: result.user,
+        session: result.session
+      };
+    }
+
+    return result;
   }
 
   private writeAuthCookies(response: Response, accessToken: string, refreshToken: string) {

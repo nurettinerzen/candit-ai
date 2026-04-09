@@ -34,9 +34,9 @@ corepack pnpm dev
 ```
 
 ## Demo Credentials
-- `admin@demo.local`
-- `recruiter@demo.local`
-- `hm@demo.local`
+- `owner@demo.local`
+- `manager@demo.local`
+- `staff@demo.local`
 - Password: `DEV_LOGIN_PASSWORD` in `.env` (default: `demo12345`)
 
 ## Required Delivery Docs

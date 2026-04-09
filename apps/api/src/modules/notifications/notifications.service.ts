@@ -69,7 +69,7 @@ class ResendEmailNotificationProvider implements NotificationProvider {
     }
 
     const htmlBody = buildHtmlEmail({
-      subject: input.subject ?? "AI Interviewer bildirimi",
+      subject: input.subject ?? "Candit bildirimi",
       body: input.body,
       metadata: input.metadata
     });
@@ -86,7 +86,7 @@ class ResendEmailNotificationProvider implements NotificationProvider {
         body: JSON.stringify({
           from: this.from,
           to: [input.to],
-          subject: input.subject ?? "AI Interviewer bildirimi",
+          subject: input.subject ?? "Candit bildirimi",
           text: input.body,
           html: htmlBody
         })
@@ -135,18 +135,31 @@ function buildHtmlEmail(input: {
   body: string;
   metadata?: Record<string, unknown>;
 }) {
-  const bodyLines = input.body.split("\n").map((line) => `<p style="margin:0 0 8px;line-height:1.5">${escapeHtml(line)}</p>`).join("");
+  const bodyLines = input.body
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return "";
+      return `<p style="margin:0 0 12px;line-height:1.6;color:#374151;font-size:15px">${escapeHtml(trimmed)}</p>`;
+    })
+    .join("");
 
-  const primaryLink = asString(input.metadata?.interviewLink);
-  const primaryCtaLabel = asString(input.metadata?.primaryCtaLabel) ?? "Gorusmeye Katil";
+  const showPrimaryCta = input.metadata?.showPrimaryCta !== false;
+  const primaryLink = showPrimaryCta ? asString(input.metadata?.primaryLink) : null;
+  const primaryCtaLabel = asString(input.metadata?.primaryCtaLabel) ?? "G\u00F6r\u00FC\u015Fmeyi Ba\u015Flat";
   const primaryCta = primaryLink
-    ? `<p style="margin:16px 0 12px"><a href="${escapeHtml(primaryLink)}" style="display:inline-block;padding:12px 24px;background:#5046e5;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">${escapeHtml(primaryCtaLabel)}</a></p>`
+    ? `<table cellpadding="0" cellspacing="0" style="margin:24px 0 16px"><tr><td style="border-radius:8px;background:#5046e5" align="center">
+        <a href="${escapeHtml(primaryLink)}" target="_blank" style="display:inline-block;padding:14px 32px;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;letter-spacing:0.2px">${escapeHtml(primaryCtaLabel)}</a>
+      </td></tr></table>`
     : "";
 
-  const secondaryLink = asString(input.metadata?.secondaryLink);
+  const showSecondaryCta = input.metadata?.showSecondaryCta === true;
+  const secondaryLink = showSecondaryCta ? asString(input.metadata?.secondaryLink) : null;
   const secondaryCtaLabel = asString(input.metadata?.secondaryCtaLabel) ?? "Daha Sonra Planla";
   const secondaryCta = secondaryLink
-    ? `<p style="margin:0 0 16px"><a href="${escapeHtml(secondaryLink)}" style="display:inline-block;padding:12px 24px;background:#eef2ff;color:#3730a3;text-decoration:none;border-radius:8px;font-weight:600;border:1px solid #c7d2fe">${escapeHtml(secondaryCtaLabel)}</a></p>`
+    ? `<table cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr><td style="border-radius:8px;border:1px solid #c7d2fe" align="center">
+        <a href="${escapeHtml(secondaryLink)}" target="_blank" style="display:inline-block;padding:12px 28px;color:#4338ca;text-decoration:none;font-weight:600;font-size:14px">${escapeHtml(secondaryCtaLabel)}</a>
+      </td></tr></table>`
     : "";
 
   const hideScheduledAt = input.metadata?.hideScheduledAt === true;
@@ -156,28 +169,61 @@ function buildHtmlEmail(input: {
       : `<p style="margin:8px 0;color:#6b7280;font-size:13px">Tarih: ${escapeHtml(String(input.metadata.scheduledAt))}</p>`
     : "";
 
+  // Info boxes from metadata
+  const infoItems: string[] = [];
+  const meta = input.metadata ?? {};
+  if (meta.infoDuration) infoItems.push(`<td style="padding:12px 16px;border-bottom:1px solid #f3f4f6"><span style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">S\u00FCre</span><br><span style="color:#111827;font-weight:600;font-size:14px">${escapeHtml(String(meta.infoDuration))}</span></td>`);
+  if (meta.infoDeadline) infoItems.push(`<td style="padding:12px 16px;border-bottom:1px solid #f3f4f6"><span style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">Son Ge\u00E7erlilik</span><br><span style="color:#111827;font-weight:600;font-size:14px">${escapeHtml(String(meta.infoDeadline))}</span></td>`);
+  if (meta.infoPosition) infoItems.push(`<td style="padding:12px 16px;border-bottom:1px solid #f3f4f6"><span style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">Pozisyon</span><br><span style="color:#111827;font-weight:600;font-size:14px">${escapeHtml(String(meta.infoPosition))}</span></td>`);
+
+  const infoBox = infoItems.length > 0
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;background:#fafafa"><tr>${infoItems.join("</tr><tr>")}</tr></table>`
+    : "";
+
+  // Tips section
+  const tips = meta.tips as string[] | undefined;
+  const tipsHtml = tips && tips.length > 0
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px"><tr><td style="padding:16px 20px">
+        <p style="margin:0 0 8px;font-weight:600;color:#166534;font-size:13px">\u00D6neriler</p>
+        ${tips.map((t) => `<p style="margin:0 0 4px;color:#15803d;font-size:13px;line-height:1.5">\u2022 ${escapeHtml(t)}</p>`).join("")}
+      </td></tr></table>`
+    : "";
+
   return `<!DOCTYPE html>
 <html lang="tr">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px">
+<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:40px 16px">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)">
-        <tr><td style="background:linear-gradient(135deg,#5046e5 0%,#7c3aed 100%);padding:24px 32px">
-          <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:600">AI Interviewer</h1>
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06)">
+
+        <!-- Header -->
+        <tr><td style="padding:28px 36px;border-bottom:1px solid #f1f5f9">
+          <table width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td>
+              <span style="display:inline-block;width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#5046e5,#7c3aed);text-align:center;line-height:36px;color:#fff;font-weight:700;font-size:14px;vertical-align:middle">C</span>
+              <span style="margin-left:10px;font-size:17px;font-weight:700;color:#0f172a;vertical-align:middle;letter-spacing:-0.3px">Candit.ai</span>
+            </td>
+          </tr></table>
         </td></tr>
-        <tr><td style="padding:32px">
-          <h2 style="margin:0 0 16px;font-size:16px;color:#111827">${escapeHtml(input.subject)}</h2>
+
+        <!-- Body -->
+        <tr><td style="padding:36px">
           ${bodyLines}
+          ${infoBox}
           ${scheduledAt}
           ${primaryCta}
           ${secondaryCta}
+          ${tipsHtml}
         </td></tr>
-        <tr><td style="padding:16px 32px;background:#f9fafb;border-top:1px solid #e5e7eb">
-          <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center">
-            Bu e-posta AI Interviewer platformu tarafindan otomatik olarak gonderilmistir.
+
+        <!-- Footer -->
+        <tr><td style="padding:20px 36px;background:#f8fafc;border-top:1px solid #f1f5f9">
+          <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.5">
+            Bu e-posta Candit.ai platformu taraf\u0131ndan otomatik olarak g\u00F6nderilmi\u015Ftir.
           </p>
         </td></tr>
+
       </table>
     </td></tr>
   </table>
@@ -344,6 +390,20 @@ export class NotificationsService {
       });
     }
 
+    if (input.eventType === "interview.invitation.sent") {
+      return this.notifyInterviewLifecycleEvent({
+        ...input,
+        templateKey: "interview_invitation_on_demand_v1"
+      });
+    }
+
+    if (input.eventType === "interview.invitation.reminder_sent") {
+      return this.notifyInterviewLifecycleEvent({
+        ...input,
+        templateKey: "interview_invitation_reminder_v1"
+      });
+    }
+
     if (
       input.eventType !== "application.stage_transitioned" &&
       input.eventType !== "interview.session.completed"
@@ -367,7 +427,7 @@ export class NotificationsService {
       tenantId: input.tenantId,
       channel: "email",
       to: recipient,
-      subject: `[AI Interviewer] ${input.eventType}`,
+      subject: `[Candit.ai] ${input.eventType}`,
       body: `${input.eventType} olayi olustu. Aggregate: ${input.aggregateType}/${input.aggregateId}`,
       metadata: {
         aggregateType: input.aggregateType,
@@ -397,31 +457,43 @@ export class NotificationsService {
     aggregateId: string;
     traceId?: string;
     payload: Record<string, unknown>;
-    templateKey: "interview_scheduled_v1" | "interview_rescheduled_v1" | "interview_cancelled_v1";
+    templateKey:
+      | "interview_scheduled_v1"
+      | "interview_rescheduled_v1"
+      | "interview_cancelled_v1"
+      | "interview_invitation_on_demand_v1"
+      | "interview_invitation_reminder_v1";
   }) {
-    const session = await this.prisma.interviewSession.findFirst({
-      where: {
-        tenantId: input.tenantId,
-        id: input.aggregateId
-      },
-      include: {
-        application: {
-          include: {
-            candidate: {
-              select: {
-                fullName: true,
-                email: true
-              }
-            },
-            job: {
-              select: {
-                title: true
+    const [session, tenant] = await Promise.all([
+      this.prisma.interviewSession.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          id: input.aggregateId
+        },
+        include: {
+          application: {
+            include: {
+              candidate: {
+                select: {
+                  fullName: true,
+                  email: true
+                }
+              },
+              job: {
+                select: {
+                  title: true
+                }
               }
             }
           }
         }
-      }
-    });
+      }),
+      this.prisma.tenant.findUnique({
+        where: { id: input.tenantId },
+        select: { name: true }
+      })
+    ]);
+    const companyName = tenant?.name ?? "Candit.ai";
 
     if (!session) {
       return {
@@ -446,67 +518,112 @@ export class NotificationsService {
     const candidateName = session.application.candidate.fullName;
     const interviewLink =
       session.mode === "VOICE" && session.candidateAccessToken
-        ? `${(process.env.PUBLIC_WEB_BASE_URL?.trim() || "http://localhost:3000").replace(/\/+$/, "")}/gorusme/${session.id}?token=${session.candidateAccessToken}`
+        ? session.meetingJoinUrl ??
+          `${(process.env.PUBLIC_WEB_BASE_URL?.trim() || "http://localhost:3000").replace(/\/+$/, "")}/interview/${session.id}?token=${session.candidateAccessToken}`
         : session.meetingJoinUrl ?? "-";
     const notificationMetadata = asRecord(input.payload.notificationMetadata);
-    const emailVariant = asString(notificationMetadata.emailVariant);
-    const secondaryLink = asString(notificationMetadata.secondaryLink);
 
     const scheduleAtText = session.scheduledAt?.toISOString() ?? "TBD";
+    const deadlineText = session.candidateAccessExpiresAt
+      ? session.candidateAccessExpiresAt.toLocaleString("tr-TR")
+      : "Belirtilmedi";
     const title = session.application.job.title;
 
     const messageByTemplate = (() => {
       if (input.templateKey === "interview_cancelled_v1") {
         return {
-          subject: `[AI Interviewer] Interview iptal edildi`,
+          subject: `${companyName} \u2013 G\u00F6r\u00FC\u015Fme daveti iptal edildi`,
           body: [
             `Merhaba ${candidateName},`,
-            `${title} pozisyonu icin gorusmeniz iptal edildi.`,
-            `Guncel bilgi icin recruiter ekibi sizinle iletisime gececektir.`,
-            `Session ID: ${session.id}`
-          ].join("\n")
+            ``,
+            `${companyName} b\u00FCnyesindeki ${title} pozisyonu i\u00E7in \u00F6nceki g\u00F6r\u00FC\u015Fme davetiniz iptal edilmi\u015Ftir.`,
+            ``,
+            `G\u00FCncel ve ge\u00E7erli bir ba\u011Flant\u0131 ayr\u0131 bir e-posta ile size g\u00F6nderilecektir.`,
+            ``,
+            `Herhangi bir sorunuz varsa i\u015Fe al\u0131m ekibimizle ileti\u015Fime ge\u00E7ebilirsiniz.`
+          ].join("\n"),
+          extraMetadata: {
+            showPrimaryCta: false,
+            infoPosition: title
+          }
         };
       }
 
       if (input.templateKey === "interview_rescheduled_v1") {
         return {
-          subject: `[AI Interviewer] Interview yeniden planlandi`,
+          subject: `${companyName} \u2013 G\u00F6r\u00FC\u015Fmeniz yeniden planland\u0131`,
           body: [
             `Merhaba ${candidateName},`,
-            `${title} pozisyonu icin gorusmeniz yeniden planlandi.`,
-            `Yeni zaman: ${scheduleAtText}`,
-            `Gorusme linki: ${interviewLink}`
-          ].join("\n")
+            ``,
+            `${companyName} b\u00FCnyesindeki ${title} pozisyonu i\u00E7in g\u00F6r\u00FC\u015Fmeniz yeniden planlanm\u0131\u015Ft\u0131r.`,
+            ``,
+            `A\u015Fa\u011F\u0131daki butonu kullanarak g\u00F6r\u00FC\u015Fmenize kat\u0131labilirsiniz.`
+          ].join("\n"),
+          extraMetadata: {
+            infoPosition: title
+          }
         };
       }
 
-      if (emailVariant === "direct_ai_interview_invite") {
+      if (input.templateKey === "interview_invitation_on_demand_v1") {
         return {
-          subject: `[AI Interviewer] AI gorusme davetiniz hazir`,
+          subject: `${companyName} \u2013 \u0130lk g\u00F6r\u00FC\u015Fme davetiniz`,
           body: [
             `Merhaba ${candidateName},`,
-            `${title} pozisyonu icin AI on gorusme baglantiniz hazir.`,
-            `Asagidaki "Simdi Basla" butonuyla gorusmeye hemen katilabilirsiniz.`,
-            secondaryLink
-              ? `Uygun degilseniz "Daha Sonra Planla" baglantisindan size uygun zamani secebilirsiniz.`
-              : `Uygun degilseniz ayni baglantiyi daha sonra da kullanabilirsiniz.`,
-            `Gorusme suresi yaklasik 15-20 dakika olacaktir.`,
-            `Gorusme linki: ${interviewLink}`,
-            ...(secondaryLink ? [`Daha sonra planla: ${secondaryLink}`] : [])
-          ].join("\n")
+            ``,
+            `${companyName} b\u00FCnyesindeki ${title} pozisyonuna yapt\u0131\u011F\u0131n\u0131z ba\u015Fvuru olumlu de\u011Ferlendirilmi\u015Ftir. Sizi ilk g\u00F6r\u00FC\u015Fmeye davet etmekten memnuniyet duyar\u0131z.`,
+            ``,
+            `G\u00F6r\u00FC\u015Fme, yapay zek\u00E2 destekli sesli bir \u00F6n de\u011Ferlendirme \u015Feklinde ger\u00E7ekle\u015Fecektir. Takvim se\u00E7imi gerektirmez; a\u015Fa\u011F\u0131daki butona t\u0131klayarak size uygun bir zamanda ba\u015Flatabilirsiniz.`
+          ].join("\n"),
+          extraMetadata: {
+            primaryCtaLabel: "G\u00F6r\u00FC\u015Fmeyi Ba\u015Flat",
+            infoDuration: "15\u201320 dakika",
+            infoDeadline: deadlineText,
+            infoPosition: title,
+            tips: [
+              "Sessiz bir ortam tercih edin",
+              "Mikrofonunuzun a\u00E7\u0131k oldu\u011Fundan emin olun",
+              "G\u00F6r\u00FC\u015Fmeyi tek seferde tamamlamay\u0131 planlay\u0131n"
+            ]
+          }
+        };
+      }
+
+      if (input.templateKey === "interview_invitation_reminder_v1") {
+        return {
+          subject: `${companyName} \u2013 G\u00F6r\u00FC\u015Fme hat\u0131rlatmas\u0131`,
+          body: [
+            `Merhaba ${candidateName},`,
+            ``,
+            `${companyName} b\u00FCnyesindeki ${title} pozisyonu i\u00E7in g\u00F6r\u00FC\u015Fme davetiniz hâlâ ge\u00E7erlidir.`,
+            ``,
+            `S\u00FCre dolmadan a\u015Fa\u011F\u0131daki butona t\u0131klayarak g\u00F6r\u00FC\u015Fmenizi ba\u015Flatabilirsiniz.`
+          ].join("\n"),
+          extraMetadata: {
+            primaryCtaLabel: "G\u00F6r\u00FC\u015Fmeyi Ba\u015Flat",
+            infoDuration: "15\u201320 dakika",
+            infoDeadline: deadlineText,
+            infoPosition: title
+          }
         };
       }
 
       return {
-        subject: `[AI Interviewer] Interview planlandi`,
+        subject: `${companyName} \u2013 G\u00F6r\u00FC\u015Fmeniz planland\u0131`,
         body: [
           `Merhaba ${candidateName},`,
-          `${title} pozisyonu icin gorusmeniz planlandi.`,
-          `Zaman: ${scheduleAtText}`,
-          `Gorusme linki: ${interviewLink}`
-        ].join("\n")
+          ``,
+          `${companyName} b\u00FCnyesindeki ${title} pozisyonu i\u00E7in g\u00F6r\u00FC\u015Fmeniz planlanm\u0131\u015Ft\u0131r.`,
+          ``,
+          `A\u015Fa\u011F\u0131daki butonu kullanarak g\u00F6r\u00FC\u015Fmenize kat\u0131labilirsiniz.`
+        ].join("\n"),
+        extraMetadata: {
+          infoPosition: title
+        }
       };
     })();
+
+    const extra = (messageByTemplate as { extraMetadata?: Record<string, unknown> }).extraMetadata ?? {};
 
     const result = await this.send({
       tenantId: input.tenantId,
@@ -516,12 +633,29 @@ export class NotificationsService {
       body: messageByTemplate.body,
       metadata: {
         ...notificationMetadata,
+        ...extra,
         sessionId: session.id,
         applicationId: session.applicationId,
         eventType: input.eventType,
         templateKey: input.templateKey,
         interviewLink,
-        scheduledAt: session.scheduledAt?.toISOString() ?? null
+        primaryLink:
+          asString(extra.primaryLink as string | undefined) ??
+          asString(notificationMetadata.primaryLink) ??
+          (input.templateKey === "interview_invitation_on_demand_v1" ||
+          input.templateKey === "interview_invitation_reminder_v1"
+            ? interviewLink
+            : input.templateKey !== "interview_cancelled_v1"
+              ? interviewLink
+              : null),
+        primaryCtaLabel:
+          asString(extra.primaryCtaLabel as string | undefined) ??
+          asString(notificationMetadata.primaryCtaLabel) ??
+          "G\u00F6r\u00FC\u015Fmeyi Ba\u015Flat",
+        showPrimaryCta: extra.showPrimaryCta !== undefined ? extra.showPrimaryCta : input.templateKey !== "interview_cancelled_v1",
+        showSecondaryCta: false,
+        scheduledAt: session.scheduledAt?.toISOString() ?? null,
+        deadlineAt: session.candidateAccessExpiresAt?.toISOString() ?? null
       },
       traceId: input.traceId,
       domainEventId: asString(input.payload.domainEventId) ?? undefined,

@@ -2,6 +2,10 @@ import type { AuthSessionMode } from "./types";
 
 export type AuthTokenTransport = "header" | "cookie";
 
+function trimSlashSuffix(value: string) {
+  return value.replace(/\/+$/, "");
+}
+
 function toBool(value: string | undefined, fallback: boolean) {
   if (value === undefined) {
     return fallback;
@@ -19,6 +23,13 @@ function toBool(value: string | undefined, fallback: boolean) {
   return fallback;
 }
 
+function toCsvList(value: string | undefined) {
+  return value
+    ?.split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean) ?? [];
+}
+
 function readMode(raw: string | undefined): AuthSessionMode {
   if (raw === "jwt" || raw === "hybrid" || raw === "dev_header") {
     return raw;
@@ -28,7 +39,16 @@ function readMode(raw: string | undefined): AuthSessionMode {
 }
 
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/v1";
+  (() => {
+    if (typeof window !== "undefined") {
+      const override = new URLSearchParams(window.location.search).get("apiBase")?.trim();
+      if (override) {
+        return trimSlashSuffix(override);
+      }
+    }
+
+    return trimSlashSuffix(process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/v1");
+  })();
 
 export const AUTH_SESSION_MODE = readMode(process.env.NEXT_PUBLIC_AUTH_SESSION_MODE);
 
@@ -54,7 +74,47 @@ export const ENABLE_DEMO_SESSION = toBool(
 
 export const DEMO_SESSION_DEFAULTS = {
   tenantId: process.env.NEXT_PUBLIC_DEV_TENANT_ID ?? "ten_demo",
-  userId: process.env.NEXT_PUBLIC_DEV_USER_ID ?? "usr_recruiter_demo",
-  roles: process.env.NEXT_PUBLIC_DEV_ROLES ?? "recruiter",
-  userLabel: process.env.NEXT_PUBLIC_DEV_USER_LABEL ?? "Demo İşe Alım Uzmanı"
+  userId: process.env.NEXT_PUBLIC_DEV_USER_ID ?? "usr_admin_demo",
+  roles: process.env.NEXT_PUBLIC_DEV_ROLES ?? "owner",
+  userLabel: process.env.NEXT_PUBLIC_DEV_USER_LABEL ?? "Demo Hesap Sahibi",
+  email: process.env.NEXT_PUBLIC_DEV_USER_EMAIL ?? "owner@demo.local"
 };
+
+const INTERNAL_ADMIN_EMAIL_ALLOWLIST = (() => {
+  const configured = [
+    ...toCsvList(process.env.NEXT_PUBLIC_INTERNAL_ADMIN_EMAIL_ALLOWLIST),
+    ...toCsvList(process.env.NEXT_PUBLIC_INTERNAL_BILLING_ADMIN_EMAIL_ALLOWLIST)
+  ];
+  if (configured.length > 0) {
+    return Array.from(new Set(configured));
+  }
+
+  return process.env.NODE_ENV === "production" ? [] : ["owner@demo.local"];
+})();
+
+const INTERNAL_ADMIN_DOMAIN_ALLOWLIST = [
+  ...toCsvList(process.env.NEXT_PUBLIC_INTERNAL_ADMIN_DOMAIN_ALLOWLIST),
+  ...toCsvList(process.env.NEXT_PUBLIC_INTERNAL_BILLING_ADMIN_DOMAIN_ALLOWLIST)
+]
+  .map((domain) => domain.replace(/^@+/, ""))
+  .filter(Boolean);
+
+export function isInternalAdminEmail(email?: string | null) {
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return false;
+  }
+
+  if (INTERNAL_ADMIN_EMAIL_ALLOWLIST.includes(normalizedEmail)) {
+    return true;
+  }
+
+  const emailDomain = normalizedEmail.split("@")[1];
+  if (!emailDomain) {
+    return false;
+  }
+
+  return INTERNAL_ADMIN_DOMAIN_ALLOWLIST.includes(emailDomain);
+}
+
+export const isInternalBillingAdminEmail = isInternalAdminEmail;

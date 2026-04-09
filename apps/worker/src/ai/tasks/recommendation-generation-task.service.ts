@@ -1,4 +1,9 @@
-import { AiTaskType, PrismaClient } from "@prisma/client";
+import {
+  AiTaskType,
+  PrismaClient,
+  Recommendation,
+  type TranscriptSegment
+} from "@prisma/client";
 import { AiTaskPolicyService } from "../policy/ai-task-policy.service.js";
 import { StructuredAiProvider } from "../providers/structured-ai-provider.js";
 import { TaskProcessingError } from "../task-processing-error.js";
@@ -14,6 +19,10 @@ import {
   toOutputJson,
   type StructuredTaskSections
 } from "./task-output.utils.js";
+import {
+  analyzeInterviewTranscript,
+  type InterviewTranscriptSignals
+} from "./interview-signal.utils.js";
 
 export class RecommendationGenerationTaskService {
   constructor(
@@ -57,10 +66,19 @@ export class RecommendationGenerationTaskService {
       });
     }
 
+    const session = await this.resolveSession({
+      tenantId: context.tenantId,
+      applicationId,
+      sessionId: context.taskRun.sessionId
+    });
+    const targetSessionId = session?.id ?? context.taskRun.sessionId ?? null;
+    const transcriptSegments = session?.transcript?.segments ?? [];
+    const transcriptSignals = analyzeInterviewTranscript(transcriptSegments);
     const latestReport = await this.prisma.aiReport.findFirst({
       where: {
         tenantId: context.tenantId,
-        applicationId
+        applicationId,
+        ...(targetSessionId ? { sessionId: targetSessionId } : {})
       },
       orderBy: {
         createdAt: "desc"
@@ -99,21 +117,25 @@ export class RecommendationGenerationTaskService {
 
     const fallbackSections = this.buildFallbackSections({
       applicationId: application.id,
+      sessionId: targetSessionId,
       candidateName: application.candidate.fullName,
       jobTitle: application.job.title,
       hasReport: Boolean(latestReport),
       hasScreening: Boolean(latestScreening?.outputJson),
-      hasCvParsing: Boolean(latestCvParsing?.outputJson)
+      hasCvParsing: Boolean(latestCvParsing?.outputJson),
+      transcriptSignals
     });
 
     const generation = await this.provider.generate({
       taskType: "RECOMMENDATION_GENERATION",
       schemaName: "recommendation_generation_v1_tr",
-      schema: defaultOutputSchema("recommendation_generation_v1_tr"),
+      schema: defaultOutputSchema("recommendation_generation_v1_tr", {
+        includeInterviewInsights: true
+      }),
       promptVersion,
       preferProviderKey: context.taskRun.providerKey,
       systemPrompt:
-        "Turkce recruiter odakli recommendation uret. Nihai karar verme, otomatik ret yapma. Ciktilar denetlenebilir ve kanit baglantili olsun.",
+        "Türkçe recruiter odaklı recommendation üret. Nihai karar verme, otomatik ret yapma. Mevcut interview session varsa değerlendirmeyi önce bu session transcriptine dayandır. Eski session raporunu yeni mülakat yerine kullanma. Aday yanıtları yüzeysel, kaçamak, şaka yollu veya rol sahipliğini göstermiyorsa ADVANCE önerme; en fazla HOLD ya da REVIEW öner. Çıktı dili doğal ve recruiter dostu olsun; teknik kural, sinyal, heuristic veya model içi yorum dili kullanma. Çıktılar denetlenebilir ve kanıt bağlantılı olsun.",
       userPrompt: JSON.stringify({
         task: "RECOMMENDATION_GENERATION",
         locale: "tr-TR",
@@ -142,27 +164,68 @@ export class RecommendationGenerationTaskService {
         latestReport: latestReport
           ? {
               id: latestReport.id,
+              sessionId: latestReport.sessionId,
               recommendation: latestReport.recommendation,
               confidence: latestReport.confidence,
               createdAt: latestReport.createdAt.toISOString(),
               reportJson: latestReport.reportJson
             }
           : null,
+        interviewSession: session
+          ? {
+              id: session.id,
+              status: session.status,
+              startedAt: session.startedAt?.toISOString() ?? null,
+              endedAt: session.endedAt?.toISOString() ?? null
+            }
+          : null,
+        transcriptSegments: transcriptSegments.map((segment) => ({
+          id: segment.id,
+          speaker: segment.speaker,
+          text: segment.text,
+          startMs: segment.startMs,
+          endMs: segment.endMs
+        })),
+        transcriptSignals: {
+          candidateSegmentCount: transcriptSignals.candidateSegmentCount,
+          averageWordsPerAnswer: transcriptSignals.averageWordsPerAnswer,
+          evasiveAnswerCount: transcriptSignals.evasiveAnswerCount,
+          lowSignalRatio: transcriptSignals.lowSignalRatio,
+          severity: transcriptSignals.severity,
+          shouldBlockAdvance: transcriptSignals.shouldBlockAdvance,
+          interviewSummary: transcriptSignals.interviewSummary,
+          weaknesses: transcriptSignals.weaknesses
+        },
         latestScreeningOutput: latestScreening?.outputJson ?? null,
         latestCvParsingOutput: latestCvParsing?.outputJson ?? null,
         scoringRubric: rubric?.rubricJson ?? null,
         instructions: [
           "recommendedOutcome alani REJECT olamaz",
-          "recommendation summary recruiter aksiyonu icersin",
-          "uncertainty reasons alanini bos birakma"
+          "recommendation summary recruiter aksiyonu icersin ve doğal bir yönetici özeti gibi okunsun",
+          "uncertainty reasons alanini bos birakma",
+          "mevcut session raporu yoksa onceki rapora dayanarak ADVANCE verme",
+          "flags, interpretation ve summary alanlarinda teknik etiket degil recruiter'a uygun doğal dil kullan",
+          "recommendation summary report interviewSummary'sini kelimesi kelimesine tekrar etmesin; yalnizca karar ve sonraki recruiter aksiyonunu soylesin",
+          "aynı riski facts, interpretation ve flags alanlarinda tekrar tekrar yazma"
         ]
       })
     });
 
-    const sections = normalizeStructuredSections(generation.output, fallbackSections);
-    const confidence = this.policy.normalizeConfidence(sections.confidence, fallbackSections.confidence);
+    const sections = this.applyInterviewSignals(
+      normalizeStructuredSections(generation.output, fallbackSections),
+      transcriptSignals,
+      Boolean(session && latestReport)
+    );
+    const confidence = Math.min(
+      this.policy.normalizeConfidence(sections.confidence, fallbackSections.confidence),
+      transcriptSignals.maxConfidence,
+      session && !latestReport ? 0.72 : 1
+    );
     const uncertaintyLevel = this.policy.uncertaintyLevel(confidence);
-    const recommendation = this.policy.normalizeRecommendation(sections.recommendedOutcome);
+    const recommendation = this.limitRecommendation(
+      this.policy.normalizeRecommendation(sections.recommendedOutcome),
+      transcriptSignals.maxRecommendation
+    );
 
     const summaryText = sections.recommendationSummary.slice(0, 700);
     const rationaleJson = {
@@ -176,6 +239,9 @@ export class RecommendationGenerationTaskService {
       },
       flags: sections.flags,
       missingInformation: sections.missingInformation,
+      interviewSummary: sections.interviewSummary,
+      strengths: sections.strengths ?? [],
+      weaknesses: sections.weaknesses ?? [],
       evidenceLinks: sections.evidenceLinks,
       sourceArtifacts: {
         reportId: latestReport?.id ?? null,
@@ -240,6 +306,9 @@ export class RecommendationGenerationTaskService {
         fallback: generation.mode === "deterministic_fallback",
         facts: sections.facts,
         interpretation: sections.interpretation,
+        interviewSummary: sections.interviewSummary,
+        strengths: sections.strengths,
+        weaknesses: sections.weaknesses,
         recommendation: {
           summary: summaryText,
           action: sections.recommendationAction,
@@ -354,16 +423,19 @@ export class RecommendationGenerationTaskService {
 
   private buildFallbackSections(input: {
     applicationId: string;
+    sessionId: string | null;
     candidateName: string;
     jobTitle: string;
     hasReport: boolean;
     hasScreening: boolean;
     hasCvParsing: boolean;
+    transcriptSignals: InterviewTranscriptSignals;
   }): StructuredTaskSections {
     const missingInformation = [
       ...(input.hasReport ? [] : ["latest_ai_report"]),
       ...(input.hasScreening ? [] : ["screening_support_output"]),
-      ...(input.hasCvParsing ? [] : ["cv_parsing_output"])
+      ...(input.hasCvParsing ? [] : ["cv_parsing_output"]),
+      ...input.transcriptSignals.missingInformation
     ];
 
     return {
@@ -371,19 +443,28 @@ export class RecommendationGenerationTaskService {
         `Aday: ${input.candidateName}`,
         `Pozisyon: ${input.jobTitle}`,
         `Application ID: ${input.applicationId}`,
+        `Session ID: ${input.sessionId ?? "yok"}`,
         `Rapor var mi: ${input.hasReport ? "evet" : "hayir"}`
       ],
       interpretation: [
         "Recommendation artifact'i recruiter kararini desteklemek icin uretilir.",
         input.hasReport
-          ? "En son AI raporu recommendation baglaminda dikkate alindi."
-          : "AI raporu olmadigi icin recommendation daha yuksek belirsizlik tasir."
+          ? "Mevcut session'a ait AI raporu recommendation baglaminda dikkate alindi."
+          : "Mevcut session raporu olmadigi icin recommendation daha yuksek belirsizlik tasir.",
+        input.transcriptSignals.interviewSummary
       ],
+      interviewSummary: input.transcriptSignals.interviewSummary,
+      strengths: input.transcriptSignals.strengths,
+      weaknesses: input.transcriptSignals.weaknesses,
       recommendationSummary:
         "Aday icin otomatik karar uygulanmadi; recruiter onayi sonrasinda manuel stage karari alinmalidir.",
       recommendationAction:
         "Eksik artefaktlari tamamlayip hiring manager review oncesi recruiter degerlendirmesi yap.",
-      recommendedOutcome: input.hasReport ? "HOLD" : "REVIEW",
+      recommendedOutcome: input.hasReport
+        ? input.transcriptSignals.maxRecommendation === "ADVANCE"
+          ? "HOLD"
+          : input.transcriptSignals.maxRecommendation
+        : "REVIEW",
       flags: [
         {
           code: input.hasReport ? "HUMAN_REVIEW_REQUIRED" : "REPORT_MISSING",
@@ -391,7 +472,8 @@ export class RecommendationGenerationTaskService {
           note: input.hasReport
             ? "Nihai karar sistemi otomatik uygulamaz; recruiter onayi gerekir."
             : "Rapor olmadan recommendation kesinlik seviyesi dusuktur."
-        }
+        },
+        ...input.transcriptSignals.flags
       ],
       missingInformation,
       evidenceLinks: [
@@ -406,5 +488,139 @@ export class RecommendationGenerationTaskService {
         ? ["Recommendation destekleyicidir; nihai karar insan kontrolu gerektirir."]
         : ["Temel AI raporu eksik oldugu icin belirsizlik artmistir."]
     };
+  }
+
+  private async resolveSession(input: {
+    tenantId: string;
+    applicationId: string;
+    sessionId: string | null;
+  }) {
+    if (input.sessionId) {
+      return this.prisma.interviewSession.findFirst({
+        where: {
+          id: input.sessionId,
+          tenantId: input.tenantId,
+          applicationId: input.applicationId
+        },
+        include: {
+          transcript: {
+            include: {
+              segments: {
+                orderBy: {
+                  startMs: "asc"
+                },
+                take: 30
+              }
+            }
+          }
+        }
+      });
+    }
+
+    return this.prisma.interviewSession.findFirst({
+      where: {
+        tenantId: input.tenantId,
+        applicationId: input.applicationId,
+        status: "COMPLETED"
+      },
+      include: {
+        transcript: {
+          include: {
+            segments: {
+              orderBy: {
+                startMs: "asc"
+              },
+              take: 30
+            }
+          }
+        }
+      },
+      orderBy: {
+        endedAt: "desc"
+      }
+    });
+  }
+
+  private applyInterviewSignals(
+    sections: StructuredTaskSections,
+    signals: InterviewTranscriptSignals,
+    hasSessionReport: boolean
+  ): StructuredTaskSections {
+    return {
+      ...sections,
+      interviewSummary:
+        sections.interviewSummary && sections.interviewSummary.trim().length > 0
+          ? sections.interviewSummary
+          : signals.interviewSummary,
+      strengths:
+        sections.strengths && sections.strengths.length > 0 ? sections.strengths : signals.strengths,
+      weaknesses: this.uniqueStrings([...(sections.weaknesses ?? []), ...signals.weaknesses]),
+      flags: this.uniqueFlags([...sections.flags, ...signals.flags]),
+      missingInformation: this.uniqueStrings([
+        ...sections.missingInformation,
+        ...signals.missingInformation
+      ]),
+      recommendedOutcome: this.limitRecommendation(
+        this.policy.normalizeRecommendation(sections.recommendedOutcome),
+        signals.maxRecommendation
+      ),
+      confidence: Math.min(sections.confidence, hasSessionReport ? signals.maxConfidence : 0.72)
+    };
+  }
+
+  private limitRecommendation(
+    recommendation: Recommendation,
+    maxRecommendation: "ADVANCE" | "HOLD" | "REVIEW"
+  ): Recommendation {
+    if (maxRecommendation === "REVIEW") {
+      return Recommendation.REVIEW;
+    }
+
+    if (maxRecommendation === "HOLD" && recommendation === Recommendation.ADVANCE) {
+      return Recommendation.HOLD;
+    }
+
+    return recommendation;
+  }
+
+  private uniqueStrings(values: string[]) {
+    const normalized = new Set<string>();
+    const output: string[] = [];
+
+    for (const value of values.map((item) => item.trim()).filter(Boolean)) {
+      const key = value
+        .toLocaleLowerCase("tr-TR")
+        .replace(/[ıİ]/g, "i")
+        .replace(/[şŞ]/g, "s")
+        .replace(/[ğĞ]/g, "g")
+        .replace(/[üÜ]/g, "u")
+        .replace(/[öÖ]/g, "o")
+        .replace(/[çÇ]/g, "c")
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "");
+
+      if (normalized.has(key)) {
+        continue;
+      }
+
+      normalized.add(key);
+      output.push(value);
+    }
+
+    return output.slice(0, 8);
+  }
+
+  private uniqueFlags(
+    values: Array<{ code: string; severity: "low" | "medium" | "high"; note: string }>
+  ) {
+    const seen = new Set<string>();
+    return values.filter((value) => {
+      const key = `${value.code}:${value.note}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
   }
 }

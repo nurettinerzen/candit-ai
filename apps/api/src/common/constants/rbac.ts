@@ -1,7 +1,7 @@
 import type { Permission, Role } from "@ai-interviewer/domain";
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  admin: [
+  owner: [
     "tenant.manage",
     "workspace.manage",
     "user.manage",
@@ -29,13 +29,14 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "notification.send",
     "audit.read"
   ],
-  recruiter: [
+  manager: [
     "job.create",
     "job.read",
     "job.update",
     "candidate.create",
     "candidate.read",
     "candidate.move_stage",
+    "screening.template.manage",
     "screening.run",
     "interview.template.manage",
     "interview.schedule",
@@ -47,18 +48,25 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "report.generate",
     "report.read",
     "recommendation.read",
-    "ai.config.update",
+    "workflow.manage",
     "audit.read"
   ],
-  hiring_manager: [
+  staff: [
+    "job.create",
     "job.read",
+    "job.update",
+    "candidate.create",
     "candidate.read",
+    "candidate.move_stage",
+    "screening.run",
+    "interview.schedule",
     "interview.read",
+    "interview.session.manage",
+    "ai.task.request",
     "ai.task.read",
     "ai.report.read",
+    "report.generate",
     "report.read",
     "recommendation.read"
-  ],
-  candidate: [],
-  agency_recruiter: ["candidate.create", "candidate.read", "job.read", "ai.task.read"]
+  ]
 };

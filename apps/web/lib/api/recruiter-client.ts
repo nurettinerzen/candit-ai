@@ -11,13 +11,30 @@ import type {
   Application,
   ApplicationCreatePayload,
   ApplicationDetail,
+  BillingAddonKey,
+  BillingOverviewReadModel,
+  BillingPlanKey,
   BulkImportPayload,
+  InternalAdminAccountDetailReadModel,
+  InternalAdminAccountListReadModel,
+  InternalAdminDashboardReadModel,
+  InternalAdminRedAlertReadModel,
   JobInboxReadModel,
   JobPostingDraftResponse,
   QuickActionPayload,
   RecruiterApplicationsReadModel,
   RecruiterNote,
   RecruiterOverviewReadModel,
+  SourcingAttachResult,
+  SourcingCreateProjectResult,
+  SourcingDiscoverResult,
+  SourcingImportedLead,
+  SourcingImportSourceType,
+  SourcingLeadImportResult,
+  SourcingOutreachResult,
+  SourcingOverviewReadModel,
+  SourcingProjectDetailReadModel,
+  SourcingOutreachTemplate,
   AuditLog,
   BulkCvUploadResult,
   Candidate,
@@ -32,6 +49,7 @@ import type {
   InterviewSchedulingProviders,
   InterviewSessionStatus,
   InterviewSessionView,
+  InterviewQuestionnairePreview,
   InterviewTemplate,
   InfrastructureReadinessReadModel,
   PublicInterviewSessionView,
@@ -39,6 +57,7 @@ import type {
   JobRequirement,
   JobStatus,
   MeetingProvider,
+  MemberDirectoryItem,
   QuickActionResult,
   StageTransitionPayload,
   ProviderHealthDashboard,
@@ -143,6 +162,18 @@ type PublicSessionAudioAnswerPayload = {
   audioBase64: string;
   mimeType: string;
   locale?: string;
+};
+
+type PublicSessionCompletePayload = {
+  token: string;
+  transcriptSegments?: Array<{
+    speaker: "AI" | "CANDIDATE" | "RECRUITER";
+    text: string;
+    confidence?: number;
+  }>;
+  locale?: string;
+  sttModel?: string;
+  completionReasonCode?: string;
 };
 
 export const apiClient = {
@@ -509,6 +540,12 @@ export const apiClient = {
       body: payload
     });
   },
+  completePublicInterviewSession(sessionId: string, payload: PublicSessionCompletePayload) {
+    return request<PublicInterviewSessionView>(`interviews/public/sessions/${sessionId}/complete`, {
+      method: "POST",
+      body: payload
+    });
+  },
   getPublicInterviewPromptAudio(sessionId: string, token: string) {
     return request<{
       status: string;
@@ -538,7 +575,14 @@ export const apiClient = {
     });
   },
   initElevenLabsConversation(sessionId: string, token: string) {
-    return request<{ signedUrl: string; agentId: string }>(
+    return request<{
+      signedUrl: string;
+      agentId: string;
+      systemPrompt: string;
+      firstMessage: string;
+      dynamicVariables: Record<string, string | number | boolean>;
+      contextualUpdate: string;
+    }>(
       `interviews/public/sessions/${sessionId}/elevenlabs-init`,
       {
         method: "POST",
@@ -587,6 +631,13 @@ export const apiClient = {
   getLatestFitScore(applicationId: string) {
     return request<ApplicantFitScoreView | null>(`applications/${applicationId}/fit-score/latest`);
   },
+  previewInterviewQuestionnaire(applicationId: string, templateId?: string) {
+    return request<InterviewQuestionnairePreview>(`applications/${applicationId}/interview-questionnaire`, {
+      query: {
+        templateId
+      }
+    });
+  },
   listRecruiterNotes(applicationId: string) {
     return request<RecruiterNote[]>(`applications/${applicationId}/notes`);
   },
@@ -610,6 +661,365 @@ export const apiClient = {
   },
   getProviderHealth() {
     return request<ProviderHealthDashboard>("read-models/provider-health");
+  },
+  getSourcingOverview() {
+    return request<SourcingOverviewReadModel>("sourcing/overview");
+  },
+  createSourcingProject(payload: {
+    jobId: string;
+    name?: string;
+    personaSummary?: string;
+    notes?: string;
+  }) {
+    return request<SourcingCreateProjectResult>("sourcing/projects", {
+      method: "POST",
+      body: payload
+    });
+  },
+  getSourcingProject(projectId: string) {
+    return request<SourcingProjectDetailReadModel>(`sourcing/projects/${projectId}`);
+  },
+  refreshSourcingProject(projectId: string) {
+    return request<SourcingProjectDetailReadModel>(`sourcing/projects/${projectId}/refresh`, {
+      method: "POST",
+      body: {}
+    });
+  },
+  discoverSourcingProspects(
+    projectId: string,
+    payload: {
+      roleTitle?: string;
+      keyword?: string;
+      locationText?: string;
+      minYearsExperience?: number;
+      skillTags?: string[];
+      companyBackground?: string[];
+      languages?: string[];
+      workModel?: string;
+      compensationMin?: number;
+      compensationMax?: number;
+      idealCandidateNotes?: string;
+    }
+  ) {
+    return request<SourcingDiscoverResult>(`sourcing/projects/${projectId}/discover`, {
+      method: "POST",
+      body: payload
+    });
+  },
+  importSourcingLeads(
+    projectId: string,
+    payload: {
+      sourceType: SourcingImportSourceType;
+      sourceLabel?: string;
+      leads: SourcingImportedLead[];
+    }
+  ) {
+    return request<SourcingLeadImportResult>(`sourcing/projects/${projectId}/import/leads`, {
+      method: "POST",
+      body: payload
+    });
+  },
+  importSourcingProfileUrls(
+    projectId: string,
+    payload: {
+      urls: string[];
+      note?: string;
+    }
+  ) {
+    return request<SourcingLeadImportResult>(`sourcing/projects/${projectId}/import/urls`, {
+      method: "POST",
+      body: payload
+    });
+  },
+  updateSourcingProspectStage(
+    projectId: string,
+    prospectId: string,
+    payload: {
+      stage: string;
+      recruiterNote?: string;
+    }
+  ) {
+    return request<{ ok: boolean }>(`sourcing/projects/${projectId}/prospects/${prospectId}/stage`, {
+      method: "POST",
+      body: payload
+    });
+  },
+  attachSourcingProspect(projectId: string, prospectId: string) {
+    return request<SourcingAttachResult>(`sourcing/projects/${projectId}/prospects/${prospectId}/attach`, {
+      method: "POST",
+      body: {}
+    });
+  },
+  listSourcingOutreachTemplates() {
+    return request<SourcingOutreachTemplate[]>("sourcing/outreach/templates");
+  },
+  sendSourcingOutreach(
+    projectId: string,
+    payload: {
+      prospectIds: string[];
+      templateId?: string;
+      subject?: string;
+      body?: string;
+      reviewNote?: string;
+      sendNow?: boolean;
+    }
+  ) {
+    return request<SourcingOutreachResult>(`sourcing/projects/${projectId}/outreach/send`, {
+      method: "POST",
+      body: payload
+    });
+  },
+  updateSourcingProfileSuppression(
+    profileId: string,
+    payload: {
+      status: "ALLOWED" | "DO_NOT_CONTACT" | "OPTED_OUT" | "NEEDS_REVIEW";
+      reason?: string;
+    }
+  ) {
+    return request<{ ok: boolean }>(`sourcing/profiles/${profileId}/suppression`, {
+      method: "POST",
+      body: payload
+    });
+  },
+  listMembers() {
+    return request<MemberDirectoryItem[]>("members");
+  },
+  inviteMember(payload: {
+    email: string;
+    fullName: string;
+    role: "manager" | "staff";
+  }) {
+    return request<{
+      userId: string;
+      email: string;
+      fullName: string;
+      role: "manager" | "staff";
+      status: "INVITED";
+      invitedAt: string;
+      expiresAt: string;
+      invitationUrl: string | null;
+    }>("members/invitations", {
+      method: "POST",
+      body: payload
+    });
+  },
+  resendMemberInvitation(userId: string) {
+    return request<{
+      userId: string;
+      invitedAt: string;
+      expiresAt: string;
+      invitationUrl: string | null;
+    }>(`members/${userId}/resend-invitation`, {
+      method: "POST",
+      body: {}
+    });
+  },
+  updateMemberRole(userId: string, payload: { role: "manager" | "staff" }) {
+    return request<{
+      userId: string;
+      role: "manager" | "staff";
+    }>(`members/${userId}/role`, {
+      method: "PATCH",
+      body: payload
+    });
+  },
+  updateMemberStatus(userId: string, payload: { status: "ACTIVE" | "DISABLED" }) {
+    return request<{
+      userId: string;
+      status: "ACTIVE" | "DISABLED";
+    }>(`members/${userId}/status`, {
+      method: "PATCH",
+      body: payload
+    });
+  },
+  transferOwnership(userId: string) {
+    return request<{
+      previousOwnerUserId: string;
+      nextOwnerUserId: string;
+    }>(`members/${userId}/transfer-ownership`, {
+      method: "POST",
+      body: {}
+    });
+  },
+  billingOverview() {
+    return request<BillingOverviewReadModel>("billing/overview");
+  },
+  createPlanCheckout(payload: { planKey: Exclude<BillingPlanKey, "ENTERPRISE">; billingEmail?: string }) {
+    return request<{
+      checkoutUrl: string | null;
+      sessionId: string;
+    }>("billing/checkout/plan", {
+      method: "POST",
+      body: payload
+    });
+  },
+  createAddOnCheckout(payload: { addOnKey: BillingAddonKey; billingEmail?: string }) {
+    return request<{
+      checkoutUrl: string | null;
+      sessionId: string;
+    }>("billing/checkout/addon", {
+      method: "POST",
+      body: payload
+    });
+  },
+  createEnterpriseCheckout(payload: {
+    billingEmail: string;
+    monthlyAmountCents: number;
+    seatsIncluded: number;
+    activeJobsIncluded: number;
+    candidateProcessingIncluded: number;
+    aiInterviewsIncluded: number;
+    advancedReporting: boolean;
+    calendarIntegrations: boolean;
+    brandedCandidateExperience: boolean;
+    customIntegrations: boolean;
+    note?: string;
+  }) {
+    return request<{
+      checkoutUrl: string | null;
+      sessionId: string;
+    }>("billing/checkout/enterprise", {
+      method: "POST",
+      body: payload
+    });
+  },
+  sendBillingCheckoutLink(payload: { checkoutSessionId: string; email: string }) {
+    return request<{
+      sent: true;
+      email: string;
+    }>("billing/checkout/send-link", {
+      method: "POST",
+      body: payload
+    });
+  },
+  createBillingCustomerPortal() {
+    return request<{
+      portalUrl: string;
+    }>("billing/customer-portal", {
+      method: "POST",
+      body: {}
+    });
+  },
+  internalAdminDashboard() {
+    return request<InternalAdminDashboardReadModel>("internal-admin/dashboard");
+  },
+  internalAdminRedAlert(params?: {
+    windowDays?: number;
+    category?: "ALL" | "APPLICATION" | "SECURITY" | "ASSISTANT" | "OPERATIONS";
+    severity?: "ALL" | "critical" | "warning";
+  }) {
+    return request<InternalAdminRedAlertReadModel>("internal-admin/red-alert", {
+      query: params
+    });
+  },
+  internalAdminAccounts(params?: {
+    query?: string;
+    planKey?: "ALL" | BillingPlanKey;
+    status?: "ALL" | "ACTIVE" | "SUSPENDED" | "DELETED";
+  }) {
+    return request<InternalAdminAccountListReadModel>("internal-admin/accounts", {
+      query: params
+    });
+  },
+  internalAdminAccountDetail(tenantId: string) {
+    return request<InternalAdminAccountDetailReadModel>(`internal-admin/accounts/${tenantId}`);
+  },
+  internalAdminUpdateAccountStatus(
+    tenantId: string,
+    payload: { status: "ACTIVE" | "SUSPENDED" | "DELETED" }
+  ) {
+    return request<{ ok: true; status: "ACTIVE" | "SUSPENDED" | "DELETED" }>(
+      `internal-admin/accounts/${tenantId}/status`,
+      {
+        method: "PATCH",
+        body: payload
+      }
+    );
+  },
+  internalAdminUpdateAccountPlan(
+    tenantId: string,
+    payload: {
+      planKey: BillingPlanKey;
+      billingEmail?: string;
+      status?: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED" | "INCOMPLETE";
+      monthlyAmountCents?: number;
+      seatsIncluded?: number;
+      activeJobsIncluded?: number;
+      candidateProcessingIncluded?: number;
+      aiInterviewsIncluded?: number;
+      advancedReporting?: boolean;
+      calendarIntegrations?: boolean;
+      brandedCandidateExperience?: boolean;
+      customIntegrations?: boolean;
+      note?: string;
+    }
+  ) {
+    return request<InternalAdminAccountDetailReadModel>(`internal-admin/accounts/${tenantId}/plan`, {
+      method: "POST",
+      body: payload
+    });
+  },
+  internalAdminCreateQuotaGrant(
+    tenantId: string,
+    payload: {
+      label?: string;
+      seats?: number;
+      activeJobs?: number;
+      candidateProcessing?: number;
+      aiInterviews?: number;
+    }
+  ) {
+    return request<InternalAdminAccountDetailReadModel>(
+      `internal-admin/accounts/${tenantId}/quota-grants`,
+      {
+        method: "POST",
+        body: payload
+      }
+    );
+  },
+  internalAdminSendOwnerResetInvite(tenantId: string) {
+    return request<{ sent: true; email: string }>(
+      `internal-admin/accounts/${tenantId}/reset-owner-password`,
+      {
+        method: "POST",
+        body: {}
+      }
+    );
+  },
+  internalAdminEnterprise(params?: {
+    query?: string;
+    status?: "ALL" | "ACTIVE" | "SUSPENDED" | "DELETED";
+  }) {
+    return request<InternalAdminAccountListReadModel>("internal-admin/enterprise", {
+      query: params
+    });
+  },
+  internalAdminCreateEnterpriseCustomer(payload: {
+    companyName: string;
+    ownerFullName: string;
+    ownerEmail: string;
+    billingEmail: string;
+    monthlyAmountCents: number;
+    seatsIncluded: number;
+    activeJobsIncluded: number;
+    candidateProcessingIncluded: number;
+    aiInterviewsIncluded: number;
+    advancedReporting: boolean;
+    calendarIntegrations: boolean;
+    brandedCandidateExperience: boolean;
+    customIntegrations: boolean;
+    note?: string;
+  }) {
+    return request<{
+      tenantId: string;
+      checkoutUrl: string | null;
+      sessionId: string | null;
+      linkSent: boolean;
+      stripeReady: boolean;
+    }>("internal-admin/enterprise/customers", {
+      method: "POST",
+      body: payload
+    });
   }
 };
 

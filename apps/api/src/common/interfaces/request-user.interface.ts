@@ -7,6 +7,9 @@ export interface RequestUser {
   tenantId: string;
   roles: Role[];
   email?: string;
+  fullName?: string;
+  emailVerifiedAt?: Date | null;
+  avatarUrl?: string | null;
   authMode: SessionAuthMode;
   sessionId?: string;
 }

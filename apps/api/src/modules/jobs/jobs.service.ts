@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { JobStatus, Prisma } from "@prisma/client";
 import { AuditWriterService } from "../audit/audit-writer.service";
+import { BillingService } from "../billing/billing.service";
 import { DomainEventsService } from "../domain-events/domain-events.service";
 import { AiProviderRegistryService } from "../ai-orchestration/providers/ai-provider-registry.service";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -80,6 +81,7 @@ export class JobsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditWriterService) private readonly auditWriterService: AuditWriterService,
+    @Inject(BillingService) private readonly billingService: BillingService,
     @Inject(DomainEventsService) private readonly domainEventsService: DomainEventsService,
     @Inject(AiProviderRegistryService)
     private readonly aiProviderRegistryService: AiProviderRegistryService
@@ -174,6 +176,10 @@ export class JobsService {
   }
 
   async create(input: CreateJobInput) {
+    if (input.status === JobStatus.PUBLISHED) {
+      await this.billingService.assertCanPublishJob(input.tenantId);
+    }
+
     const job = await this.prisma.job.create({
       data: {
         tenantId: input.tenantId,
@@ -241,6 +247,10 @@ export class JobsService {
 
   async update(input: UpdateJobInput) {
     const current = await this.getById(input.tenantId, input.id);
+
+    if (input.status === JobStatus.PUBLISHED && current.status !== JobStatus.PUBLISHED) {
+      await this.billingService.assertCanPublishJob(input.tenantId);
+    }
 
     const job = await this.prisma.$transaction(async (tx) => {
       if (input.requirements) {

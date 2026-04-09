@@ -5,6 +5,7 @@ import type {
   SpeechTranscriptionInput
 } from "./contracts/speech-provider.interface";
 import { BrowserFallbackSpeechProvider } from "./providers/browser-fallback-speech.provider";
+import { ElevenLabsSpeechProvider } from "./providers/elevenlabs-speech.provider";
 import { OpenAiSpeechProvider } from "./providers/openai-speech.provider";
 
 export type SpeechRuntimeSelection = {
@@ -19,7 +20,9 @@ export class SpeechRuntimeService {
     @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService,
     @Inject(BrowserFallbackSpeechProvider)
     private readonly browserFallbackProvider: BrowserFallbackSpeechProvider,
-    @Inject(OpenAiSpeechProvider) private readonly openAiProvider: OpenAiSpeechProvider
+    @Inject(OpenAiSpeechProvider) private readonly openAiProvider: OpenAiSpeechProvider,
+    @Inject(ElevenLabsSpeechProvider)
+    private readonly elevenLabsProvider: ElevenLabsSpeechProvider
   ) {}
 
   resolveRuntimeSelection(input?: {
@@ -27,26 +30,38 @@ export class SpeechRuntimeService {
     speechSynthesis?: boolean;
   }): SpeechRuntimeSelection {
     const speechConfig = this.runtimeConfig.speechRuntimeConfig;
-    const preferOpenAi =
-      speechConfig.preferredSttProvider === "openai" ||
-      speechConfig.preferredTtsProvider === "openai";
-    const openAiReady = this.openAiProvider.isConfigured;
+    const sttProvider =
+      input?.speechRecognition === false
+        ? null
+        : this.resolvePreferredSttProvider(speechConfig.preferredSttProvider);
+    const ttsProvider =
+      input?.speechSynthesis === false
+        ? null
+        : this.resolvePreferredTtsProvider(speechConfig.preferredTtsProvider);
 
-    if (preferOpenAi && openAiReady) {
-      return {
-        runtimeProviderMode: "provider_backed_openai",
-        voiceInputProvider:
-          input?.speechRecognition === false ? "manual_text_fallback" : this.openAiProvider.key,
-        voiceOutputProvider:
-          input?.speechSynthesis === false ? "text_prompt_only" : this.openAiProvider.key
-      };
-    }
-
-    if (input?.speechRecognition && input?.speechSynthesis) {
+    if (!sttProvider && !ttsProvider && input?.speechRecognition && input?.speechSynthesis) {
       return {
         runtimeProviderMode: "browser_native",
         voiceInputProvider: "browser_web_speech_api",
         voiceOutputProvider: "browser_speech_synthesis"
+      };
+    }
+
+    if (sttProvider || ttsProvider) {
+      const voiceInputProvider =
+        input?.speechRecognition === false
+          ? "manual_text_fallback"
+          : sttProvider?.key ?? "browser_web_speech_api";
+      const voiceOutputProvider =
+        input?.speechSynthesis === false ? "text_prompt_only" : ttsProvider?.key ?? "text_prompt_only";
+
+      return {
+        runtimeProviderMode: this.composeRuntimeProviderMode(
+          sttProvider?.key ?? null,
+          ttsProvider?.key ?? null
+        ),
+        voiceInputProvider,
+        voiceOutputProvider
       };
     }
 
@@ -58,19 +73,25 @@ export class SpeechRuntimeService {
   }
 
   async transcribe(input: SpeechTranscriptionInput) {
-    if (!this.openAiProvider.isConfigured) {
+    const provider = this.resolvePreferredSttProvider(
+      this.runtimeConfig.speechRuntimeConfig.preferredSttProvider
+    );
+    if (!provider) {
       return this.browserFallbackProvider.transcribe(input);
     }
 
-    return this.openAiProvider.transcribe(input);
+    return provider.transcribe(input);
   }
 
   async synthesize(input: SpeechSynthesisInput) {
-    if (!this.openAiProvider.isConfigured) {
+    const provider = this.resolvePreferredTtsProvider(
+      this.runtimeConfig.speechRuntimeConfig.preferredTtsProvider
+    );
+    if (!provider) {
       return this.browserFallbackProvider.synthesize(input);
     }
 
-    return this.openAiProvider.synthesize(input);
+    return provider.synthesize(input);
   }
 
   getProviderStatus() {
@@ -87,8 +108,68 @@ export class SpeechRuntimeService {
           configured: this.openAiProvider.isConfigured,
           mode: "provider",
           reason: this.openAiProvider.isConfigured ? null : "OPENAI_API_KEY missing"
+        },
+        {
+          key: this.elevenLabsProvider.key,
+          configured: this.elevenLabsProvider.isConfigured,
+          mode: "provider",
+          reason: this.elevenLabsProvider.isConfigured ? null : "ELEVENLABS_API_KEY missing"
         }
       ]
     };
+  }
+
+  private resolvePreferredSttProvider(preferred: string) {
+    const orderedProviders =
+      preferred === "elevenlabs"
+        ? [this.elevenLabsProvider, this.openAiProvider]
+        : preferred === "openai"
+          ? [this.openAiProvider, this.elevenLabsProvider]
+          : [this.openAiProvider, this.elevenLabsProvider];
+
+    return orderedProviders.find((provider) => provider.isConfigured) ?? null;
+  }
+
+  private resolvePreferredTtsProvider(preferred: string) {
+    const orderedProviders =
+      preferred === "elevenlabs"
+        ? [this.elevenLabsProvider, this.openAiProvider]
+        : preferred === "openai"
+          ? [this.openAiProvider, this.elevenLabsProvider]
+          : [this.openAiProvider, this.elevenLabsProvider];
+
+    return orderedProviders.find((provider) => provider.isConfigured) ?? null;
+  }
+
+  private composeRuntimeProviderMode(sttProviderKey: string | null, ttsProviderKey: string | null) {
+    const providerKeys = [sttProviderKey, ttsProviderKey].filter(
+      (value): value is string => Boolean(value)
+    );
+    const uniqueKeys = [...new Set(providerKeys)];
+
+    if (uniqueKeys.length === 1) {
+      const [providerKey] = uniqueKeys;
+      if (providerKey) {
+        return this.providerModeKey(providerKey);
+      }
+    }
+
+    if (uniqueKeys.length > 1) {
+      return `provider_backed_mixed:${uniqueKeys.join("+")}`;
+    }
+
+    return "manual_fallback";
+  }
+
+  private providerModeKey(providerKey: string) {
+    if (providerKey === this.openAiProvider.key) {
+      return "provider_backed_openai";
+    }
+
+    if (providerKey === this.elevenLabsProvider.key) {
+      return "provider_backed_elevenlabs";
+    }
+
+    return `provider_backed_${providerKey}`;
   }
 }

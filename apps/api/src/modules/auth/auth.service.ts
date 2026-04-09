@@ -1,26 +1,42 @@
 import {
+  BadRequestException,
   ForbiddenException,
+  GoneException,
   Injectable,
-  UnauthorizedException, Inject} from "@nestjs/common";
+  NotFoundException,
+  UnauthorizedException,
+  Inject
+} from "@nestjs/common";
 import { createHash, randomBytes } from "crypto";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import type { Role as AppRole } from "@ai-interviewer/domain";
 import {
+  AuthActionTokenType,
+  AuthProvider,
   AuthSessionStatus,
+  UserStatus,
   type Prisma,
   type Role as PrismaRole
 } from "@prisma/client";
-import { PrismaService } from "../../prisma/prisma.service";
 import { RuntimeConfigService } from "../../config/runtime-config.service";
+import { PrismaService } from "../../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { hashPassword, verifyPassword } from "./password";
 
 type AccessTokenPayload = {
   sub: string;
   tenantId: string;
   roles: AppRole[];
   email: string;
+  fullName: string;
   sid: string;
   tokenType: "access";
+};
+
+type ResolvedAccessTokenPayload = Omit<AccessTokenPayload, "tokenType"> & {
+  emailVerifiedAt: Date | null;
+  avatarUrl: string | null;
 };
 
 type SessionClientMeta = {
@@ -28,14 +44,113 @@ type SessionClientMeta = {
   userAgent?: string;
 };
 
+type AuthUserRecord = {
+  id: string;
+  tenantId: string;
+  email: string;
+  fullName: string;
+  role: PrismaRole;
+  status: UserStatus;
+  deletedAt: Date | null;
+  passwordHash?: string | null;
+  emailVerifiedAt?: Date | null;
+  avatarUrl?: string | null;
+};
+
+type PublicAuthUser = {
+  id: string;
+  tenantId: string;
+  email: string;
+  fullName: string;
+  roles: AppRole[];
+  emailVerifiedAt: string | null;
+  avatarUrl: string | null;
+};
+
+type GoogleIdentityProfile = {
+  subject: string;
+  email: string;
+  emailVerified: boolean;
+  fullName: string;
+  avatarUrl?: string | null;
+};
+
+type ActionTokenRecord = {
+  id: string;
+  tenantId: string | null;
+  userId: string | null;
+  email: string;
+  type: AuthActionTokenType;
+  expiresAt: Date;
+  consumedAt: Date | null;
+  revokedAt: Date | null;
+  payloadJson: Prisma.JsonValue | null;
+  user: {
+    id: string;
+    tenantId: string;
+    email: string;
+    fullName: string;
+    role: PrismaRole;
+    status: UserStatus;
+    deletedAt: Date | null;
+    passwordHash: string | null;
+    emailVerifiedAt: Date | null;
+    avatarUrl: string | null;
+  } | null;
+};
+
+type InvitationRecord = {
+  id: string;
+  tenantId: string;
+  userId: string;
+  email: string;
+  role: PrismaRole;
+  expiresAt: Date;
+  acceptedAt: Date | null;
+  revokedAt: Date | null;
+  user: {
+    id: string;
+    tenantId: string;
+    email: string;
+    fullName: string;
+    status: UserStatus;
+    deletedAt: Date | null;
+  };
+  tenant: {
+    id: string;
+    name: string;
+  };
+};
+
 const REFRESH_TOKEN_ROTATED_REASON = "rotated";
+const EMAIL_VERIFICATION_LABEL = "Email adresini dogrula";
+const PASSWORD_RESET_LABEL = "Sifremi sifirla";
 
 function addDays(base: Date, days: number) {
   return new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
+function addHours(base: Date, hours: number) {
+  return new Date(base.getTime() + hours * 60 * 60 * 1000);
+}
+
 function isExpired(date: Date) {
   return date.getTime() <= Date.now();
+}
+
+function normalizeSlugPart(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
 }
 
 @Injectable()
@@ -44,34 +159,35 @@ export class AuthService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(JwtService) private readonly jwtService: JwtService,
     @Inject(ConfigService) private readonly configService: ConfigService,
-    @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService
+    @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService,
+    @Inject(NotificationsService) private readonly notificationsService: NotificationsService
   ) {}
 
   async login(
-    input: { email: string; password: string; tenantId: string },
+    input: { email: string; password: string; tenantId?: string },
     meta: SessionClientMeta = {}
   ) {
-    if (!this.runtimeConfig.allowDemoCredentialLogin) {
-      throw new ForbiddenException("Bu ortamda demo credential login kapali.");
-    }
-
-    const devPassword = this.configService.get<string>("DEV_LOGIN_PASSWORD") ?? "demo12345";
-
-    if (input.password !== devPassword) {
-      throw new UnauthorizedException("E-posta veya sifre hatali.");
-    }
+    const normalizedEmail = input.email.toLowerCase().trim();
+    const resolvedTenantId = await this.resolveLoginTenantId(normalizedEmail, input.tenantId);
 
     const user = await this.prisma.user.findUnique({
       where: {
         tenantId_email: {
-          tenantId: input.tenantId,
-          email: input.email.toLowerCase().trim()
+          tenantId: resolvedTenantId,
+          email: normalizedEmail
         }
       },
-      include: {
-        roleBindings: {
-          select: { role: true }
-        }
+      select: {
+        id: true,
+        tenantId: true,
+        email: true,
+        fullName: true,
+        role: true,
+        status: true,
+        deletedAt: true,
+        passwordHash: true,
+        emailVerifiedAt: true,
+        avatarUrl: true
       }
     });
 
@@ -79,61 +195,230 @@ export class AuthService {
       throw new UnauthorizedException("Kullanıcı bulunamadı.");
     }
 
-    if (user.status === "DISABLED") {
-      throw new ForbiddenException("Kullanici pasif durumda.");
+    if (user.status === UserStatus.INVITED || !user.passwordHash) {
+      throw new ForbiddenException("Davet kabul edilmeden giriş yapılamaz.");
     }
 
-    const roles = user.roleBindings.map((binding) => this.toAppRole(binding.role));
+    if (user.status === UserStatus.DISABLED) {
+      throw new ForbiddenException("Kullanıcı pasif durumda.");
+    }
 
-    if (roles.length === 0) {
-      throw new ForbiddenException("Kullanıcıya atanmış rol bulunamadı.");
+    const passwordMatches = await verifyPassword(user.passwordHash, input.password);
+
+    if (!passwordMatches) {
+      throw new UnauthorizedException("E-posta veya sifre hatali.");
+    }
+
+    return this.issueSessionForUser(user, meta);
+  }
+
+  async signup(
+    input: { companyName: string; fullName: string; email: string; password: string },
+    meta: SessionClientMeta = {}
+  ) {
+    const companyName = input.companyName.trim();
+    const fullName = input.fullName.trim();
+    const email = input.email.toLowerCase().trim();
+
+    if (!companyName || !fullName) {
+      throw new BadRequestException("Sirket adi ve ad soyad zorunludur.");
+    }
+
+    const tenantId = await this.generateTenantId(companyName);
+    const passwordHash = await hashPassword(input.password);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
+        data: {
+          id: tenantId,
+          name: companyName
+        },
+        select: {
+          id: true
+        }
+      });
+
+      await tx.workspace.create({
+        data: {
+          tenantId: tenant.id,
+          name: "Ana Calisma Alani"
+        }
+      });
+
+      return tx.user.create({
+        data: {
+          tenantId: tenant.id,
+          email,
+          fullName,
+          role: "OWNER",
+          status: UserStatus.ACTIVE,
+          passwordHash,
+          passwordSetAt: new Date()
+        },
+        select: {
+          id: true,
+          tenantId: true,
+          email: true,
+          fullName: true,
+          role: true,
+          status: true,
+          deletedAt: true,
+          passwordHash: true,
+          emailVerifiedAt: true,
+          avatarUrl: true
+        }
+      });
+    });
+    const result = await this.issueSessionForUser(user, meta);
+    const emailVerification = await this.sendEmailVerificationForUser(user).catch(() => ({
+      ok: false,
+      previewUrl: null
+    }));
+
+    return {
+      ...result,
+      emailVerification
+    };
+  }
+
+  async resolveInvitation(rawToken: string) {
+    const invitation = await this.findInvitationByRawToken(rawToken);
+
+    if (!invitation) {
+      throw new NotFoundException("Davet bulunamadi veya gecersiz.");
+    }
+
+    return {
+      invitation: {
+        tenantId: invitation.tenant.id,
+        tenantName: invitation.tenant.name,
+        email: invitation.email,
+        fullName: invitation.user.fullName,
+        role: this.toAppRole(invitation.role),
+        expiresAt: invitation.expiresAt.toISOString(),
+        status: this.resolveInvitationStatus(invitation)
+      }
+    };
+  }
+
+  async acceptInvitation(
+    input: { token: string; password: string; fullName?: string },
+    meta: SessionClientMeta = {}
+  ) {
+    const invitation = await this.findInvitationByRawToken(input.token);
+
+    if (!invitation) {
+      throw new NotFoundException("Davet bulunamadi veya gecersiz.");
+    }
+
+    this.assertInvitationAcceptable(invitation);
+
+    if (invitation.user.deletedAt) {
+      throw new ForbiddenException("Silinmis kullanici daveti kabul edemez.");
+    }
+
+    if (invitation.user.status === UserStatus.DISABLED) {
+      throw new ForbiddenException("Pasif kullanici daveti kabul edemez.");
     }
 
     const now = new Date();
+    const normalizedFullName = input.fullName?.trim() || invitation.user.fullName;
+    const passwordHash = await hashPassword(input.password);
     const sessionExpiresAt = addDays(now, this.runtimeConfig.sessionTtlDays);
 
-    const session = await this.prisma.authSession.create({
-      data: {
-        tenantId: user.tenantId,
-        userId: user.id,
-        status: AuthSessionStatus.ACTIVE,
-        authMode: "jwt",
-        expiresAt: sessionExpiresAt,
-        lastSeenAt: now,
-        ipAddress: meta.ipAddress,
-        userAgent: meta.userAgent
-      }
-    });
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.memberInvitation.update({
+        where: { id: invitation.id },
+        data: {
+          acceptedAt: now
+        }
+      });
 
-    const refreshToken = await this.issueRefreshToken({
-      sessionId: session.id,
-      tenantId: user.tenantId,
-      userId: user.id
+      await tx.memberInvitation.updateMany({
+        where: {
+          tenantId: invitation.tenantId,
+          userId: invitation.userId,
+          id: {
+            not: invitation.id
+          },
+          acceptedAt: null,
+          revokedAt: null
+        },
+        data: {
+          revokedAt: now
+        }
+      });
+
+      const user = await tx.user.update({
+        where: {
+          id: invitation.userId
+        },
+        data: {
+          fullName: normalizedFullName,
+          role: invitation.role,
+          status: UserStatus.ACTIVE,
+          passwordHash,
+          passwordSetAt: now,
+          emailVerifiedAt: now,
+          lastLoginAt: now
+        },
+        select: {
+          id: true,
+          tenantId: true,
+          email: true,
+          fullName: true,
+          role: true,
+          status: true,
+          deletedAt: true,
+          emailVerifiedAt: true,
+          avatarUrl: true
+        }
+      });
+
+      const session = await tx.authSession.create({
+        data: {
+          tenantId: user.tenantId,
+          userId: user.id,
+          status: AuthSessionStatus.ACTIVE,
+          authMode: "jwt",
+          expiresAt: sessionExpiresAt,
+          lastSeenAt: now,
+          ipAddress: meta.ipAddress,
+          userAgent: meta.userAgent
+        }
+      });
+
+      const refreshToken = await this.createRefreshTokenRecord(tx, {
+        sessionId: session.id,
+        tenantId: user.tenantId,
+        userId: user.id
+      });
+
+      return {
+        user,
+        session,
+        refreshToken
+      };
     });
 
     const accessToken = await this.signAccessToken({
-      sub: user.id,
-      tenantId: user.tenantId,
-      roles,
-      email: user.email,
-      sid: session.id,
+      sub: result.user.id,
+      tenantId: result.user.tenantId,
+      roles: this.toAppRoles(result.user.role),
+      email: result.user.email,
+      fullName: result.user.fullName,
+      sid: result.session.id,
       tokenType: "access"
     });
 
     return {
       accessToken,
-      refreshToken: refreshToken.rawToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        tenantId: user.tenantId,
-        roles,
-        fullName: user.fullName
-      },
+      refreshToken: result.refreshToken.rawToken,
+      user: this.toPublicUser(result.user),
       session: {
-        id: session.id,
+        id: result.session.id,
         authMode: "jwt",
-        expiresAt: session.expiresAt.toISOString()
+        expiresAt: result.session.expiresAt.toISOString()
       }
     };
   }
@@ -152,10 +437,16 @@ export class AuthService {
       include: {
         session: true,
         user: {
-          include: {
-            roleBindings: {
-              select: { role: true }
-            }
+          select: {
+            id: true,
+            tenantId: true,
+            email: true,
+            fullName: true,
+            role: true,
+            status: true,
+            deletedAt: true,
+            emailVerifiedAt: true,
+            avatarUrl: true
           }
         }
       }
@@ -193,16 +484,12 @@ export class AuthService {
       throw new UnauthorizedException("Kullanici oturumu gecersiz.");
     }
 
-    if (tokenRecord.user.deletedAt || tokenRecord.user.status === "DISABLED") {
+    if (tokenRecord.user.deletedAt || tokenRecord.user.status !== UserStatus.ACTIVE) {
       await this.revokeSession(session.id, "user_disabled_or_deleted");
       throw new UnauthorizedException("Kullanici oturumu gecersiz.");
     }
 
-    const roles = tokenRecord.user.roleBindings.map((binding) => this.toAppRole(binding.role));
-
-    if (roles.length === 0) {
-      throw new ForbiddenException("Kullanıcıya atanmış rol bulunamadı.");
-    }
+    const roles = this.toAppRoles(tokenRecord.user.role);
 
     const rotatedToken = await this.prisma.$transaction(async (tx) => {
       const now = new Date();
@@ -250,6 +537,7 @@ export class AuthService {
         tenantId: tokenRecord.user.tenantId,
         roles,
         email: tokenRecord.user.email,
+        fullName: tokenRecord.user.fullName,
         sid: session.id,
         tokenType: "access"
       }),
@@ -262,7 +550,7 @@ export class AuthService {
     };
   }
 
-  async verifyAccessToken(accessToken: string): Promise<Omit<AccessTokenPayload, "tokenType">> {
+  async verifyAccessToken(accessToken: string): Promise<ResolvedAccessTokenPayload> {
     let payload: AccessTokenPayload;
 
     try {
@@ -291,7 +579,12 @@ export class AuthService {
         user: {
           select: {
             status: true,
-            deletedAt: true
+            deletedAt: true,
+            role: true,
+            email: true,
+            fullName: true,
+            emailVerifiedAt: true,
+            avatarUrl: true
           }
         }
       }
@@ -301,7 +594,7 @@ export class AuthService {
       throw new UnauthorizedException("Oturum gecersiz veya sonlandirilmis.");
     }
 
-    if (session.user.deletedAt || session.user.status === "DISABLED") {
+    if (session.user.deletedAt || session.user.status !== UserStatus.ACTIVE) {
       await this.revokeSession(payload.sid, "user_disabled_or_deleted");
       throw new UnauthorizedException("Kullanici oturumu gecersiz.");
     }
@@ -320,9 +613,12 @@ export class AuthService {
     return {
       sub: payload.sub,
       tenantId: payload.tenantId,
-      roles: payload.roles,
-      email: payload.email,
-      sid: payload.sid
+      roles: this.toAppRoles(session.user.role),
+      email: session.user.email,
+      fullName: session.user.fullName,
+      sid: payload.sid,
+      emailVerifiedAt: session.user.emailVerifiedAt,
+      avatarUrl: session.user.avatarUrl
     };
   }
 
@@ -351,6 +647,998 @@ export class AuthService {
     if (input.sessionId) {
       await this.revokeSession(input.sessionId, input.reason ?? "logout");
     }
+  }
+
+  async createInvitationToken() {
+    const rawToken = randomBytes(48).toString("base64url");
+    return {
+      rawToken,
+      tokenHash: this.hashToken(rawToken),
+      expiresAt: addHours(new Date(), this.runtimeConfig.invitationTtlHours)
+    };
+  }
+
+  async requestPasswordReset(input: { email: string; tenantId?: string }) {
+    const normalizedEmail = input.email.toLowerCase().trim();
+
+    try {
+      const tenantId = await this.resolveLoginTenantId(normalizedEmail, input.tenantId);
+      const user = await this.prisma.user.findUnique({
+        where: {
+          tenantId_email: {
+            tenantId,
+            email: normalizedEmail
+          }
+        },
+        select: {
+          id: true,
+          tenantId: true,
+          email: true,
+          fullName: true,
+          role: true,
+          status: true,
+          deletedAt: true,
+          passwordHash: true,
+          emailVerifiedAt: true,
+          avatarUrl: true
+        }
+      });
+
+      if (!user || user.deletedAt || user.status !== UserStatus.ACTIVE || !user.passwordHash) {
+        return {
+          ok: true
+        };
+      }
+
+      const token = await this.createActionToken({
+        tenantId: user.tenantId,
+        userId: user.id,
+        email: user.email,
+        type: AuthActionTokenType.PASSWORD_RESET,
+        expiresAt: addHours(new Date(), this.runtimeConfig.passwordResetTtlHours)
+      });
+
+      const resetUrl = this.toWebUrl(`/auth/reset-password?token=${encodeURIComponent(token.rawToken)}`);
+
+      await this.notificationsService.send({
+        tenantId: user.tenantId,
+        channel: "email",
+        to: user.email,
+        subject: "Candit.ai sifre sifirlama baglantisi",
+        body: [
+          `Merhaba ${user.fullName},`,
+          "",
+          "Sifrenizi yenilemek icin asagidaki baglantiyi kullanabilirsiniz.",
+          "Bu baglanti sinirli bir sure boyunca gecerlidir."
+        ].join("\n"),
+        metadata: {
+          primaryLink: resetUrl,
+          primaryCtaLabel: PASSWORD_RESET_LABEL
+        },
+        templateKey: "auth_password_reset",
+        eventType: "auth.password_reset_requested",
+        requestedBy: user.id
+      });
+
+      return {
+        ok: true,
+        expiresAt: token.expiresAt.toISOString(),
+        previewUrl: this.runtimeConfig.isProduction ? null : resetUrl
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      return {
+        ok: true
+      };
+    }
+  }
+
+  async resolvePasswordReset(rawToken: string) {
+    const token = await this.findActionTokenByRawToken(rawToken, AuthActionTokenType.PASSWORD_RESET);
+
+    if (!token) {
+      throw new NotFoundException("Sifre sifirlama baglantisi bulunamadi veya gecersiz.");
+    }
+
+    return {
+      reset: {
+        email: token.email,
+        fullName: token.user?.fullName ?? "",
+        expiresAt: token.expiresAt.toISOString(),
+        status: this.resolveActionTokenStatus(token)
+      }
+    };
+  }
+
+  async resetPassword(
+    input: { token: string; password: string },
+    meta: SessionClientMeta = {}
+  ) {
+    const token = await this.findActionTokenByRawToken(input.token, AuthActionTokenType.PASSWORD_RESET);
+
+    if (!token || !token.user) {
+      throw new NotFoundException("Sifre sifirlama baglantisi bulunamadi veya gecersiz.");
+    }
+
+    this.assertActionTokenUsable(token, "Bu sifre sifirlama baglantisinin suresi doldu.");
+
+    if (token.user.deletedAt || token.user.status !== UserStatus.ACTIVE) {
+      throw new ForbiddenException("Bu kullanici sifre sifirlama islemi yapamaz.");
+    }
+
+    const now = new Date();
+    const passwordHash = await hashPassword(input.password);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: {
+          id: token.user!.id
+        },
+        data: {
+          passwordHash,
+          passwordSetAt: now,
+          emailVerifiedAt: token.user!.emailVerifiedAt ?? now,
+          lastLoginAt: now
+        }
+      });
+
+      await tx.authActionToken.update({
+        where: {
+          id: token.id
+        },
+        data: {
+          consumedAt: now
+        }
+      });
+
+      await tx.authActionToken.updateMany({
+        where: {
+          userId: token.user!.id,
+          type: AuthActionTokenType.PASSWORD_RESET,
+          consumedAt: null,
+          revokedAt: null,
+          id: {
+            not: token.id
+          }
+        },
+        data: {
+          revokedAt: now
+        }
+      });
+
+      await tx.authSession.updateMany({
+        where: {
+          userId: token.user!.id,
+          status: AuthSessionStatus.ACTIVE
+        },
+        data: {
+          status: AuthSessionStatus.REVOKED,
+          revokedAt: now,
+          revokedReason: "password_reset"
+        }
+      });
+
+      await tx.authRefreshToken.updateMany({
+        where: {
+          userId: token.user!.id,
+          revokedAt: null
+        },
+        data: {
+          revokedAt: now,
+          revokedReason: "password_reset"
+        }
+      });
+    });
+
+    return this.issueSessionForUserId(token.user.id, meta);
+  }
+
+  async sendEmailVerification(input: { userId: string; tenantId: string }) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: input.userId,
+        tenantId: input.tenantId,
+        deletedAt: null
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        email: true,
+        fullName: true,
+        role: true,
+        status: true,
+        deletedAt: true,
+        passwordHash: true,
+        emailVerifiedAt: true,
+        avatarUrl: true
+      }
+    });
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new NotFoundException("Kullanici bulunamadi.");
+    }
+
+    return this.sendEmailVerificationForUser(user);
+  }
+
+  async confirmEmailVerification(rawToken: string) {
+    const token = await this.findActionTokenByRawToken(rawToken, AuthActionTokenType.EMAIL_VERIFICATION);
+
+    if (!token || !token.user) {
+      throw new NotFoundException("Dogrulama baglantisi bulunamadi veya gecersiz.");
+    }
+
+    this.assertActionTokenUsable(token, "Bu dogrulama baglantisinin suresi doldu.");
+
+    const now = new Date();
+    const user = await this.prisma.$transaction(async (tx) => {
+      await tx.authActionToken.update({
+        where: {
+          id: token.id
+        },
+        data: {
+          consumedAt: now
+        }
+      });
+
+      await tx.authActionToken.updateMany({
+        where: {
+          userId: token.user!.id,
+          type: AuthActionTokenType.EMAIL_VERIFICATION,
+          consumedAt: null,
+          revokedAt: null,
+          id: {
+            not: token.id
+          }
+        },
+        data: {
+          revokedAt: now
+        }
+      });
+
+      return tx.user.update({
+        where: {
+          id: token.user!.id
+        },
+        data: {
+          emailVerifiedAt: now
+        },
+        select: {
+          id: true,
+          tenantId: true,
+          email: true,
+          fullName: true,
+          role: true,
+          status: true,
+          deletedAt: true,
+          passwordHash: true,
+          emailVerifiedAt: true,
+          avatarUrl: true
+        }
+      });
+    });
+
+    return {
+      ok: true,
+      user: this.toPublicUser(user)
+    };
+  }
+
+  async createOauthRelayToken(input: { userId: string }) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: input.userId
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        email: true,
+        fullName: true,
+        role: true,
+        status: true,
+        deletedAt: true,
+        passwordHash: true,
+        emailVerifiedAt: true,
+        avatarUrl: true
+      }
+    });
+
+    if (!user || user.deletedAt || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException("OAuth oturumu olusturulamadi.");
+    }
+
+    return this.createActionToken({
+      tenantId: user.tenantId,
+      userId: user.id,
+      email: user.email,
+      type: AuthActionTokenType.OAUTH_LOGIN_RELAY,
+      expiresAt: addHours(new Date(), this.runtimeConfig.oauthRelayTtlHours)
+    });
+  }
+
+  async exchangeOauthRelay(rawToken: string, meta: SessionClientMeta = {}) {
+    const token = await this.findActionTokenByRawToken(rawToken, AuthActionTokenType.OAUTH_LOGIN_RELAY);
+
+    if (!token || !token.user) {
+      throw new UnauthorizedException("OAuth oturumu bulunamadi veya gecersiz.");
+    }
+
+    this.assertActionTokenUsable(token, "OAuth oturumu gecersiz veya suresi dolmus.");
+
+    await this.prisma.authActionToken.update({
+      where: {
+        id: token.id
+      },
+      data: {
+        consumedAt: new Date()
+      }
+    });
+
+    return this.issueSessionForUserId(token.user.id, meta);
+  }
+
+  async resolveGoogleAuth(input: {
+    intent: "login" | "signup";
+    tenantId?: string;
+    companyName?: string;
+    profile: GoogleIdentityProfile;
+  }) {
+    if (!input.profile.emailVerified) {
+      throw new ForbiddenException("Google hesabi dogrulanmamis e-posta dondurdu.");
+    }
+
+    const normalizedEmail = input.profile.email.toLowerCase().trim();
+    const resolvedTenantId = input.tenantId?.trim()
+      ? input.tenantId.trim()
+      : await this.resolveTenantIdForOauthEmail(normalizedEmail, input.intent);
+
+    const existingIdentity = await this.prisma.userIdentity.findUnique({
+      where: {
+        provider_providerSubject: {
+          provider: AuthProvider.GOOGLE,
+          providerSubject: input.profile.subject
+        }
+      },
+      select: {
+        user: {
+          select: {
+            id: true,
+            tenantId: true,
+            email: true,
+            fullName: true,
+            role: true,
+            status: true,
+            deletedAt: true,
+            passwordHash: true,
+            emailVerifiedAt: true,
+            avatarUrl: true
+          }
+        }
+      }
+    });
+
+    if (existingIdentity?.user && !existingIdentity.user.deletedAt) {
+      return this.syncGoogleIdentity(existingIdentity.user, input.profile);
+    }
+
+    if (resolvedTenantId) {
+      const existingUser = await this.prisma.user.findUnique({
+        where: {
+          tenantId_email: {
+            tenantId: resolvedTenantId,
+            email: normalizedEmail
+          }
+        },
+        select: {
+          id: true,
+          tenantId: true,
+          email: true,
+          fullName: true,
+          role: true,
+          status: true,
+          deletedAt: true,
+          passwordHash: true,
+          emailVerifiedAt: true,
+          avatarUrl: true
+        }
+      });
+
+      if (existingUser) {
+        if (input.intent === "signup" && existingUser.status === UserStatus.ACTIVE) {
+          throw new BadRequestException(
+            "Bu e-posta icin zaten bir hesap var. Lutfen giris yap ekranini kullanin."
+          );
+        }
+
+        return this.linkGoogleIdentityToUser(existingUser, input.profile);
+      }
+    }
+
+    if (input.intent === "login") {
+      throw new NotFoundException("Bu e-posta icin bir hesap bulunamadi. Lutfen once uye olun.");
+    }
+
+    return this.provisionGoogleSignup({
+      email: normalizedEmail,
+      fullName: input.profile.fullName,
+      avatarUrl: input.profile.avatarUrl ?? null,
+      providerSubject: input.profile.subject,
+      companyName: input.companyName?.trim()
+    });
+  }
+
+  async issueSessionForUserId(userId: string, meta: SessionClientMeta = {}) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        email: true,
+        fullName: true,
+        role: true,
+        status: true,
+        deletedAt: true,
+        passwordHash: true,
+        emailVerifiedAt: true,
+        avatarUrl: true
+      }
+    });
+
+    if (!user || user.deletedAt || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException("Kullanici oturumu olusturulamadi.");
+    }
+
+    return this.issueSessionForUser(user, meta);
+  }
+
+  private async issueSessionForUser(user: AuthUserRecord, meta: SessionClientMeta) {
+    const now = new Date();
+    const sessionExpiresAt = addDays(now, this.runtimeConfig.sessionTtlDays);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: {
+          id: user.id
+        },
+        data: {
+          lastLoginAt: now
+        }
+      });
+
+      const session = await tx.authSession.create({
+        data: {
+          tenantId: user.tenantId,
+          userId: user.id,
+          status: AuthSessionStatus.ACTIVE,
+          authMode: "jwt",
+          expiresAt: sessionExpiresAt,
+          lastSeenAt: now,
+          ipAddress: meta.ipAddress,
+          userAgent: meta.userAgent
+        }
+      });
+
+      const refreshToken = await this.createRefreshTokenRecord(tx, {
+        sessionId: session.id,
+        tenantId: user.tenantId,
+        userId: user.id
+      });
+
+      return {
+        session,
+        refreshToken
+      };
+    });
+
+    const roles = this.toAppRoles(user.role);
+    const accessToken = await this.signAccessToken({
+      sub: user.id,
+      tenantId: user.tenantId,
+      roles,
+      email: user.email,
+      fullName: user.fullName,
+      sid: result.session.id,
+      tokenType: "access"
+    });
+
+    return {
+      accessToken,
+      refreshToken: result.refreshToken.rawToken,
+      user: this.toPublicUser({
+        ...user,
+        role: user.role
+      }),
+      session: {
+        id: result.session.id,
+        authMode: "jwt",
+        expiresAt: result.session.expiresAt.toISOString()
+      }
+    };
+  }
+
+  private async findInvitationByRawToken(rawToken: string): Promise<InvitationRecord | null> {
+    const normalizedToken = rawToken?.trim();
+
+    if (!normalizedToken) {
+      throw new BadRequestException("Davet tokeni zorunludur.");
+    }
+
+    return this.prisma.memberInvitation.findUnique({
+      where: {
+        tokenHash: this.hashToken(normalizedToken)
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        userId: true,
+        email: true,
+        role: true,
+        expiresAt: true,
+        acceptedAt: true,
+        revokedAt: true,
+        user: {
+          select: {
+            id: true,
+            tenantId: true,
+            email: true,
+            fullName: true,
+            status: true,
+            deletedAt: true
+          }
+        },
+        tenant: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
+  }
+
+  private resolveInvitationStatus(invitation: InvitationRecord) {
+    if (invitation.acceptedAt) {
+      return "accepted";
+    }
+
+    if (invitation.revokedAt) {
+      return "revoked";
+    }
+
+    if (isExpired(invitation.expiresAt)) {
+      return "expired";
+    }
+
+    return "pending";
+  }
+
+  private assertInvitationAcceptable(invitation: InvitationRecord) {
+    const status = this.resolveInvitationStatus(invitation);
+
+    if (status === "accepted") {
+      throw new GoneException("Bu davet daha once kullanildi.");
+    }
+
+    if (status === "revoked") {
+      throw new GoneException("Bu davet iptal edildi.");
+    }
+
+    if (status === "expired") {
+      throw new GoneException("Bu davetin suresi doldu.");
+    }
+  }
+
+  private async sendEmailVerificationForUser(user: AuthUserRecord) {
+    if (user.emailVerifiedAt) {
+      return {
+        ok: true,
+        previewUrl: null
+      };
+    }
+
+    const token = await this.createActionToken({
+      tenantId: user.tenantId,
+      userId: user.id,
+      email: user.email,
+      type: AuthActionTokenType.EMAIL_VERIFICATION,
+      expiresAt: addHours(new Date(), this.runtimeConfig.emailVerificationTtlHours)
+    });
+
+    const verificationUrl = this.toWebUrl(
+      `/auth/verify-email?token=${encodeURIComponent(token.rawToken)}`
+    );
+
+    await this.notificationsService.send({
+      tenantId: user.tenantId,
+      channel: "email",
+      to: user.email,
+      subject: "Candit.ai e-posta dogrulama baglantisi",
+      body: [
+        `Merhaba ${user.fullName},`,
+        "",
+        "Hesabinizin e-posta adresini dogrulamak icin asagidaki baglantiyi kullanabilirsiniz."
+      ].join("\n"),
+      metadata: {
+        primaryLink: verificationUrl,
+        primaryCtaLabel: EMAIL_VERIFICATION_LABEL
+      },
+      templateKey: "auth_email_verification",
+      eventType: "auth.email_verification_requested",
+      requestedBy: user.id
+    });
+
+    return {
+      ok: true,
+      expiresAt: token.expiresAt.toISOString(),
+      previewUrl: this.runtimeConfig.isProduction ? null : verificationUrl
+    };
+  }
+
+  private async createActionToken(input: {
+    tenantId?: string;
+    userId?: string;
+    email: string;
+    type: AuthActionTokenType;
+    expiresAt: Date;
+    payloadJson?: Prisma.InputJsonValue;
+  }) {
+    const rawToken = randomBytes(48).toString("base64url");
+    const tokenHash = this.hashToken(rawToken);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.authActionToken.updateMany({
+        where: {
+          type: input.type,
+          email: input.email,
+          userId: input.userId ?? undefined,
+          consumedAt: null,
+          revokedAt: null
+        },
+        data: {
+          revokedAt: new Date()
+        }
+      });
+
+      await tx.authActionToken.create({
+        data: {
+          tenantId: input.tenantId,
+          userId: input.userId,
+          email: input.email,
+          type: input.type,
+          tokenHash,
+          payloadJson: input.payloadJson,
+          expiresAt: input.expiresAt
+        }
+      });
+    });
+
+    return {
+      rawToken,
+      expiresAt: input.expiresAt
+    };
+  }
+
+  private async findActionTokenByRawToken(
+    rawToken: string,
+    type: AuthActionTokenType
+  ): Promise<ActionTokenRecord | null> {
+    const normalizedToken = rawToken?.trim();
+
+    if (!normalizedToken) {
+      throw new BadRequestException("Token zorunludur.");
+    }
+
+    return this.prisma.authActionToken.findUnique({
+      where: {
+        tokenHash: this.hashToken(normalizedToken)
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        userId: true,
+        email: true,
+        type: true,
+        expiresAt: true,
+        consumedAt: true,
+        revokedAt: true,
+        payloadJson: true,
+        user: {
+          select: {
+            id: true,
+            tenantId: true,
+            email: true,
+            fullName: true,
+            role: true,
+            status: true,
+            deletedAt: true,
+            passwordHash: true,
+            emailVerifiedAt: true,
+            avatarUrl: true
+          }
+        }
+      }
+    }).then((token) => {
+      if (!token || token.type !== type) {
+        return null;
+      }
+
+      return token;
+    });
+  }
+
+  private resolveActionTokenStatus(token: ActionTokenRecord) {
+    if (token.consumedAt) {
+      return "used";
+    }
+
+    if (token.revokedAt) {
+      return "revoked";
+    }
+
+    if (isExpired(token.expiresAt)) {
+      return "expired";
+    }
+
+    return "pending";
+  }
+
+  private assertActionTokenUsable(token: ActionTokenRecord, expiredMessage: string) {
+    const status = this.resolveActionTokenStatus(token);
+
+    if (status === "used") {
+      throw new GoneException("Bu baglanti daha once kullanildi.");
+    }
+
+    if (status === "revoked") {
+      throw new GoneException("Bu baglanti iptal edildi.");
+    }
+
+    if (status === "expired") {
+      throw new GoneException(expiredMessage);
+    }
+  }
+
+  private async resolveTenantIdForOauthEmail(
+    email: string,
+    intent: "login" | "signup"
+  ) {
+    const users = await this.prisma.user.findMany({
+      where: {
+        email,
+        deletedAt: null
+      },
+      select: {
+        tenantId: true
+      },
+      distinct: ["tenantId"],
+      take: 2
+    });
+
+    if (users.length === 1) {
+      return users[0]?.tenantId;
+    }
+
+    if (users.length > 1) {
+      throw new BadRequestException(
+        "Bu Google hesabi birden fazla sirket hesabina bagli. Lutfen tenant kodu ile giris yapin."
+      );
+    }
+
+    if (intent === "login") {
+      return undefined;
+    }
+
+    return undefined;
+  }
+
+  private async syncGoogleIdentity(user: AuthUserRecord, profile: GoogleIdentityProfile) {
+    return this.linkGoogleIdentityToUser(user, profile);
+  }
+
+  private async linkGoogleIdentityToUser(user: AuthUserRecord, profile: GoogleIdentityProfile) {
+    if (user.deletedAt) {
+      throw new NotFoundException("Kullanici bulunamadi.");
+    }
+
+    if (user.status === UserStatus.DISABLED) {
+      throw new ForbiddenException("Bu kullanici pasif durumda.");
+    }
+
+    const now = new Date();
+
+    return this.prisma.$transaction(async (tx) => {
+      if (user.status === UserStatus.INVITED) {
+        const latestInvitation = await tx.memberInvitation.findFirst({
+          where: {
+            userId: user.id,
+            tenantId: user.tenantId,
+            acceptedAt: null,
+            revokedAt: null
+          },
+          orderBy: {
+            createdAt: "desc"
+          },
+          select: {
+            id: true
+          }
+        });
+
+        if (latestInvitation) {
+          await tx.memberInvitation.update({
+            where: {
+              id: latestInvitation.id
+            },
+            data: {
+              acceptedAt: now
+            }
+          });
+        }
+
+        await tx.memberInvitation.updateMany({
+          where: {
+            userId: user.id,
+            tenantId: user.tenantId,
+            acceptedAt: null,
+            revokedAt: null,
+            ...(latestInvitation
+              ? {
+                  id: {
+                    not: latestInvitation.id
+                  }
+                }
+              : {})
+          },
+          data: {
+            revokedAt: now
+          }
+        });
+      }
+
+      const updatedUser = await tx.user.update({
+        where: {
+          id: user.id
+        },
+        data: {
+          status: UserStatus.ACTIVE,
+          fullName: profile.fullName || user.fullName,
+          avatarUrl: profile.avatarUrl ?? user.avatarUrl ?? null,
+          emailVerifiedAt: now
+        },
+        select: {
+          id: true,
+          tenantId: true,
+          email: true,
+          fullName: true,
+          role: true,
+          status: true,
+          deletedAt: true,
+          passwordHash: true,
+          emailVerifiedAt: true,
+          avatarUrl: true
+        }
+      });
+
+      await tx.userIdentity.upsert({
+        where: {
+          userId_provider: {
+            userId: user.id,
+            provider: AuthProvider.GOOGLE
+          }
+        },
+        update: {
+          providerSubject: profile.subject,
+          email: profile.email,
+          displayName: profile.fullName,
+          avatarUrl: profile.avatarUrl ?? null
+        },
+        create: {
+          tenantId: user.tenantId,
+          userId: user.id,
+          provider: AuthProvider.GOOGLE,
+          providerSubject: profile.subject,
+          email: profile.email,
+          displayName: profile.fullName,
+          avatarUrl: profile.avatarUrl ?? null
+        }
+      });
+
+      return updatedUser;
+    });
+  }
+
+  private async provisionGoogleSignup(input: {
+    email: string;
+    fullName: string;
+    avatarUrl: string | null;
+    providerSubject: string;
+    companyName?: string;
+  }) {
+    const fallbackCompanyName =
+      input.companyName && input.companyName.length >= 2
+        ? input.companyName
+        : `${input.fullName.split(" ")[0] || input.email.split("@")[0] || "Yeni"} Workspace`;
+    const tenantId = await this.generateTenantId(fallbackCompanyName);
+    const now = new Date();
+
+    return this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
+        data: {
+          id: tenantId,
+          name: fallbackCompanyName
+        },
+        select: {
+          id: true
+        }
+      });
+
+      await tx.workspace.create({
+        data: {
+          tenantId: tenant.id,
+          name: "Ana Calisma Alani"
+        }
+      });
+
+      const user = await tx.user.create({
+        data: {
+          tenantId: tenant.id,
+          email: input.email,
+          fullName: input.fullName,
+          role: "OWNER",
+          status: UserStatus.ACTIVE,
+          emailVerifiedAt: now,
+          avatarUrl: input.avatarUrl
+        },
+        select: {
+          id: true,
+          tenantId: true,
+          email: true,
+          fullName: true,
+          role: true,
+          status: true,
+          deletedAt: true,
+          passwordHash: true,
+          emailVerifiedAt: true,
+          avatarUrl: true
+        }
+      });
+
+      await tx.userIdentity.create({
+        data: {
+          tenantId: tenant.id,
+          userId: user.id,
+          provider: AuthProvider.GOOGLE,
+          providerSubject: input.providerSubject,
+          email: input.email,
+          displayName: input.fullName,
+          avatarUrl: input.avatarUrl
+        }
+      });
+
+      return user;
+    });
+  }
+
+  private toWebUrl(pathname: string) {
+    const base = this.runtimeConfig.publicWebBaseUrl.replace(/\/+$/, "");
+    const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
+    return `${base}${path}`;
+  }
+
+  private toPublicUser(user: AuthUserRecord): PublicAuthUser {
+    return {
+      id: user.id,
+      tenantId: user.tenantId,
+      email: user.email,
+      fullName: user.fullName,
+      roles: this.toAppRoles(user.role),
+      emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
+      avatarUrl: user.avatarUrl ?? null
+    };
   }
 
   private async revokeSession(sessionId: string, reason: string) {
@@ -394,14 +1682,6 @@ export class AuthService {
     });
   }
 
-  private async issueRefreshToken(input: {
-    sessionId: string;
-    tenantId: string;
-    userId: string;
-  }) {
-    return this.createRefreshTokenRecord(this.prisma, input);
-  }
-
   private async createRefreshTokenRecord(
     tx: Prisma.TransactionClient | PrismaService,
     input: {
@@ -437,20 +1717,77 @@ export class AuthService {
     return createHash("sha256").update(rawToken).digest("hex");
   }
 
+  private async resolveLoginTenantId(email: string, tenantId?: string) {
+    const normalizedTenantId = tenantId?.trim();
+
+    if (normalizedTenantId) {
+      return normalizedTenantId;
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        email,
+        deletedAt: null
+      },
+      select: {
+        tenantId: true
+      },
+      distinct: ["tenantId"],
+      take: 2
+    });
+
+    if (users.length === 1) {
+      const [user] = users;
+      if (user) {
+        return user.tenantId;
+      }
+    }
+
+    if (users.length > 1) {
+      throw new BadRequestException("Bu e-posta birden fazla hesaba bagli. Lutfen tenant kodunu girin.");
+    }
+
+    throw new UnauthorizedException("Kullanıcı bulunamadı.");
+  }
+
+  private async generateTenantId(companyName: string) {
+    const base = normalizeSlugPart(companyName).slice(0, 24) || "tenant";
+
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const suffix = attempt === 0 ? "" : `-${attempt + 1}`;
+      const candidate = `ten_${base}${suffix}`;
+
+      const existing = await this.prisma.tenant.findUnique({
+        where: {
+          id: candidate
+        },
+        select: {
+          id: true
+        }
+      });
+
+      if (!existing) {
+        return candidate;
+      }
+    }
+
+    throw new BadRequestException("Tenant kimligi olusturulamadi. Lutfen farkli bir sirket adi deneyin.");
+  }
+
+  private toAppRoles(role: PrismaRole): AppRole[] {
+    return [this.toAppRole(role)];
+  }
+
   private toAppRole(role: PrismaRole): AppRole {
     switch (role) {
-      case "ADMIN":
-        return "admin";
-      case "RECRUITER":
-        return "recruiter";
-      case "HIRING_MANAGER":
-        return "hiring_manager";
-      case "CANDIDATE":
-        return "candidate";
-      case "AGENCY_RECRUITER":
-        return "agency_recruiter";
+      case "OWNER":
+        return "owner";
+      case "MANAGER":
+        return "manager";
+      case "STAFF":
+        return "staff";
       default:
-        return "candidate";
+        return "staff";
     }
   }
 }

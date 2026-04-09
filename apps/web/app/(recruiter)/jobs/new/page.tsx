@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useMemo, useState, useEffect } from "react";
+import { useUiText } from "../../../../components/site-language-provider";
 import { Field, SelectInput, TextArea, TextInput } from "../../../../components/form-controls";
 import { ErrorState } from "../../../../components/ui-states";
 import { apiClient } from "../../../../lib/api-client";
-import type { JobStatus } from "../../../../lib/types";
+import type { BillingOverviewReadModel, JobStatus } from "../../../../lib/types";
 
 /* ── Types ── */
 
@@ -100,10 +101,11 @@ const DEPARTMENT_REQUIREMENTS: Record<string, RequirementDraft[]> = {
 /* ── Page ── */
 
 export default function NewJobPage() {
+  const { t } = useUiText();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [department, setDepartment] = useState("");
-  const [status, setStatus] = useState<JobStatus>("PUBLISHED");
+  const [status, setStatus] = useState<JobStatus>("DRAFT");
   const [locationText, setLocationText] = useState("");
   const [workModel, setWorkModel] = useState("");
   const [workType, setWorkType] = useState("");
@@ -122,16 +124,43 @@ export default function NewJobPage() {
   const [copySuccess, setCopySuccess] = useState(false);
   const [rewriteInstruction, setRewriteInstruction] = useState("");
   const [lastDraftInputSnapshot, setLastDraftInputSnapshot] = useState("");
+  const [billing, setBilling] = useState<BillingOverviewReadModel | null>(null);
+  const [billingLoadError, setBillingLoadError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBillingOverview() {
+      try {
+        const overview = await apiClient.billingOverview();
+        if (!cancelled) {
+          setBilling(overview);
+          setBillingLoadError("");
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setBilling(null);
+          setBillingLoadError(loadError instanceof Error ? loadError.message : t("Abonelik kullanımı şu an yüklenemedi."));
+        }
+      }
+    }
+
+    void loadBillingOverview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
 
   // Departman değişince otomatik nitelik önerisi
   useEffect(() => {
     const suggested = DEPARTMENT_REQUIREMENTS[department];
     if (suggested) {
-      setRequirements(suggested.map((r) => ({ ...r })));
+      setRequirements(suggested.map((r) => ({ ...r, text: t(r.text) })));
     } else {
       setRequirements([]);
     }
-  }, [department]);
+  }, [department, t]);
 
   // shiftType = workModel + workType birleşimi (backend uyumluluğu)
   const shiftType = useMemo(() => {
@@ -170,6 +199,13 @@ export default function NewJobPage() {
     [department, normalizedRequirements, jdText, locationText, salaryMax, salaryMin, shiftType, title]
   );
 
+  const activeJobsQuota = useMemo(
+    () => billing?.usage.quotas.find((quota) => quota.key === "ACTIVE_JOBS") ?? null,
+    [billing]
+  );
+
+  const hasPublishCapacity = activeJobsQuota ? activeJobsQuota.remaining > 0 : true;
+
   const hasDraft = draftText.trim().length > 0;
   const isDraftOutdated =
     hasDraft && lastDraftInputSnapshot.length > 0 && draftInputSnapshot !== lastDraftInputSnapshot;
@@ -198,17 +234,17 @@ export default function NewJobPage() {
     setFieldError("");
 
     if (title.trim().length < 3) {
-      setDraftError("Taslak oluşturmak için ilan başlığı en az 3 karakter olmalı.");
+      setDraftError(t("Taslak oluşturmak için ilan başlığı en az 3 karakter olmalı."));
       return;
     }
 
     if (!department.trim() && !jdText.trim() && normalizedRequirements.length === 0) {
-      setDraftError("Taslak oluşturmak için departman, iş tanımı veya en az bir nitelik girin.");
+      setDraftError(t("Taslak oluşturmak için departman, iş tanımı veya en az bir nitelik girin."));
       return;
     }
 
     if (salaryMin && salaryMax && Number(salaryMin) > Number(salaryMax)) {
-      setDraftError("Minimum maaş maksimum maaştan büyük olamaz.");
+      setDraftError(t("Minimum maaş maksimum maaştan büyük olamaz."));
       return;
     }
 
@@ -236,13 +272,13 @@ export default function NewJobPage() {
       setDraftNotice(
         response.notice ??
           (response.source === "llm"
-            ? "Taslak AI ile oluşturuldu. Dilerseniz düzenleyip kopyalayabilirsiniz."
+            ? t("Taslak AI ile oluşturuldu. Dilerseniz düzenleyip kopyalayabilirsiniz.")
             : "")
       );
       setLastDraftInputSnapshot(draftInputSnapshot);
       setCopySuccess(false);
     } catch (error) {
-      setDraftError(error instanceof Error ? error.message : "İlan taslağı oluşturulamadı.");
+      setDraftError(error instanceof Error ? error.message : t("İlan taslağı oluşturulamadı."));
     } finally {
       setDraftLoading(false);
       setDraftAction(null);
@@ -255,17 +291,24 @@ export default function NewJobPage() {
     setSubmitError("");
 
     if (title.trim().length < 3) {
-      setFieldError("İlan başlığı en az 3 karakter olmalı.");
+      setFieldError(t("İlan başlığı en az 3 karakter olmalı."));
       return;
     }
 
     if (!department.trim()) {
-      setFieldError("Departman zorunludur.");
+      setFieldError(t("Departman zorunludur."));
       return;
     }
 
     if (salaryMin && salaryMax && Number(salaryMin) > Number(salaryMax)) {
-      setFieldError("Minimum maaş maksimum maaştan büyük olamaz.");
+      setFieldError(t("Minimum maaş maksimum maaştan büyük olamaz."));
+      return;
+    }
+
+    if (status === "PUBLISHED" && !hasPublishCapacity) {
+      setFieldError(
+        t("Aktif ilan kotanız dolu. İlanı taslak olarak kaydedebilir, daha sonra slot açıldığında yayına alabilirsiniz.")
+      );
       return;
     }
 
@@ -285,7 +328,7 @@ export default function NewJobPage() {
       router.push("/jobs");
       router.refresh();
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "İlan oluşturulamadı.");
+      setSubmitError(error instanceof Error ? error.message : t("İlan oluşturulamadı."));
     } finally {
       setSubmitting(false);
     }
@@ -317,107 +360,136 @@ export default function NewJobPage() {
         <div className="section-head">
           <div>
             <Link href="/jobs" className="text-muted text-sm" style={{ textDecoration: "none" }}>
-              ← İlan Merkezi
+              ← {t("İlan Merkezi")}
             </Link>
-            <h2 style={{ marginBottom: 4, marginTop: 8 }}>Yeni İlan Hazırla</h2>
+            <h2 style={{ marginBottom: 4, marginTop: 8 }}>{t("Yeni İlan Hazırla")}</h2>
             <p className="small" style={{ marginTop: 0 }}>
-              Pozisyon bilgilerini girin. AI taslak oluşturup harici platformlara kopyalayabilirsiniz.
+              {t("Pozisyon bilgilerini girin. AI taslak oluşturup harici platformlara kopyalayabilirsiniz.")}
             </p>
           </div>
         </div>
 
         {submitError ? <ErrorState error={submitError} /> : null}
-        {fieldError ? <ErrorState title="Form doğrulama" error={fieldError} /> : null}
+        {fieldError ? <ErrorState title={t("Form doğrulama")} error={fieldError} /> : null}
 
         <form onSubmit={handleSubmit} className="form-grid">
+          {activeJobsQuota ? (
+            <div
+              className="panel nested-panel"
+              style={{
+                borderColor:
+                  activeJobsQuota.warningState === "exceeded"
+                    ? "rgba(239,68,68,0.35)"
+                    : activeJobsQuota.warningState === "warning"
+                      ? "rgba(245,158,11,0.35)"
+                      : "var(--border)"
+              }}
+            >
+              <strong style={{ display: "block", marginBottom: 8 }}>{t("Aktif ilan kotası")}</strong>
+              <p className="small" style={{ margin: 0 }}>
+                {t(`Bu dönem ${activeJobsQuota.used} / ${activeJobsQuota.limit} aktif ilan kullanıyorsunuz.`)}
+                {" "}
+                {hasPublishCapacity
+                  ? t("Bu ilanı taslak veya yayında olarak kaydedebilirsiniz.")
+                  : t("Şu anda yalnızca taslak oluşturabilirsiniz. Yayına almak için önce bir ilanı arşivleyin ya da planınızı yükseltin.")}
+              </p>
+            </div>
+          ) : null}
+
+          {billingLoadError ? (
+            <div className="panel nested-panel">
+              <ErrorState title={t("Abonelik görünürlüğü")} error={billingLoadError} />
+            </div>
+          ) : null}
+
           {/* ── Temel Bilgiler ── */}
           <div className="panel nested-panel">
-            <strong style={{ display: "block", marginBottom: 12 }}>Temel Bilgiler</strong>
+            <strong style={{ display: "block", marginBottom: 12 }}>{t("Temel Bilgiler")}</strong>
 
-            <Field label="İlan Başlığı" htmlFor="job-title">
+            <Field label={t("İlan Başlığı")} htmlFor="job-title">
               <TextInput
                 id="job-title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="Örn: Depo Operasyon Personeli"
+                placeholder={t("Örn: Depo Operasyon Personeli")}
                 required
               />
             </Field>
 
-            <Field label="Departman / Birim" htmlFor="job-department">
+            <Field label={t("Departman / Birim")} htmlFor="job-department">
               <SelectInput
                 id="job-department"
                 value={department}
                 onChange={(event) => setDepartment(event.target.value)}
                 required
               >
-                <option value="" disabled>Seçiniz</option>
+                <option value="" disabled>{t("Seçiniz")}</option>
                 {DEPARTMENTS.map((d) => (
-                  <option key={d} value={d}>{d}</option>
+                  <option key={d} value={d}>{t(d)}</option>
                 ))}
               </SelectInput>
             </Field>
 
-            <Field label="Lokasyon" htmlFor="job-location">
+            <Field label={t("Lokasyon")} htmlFor="job-location">
               <TextInput
                 id="job-location"
                 value={locationText}
                 onChange={(event) => setLocationText(event.target.value)}
-                placeholder="Örn: İstanbul, Ankara, Bursa"
+                placeholder={t("Örn: İstanbul, Ankara, Bursa")}
               />
             </Field>
           </div>
 
           {/* ── Çalışma Koşulları ── */}
           <div className="panel nested-panel">
-            <strong style={{ display: "block", marginBottom: 12 }}>Çalışma Koşulları</strong>
+            <strong style={{ display: "block", marginBottom: 12 }}>{t("Çalışma Koşulları")}</strong>
 
             <div className="inline-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <Field label="Çalışma Modeli" htmlFor="job-work-model">
+              <Field label={t("Çalışma Modeli")} htmlFor="job-work-model">
                 <SelectInput
                   id="job-work-model"
                   value={workModel}
                   onChange={(event) => setWorkModel(event.target.value)}
                 >
                   {WORK_MODELS.map((m) => (
-                    <option key={m.value} value={m.value}>{m.label}</option>
+                    <option key={m.value} value={m.value}>{t(m.label)}</option>
                   ))}
                 </SelectInput>
               </Field>
 
-              <Field label="Çalışma Şekli" htmlFor="job-work-type">
+              <Field label={t("Çalışma Şekli")} htmlFor="job-work-type">
                 <SelectInput
                   id="job-work-type"
                   value={workType}
                   onChange={(event) => setWorkType(event.target.value)}
                 >
-                  {WORK_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                  {WORK_TYPES.map((option) => (
+                    <option key={option.value} value={option.value}>{t(option.label)}</option>
                   ))}
                 </SelectInput>
               </Field>
             </div>
 
             <div className="inline-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <Field label="Maaş Alt Sınır (₺)" htmlFor="job-salary-min">
+              <Field label={t("Maaş Alt Sınır (₺)")} htmlFor="job-salary-min">
                 <TextInput
                   id="job-salary-min"
                   type="number"
                   min={0}
                   value={salaryMin}
                   onChange={(event) => setSalaryMin(event.target.value)}
-                  placeholder="Örn: 28000"
+                  placeholder={t("Örn: 28000")}
                 />
               </Field>
 
-              <Field label="Maaş Üst Sınır (₺)" htmlFor="job-salary-max">
+              <Field label={t("Maaş Üst Sınır (₺)")} htmlFor="job-salary-max">
                 <TextInput
                   id="job-salary-max"
                   type="number"
                   min={0}
                   value={salaryMax}
                   onChange={(event) => setSalaryMax(event.target.value)}
-                  placeholder="Örn: 36000"
+                  placeholder={t("Örn: 36000")}
                 />
               </Field>
             </div>
@@ -426,15 +498,15 @@ export default function NewJobPage() {
           {/* ── Aranan Nitelikler ── */}
           <div className="panel nested-panel">
             <div className="section-head" style={{ marginBottom: 8 }}>
-              <strong>Aranan Nitelikler</strong>
+              <strong>{t("Aranan Nitelikler")}</strong>
               <button type="button" className="ghost-button" onClick={addRequirement}>
-                + Nitelik Ekle
+                {t("+ Nitelik Ekle")}
               </button>
             </div>
 
             {requirements.length === 0 && (
               <p className="text-xs text-muted" style={{ margin: "8px 0" }}>
-                Departman seçtiğinizde önerilen nitelikler otomatik eklenir. Dilediğiniz gibi düzenleyebilirsiniz.
+                {t("Departman seçtiğinizde önerilen nitelikler otomatik eklenir. Dilediğiniz gibi düzenleyebilirsiniz.")}
               </p>
             )}
 
@@ -457,7 +529,7 @@ export default function NewJobPage() {
                   className="input"
                   value={item.text}
                   onChange={(e) => updateRequirementText(index, e.target.value)}
-                  placeholder="Nitelik yazın..."
+                  placeholder={t("Nitelik yazın...")}
                   style={{ flex: 1, border: "none", background: "transparent", padding: "4px 0" }}
                 />
                 <button
@@ -479,7 +551,7 @@ export default function NewJobPage() {
                       : "var(--muted, #6b7280)",
                   }}
                 >
-                  {item.required ? "Zorunlu" : "Tercih Edilen"}
+                  {item.required ? t("Zorunlu") : t("Tercih Edilen")}
                 </button>
                 <button
                   type="button"
@@ -501,7 +573,7 @@ export default function NewJobPage() {
 
           {/* ── İlan Durumu ── */}
           <div className="panel nested-panel">
-            <strong style={{ display: "block", marginBottom: 12 }}>İlan Durumu</strong>
+            <strong style={{ display: "block", marginBottom: 12 }}>{t("İlan Durumu")}</strong>
             <div style={{ display: "flex", gap: 10 }}>
               {(["DRAFT", "PUBLISHED", "ARCHIVED"] as JobStatus[]).map((s) => {
                 const meta = {
@@ -514,7 +586,13 @@ export default function NewJobPage() {
                   <button
                     key={s}
                     type="button"
-                    onClick={() => setStatus(s)}
+                    onClick={() => {
+                      if (s === "PUBLISHED" && !hasPublishCapacity) {
+                        return;
+                      }
+                      setStatus(s);
+                    }}
+                    disabled={s === "PUBLISHED" && !hasPublishCapacity}
                     style={{
                       flex: 1,
                       display: "flex",
@@ -524,10 +602,11 @@ export default function NewJobPage() {
                       background: isActive ? "rgba(99,102,241,0.06)" : "var(--bg-base, #0f1117)",
                       border: `1px solid ${isActive ? "var(--primary, #6366f1)" : "var(--border)"}`,
                       borderRadius: 8,
-                      cursor: "pointer",
+                      cursor: s === "PUBLISHED" && !hasPublishCapacity ? "not-allowed" : "pointer",
                       textAlign: "left",
                       fontFamily: "inherit",
                       color: "var(--text)",
+                      opacity: s === "PUBLISHED" && !hasPublishCapacity ? 0.55 : 1
                     }}
                   >
                     <span style={{
@@ -538,25 +617,30 @@ export default function NewJobPage() {
                       flexShrink: 0,
                     }} />
                     <span>
-                      <span style={{ fontSize: 13, fontWeight: 500, display: "block" }}>{meta.label}</span>
-                      <span style={{ fontSize: 12, color: "var(--muted, #6b7280)" }}>{meta.desc}</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, display: "block" }}>{t(meta.label)}</span>
+                      <span style={{ fontSize: 12, color: "var(--muted, #6b7280)" }}>{t(meta.desc)}</span>
                     </span>
                   </button>
                 );
               })}
             </div>
+            {!hasPublishCapacity ? (
+              <p className="small" style={{ marginTop: 10, marginBottom: 0 }}>
+                {t("Yayında slotunuz dolu olduğu için bu ilanı önce taslak olarak hazırlayabilirsiniz.")}
+              </p>
+            ) : null}
           </div>
 
           {/* ── İş Tanımı ── */}
           <div className="panel nested-panel">
-            <strong style={{ display: "block", marginBottom: 12 }}>İş Tanımı</strong>
-            <Field label="Pozisyon Açıklaması" htmlFor="job-jd-text" hint="AI taslak oluştururken bu açıklamayı temel alır.">
+            <strong style={{ display: "block", marginBottom: 12 }}>{t("İş Tanımı")}</strong>
+            <Field label={t("Pozisyon Açıklaması")} htmlFor="job-jd-text" hint={t("AI taslak oluştururken bu açıklamayı temel alır.")}>
               <TextArea
                 id="job-jd-text"
                 rows={3}
                 value={jdText}
                 onChange={(event) => setJdText(event.target.value)}
-                placeholder="Pozisyonun temel sorumlulukları ve beklentiler..."
+                placeholder={t("Pozisyonun temel sorumlulukları ve beklentiler...")}
               />
             </Field>
           </div>
@@ -565,7 +649,7 @@ export default function NewJobPage() {
           <div className="panel nested-panel" style={{ borderColor: "rgba(99,102,241,0.2)" }}>
             <div className="section-head" style={{ marginBottom: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <strong>AI ile İlan Taslağı</strong>
+                <strong>{t("AI ile İlan Taslağı")}</strong>
                 <span style={{
                   fontSize: 11,
                   fontWeight: 600,
@@ -584,10 +668,10 @@ export default function NewJobPage() {
                   style={{ fontSize: 13 }}
                 >
                   {draftLoading
-                    ? "Taslak hazırlanıyor..."
+                    ? t("Taslak hazırlanıyor...")
                     : hasDraft
-                      ? "Yeniden Oluştur"
-                      : "✨ Taslak Oluştur"}
+                      ? t("Yeniden Oluştur")
+                      : `✨ ${t("Taslak Oluştur")}`}
                 </button>
                 <button
                   type="button"
@@ -596,16 +680,16 @@ export default function NewJobPage() {
                   disabled={!hasDraft}
                   style={{ fontSize: 13, padding: "4px 14px", minWidth: 90, textAlign: "center" }}
                 >
-                  {copySuccess ? "Kopyalandı!" : "Kopyala"}
+                  {copySuccess ? t("Kopyalandı!") : t("Kopyala")}
                 </button>
               </div>
             </div>
 
             <p className="text-xs text-muted" style={{ margin: "0 0 12px" }}>
-              Yukarıdaki bilgilere göre profesyonel ilan metni oluşturur. Taslağı düzenleyip harici platformlara kopyalayabilirsiniz.
+              {t("Yukarıdaki bilgilere göre profesyonel ilan metni oluşturur. Taslağı düzenleyip harici platformlara kopyalayabilirsiniz.")}
             </p>
 
-            {draftError ? <ErrorState title="İlan taslağı" error={draftError} /> : null}
+            {draftError ? <ErrorState title={t("İlan taslağı")} error={draftError} /> : null}
 
             {draftNotice && (
               <p className="text-xs text-muted" style={{ margin: draftError ? "8px 0 0" : "0 0 8px" }}>
@@ -615,7 +699,7 @@ export default function NewJobPage() {
 
             {isDraftOutdated && (
               <p className="text-xs text-muted" style={{ margin: "0 0 8px" }}>
-                Taslak güncel değil. Form bilgilerinde değişiklik yaptınız; en doğru metin için yeniden oluşturun.
+                {t("Taslak güncel değil. Form bilgilerinde değişiklik yaptınız; en doğru metin için yeniden oluşturun.")}
               </p>
             )}
 
@@ -624,16 +708,16 @@ export default function NewJobPage() {
               rows={12}
               value={draftText}
               onChange={(event) => setDraftText(event.target.value)}
-              placeholder="Taslak oluşturduğunuzda ilan metni burada görünecek."
+              placeholder={t("Taslak oluşturduğunuzda ilan metni burada görünecek.")}
             />
 
             <div style={{ marginTop: 14 }}>
-              <Field label="Revizyon Notu" htmlFor="job-draft-instruction" hint="Taslağı beğenmediyseniz notunuzu yazıp tekrar oluşturun.">
+              <Field label={t("Revizyon Notu")} htmlFor="job-draft-instruction" hint={t("Taslağı beğenmediyseniz notunuzu yazıp tekrar oluşturun.")}>
                 <TextInput
                   id="job-draft-instruction"
                   value={rewriteInstruction}
                   onChange={(event) => setRewriteInstruction(event.target.value)}
-                  placeholder="Örn: Daha samimi bir dil kullan, maaş bilgisini vurgula"
+                  placeholder={t("Örn: Daha samimi bir dil kullan, maaş bilgisini vurgula")}
                 />
               </Field>
             </div>
@@ -642,10 +726,10 @@ export default function NewJobPage() {
           {/* ── Footer ── */}
           <div className="row-actions">
             <button type="submit" className="button-link" disabled={submitting}>
-              {submitting ? "Oluşturuluyor..." : "İlanı Kaydet"}
+              {submitting ? t("Oluşturuluyor...") : t("İlanı Kaydet")}
             </button>
             <Link href="/jobs" className="ghost-button">
-              Vazgeç
+              {t("Vazgeç")}
             </Link>
           </div>
         </form>
