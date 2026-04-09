@@ -252,11 +252,9 @@ export function SiteSettingsSwitcher({
 
 function getInitialLocale(): SiteLocale {
   if (typeof document !== "undefined") {
-    const match = document.cookie.match(/(?:^|;\s*)site_locale=(\w+)/);
-    if (match) return normalizeSiteLocale(match[1]);
-  }
-  if (typeof window !== "undefined") {
-    return normalizeSiteLocale(window.localStorage.getItem(SITE_LOCALE_STORAGE_KEY));
+    // Read from data-locale attribute set by blocking <script> in layout.tsx
+    const attr = document.documentElement.getAttribute("data-locale");
+    if (attr) return normalizeSiteLocale(attr);
   }
   return DEFAULT_SITE_LOCALE;
 }
@@ -270,26 +268,15 @@ export function SiteLanguageProvider({ children }: { children: ReactNode }) {
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const storedLocale = normalizeSiteLocale(window.localStorage.getItem(SITE_LOCALE_STORAGE_KEY));
-    if (storedLocale !== locale) {
-      setLocaleState(storedLocale);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
     if (typeof document === "undefined") {
       return;
     }
 
     document.documentElement.lang = locale;
+    document.documentElement.setAttribute("data-locale", locale);
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(SITE_LOCALE_STORAGE_KEY, locale);
-      document.cookie = `site_locale=${locale};path=/;max-age=31536000;SameSite=Lax`;
     }
   }, [locale]);
 

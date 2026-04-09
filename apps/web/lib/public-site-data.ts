@@ -134,11 +134,11 @@ export const PUBLIC_HOME_CHANNELS: PublicCard[] = [
   },
   {
     title: "Aday Yönetimi",
-    body: "Tüm başvuruları tek panelden takip edin. Durum güncellemeleri ve iletişim otomatik yönetilir."
+    body: "Tüm başvuruları tek panelden takip edin. Durum güncellemelerini ve işe alım notlarını aynı akışta yönetin."
   },
   {
     title: "Analitik",
-    body: "İşe alım süreci metriklerini gerçek zamanlı izleyin. Darboğazları tespit edip optimize edin."
+    body: "İşe alım süreci metriklerini tek panelde izleyin. Darboğazları görünür hale getirip akışı iyileştirin."
   }
 ];
 
@@ -151,7 +151,8 @@ export const PUBLIC_HOME_PROOF: PublicStat[] = [
   {
     value: "7/24",
     label: "Kesintisiz Mülakat",
-    detail: "AI mülakat 7 gün 24 saat aktif. Adaylar istedikleri zaman mülakata girebilir."
+    detail:
+      "Uygun senaryolarda adaylar davet edilen bağlantı üzerinden süreci kendi zamanlarında tamamlayabilir."
   },
   {
     value: "Daha az",
@@ -178,8 +179,8 @@ export const PUBLIC_HOME_STEPS: PublicStep[] = [
   },
   {
     step: "04",
-    title: "En iyi adayı seçin",
-    body: "Karşılaştırmalı raporlarla en uygun adayı belirleyin ve teklifinizi iletin."
+    title: "En güçlü adayları öne çıkarın",
+    body: "Karşılaştırmalı raporlarla sonraki görüşme veya teklif adımı için en uygun adayları belirleyin."
   }
 ];
 
@@ -191,8 +192,8 @@ export const PUBLIC_FEATURE_HERO_ACTIONS: PublicAction[] = [
 export const PUBLIC_FEATURE_GROUPS: PublicCard[] = [
   {
     title: "AI Mülakat",
-    body: "Adaylarla sesli veya görüntülü AI mülakatları otomatik gerçekleştirin.",
-    bullets: ["Pozisyona özel soru setleri", "Sesli ve görüntülü mülakat desteği", "Gerçek zamanlı değerlendirme", "Otomatik transkript ve özet"]
+    body: "Adaylarla sesli veya yazılı AI mülakat akışlarını otomatik yürütün.",
+    bullets: ["Pozisyona özel soru setleri", "Sesli ve yazılı mülakat desteği", "Gerçek zamanlı değerlendirme", "Otomatik transkript ve özet"]
   },
   {
     title: "Ön Eleme (Screening)",
@@ -207,7 +208,7 @@ export const PUBLIC_FEATURE_GROUPS: PublicCard[] = [
   {
     title: "İş İlanı Yönetimi",
     body: "İlanlarınızı oluşturun, yayınlayın ve başvuruları tek yerden takip edin.",
-    bullets: ["Hızlı ilan oluşturma şablonları", "Çoklu pozisyon yönetimi", "Başvuru havuzu takibi", "Kariyer sayfası entegrasyonu"]
+    bullets: ["Hızlı ilan oluşturma şablonları", "Çoklu pozisyon yönetimi", "Başvuru havuzu takibi", "Paylaşılabilir başvuru akışları"]
   },
   {
     title: "Analitik ve Raporlama",
@@ -217,7 +218,7 @@ export const PUBLIC_FEATURE_GROUPS: PublicCard[] = [
   {
     title: "Entegrasyonlar",
     body: "Pilot kapsamındaki takvim ve API entegrasyonlarını kontrollü şekilde devreye alın.",
-    bullets: ["Google Calendar ve Google Meet", "Calendly bağlantısı", "ATS genel API / webhook", "Kaynak Bulma (beta)"]
+    bullets: ["Google Calendar bağlantısı", "Google kimliği ile planlama akışı", "ATS REST API / webhook", "Özel entegrasyon keşfi"]
   }
 ];
 
@@ -233,12 +234,12 @@ export const PUBLIC_FEATURE_OPERATIONS: PublicCard[] = [
     ]
   },
   {
-    title: "Güvenlik ve KVKK",
-    body: "Aday verilerini güvenle saklayın, KVKK ve GDPR uyumlu çalışın.",
+    title: "Güvenlik ve veri yönetişimi",
+    body: "Aday verilerini erişim kontrolü, denetim izi ve veri yaşam döngüsü süreçleriyle yönetin.",
     bullets: [
       "Rol bazlı erişim ve yetkilendirme",
-      "Aday verisi maskeleme ve anonimleştirme",
-      "Veri saklama süresi politikaları ve otomatik silme"
+      "Audit log ve yönetim görünürlüğü",
+      "Veri saklama ve silme süreçleri için operasyonel temel"
     ]
   },
   {
@@ -415,7 +416,7 @@ export const PUBLIC_FAQ: PublicFaq[] = [
   {
     question: "Mevcut ATS sistemimle entegre olabilir mi?",
     answer:
-      "Evet. Pilot aşamada REST API ve webhook desteği ile ATS sistemleriyle kontrollü entegrasyon kurulabilir. Hazır ve aktif bağlantı tarafında Google Calendar, Google Meet ve Calendly odaklı ilerliyoruz; diğer entegrasyonlar yol haritasına göre açılıyor."
+      "REST API ve webhook ile kontrollü ATS entegrasyon senaryoları planlanabilir. Takvim ve planlama bağlantıları ekip ihtiyacına göre kademeli açılır; tüm entegrasyonlar varsayılan olarak aktif gelmez."
   }
 ];
 
@@ -506,16 +507,16 @@ export const PUBLIC_INTEGRATION_GROUPS: Array<{ title: string; items: PublicCard
   {
     title: "Takvim ve Planlama",
     items: [
-      { title: "Google Calendar", body: "Mülakat planlarını takvime bağlayın ve etkinlik oluşturun", badge: "Pilotta aktif", href: "/settings", actionLabel: "Panelde aç" },
-      { title: "Google Meet", body: "Uygun akışlarda görüşme linklerini Google ekosistemiyle yönetin", badge: "Pilotta aktif", href: "/settings", actionLabel: "Panelde aç" },
-      { title: "Calendly", body: "Aday planlama akışları için kurulum aşamasında, talep bazlı devreye alınır", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" }
+      { title: "Google Calendar", body: "Mülakat planlarını Google takvim akışıyla eşleştirin", badge: "Pilot kurulum", href: "/settings", actionLabel: "Panelde aç" },
+      { title: "Google Meet", body: "Planlama akışlarında Google Meet bağlantı senaryolarını yönetin", badge: "Pilot kurulum", href: "/settings", actionLabel: "Panelde aç" },
+      { title: "Calendly", body: "Talep olduğunda değerlendirilen planlama seçeneği", badge: "Değerlendirme", href: "/contact", actionLabel: "İletişime geç" }
     ]
   },
   {
     title: "ATS ve İşe Alım Sistemleri",
     items: [
-      { title: "ATS Generic API", body: "Mevcut ATS verinizi REST tabanlı senkronizasyonla bağlayın", badge: "Pilotta aktif", href: "/docs/api", actionLabel: "Dokümanı aç" },
-      { title: "Webhook Olayları", body: "Başvuru ve mülakat olaylarını kendi sistemlerinize aktarın", badge: "Pilotta aktif", href: "/docs/api", actionLabel: "Dokümanı aç" },
+      { title: "ATS Generic API", body: "Aday ve başvuru verisi için REST tabanlı entegrasyon senaryoları planlayın", badge: "Kontrollü erişim", href: "/docs/api", actionLabel: "Dokümanı aç" },
+      { title: "Webhook Olayları", body: "Başvuru ve mülakat olaylarını kendi sistemlerinize aktarmak için webhook akışları tanımlayın", badge: "Kontrollü erişim", href: "/docs/api", actionLabel: "Dokümanı aç" },
       { title: "Özel ATS Bağlantısı", body: "Kurumsal ekipler için mevcut işe alım altyapısına özel entegrasyon", badge: "Kurumsal", href: "/contact", actionLabel: "İletişime geç" }
     ]
   },
@@ -740,7 +741,7 @@ export const PUBLIC_HELP_TOPICS: PublicCard[] = [
   },
   {
     title: "Güvenlik & Uyumluluk",
-    body: "Veri güvenliği, KVKK ve GDPR uyumluluğu",
+    body: "Veri güvenliği, erişim kontrolleri ve süreç yönetişimi",
     href: "/security",
     actionLabel: "Keşfet"
   },
@@ -760,39 +761,39 @@ export const PUBLIC_HELP_TOPICS: PublicCard[] = [
 
 export const PUBLIC_SECURITY_GROUPS: PublicCard[] = [
   {
-    title: "Veri Güvenliği",
-    body: "Verileriniz katmanlı güvenlik kontrolleriyle korunur.",
+    title: "Erişim ve Yetkilendirme",
+    body: "Çalışma alanı, oturum ve rol bazlı erişim sınırlarıyla ekip içi görünürlüğü kontrol altında tutun.",
     bullets: [
-      "AES-256 ve TLS 1.3 ile uçtan uca şifreleme",
-      "RBAC, MFA ve gelişmiş oturum yönetimi",
-      "DDoS koruması ve izole ağ mimarisi"
+      "Rol bazlı erişim sınırları",
+      "JWT tabanlı oturum akışı",
+      "Kritik yönetim aksiyonları için denetim izi"
     ]
   },
   {
-    title: "Yasal Uyumluluk",
-    body: "KVKK ve GDPR gereksinimlerine yönelik süreçler ve kontroller desteklenir.",
+    title: "Veri Yönetişimi",
+    body: "Aday verilerinin saklanması, görünürlüğü ve yaşam döngüsü için operasyonel kontroller oluşturun.",
     bullets: [
-      "KVKK için VİS, açık rıza, saklama ve silme politikaları",
-      "GDPR için veri taşınabilirliği, silme talebi ve DPA desteği",
-      "Veri ihlali bildirim süreci ve veri minimizasyonu ilkesi"
+      "Saklama ve silme politikalarını ekip bazında tanımlama",
+      "Hassas veri alanları için görünürlük kararları",
+      "KVKK ve GDPR süreçleri için iç operasyon sahipliği"
     ]
   },
   {
-    title: "AI Güvenliği",
-    body: "Yapay zeka asistanı çoklu güvenlik katmanıyla korunur.",
+    title: "AI Güvenlik Yaklaşımı",
+    body: "AI çıktıları karar desteği olarak konumlanır; nihai karar ve hassas süreçler insan onayıyla ilerler.",
     bullets: [
-      "Aday verileri model eğitiminde kullanılmaz",
-      "Yanıtlar politika kontrolü ve içerik filtrelemeden geçer",
-      "Hassas veri maskeleme ve halüsinasyon engelleme koruma katmanları"
+      "AI çıktıları recruiter kararının yerine geçmez",
+      "Eksik bilgi ve risk sinyalleri görünür hale getirilir",
+      "Politika, fallback ve gözden geçirme katmanlarıyla akış sertleştirilir"
     ]
   },
   {
-    title: "Operasyonel Güvenlik",
-    body: "Sistemler düzenli izleme, kayıt ve müdahale akışlarıyla korunur.",
+    title: "Operasyonel İzleme",
+    body: "Sistem durumu, kritik olaylar ve temel audit görünürlüğüyle launch öncesi sertleştirme desteklenir.",
     bullets: [
-      "Anomali tespitli sürekli izleme",
-      "Kim, ne zaman, ne yaptı görünürlüğü için audit log",
-      "Günlük yedekleme ve olay müdahale planı"
+      "Sağlık kontrolleri ve runtime görünürlüğü",
+      "Kritik olay kaydı ve yönetim takibi",
+      "Kademeli launch için checklist odaklı ilerleme"
     ]
   }
 ];
@@ -811,9 +812,9 @@ export const PUBLIC_ABOUT_STORY: PublicCard[] = [
       "Yıllarca işe alım süreçlerindeki verimsizlikleri ve önyargıları gözlemledik. 2024'te yapay zeka teknolojisini işe alım süreçleriyle birleştirerek Candit'i kurduk."
   },
   {
-    title: "Neden Los Angeles",
+    title: "Nasıl Çalışıyoruz",
     body:
-      "Candit, yapay zeka ve teknoloji ekosisteminin kalbinde, Los Angeles'ta kuruldu. Türk kuruculara sahip ekip önce Türkiye pazarında işe alım süreçlerini dönüştürmeyi hedefledi."
+      "Candit ekibi ürün, mühendislik ve işe alım deneyimini bir araya getiren dağıtık bir çalışma modeliyle ilerler. Önceliğimiz Türkiye odaklı pilot ekiplerle gerçek kullanım üzerinden hızlı öğrenmek ve ürünü buna göre geliştirmektir."
   },
   {
     title: "Misyonumuz",
@@ -872,13 +873,13 @@ export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
   {
     date: "Mart 2026",
     version: "v0.5.0",
-    title: "Takvim ve Planlama Akışı",
+    title: "Takvim ve Planlama Hazırlıkları",
     body:
-      "Mülakat planlama tarafında Google ekosistemi ve Calendly odaklı planlama akışları güçlendirildi.",
+      "Mülakat planlama tarafında Google ekosistemi odaklı bağlantı hazırlıkları ve yedek akışlar güçlendirildi.",
     items: [
       "Google Calendar bağlantı akışı güncellendi",
-      "Google Meet / planlama bağlam desteği genişletildi",
-      "Calendly webhook senkronizasyonu geliştirildi",
+      "Google Meet planlama bağlamı netleştirildi",
+      "Pilot planlama ihtiyaçları için entegrasyon hazırlıkları sertleştirildi",
       "Yedek toplantı akışı görünür hale getirildi"
     ]
   },

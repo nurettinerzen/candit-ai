@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("ai_interviewer_theme");var r=t==="light"||t==="dark"?t:(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",r)}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem("ai_interviewer_theme");var r=t==="light"||t==="dark"?t:(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",r);var l=localStorage.getItem("site_locale")||"tr";if(l!=="tr"&&l!=="en")l="tr";document.documentElement.setAttribute("data-locale",l)}catch(e){}})()`,
           }}
         />
       </head>
