@@ -134,6 +134,7 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
   const [confirmAction, setConfirmAction] = useState<QuickActionType | null>(null);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteOutcome, setInviteOutcome] = useState<{ interviewLink: string | null; expiresAt: string | null } | null>(null);
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     setInviteOutcome(null);
@@ -158,6 +159,8 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
   const actions = getStageActions(stage);
 
   const handleAction = (action: QuickActionType) => {
+    setActionError("");
+
     if (action === "invite_interview") {
       setInviteModalOpen(true);
       return;
@@ -171,9 +174,14 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
     const action = confirmAction;
     setConfirmAction(null);
     setActionLoading(action);
+    setActionError("");
     try {
       await apiClient.quickAction(applicant.applicationId, { action });
       onActionDone();
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : t("İşlem tamamlanamadı.")
+      );
     } finally {
       setActionLoading(null);
     }
@@ -342,6 +350,21 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
                   ) : null}
                 </div>
               ) : null}
+              {actionError ? (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid color-mix(in srgb, var(--danger, #ef4444) 25%, transparent)",
+                    background: "color-mix(in srgb, var(--danger, #ef4444) 10%, transparent)",
+                    color: "var(--danger, #ef4444)",
+                    fontSize: 13
+                  }}
+                >
+                  {actionError}
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -457,6 +480,7 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
           onClose={() => setInviteModalOpen(false)}
           onSubmitted={(result) => {
             setInviteModalOpen(false);
+            setActionError("");
             setInviteOutcome({
               interviewLink: result.interviewLink ?? null,
               expiresAt: result.expiresAt ?? null

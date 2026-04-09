@@ -211,6 +211,14 @@ Ilgili arka plan notlari icin:
   - Teknik kanit:
     - `corepack pnpm --filter @ai-interviewer/web lint`
     - `corepack pnpm --filter @ai-interviewer/web build`
+- [x] P6 applicant drawer hizli aksiyonlari icin sessiz hata yolu kapatildi.
+  - Onceki sorun:
+    - job inbox drawer icinde reject/quick-action hata aldiginda recruiter'a gorunur bir hata donmuyordu
+  - Yeni durum:
+    - drawer icinde kontrollu hata kutusu gorunuyor; aksiyon basarisizligi sessiz kaybolmuyor
+  - Teknik kanit:
+    - `corepack pnpm --filter @ai-interviewer/web lint`
+    - `corepack pnpm --filter @ai-interviewer/web build`
 - [x] Sertlestirme sonrasi canli pilot smoke tekrar basarili.
   - Son tekrar:
     - signup
