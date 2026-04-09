@@ -633,7 +633,7 @@ export const PUBLIC_BLOG_ARTICLES: PublicBlogArticle[] = [
           "Rule-based botlardan LLM destekli, bağlamsal ve entegre çözümlere geçiş hızlandı. Özellikle sipariş ve iade süreçlerini gerçek iş verisiyle bağlayabilen ürünler öne çıkıyor."
       },
       {
-        title: "Telyx Farkı: Yapay Zeka Öncelikli Mimari",
+        title: "Candit Farkı: Yapay Zeka Öncelikli Mimari",
         body:
           "Tek ekran operasyon görünürlüğü, omnichannel deneyim ve kontrollü handoff sayesinde müşteri deneyimi ile ekip verimliliği birlikte iyileşir."
       },
@@ -827,12 +827,12 @@ export const PUBLIC_ABOUT_STORY: PublicCard[] = [
   {
     title: "Nereden Geldik",
     body:
-      "2010'dan bu yana farklı sektörlerde yazılım, e-ticaret ve dijital pazarlama alanlarında deneyim edinildi. 2023'te bu deneyim yapay zeka ile birleşerek Telyx kuruldu."
+      "2010'dan bu yana farklı sektörlerde yazılım, e-ticaret ve dijital pazarlama alanlarında deneyim edinildi. 2023'te bu deneyim yapay zeka ile birleşerek Candit kuruldu."
   },
   {
     title: "Neden Los Angeles",
     body:
-      "Telyx, yapay zeka ve teknoloji ekosisteminin kalbinde, Los Angeles'ta kuruldu. Türk kuruculara sahip ekip önce Türkiye'deki KOBİ pazarında değer üretmeyi hedefledi."
+      "Candit, yapay zeka ve teknoloji ekosisteminin kalbinde, Los Angeles'ta kuruldu. Türk kuruculara sahip ekip önce Türkiye'deki KOBİ pazarında değer üretmeyi hedefledi."
   },
   {
     title: "Misyonumuz",
@@ -989,7 +989,7 @@ export const PUBLIC_PRIVACY_SECTIONS: PublicLegalSection[] = [
   {
     title: "7. Kullanıcı Hakları",
     body:
-      "Erişim, düzeltme, silme, itiraz ve veri taşınabilirliği hakları için info@telyx.ai üzerinden başvuru yapılabilir."
+      "Erişim, düzeltme, silme, itiraz ve veri taşınabilirliği hakları için info@candit.ai üzerinden başvuru yapılabilir."
   },
   {
     title: "8. Çocukların Gizliliği",
@@ -1003,7 +1003,7 @@ export const PUBLIC_PRIVACY_SECTIONS: PublicLegalSection[] = [
   },
   {
     title: "10. İletişim",
-    body: "Gizlilik ile ilgili sorular için info@telyx.ai adresine ulaşabilirsiniz."
+    body: "Gizlilik ile ilgili sorular için info@candit.ai adresine ulaşabilirsiniz."
   }
 ];
 
@@ -1041,7 +1041,7 @@ export const PUBLIC_TERMS_SECTIONS: PublicLegalSection[] = [
   {
     title: "7. Fikri Mülkiyet",
     body:
-      "Platformun yazılımı, arayüzü ve marka unsurları Telyx.ai'ye aittir. Tersine mühendislik ve yetkisiz erişim yasaktır."
+      "Platformun yazılımı, arayüzü ve marka unsurları Candit.ai'ye aittir. Tersine mühendislik ve yetkisiz erişim yasaktır."
   },
   {
     title: "8. Hizmet Seviyesi ve Sorumluluk Sınırları",
@@ -1060,7 +1060,7 @@ export const PUBLIC_TERMS_SECTIONS: PublicLegalSection[] = [
   },
   {
     title: "11. İletişim",
-    body: "Sorularınız için info@telyx.ai adresine ulaşabilirsiniz."
+    body: "Sorularınız için info@candit.ai adresine ulaşabilirsiniz."
   }
 ];
 

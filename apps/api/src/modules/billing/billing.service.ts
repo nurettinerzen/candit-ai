@@ -13,7 +13,8 @@ import {
   BillingGrantSource,
   BillingPlanKey,
   BillingQuotaKey,
-  Prisma
+  Prisma,
+  TenantBillingAccount
 } from "@prisma/client";
 import StripeConstructor from "stripe";
 import { RuntimeConfigService } from "../../config/runtime-config.service";
@@ -22,7 +23,6 @@ import { NotificationsService } from "../notifications/notifications.service";
 import {
   BILLING_ADDON_CATALOG,
   BILLING_PLAN_CATALOG,
-  buildPlanSnapshot,
   buildTrialSnapshot,
   FREE_TRIAL_DEFINITION,
   type BillingAddonDefinition,
@@ -165,6 +165,32 @@ function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+const DISABLED_TRIAL_FEATURES: BillingPlanDefinition["features"] = {
+  advancedReporting: false,
+  calendarIntegrations: false,
+  brandedCandidateExperience: false,
+  customIntegrations: false
+};
+
+const REPEAT_TRIAL_BLOCK_REASON =
+  "Bu e-posta adresi ücretsiz denemeyi daha önce kullandı. Devam etmek için ücretli planla başlayın veya ekip davetiyle giriş yapın.";
+
+function buildBlockedTrialSnapshot(input: {
+  normalizedEmail: string;
+  blockReason: string;
+}) {
+  return {
+    seatsIncluded: 0,
+    activeJobsIncluded: 0,
+    candidateProcessingIncluded: 0,
+    aiInterviewsIncluded: 0,
+    supportLabel: FREE_TRIAL_DEFINITION.supportLabel,
+    trialEligible: false,
+    trialBlockedReason: input.blockReason,
+    trialNormalizedEmail: input.normalizedEmail
+  };
+}
+
 type StripeClient = any;
 type StripeCheckoutSession = any;
 type StripeSubscription = any;
@@ -242,8 +268,10 @@ export class BillingService {
   async getOverview(tenantId: string, viewerEmail?: string) {
     const state = await this.resolveBillingState(tenantId);
     const isInternalBillingAdmin = this.runtimeConfig.isInternalBillingAdmin(viewerEmail);
+    const hasTrialContext =
+      state.trial.isActive || state.trial.isExpired || !state.trial.isEligible;
     const currentPlan =
-      state.trial.isActive || state.trial.isExpired
+      hasTrialContext
         ? {
             ...BILLING_PLAN_CATALOG.STARTER,
             label: FREE_TRIAL_DEFINITION.label,
@@ -289,13 +317,16 @@ export class BillingService {
       };
     });
 
-    const quotaWarnings = quotas
-      .filter((quota) => quota.warningState !== "healthy")
-      .map((quota) =>
-        quota.warningState === "exceeded"
-          ? `${quota.label} limiti doldu.`
-          : `${quota.label} kullanımınız %${quota.utilizationPercent} seviyesine ulaştı.`
-      );
+    const quotaWarnings =
+      state.trial.isExpired || !state.trial.isEligible
+        ? []
+        : quotas
+            .filter((quota) => quota.warningState !== "healthy")
+            .map((quota) =>
+              quota.warningState === "exceeded"
+                ? `${quota.label} limiti doldu.`
+                : `${quota.label} kullanımınız %${quota.utilizationPercent} seviyesine ulaştı.`
+            );
     const warnings = [...quotaWarnings];
 
     if (state.trial.isExpired) {
@@ -1104,7 +1135,9 @@ export class BillingService {
       return;
     }
 
-    const planLabel = BILLING_PLAN_CATALOG[state.account.currentPlanKey].label;
+    const planLabel = state.trial.isActive
+      ? FREE_TRIAL_DEFINITION.label
+      : BILLING_PLAN_CATALOG[state.account.currentPlanKey].label;
     const messageByQuota: Record<BillingQuotaKey, string> = {
       [BillingQuotaKey.SEATS]: `${planLabel} planınızdaki ekip erişim limiti doldu. Yeni kullanıcı daveti için plan yükseltin.`,
       [BillingQuotaKey.ACTIVE_JOBS]: `${planLabel} planınızdaki aktif ilan limiti doldu. Yeni ilan açmadan önce bir ilanı kapatın veya planınızı yükseltin.`,
@@ -1185,8 +1218,39 @@ export class BillingService {
     const fallbackPlan = BILLING_PLAN_CATALOG[subscription.planKey];
     const features = buildFeatureSnapshot(account.featuresJson, fallbackPlan.features);
     const snapshot = asRecord(account.planSnapshotJson);
+    const subscriptionMetadata = asRecord(subscription.metadataJson);
     const currentPeriodStart = account.currentPeriodStart ?? subscription.periodStart;
     const currentPeriodEnd = account.currentPeriodEnd ?? subscription.periodEnd;
+    const now = new Date();
+    const trialStartedAt =
+      account.status === BillingAccountStatus.TRIALING
+        ? currentPeriodStart
+        : parseOptionalDate(snapshot.trialStartedAt) ??
+          parseOptionalDate(subscriptionMetadata.trialStartedAt);
+    const trialEndsAt =
+      account.status === BillingAccountStatus.TRIALING
+        ? currentPeriodEnd
+        : parseOptionalDate(snapshot.trialEndsAt) ??
+          parseOptionalDate(subscriptionMetadata.trialEndsAt);
+    const trialBlockReason =
+      asString(snapshot.trialBlockedReason) ??
+      asString(subscriptionMetadata.trialBlockedReason);
+    const trialIsEligible = trialBlockReason
+      ? false
+      : asBoolean(snapshot.trialEligible, asBoolean(subscriptionMetadata.trialEligible, true));
+    const trialIsExpired = Boolean(
+      account.status === BillingAccountStatus.TRIALING &&
+        trialEndsAt &&
+        trialEndsAt.getTime() <= now.getTime()
+    );
+    const trialIsActive = Boolean(
+      account.status === BillingAccountStatus.TRIALING &&
+        trialIsEligible &&
+        trialEndsAt &&
+        trialEndsAt.getTime() > now.getTime()
+    );
+    const daysRemaining =
+      trialIsActive && trialEndsAt ? diffDaysCeil(now, trialEndsAt) : 0;
 
     const [seatsUsed, activeJobsUsed, candidateProcessingAgg, aiInterviewsAgg, grants] =
       await Promise.all([
@@ -1316,6 +1380,16 @@ export class BillingService {
         aiInterviewsIncluded: subscription.aiInterviewsIncluded,
         features: buildFeatureSnapshot(subscription.featuresJson, fallbackPlan.features)
       },
+      trial: {
+        isActive: trialIsActive,
+        isExpired: trialIsExpired,
+        isEligible: trialIsEligible,
+        blockReason: trialBlockReason,
+        startedAt: trialStartedAt,
+        endsAt: trialEndsAt,
+        daysRemaining,
+        config: FREE_TRIAL_DEFINITION
+      },
       addOnTotals,
       usage,
       limits
@@ -1340,12 +1414,13 @@ export class BillingService {
     }
   }
 
-  private async ensureBillingAccount(tenantId: string) {
+  private async ensureBillingAccount(tenantId: string): Promise<TenantBillingAccount> {
     const existing = await this.prisma.tenantBillingAccount.findUnique({
       where: { tenantId }
     });
 
     if (existing) {
+      await this.backfillTrialClaim(existing.tenantId, existing.billingEmail);
       return existing;
     }
 
@@ -1356,25 +1431,63 @@ export class BillingService {
         role: "OWNER"
       },
       select: {
+        id: true,
         email: true
       }
     });
-    const plan = BILLING_PLAN_CATALOG.STARTER;
-    const currentPeriodStart = startOfCurrentMonth();
-    const currentPeriodEnd = startOfNextMonth();
+
+    const now = new Date();
+    const currentPeriodStart = now;
+    const currentPeriodEnd = addDaysUtc(now, FREE_TRIAL_DEFINITION.durationDays);
+    const ownerEmail = owner?.email?.trim() ?? null;
+    const trialEligibility = ownerEmail
+      ? await this.resolveTrialEligibility({ tenantId, ownerEmail })
+      : {
+          isEligible: true,
+          normalizedEmail: null,
+          blockReason: null
+        };
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        const snapshot = trialEligibility.isEligible
+          ? {
+              ...buildTrialSnapshot(),
+              trialEligible: true,
+              trialNormalizedEmail: trialEligibility.normalizedEmail,
+              trialStartedAt: currentPeriodStart.toISOString(),
+              trialEndsAt: currentPeriodEnd.toISOString()
+            }
+          : buildBlockedTrialSnapshot({
+              normalizedEmail: trialEligibility.normalizedEmail ?? "unknown",
+              blockReason:
+                trialEligibility.blockReason ?? REPEAT_TRIAL_BLOCK_REASON
+            });
+
+        const features = trialEligibility.isEligible
+          ? FREE_TRIAL_DEFINITION.features
+          : DISABLED_TRIAL_FEATURES;
+        const accountStatus = trialEligibility.isEligible
+          ? BillingAccountStatus.TRIALING
+          : BillingAccountStatus.INCOMPLETE;
+        const subscriptionStatus = accountStatus;
+        const subscriptionPeriodStart = trialEligibility.isEligible
+          ? currentPeriodStart
+          : now;
+        const subscriptionPeriodEnd = trialEligibility.isEligible
+          ? currentPeriodEnd
+          : now;
+
         const account = await tx.tenantBillingAccount.create({
           data: {
             tenantId,
-            billingEmail: owner?.email ?? null,
+            billingEmail: ownerEmail,
             currentPlanKey: BillingPlanKey.STARTER,
-            status: BillingAccountStatus.TRIALING,
-            currentPeriodStart,
-            currentPeriodEnd,
-            featuresJson: plan.features,
-            planSnapshotJson: buildPlanSnapshot(plan)
+            status: accountStatus,
+            currentPeriodStart: subscriptionPeriodStart,
+            currentPeriodEnd: subscriptionPeriodEnd,
+            featuresJson: features,
+            planSnapshotJson: snapshot
           }
         });
 
@@ -1383,21 +1496,53 @@ export class BillingService {
             tenantId,
             accountId: account.id,
             planKey: BillingPlanKey.STARTER,
-            status: BillingAccountStatus.TRIALING,
-            billingEmail: owner?.email ?? null,
-            periodStart: currentPeriodStart,
-            periodEnd: currentPeriodEnd,
-            seatsIncluded: plan.seatsIncluded,
-            activeJobsIncluded: plan.activeJobsIncluded,
-            candidateProcessingIncluded: plan.candidateProcessingIncluded,
-            aiInterviewsIncluded: plan.aiInterviewsIncluded,
-            featuresJson: plan.features,
+            status: subscriptionStatus,
+            billingEmail: ownerEmail,
+            periodStart: subscriptionPeriodStart,
+            periodEnd: subscriptionPeriodEnd,
+            seatsIncluded: asNumber(snapshot.seatsIncluded, 0),
+            activeJobsIncluded: asNumber(snapshot.activeJobsIncluded, 0),
+            candidateProcessingIncluded: asNumber(
+              snapshot.candidateProcessingIncluded,
+              0
+            ),
+            aiInterviewsIncluded: asNumber(snapshot.aiInterviewsIncluded, 0),
+            featuresJson: features,
             metadataJson: {
-              bootstrap: "default_starter_trial"
+              bootstrap: trialEligibility.isEligible ? "free_trial" : "trial_ineligible",
+              trialEligible: trialEligibility.isEligible,
+              trialNormalizedEmail: trialEligibility.normalizedEmail,
+              trialStartedAt: trialEligibility.isEligible
+                ? currentPeriodStart.toISOString()
+                : null,
+              trialEndsAt: trialEligibility.isEligible
+                ? currentPeriodEnd.toISOString()
+                : null,
+              trialBlockedReason: trialEligibility.blockReason
             },
             createdBy: "system:billing.bootstrap"
           }
         });
+
+        if (trialEligibility.isEligible && trialEligibility.normalizedEmail) {
+          await tx.billingTrialClaim.upsert({
+            where: {
+              normalizedEmail: trialEligibility.normalizedEmail
+            },
+            update: {
+              lastSeenAt: new Date()
+            },
+            create: {
+              normalizedEmail: trialEligibility.normalizedEmail,
+              emailDomain: extractEmailDomain(ownerEmail ?? trialEligibility.normalizedEmail),
+              firstTenantId: tenantId,
+              firstUserId: owner?.id ?? null,
+              metadataJson: {
+                source: "free_trial_bootstrap"
+              }
+            }
+          });
+        }
 
         return account;
       });
@@ -1413,6 +1558,8 @@ export class BillingService {
         if (concurrent) {
           return concurrent;
         }
+
+        return this.ensureBillingAccount(tenantId);
       }
 
       throw error;
@@ -1427,10 +1574,14 @@ export class BillingService {
     status: BillingAccountStatus;
     currentPeriodStart: Date | null;
     currentPeriodEnd: Date | null;
+    featuresJson: Prisma.JsonValue | null;
+    planSnapshotJson: Prisma.JsonValue | null;
   }) {
     const plan = BILLING_PLAN_CATALOG[account.currentPlanKey];
     const periodStart = account.currentPeriodStart ?? startOfCurrentMonth();
     const periodEnd = account.currentPeriodEnd ?? startOfNextMonth();
+    const snapshot = asRecord(account.planSnapshotJson);
+    const features = buildFeatureSnapshot(account.featuresJson, plan.features);
 
     return this.prisma.tenantBillingSubscription.create({
       data: {
@@ -1441,17 +1592,151 @@ export class BillingService {
         billingEmail: account.billingEmail,
         periodStart,
         periodEnd,
-        seatsIncluded: plan.seatsIncluded,
-        activeJobsIncluded: plan.activeJobsIncluded,
-        candidateProcessingIncluded: plan.candidateProcessingIncluded,
-        aiInterviewsIncluded: plan.aiInterviewsIncluded,
-        featuresJson: plan.features,
+        seatsIncluded: asNumber(snapshot.seatsIncluded, plan.seatsIncluded),
+        activeJobsIncluded: asNumber(snapshot.activeJobsIncluded, plan.activeJobsIncluded),
+        candidateProcessingIncluded: asNumber(
+          snapshot.candidateProcessingIncluded,
+          plan.candidateProcessingIncluded
+        ),
+        aiInterviewsIncluded: asNumber(
+          snapshot.aiInterviewsIncluded,
+          plan.aiInterviewsIncluded
+        ),
+        featuresJson: features,
         metadataJson: {
-          bootstrap: "default_subscription_backfill"
+          bootstrap:
+            account.status === BillingAccountStatus.TRIALING
+              ? "trial_subscription_backfill"
+              : "default_subscription_backfill",
+          trialEligible: asBoolean(snapshot.trialEligible, true),
+          trialBlockedReason: asString(snapshot.trialBlockedReason),
+          trialStartedAt: parseOptionalDate(snapshot.trialStartedAt)?.toISOString() ?? null,
+          trialEndsAt: parseOptionalDate(snapshot.trialEndsAt)?.toISOString() ?? null
         },
         createdBy: "system:billing.backfill"
       }
     });
+  }
+
+  private async backfillTrialClaim(tenantId: string, billingEmail: string | null) {
+    if (!billingEmail) {
+      return;
+    }
+
+    const normalizedEmail = normalizeTrialEmail(billingEmail);
+    const existingClaim = await this.prisma.billingTrialClaim.findUnique({
+      where: {
+        normalizedEmail
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (existingClaim) {
+      return;
+    }
+
+    const owner = await this.prisma.user.findFirst({
+      where: {
+        tenantId,
+        deletedAt: null,
+        role: "OWNER"
+      },
+      select: {
+        id: true
+      }
+    });
+
+    try {
+      await this.prisma.billingTrialClaim.create({
+        data: {
+          normalizedEmail,
+          emailDomain: extractEmailDomain(billingEmail),
+          firstTenantId: tenantId,
+          firstUserId: owner?.id ?? null,
+          metadataJson: {
+            source: "billing_account_backfill"
+          }
+        }
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        return;
+      }
+
+      throw error;
+    }
+  }
+
+  private async resolveTrialEligibility(input: {
+    tenantId: string;
+    ownerEmail: string;
+  }) {
+    const normalizedEmail = normalizeTrialEmail(input.ownerEmail);
+    const existingClaim = await this.prisma.billingTrialClaim.findUnique({
+      where: {
+        normalizedEmail
+      }
+    });
+
+    if (existingClaim && existingClaim.firstTenantId !== input.tenantId) {
+      return {
+        isEligible: false,
+        normalizedEmail,
+        blockReason: REPEAT_TRIAL_BLOCK_REASON
+      };
+    }
+
+    const [legacyBillingAccount, legacyOwner] = await Promise.all([
+      this.prisma.tenantBillingAccount.findFirst({
+        where: {
+          tenantId: {
+            not: input.tenantId
+          },
+          billingEmail: {
+            equals: input.ownerEmail,
+            mode: "insensitive"
+          }
+        },
+        select: {
+          tenantId: true
+        }
+      }),
+      this.prisma.user.findFirst({
+        where: {
+          tenantId: {
+            not: input.tenantId
+          },
+          deletedAt: null,
+          role: "OWNER",
+          email: {
+            equals: input.ownerEmail,
+            mode: "insensitive"
+          }
+        },
+        select: {
+          tenantId: true
+        }
+      })
+    ]);
+
+    if (legacyBillingAccount || legacyOwner) {
+      return {
+        isEligible: false,
+        normalizedEmail,
+        blockReason: REPEAT_TRIAL_BLOCK_REASON
+      };
+    }
+
+    return {
+      isEligible: true,
+      normalizedEmail,
+      blockReason: null
+    };
   }
 
   private buildCheckoutUrls() {

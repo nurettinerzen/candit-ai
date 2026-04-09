@@ -857,6 +857,15 @@ export type BillingOverviewReadModel = {
     candidateProcessingIncluded: number;
     aiInterviewsIncluded: number;
   };
+  trial: {
+    isActive: boolean;
+    isExpired: boolean;
+    isEligible: boolean;
+    blockReason: string | null;
+    startedAt: string | null;
+    endsAt: string | null;
+    daysRemaining: number;
+  };
   usage: {
     currentPeriodStart: string;
     currentPeriodEnd: string;

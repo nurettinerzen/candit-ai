@@ -3,10 +3,10 @@ import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: {
-    default: "Telyx.ai",
-    template: "%s | Telyx.ai"
+    default: "Candit.ai",
+    template: "%s | Candit.ai"
   },
-  description: "Telyx public marketing experience cloned into this project."
+  description: "AI destekli ise alim platformu. Mulakat, degerlendirme ve aday yonetimini otomatiklestirin."
 };
 
 export default function PublicLayout({ children }: { children: ReactNode }) {

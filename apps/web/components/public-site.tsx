@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import styles from "./public-site.module.css";
+import { LandingHero } from "./landing-hero";
 import {
   PUBLIC_ABOUT_STATS,
   PUBLIC_ABOUT_STORY,
@@ -41,8 +42,8 @@ import {
   type PublicTimelineEntry
 } from "../lib/public-site-data";
 
-const SITE_BRAND = "Telyx.ai";
-const SITE_TAGLINE = "Tek AI, tum kanallar.";
+const SITE_BRAND = "Candit.ai";
+const SITE_TAGLINE = "AI ile ise alimin gelecegi.";
 
 function cn(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
@@ -615,296 +616,395 @@ function SolutionWorkflow({ solution }: { solution: PublicSolution }) {
 export function PublicHomePage() {
   return (
     <PublicSiteFrame>
-      {/* ═══ Hero ═══ */}
-      <section className={styles.heroSection}>
-        <div className={cn(styles.shell, styles.heroGrid)}>
-          <div className={styles.heroCopy}>
-            <span className={styles.heroKicker}>Telefon. WhatsApp. Chat. Email.</span>
-            <h1>Tek AI, tum kanallar.</h1>
-            <p>
-              Musterileriniz hangi kanaldan ulasirsa ulassin ayni hiz, ayni kalite ve ayni
-              profesyonellikle karsilanir. {SITE_BRAND} ile 7/24 kesintisiz musteri deneyimi
-              sunun.
-            </p>
-            <div className={styles.heroActions}>
-              <ActionLink action={{ label: "Ucretsiz Deneyin", href: "/auth/signup" }} />
-              <ActionLink
-                action={{ label: "Nasil calisir?", href: "#workflow", tone: "secondary" }}
-                tone="secondary"
-              />
-            </div>
-          </div>
-
-          <ProductStage />
-        </div>
-      </section>
-
-      {/* ═══ Manifesto / Statement ═══ */}
-      <section className={styles.section}>
-        <div className={cn(styles.shell, styles.statementCard)}>
-          <span className={styles.eyebrow}>Manifesto</span>
-          <p className={styles.statement}>
-            Musteri hangi kanaldan gelirse gelsin ayni hafiza, ayni ton ve ayni operasyon
-            sahiplenmesiyle karsilanmali. {SITE_BRAND}, bu fikri urunun merkezine yerlestirdi.
-          </p>
-        </div>
-      </section>
-
-      {/* ═══ Social proof / stats ═══ */}
-      <section className={styles.section} id="impact">
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Rakamlar"
-            title="Sonuclari olcun, farki gorun"
-            subtitle="Musterilerimizin gercek operasyon verileriyle kanitlanan performans."
-            align="center"
-          />
-          <StatsGrid items={PUBLIC_HOME_PROOF} columns={3} />
-        </div>
-      </section>
-
-      {/* ═══ Channels ═══ */}
-      <section className={cn(styles.section, styles.sectionMuted)} id="channels">
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Kanallar"
-            title="Her temas noktasinda ayni deneyim"
-            subtitle="Telefon, WhatsApp, web chat ve email uzerinden gelen tum talepler tek AI katmaniyla yonetilir."
-          />
-          <CardGrid cards={PUBLIC_HOME_CHANNELS} columns={4} />
-        </div>
-      </section>
-
-      {/* ═══ Workflow / How it works ═══ */}
-      <section className={styles.section} id="workflow">
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Nasil Calisir"
-            title="Dort adimda devreye alin"
-            subtitle="Isletmenizi tanitin, kanallari baglayin, AI devreye girsin, performansi izleyin."
-            align="center"
-          />
-          <StepsGrid steps={PUBLIC_HOME_STEPS} />
-        </div>
-      </section>
-
-      {/* ═══ Features / Operations ═══ */}
-      <section className={cn(styles.section, styles.sectionMuted)}>
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Ozellikler"
-            title="Dashboard, entegrasyon ve guvenlik tek catida"
-            subtitle="Operasyonunuzu uctan uca yonetin, performansinizi anlik takip edin."
-          />
-          <CardGrid cards={PUBLIC_FEATURE_OPERATIONS} />
-        </div>
-      </section>
-
-      {/* ═══ FAQ ═══ */}
-      <section className={styles.section}>
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Sik Sorulan Sorular"
-            title="Merak edilenleri yani&shy;tladik"
-            subtitle="Baslangic, entegrasyon ve operasyon hakkinda en sik gelen sorular."
-            align="center"
-          />
-          <FAQBlock items={PUBLIC_FAQ} />
-        </div>
-      </section>
-
-      {/* ═══ Final CTA ═══ */}
-      <CTASection
-        title="Musterilerinize hak ettikleri deneyimi sunun"
-        body="Ucretsiz deneme ile baslayip, dakikalar icinde ilk AI asistanlarinizi devreye alin."
-      />
+      <LandingHero />
     </PublicSiteFrame>
   );
 }
 
 export function PublicFeaturesPage() {
+  /* Inline SVG icons for feature cards */
+  const CheckSvg = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+  );
+  const SparklesSvg = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" /></svg>
+  );
+  const ArrowRightSvg = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+  );
+
+  /* Gradient classes mapped to feature groups */
+  const featureGradients = [
+    styles.ftGradBlue, styles.ftGradNavy,
+    styles.ftGradDeep, styles.ftGradCyan, styles.ftGradReverse, styles.ftGradDark
+  ];
+  const operationGradients = [styles.ftGradCyan, styles.ftGradNavy, styles.ftGradDark];
+  const stepGradients = [styles.ftGradNavy, styles.ftGradBlue, styles.ftGradDeep, styles.ftGradCyan];
+
   return (
     <PublicSiteFrame activeHref="/features">
-      {/* ═══ Hero ═══ */}
-      <section className={styles.heroSectionSlim}>
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Guclu Ozellikler"
-            title="Isletmenizi guclendirecek AI yetenekleri"
-            subtitle="Telefon, WhatsApp, web chat ve email kanallarini tek AI katmaniyla yonetin. Hizli kurulum, derin entegrasyonlar ve olceklenebilir otomasyon."
-            align="center"
-          />
-          <div className={styles.centerActions}>
-            {PUBLIC_FEATURE_HERO_ACTIONS.map((action) => (
-              <ActionLink key={action.href} action={action} tone={action.tone} />
-            ))}
+      <div className={styles.ftPage}>
+        {/* ═══ Hero with gradient blobs ═══ */}
+        <section className={styles.ftHero}>
+          <div className={styles.ftGlowBlob} style={{ width: 600, height: 600, top: -200, left: '8%', background: '#006FEB' }} aria-hidden="true" />
+          <div className={styles.ftGlowBlob} style={{ width: 450, height: 450, top: -40, right: '5%', background: '#00C4E6' }} aria-hidden="true" />
+
+          <div className={cn(styles.shell, styles.ftHeroInner)}>
+            <span className={styles.ftBadgeShimmer}>
+              <SparklesSvg />
+              Guclu Ozellikler
+            </span>
+            <h1 className={styles.ftHeroTitle}>
+              Ise alim surecinizi guclendirecek AI yetenekleri
+            </h1>
+            <p className={styles.ftHeroSubtitle}>
+              AI mulakat, aday tarama, is ilani yonetimi ve analitik araclari tek platformda. Hizli kurulum, derin entegrasyonlar ve olceklenebilir otomasyon.
+            </p>
+            <div className={styles.ftHeroActions}>
+              <a href="/waitlist" className={cn(styles.ftGlowBtn, styles.ftGlowBtnPrimary)}>
+                Ucretsiz Deneyin
+              </a>
+              <a href="#features-grid" className={cn(styles.ftGlowBtn, styles.ftGlowBtnOutline)}>
+                Ozellikleri Kesfedin
+              </a>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ═══ Feature Cards - Bento Grid ═══ */}
-      <section className={styles.section} id="feature-groups">
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Cekirdek Yetenekler"
-            title="Her kanali kapsayan AI ozellikleri"
-            subtitle="Cok kanalli iletisim, akilli asistan, e-ticaret entegrasyonlari ve gercek zamanli izleme tek platformda."
-          />
-          <CardGrid cards={PUBLIC_FEATURE_GROUPS.slice(0, 2)} columns={2} />
-          <CardGrid cards={PUBLIC_FEATURE_GROUPS.slice(2)} columns={4} />
-        </div>
-      </section>
+        {/* ═══ Feature Cards - Bento Grid with Mouse-Tracking Glow ═══ */}
+        <section className={styles.ftSection} id="features-grid">
+          <div className={styles.shell}>
+            <div>
+              {/* Row 1: 2 big cards */}
+              <div className={styles.ftBentoRow2}>
+                {PUBLIC_FEATURE_GROUPS.slice(0, 2).map((feature, index) => (
+                  <article key={feature.title} className={cn(styles.ftCard, styles.ftCardLg)}>
+                    <div className={styles.ftCardInner}>
+                      <div className={cn(styles.ftIcon, featureGradients[index])} />
+                      <h3 className={cn(styles.ftCardTitle, styles.ftCardTitleLg)}>{feature.title}</h3>
+                      <p className={styles.ftCardDesc}>{feature.body}</p>
+                      {feature.bullets?.length ? (
+                        <div className={styles.ftCheckList}>
+                          {feature.bullets.map((item) => (
+                            <div key={item} className={styles.ftCheckItem}>
+                              <span className={styles.ftCheck}><CheckSvg /></span>
+                              <span>{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
 
-      {/* ═══ Deep Dive - Operations ═══ */}
-      <section className={cn(styles.section, styles.sectionMuted)}>
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Derinlemesine Inceleme"
-            title="Operasyon gorunurlugu ve yonetim araclari"
-            subtitle="Dashboard, guvenlik ve entegrasyon katmanlariyla ekibiniz ve yoneticileriniz ayni veriden karar verir."
-            align="center"
-          />
-          <CardGrid cards={PUBLIC_FEATURE_OPERATIONS} />
-        </div>
-      </section>
+              {/* Row 2: 4 smaller cards */}
+              <div className={styles.ftBentoRow4}>
+                {PUBLIC_FEATURE_GROUPS.slice(2).map((feature, index) => (
+                  <article key={feature.title} className={cn(styles.ftCard, styles.ftCardSm)}>
+                    <div className={styles.ftCardInner}>
+                      <div className={cn(styles.ftIcon, featureGradients[index + 2])} />
+                      <h3 className={styles.ftCardTitle}>{feature.title}</h3>
+                      <p className={styles.ftCardDesc}>{feature.body}</p>
+                      {feature.bullets?.length ? (
+                        <div className={styles.ftCheckList}>
+                          {feature.bullets.map((item) => (
+                            <div key={item} className={styles.ftCheckItem}>
+                              <span className={styles.ftCheck}><CheckSvg /></span>
+                              <span>{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
 
-      {/* ═══ Easy Setup - Timeline ═══ */}
-      <section className={styles.section}>
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Kolay Kurulum"
-            title="Dakikalar icinde yayina alin"
-            subtitle="Dort adimda AI asistaninizi kurun ve tum kanallarinizda canli hizmete baslayin."
-            align="center"
-          />
-          <StepsGrid steps={PUBLIC_HOME_STEPS} />
-        </div>
-      </section>
+        {/* ═══ Deep Dive - Shimmer Top-Line Cards ═══ */}
+        <section className={styles.ftSectionBg}>
+          <div className={styles.ftGlowBlob} style={{ width: 500, height: 500, bottom: -100, left: '50%', marginLeft: -250, background: '#006FEB', opacity: 0.06 }} aria-hidden="true" />
 
-      {/* ═══ Sector Solutions ═══ */}
-      <section className={cn(styles.section, styles.sectionMuted)}>
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Sektorel Cozumler"
-            title="Her sektore ozel hazir AI akislari"
-            subtitle="E-ticaret, restoran, salon ve musteri destegi icin optimize edilmis cozumler."
-          />
-          <CardGrid
-            cards={PUBLIC_SOLUTIONS.map((solution) => ({
-              title: solution.title,
-              body: solution.shortDescription,
-              bullets: solution.channels,
-              href: `/solutions/${solution.slug}`,
-              actionLabel: "Cozumu incele"
-            }))}
-            columns={2}
-          />
-        </div>
-      </section>
+          <div className={cn(styles.shell)} style={{ position: 'relative', zIndex: 10 }}>
+            <div className={styles.ftSectionHeader}>
+              <h2 className={styles.ftSectionTitle}>Operasyon gorunurlugu ve yonetim araclari</h2>
+              <p className={styles.ftSectionSubtitle}>
+                Dashboard, guvenlik ve entegrasyon katmanlariyla ekibiniz ve yoneticileriniz ayni veriden karar verir.
+              </p>
+            </div>
+            <div className={styles.ftDeepGrid}>
+              {PUBLIC_FEATURE_OPERATIONS.map((op, index) => (
+                <article key={op.title} className={styles.ftDeepCard}>
+                  <div style={{ position: 'relative', zIndex: 10 }}>
+                    <div className={cn(styles.ftIcon, operationGradients[index])} />
+                    <h3 className={styles.ftCardTitle}>{op.title}</h3>
+                    <p className={styles.ftCardDesc}>{op.body}</p>
+                    {op.bullets?.length ? (
+                      <div className={styles.ftCheckList}>
+                        {op.bullets.map((item) => (
+                          <div key={item} className={styles.ftCheckItem}>
+                            <span className={styles.ftCheck}><CheckSvg /></span>
+                            <span>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
 
-      {/* ═══ FAQ ═══ */}
-      <section className={styles.section}>
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Sik Sorulan Sorular"
-            title="Merak edilenler"
-            subtitle="Ozellikler, entegrasyon ve kullanim hakkinda en cok sorulan sorular."
-            align="center"
-          />
-          <FAQBlock items={PUBLIC_FAQ} />
-        </div>
-      </section>
+        {/* ═══ Easy Setup - Glowing Timeline ═══ */}
+        <section className={styles.ftSection}>
+          <div className={styles.shell}>
+            <div className={styles.ftSectionHeader}>
+              <h2 className={styles.ftSectionTitle}>Dakikalar icinde yayina alin</h2>
+              <p className={styles.ftSectionSubtitle}>
+                Dort adimda AI mulakat sisteminizi kurun ve ise alim surecleinizde canli hizmete baslayin.
+              </p>
+            </div>
+            <div className={styles.ftStepsGrid}>
+              <div className={styles.ftConnector} aria-hidden="true" />
+              {PUBLIC_HOME_STEPS.map((step, index) => (
+                <div key={step.step} className={styles.ftStep}>
+                  <div className={cn(styles.ftStepCircle, stepGradients[index % stepGradients.length])} />
+                  <div className={styles.ftStepNumber}>{step.step}</div>
+                  <h3 className={styles.ftStepTitle}>{step.title}</h3>
+                  <p className={styles.ftStepDesc}>{step.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-      {/* ═══ CTA ═══ */}
-      <CTASection
-        title="AI ile musteri deneyiminizi donusturun"
-        body="Tum ozelliklerimizi ucretsiz deneyin. Kurulum dakikalar icinde tamamlanir, teknik bilgi gerekmez."
-      />
+        {/* ═══ Sector Solution Cards ═══ */}
+        <section className={styles.ftSection}>
+          <div className={styles.shell}>
+            <div className={styles.ftSectionHeader}>
+              <h2 className={styles.ftSectionTitle}>Her sektore ozel hazir AI akislari</h2>
+              <p className={styles.ftSectionSubtitle}>
+                E-ticaret, restoran, salon ve musteri destegi icin optimize edilmis cozumler.
+              </p>
+            </div>
+            <div className={styles.ftSolutionGrid}>
+              {PUBLIC_SOLUTIONS.map((solution, index) => (
+                <a key={solution.slug} href={`/solutions/${solution.slug}`} className={styles.ftSolutionCard}>
+                  <div className={styles.ftSolutionCardInner}>
+                    <div className={cn(styles.ftSolutionIcon, featureGradients[index % featureGradients.length])} />
+                    <div style={{ flex: 1 }}>
+                      <h3 className={styles.ftSolutionTitle}>{solution.title}</h3>
+                      <p className={styles.ftSolutionDesc}>{solution.shortDescription}</p>
+                      <span className={styles.ftSolutionLink}>
+                        Cozumu incele <ArrowRightSvg />
+                      </span>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ═══ FAQ ═══ */}
+        <section className={styles.ftSection}>
+          <div className={styles.shell}>
+            <div className={styles.ftSectionHeader}>
+              <h2 className={styles.ftSectionTitle}>Merak edilenler</h2>
+              <p className={styles.ftSectionSubtitle}>
+                Ozellikler, entegrasyon ve kullanim hakkinda en cok sorulan sorular.
+              </p>
+            </div>
+            <FAQBlock items={PUBLIC_FAQ} />
+          </div>
+        </section>
+
+        {/* ═══ CTA - Glow Section ═══ */}
+        <section className={styles.ftSection}>
+          <div className={styles.shell}>
+            <div className={styles.ftCta}>
+              <div className={styles.ftCtaInner}>
+                <h2 className={styles.ftCtaTitle}>AI ile ise alim deneyiminizi donusturun</h2>
+                <p className={styles.ftCtaSubtitle}>
+                  Tum ozelliklerimizi ucretsiz deneyin. Kurulum dakikalar icinde tamamlanir, teknik bilgi gerekmez.
+                </p>
+                <div className={styles.ftCtaActions}>
+                  <a href="/waitlist" className={cn(styles.ftGlowBtn, styles.ftCtaBtnWhite)}>
+                    Ucretsiz Deneyin
+                  </a>
+                  <a href="/contact" className={cn(styles.ftGlowBtn, styles.ftCtaBtnGhost)}>
+                    Bize Ulasin
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </PublicSiteFrame>
   );
 }
 
 export function PublicSolutionsPage() {
+  const CheckSvg = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+  );
+  const SparklesSvg = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" /></svg>
+  );
+  const ArrowRightSvg = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+  );
+
+  const solutionGradients = [
+    styles.ftGradBlue, styles.ftGradNavy, styles.ftGradCyan, styles.ftGradDeep
+  ];
+  const advantageGradients = [
+    styles.ftGradCyan, styles.ftGradNavy, styles.ftGradBlue, styles.ftGradDeep
+  ];
+
   return (
     <PublicSiteFrame activeHref="/solutions">
-      {/* ═══ Hero ═══ */}
-      <section className={styles.heroSectionSlim}>
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Sektorel AI Cozumleri"
-            title="Sektorunuze ozel AI asistan"
-            subtitle="E-ticaret, restoran, salon ve musteri destegi icin ozel olarak tasarlanmis hazir AI akislari ile hemen baslayabilirsiniz."
-            align="center"
-          />
-          <div className={styles.centerActions}>
-            <ActionLink action={{ label: "Cozumleri Kesfedin", href: "#solutions-grid" }} />
-            <ActionLink action={{ label: "Bize Ulasin", href: "/contact", tone: "secondary" }} />
+      <div className={styles.solPage}>
+        {/* ═══ Hero ═══ */}
+        <section className={styles.solHero}>
+          <div className={styles.solGlowBlob} style={{ width: 384, height: 384, top: 80, left: '25%', background: '#006FEB' }} aria-hidden="true" />
+          <div className={styles.solGlowBlob} style={{ width: 288, height: 288, bottom: 0, right: '25%', background: '#00C4E6' }} aria-hidden="true" />
+
+          <div className={cn(styles.shell, styles.solHeroInner)}>
+            <span className={styles.solBadge}>
+              <SparklesSvg />
+              Sektorel AI Cozumleri
+            </span>
+            <h1 className={styles.solHeroTitle}>
+              Sektorunuze ozel AI mulakat asistani
+            </h1>
+            <p className={styles.solHeroSubtitle}>
+              E-ticaret, restoran, salon ve musteri destegi icin ozel olarak tasarlanmis hazir AI akislari ile hemen baslayabilirsiniz.
+            </p>
+            <div className={styles.solHeroActions}>
+              <a href="#solutions-grid" className={cn(styles.solGlowBtn, styles.solGlowBtnPrimary)}>
+                Cozumleri Kesfedin
+              </a>
+              <a href="/contact" className={cn(styles.solGlowBtn, styles.solGlowBtnOutline)}>
+                Bize Ulasin
+              </a>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ═══ Stats Bar ═══ */}
-      <section className={cn(styles.section, styles.sectionMuted)}>
-        <div className={styles.shell}>
-          <StatsGrid items={PUBLIC_SOLUTIONS_STATS} columns={4} />
-        </div>
-      </section>
+        {/* ═══ Stats Bar (Animated) ═══ */}
+        <section className={styles.solStatsBar}>
+          <div className={styles.shell}>
+            <div className={styles.solStatsGrid}>
+              {PUBLIC_SOLUTIONS_STATS.map((stat) => (
+                <div key={stat.label} className={styles.solStatItem}>
+                  <div className={styles.solStatValue}>{stat.value}</div>
+                  <div className={styles.solStatLabel}>{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-      {/* ═══ Solutions Grid ═══ */}
-      <section className={styles.section} id="solutions-grid">
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Cozumlerimiz"
-            title="Sektorunuzu secin, hemen baslayin"
-            subtitle="Her cozum, sektorun ihtiyaclarina ozel AI akislari, entegrasyonlar ve kanal destegiyle donatildi."
-            align="center"
-          />
-          <CardGrid
-            cards={PUBLIC_SOLUTIONS.map((solution) => ({
-              title: solution.title,
-              body: solution.shortDescription,
-              bullets: solution.useCases,
-              href: `/solutions/${solution.slug}`,
-              actionLabel: "Cozumu incele"
-            }))}
-            columns={2}
-          />
-        </div>
-      </section>
+        {/* ═══ Solutions Grid ═══ */}
+        <section className={styles.solSection} id="solutions-grid">
+          <div className={styles.shell}>
+            <div className={styles.solSectionHeader}>
+              <h2 className={styles.solSectionTitle}>Sektorunuzu secin, hemen baslayin</h2>
+              <p className={styles.solSectionSubtitle}>
+                Her cozum, sektorun ihtiyaclarina ozel AI akislari, entegrasyonlar ve kanal destegiyle donatildi.
+              </p>
+            </div>
+            <div className={styles.solGrid}>
+              {PUBLIC_SOLUTIONS.map((solution, index) => (
+                <a key={solution.slug} href={`/solutions/${solution.slug}`} className={styles.solCard}>
+                  <div className={cn(styles.solCardBlur, solutionGradients[index % solutionGradients.length])} aria-hidden="true" />
+                  <div className={styles.solCardContent}>
+                    <div className={cn(styles.solCardIcon, solutionGradients[index % solutionGradients.length])} />
+                    <h3 className={styles.solCardTitle}>{solution.title}</h3>
+                    <p className={styles.solCardDesc}>{solution.shortDescription}</p>
+                    <div className={styles.solCheckList}>
+                      {solution.useCases.map((useCase) => (
+                        <div key={useCase} className={styles.solCheckItem}>
+                          <span className={styles.solCheck}><CheckSvg /></span>
+                          <span>{useCase}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <span className={styles.solCardCta}>
+                      Cozumu incele
+                      <ArrowRightSvg />
+                    </span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
 
-      {/* ═══ Advantages Grid ═══ */}
-      <section className={cn(styles.section, styles.sectionMuted)}>
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Neden Telyx?"
-            title="Hizli kurulum, genis kanal kapsami, tam uyumluluk"
-            subtitle="Sektorden bagimsiz olarak her isletmeye deger katan temel avantajlar."
-            align="center"
-          />
-          <CardGrid cards={PUBLIC_SOLUTIONS_ADVANTAGES} columns={4} />
-        </div>
-      </section>
+        {/* ═══ Advantages Bento Grid ═══ */}
+        <section className={styles.solSectionMuted}>
+          <div className={styles.shell}>
+            <div className={styles.solSectionHeader}>
+              <h2 className={styles.solSectionTitle}>Neden Candit.ai?</h2>
+              <p className={styles.solSectionSubtitle}>
+                Sektorden bagimsiz olarak her isletmeye deger katan temel avantajlar.
+              </p>
+            </div>
+            <div className={styles.solBentoGrid}>
+              {PUBLIC_SOLUTIONS_ADVANTAGES.map((advantage, index) => (
+                <article key={advantage.title} className={styles.solBentoItem}>
+                  <div className={styles.solBentoItemInner}>
+                    <div className={cn(styles.solBentoIcon, advantageGradients[index % advantageGradients.length])} />
+                    <h3 className={styles.solBentoTitle}>{advantage.title}</h3>
+                    <p className={styles.solBentoDesc}>{advantage.body}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
 
-      {/* ═══ FAQ ═══ */}
-      <section className={styles.section}>
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Sik Sorulan Sorular"
-            title="Karar oncesi merak edilenler"
-            subtitle="Cozumler, entegrasyon sureci ve fiyatlandirma hakkinda en sik sorulan sorular."
-            align="center"
-          />
-          <FAQBlock items={PUBLIC_FAQ} />
-        </div>
-      </section>
+        {/* ═══ FAQ ═══ */}
+        <section className={styles.solSection}>
+          <div className={styles.shell}>
+            <div className={styles.solSectionHeader}>
+              <h2 className={styles.solSectionTitle}>Karar oncesi merak edilenler</h2>
+              <p className={styles.solSectionSubtitle}>
+                Cozumler, entegrasyon sureci ve fiyatlandirma hakkinda en sik sorulan sorular.
+              </p>
+            </div>
+            <FAQBlock items={PUBLIC_FAQ} />
+          </div>
+        </section>
 
-      {/* ═══ CTA ═══ */}
-      <CTASection
-        title="Sektorunuze ozel AI cozumunu hemen deneyin"
-        body="Listede olsun ya da olmasin, isletmenize uygun AI akisini birlikte tasarlayalim."
-        primary={{ label: "Bize Ulasin", href: "/contact" }}
-        secondary={{ label: "Demo Talep Edin", href: "/waitlist", tone: "secondary" }}
-      />
+        {/* ═══ CTA ═══ */}
+        <section className={styles.solSection}>
+          <div className={styles.shell}>
+            <div className={styles.solCta}>
+              <div className={styles.solCtaInner}>
+                <h2 className={styles.solCtaTitle}>Sektorunuze ozel AI cozumunu hemen deneyin</h2>
+                <p className={styles.solCtaSubtitle}>
+                  Listede olsun ya da olmasin, isletmenize uygun AI akisini birlikte tasarlayalim.
+                </p>
+                <div className={styles.solCtaActions}>
+                  <a href="/contact" className={styles.solCtaBtnWhite}>
+                    Bize Ulasin
+                  </a>
+                  <a href="/waitlist" className={styles.solCtaBtnGhost}>
+                    Demo Talep Edin
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </PublicSiteFrame>
   );
 }
@@ -1030,96 +1130,227 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
 }
 
 export function PublicPricingPage() {
+  const OVERAGE_ROWS = [
+    {
+      channel: "Destek etkilesimi",
+      unit: "1 etkilesim",
+      rate: "2,5\u20BA/etkilesim",
+      note: "PAYG bakiyesinden duser. Aylik planlarda once dahil kullanim, sonra ek paket, ardindan yazili kullanim asimi uygulanir."
+    },
+    {
+      channel: "Ses dakikasi",
+      unit: "1 dk",
+      rate: "23\u20BA/dk",
+      note: "PAYG cuzdanindan duser. Pro ve Enterprise planlarinda dahil dakikalar bittiginde ses asimi devreye girer."
+    }
+  ];
+
   return (
     <PublicSiteFrame activeHref="/pricing">
-      {/* ═══ Hero ═══ */}
-      <section className={styles.heroSectionSlim}>
+      {/* ══ Hero ══ */}
+      <section className={styles.prHero}>
+        <div className={styles.prGlowBlob} style={{ width: 500, height: 500, top: -100, left: "10%" }} aria-hidden="true" />
+        <div className={styles.prGlowBlobPurple} style={{ width: 400, height: 400, top: 50, right: "5%" }} aria-hidden="true" />
+
+        <div className={cn(styles.shell, styles.prHeroInner)}>
+          <span className={styles.prBadge}>
+            <span className={styles.prBadgeDot} />
+            Seffaf Fiyatlandirma
+          </span>
+          <h1 className={styles.prHeroTitle}>
+            Ihtiyaciniza uygun plani secin
+          </h1>
+          <p className={styles.prHeroSubtitle}>
+            Ucretsiz deneme ile baslayip, buyudukce olceklendirin. Gizli ucret yok, surpriz yok.
+          </p>
+          <p className={styles.prHeroKicker}>
+            Ucretsiz deneme &mdash; Kredi karti gerekmez
+          </p>
+        </div>
+      </section>
+
+      {/* ══ Plan Cards ══ */}
+      <section className={styles.prPlansSection}>
         <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Seffaf Fiyatlandirma"
-            title="Ihtiyaciniza uygun plani secin"
-            subtitle="Ucretsiz deneme ile baslayip, buyudukce olceklendirin. Gizli ucret yok, surpriz yok."
-            align="center"
-          />
-          <div className={styles.centerActions}>
-            <span className={styles.heroKicker}>
-              15 dakika ucretsiz deneme &mdash; Kredi karti gerekmez
-            </span>
+          <div className={styles.prCardsGrid}>
+            {PUBLIC_PRICING_PLANS.map((plan, i) => {
+              const isPopular = plan.badge === "En Pop\u00FCler";
+              const isEnterprise = plan.title === "Kurumsal";
+              const isTrial = plan.title === "Deneme";
+
+              return (
+                <article
+                  key={plan.title}
+                  className={cn(styles.prPlanCard, isPopular && styles.prPlanCardPopular)}
+                >
+                  {/* Popular badge */}
+                  {isPopular && (
+                    <div className={styles.prPopularBadgeWrap}>
+                      <span className={styles.prPopularBadge}>En Pop&uuml;ler</span>
+                    </div>
+                  )}
+
+                  {/* Plan header */}
+                  <div className={styles.prPlanHeader}>
+                    <h3 className={styles.prPlanName}>{plan.title}</h3>
+                    <p className={styles.prPlanDesc}>{plan.body}</p>
+
+                    {/* Price */}
+                    <div className={styles.prPriceBlock}>
+                      {isTrial ? (
+                        <span className={styles.prPriceFree}>&Uuml;cretsiz</span>
+                      ) : isEnterprise ? (
+                        <span className={styles.prPriceContact}>Iletisime Gecin</span>
+                      ) : (
+                        <>
+                          <span className={styles.prPriceAmount}>
+                            {plan.meta
+                              ? plan.meta.split("/")[0]?.split("•")[0]?.trim() ?? ""
+                              : ""}
+                          </span>
+                          <span className={styles.prPricePeriod}>/ay</span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Sub-price info */}
+                    <div className={styles.prSubPrice}>
+                      {isTrial && plan.badge ? (
+                        <span>{plan.badge}</span>
+                      ) : isEnterprise ? (
+                        <span>&Ouml;zel fiyatlandirma</span>
+                      ) : plan.meta?.includes("Asim") ? (
+                        <span>Asim: {plan.meta.split("Asim:")[1]?.split("•")[0]?.trim()}</span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className={styles.prDivider} />
+
+                  {/* Features */}
+                  <ul className={styles.prFeatureList}>
+                    {plan.bullets?.map((bullet) => (
+                      <li key={bullet} className={styles.prFeatureItem}>
+                        <span className={styles.prCheckIcon}>&#10003;</span>
+                        <span>{bullet}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* CTA Button */}
+                  {plan.href && plan.actionLabel ? (
+                    <div className={styles.prCardCta}>
+                      <a
+                        href={plan.href}
+                        className={cn(
+                          styles.prCardBtn,
+                          isPopular && styles.prCardBtnPopular
+                        )}
+                      >
+                        <span>{plan.actionLabel}</span>
+                        <span aria-hidden="true">&rarr;</span>
+                      </a>
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* ═══ Plan cards ═══ */}
+      {/* ══ Pay As You Go ══ */}
       <section className={styles.section}>
         <div className={styles.shell}>
-          <div className={styles.pricingGrid}>
-            {PUBLIC_PRICING_PLANS.map((plan) => (
-              <article key={plan.title} className={cn(styles.card, styles.pricingCard)}>
-                {plan.badge ? <span className={styles.cardBadge}>{plan.badge}</span> : null}
-                <h3>{plan.title}</h3>
-                <div className={styles.cardMeta}>{plan.meta}</div>
-                <p>{plan.body}</p>
-                <div className={styles.bulletList}>
-                  {plan.bullets?.map((bullet) => (
-                    <span key={bullet}>&#10003; {bullet}</span>
-                  ))}
-                </div>
-                {plan.href && plan.actionLabel ? (
-                  <ActionLink action={{ label: plan.actionLabel, href: plan.href }} fullWidth />
-                ) : null}
-              </article>
-            ))}
+          <div className={styles.prPaygHeader}>
+            <span className={styles.prPaygBadge}>
+              <span className={styles.prBadgeDot} />
+              Esnek Kullanim
+            </span>
+            <h2 className={styles.prSectionTitle}>Kullandikca Ode</h2>
+            <p className={styles.prSectionSubtitle}>
+              Aylik taahhut yok. Ses dakikalari ve yazili etkilesimler kullanim bakiyesinden duser.
+            </p>
+          </div>
+
+          <div className={styles.prPaygCard}>
+            <div className={styles.prPaygPrice}>
+              {PUBLIC_PAY_AS_YOU_GO.meta?.split("•")[0]?.trim()}
+              <span className={styles.prPaygUnit}>/dk</span>
+            </div>
+            <p className={styles.prPaygNote}>
+              {PUBLIC_PAY_AS_YOU_GO.meta?.split("•")[1]?.trim() || "Minimum 4 dk yukleme (92\u20BA)"}
+            </p>
+
+            <div className={styles.prPaygTags}>
+              {PUBLIC_PAY_AS_YOU_GO.bullets?.map((tag) => (
+                <span key={tag} className={styles.prPaygTag}>{tag}</span>
+              ))}
+            </div>
+
+            {PUBLIC_PAY_AS_YOU_GO.href && PUBLIC_PAY_AS_YOU_GO.actionLabel ? (
+              <a href={PUBLIC_PAY_AS_YOU_GO.href} className={styles.prPaygBtn}>
+                <span>{PUBLIC_PAY_AS_YOU_GO.actionLabel}</span>
+                <span aria-hidden="true">&rarr;</span>
+              </a>
+            ) : null}
           </div>
         </div>
       </section>
 
-      {/* ═══ Pay As You Go ═══ */}
-      <section className={cn(styles.section, styles.sectionMuted)}>
+      {/* ══ Overage Details ══ */}
+      <section className={styles.section}>
         <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Esnek Kullanim"
-            title="Kullandikca Ode"
-            subtitle="Aylik taahhut yok. Ses dakikalari ve yazili etkilesimler kullanim bakiyesinden duser."
-            align="center"
-          />
-          <div className={styles.paygLayout}>
-            <article className={cn(styles.card, styles.paygCard)}>
-              <div className={styles.cardMeta}>{PUBLIC_PAY_AS_YOU_GO.meta}</div>
-              <p>{PUBLIC_PAY_AS_YOU_GO.body}</p>
-              <div className={styles.bulletList}>
-                {PUBLIC_PAY_AS_YOU_GO.bullets?.map((bullet) => (
-                  <span key={bullet}>&#10003; {bullet}</span>
-                ))}
-              </div>
-              {PUBLIC_PAY_AS_YOU_GO.href && PUBLIC_PAY_AS_YOU_GO.actionLabel ? (
-                <ActionLink
-                  action={{
-                    label: PUBLIC_PAY_AS_YOU_GO.actionLabel,
-                    href: PUBLIC_PAY_AS_YOU_GO.href
-                  }}
-                  fullWidth
-                />
-              ) : null}
-            </article>
+          <div className={styles.prOverageHeader}>
+            <h2 className={styles.prSectionTitle}>Paket asim detaylari</h2>
+            <p className={styles.prSectionSubtitle}>
+              Paket asimi, planinizda tanimli dakikalarin bitmesinden sonra olusan ek kullanimi ifade eder.
+            </p>
+          </div>
 
-            <article className={styles.card}>
-              <span className={styles.cardEyebrow}>Paket asim detaylari</span>
-              <h3>Limit sonrasi davranis net ve onceden bilinen kurallara dayanir.</h3>
-              <p>
-                Plan limitleri asildiktan sonra nasil ucretlendirildiginizi acikca gorun.
-              </p>
-              <div className={styles.bulletList}>
-                <span>&#10003; Dahil kullanim once tuketilir</span>
-                <span>&#10003; Ek paket veya kullandikca ode modeli devreye girer</span>
-                <span>&#10003; Ses dakikasi ve yazili etkilesim ayri izlenir</span>
-                <span>&#10003; Kurumsalda ozel SLA ve destek seviyeleri eklenir</span>
-              </div>
-            </article>
+          <div className={styles.prTableWrap}>
+            <table className={styles.prTable}>
+              <thead>
+                <tr>
+                  <th>Kanal</th>
+                  <th>Birim</th>
+                  <th>Asim ucreti</th>
+                  <th>Not</th>
+                </tr>
+              </thead>
+              <tbody>
+                {OVERAGE_ROWS.map((row) => (
+                  <tr key={row.channel}>
+                    <td className={styles.prTableBold}>{row.channel}</td>
+                    <td>{row.unit}</td>
+                    <td>{row.rate}</td>
+                    <td className={styles.prTableMuted}>{row.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
 
-      {/* ═══ FAQ ═══ */}
+      {/* ══ CTA Section ══ */}
+      <section className={styles.section}>
+        <div className={styles.shell}>
+          <div className={styles.prCtaSection}>
+            <h2 className={styles.prCtaTitle}>Hala kararsiz misiniz?</h2>
+            <p className={styles.prCtaBody}>
+              Ihtiyaciniza gore dogru paketi birlikte secelim.
+            </p>
+            <a href="/waitlist" className={styles.prGlowBtn}>
+              <span>Demo Talep Edin</span>
+              <span aria-hidden="true">&rarr;</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ FAQ ══ */}
       <section className={styles.section}>
         <div className={styles.shell}>
           <SectionHeader
@@ -1132,13 +1363,15 @@ export function PublicPricingPage() {
         </div>
       </section>
 
-      {/* ═══ Final CTA ═══ */}
-      <CTASection
-        title="Hangi plan size uygun, birlikte belirleyelim"
-        body="Ucretsiz demo ile baslayip, ihtiyaciniza gore dogru paketi secin."
-        primary={{ label: "Demo Talep Edin", href: "/waitlist" }}
-        secondary={{ label: "Iletisime Gecin", href: "/contact", tone: "secondary" }}
-      />
+      {/* ══ Final contact link ══ */}
+      <section className={styles.section}>
+        <div className={styles.shell}>
+          <p className={styles.prContactLine}>
+            Sorulariniz mi var?{" "}
+            <a href="/contact" className={styles.prContactLink}>Bize ulasin</a>
+          </p>
+        </div>
+      </section>
     </PublicSiteFrame>
   );
 }

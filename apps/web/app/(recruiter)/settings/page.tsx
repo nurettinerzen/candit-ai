@@ -549,6 +549,10 @@ export default function SettingsPage() {
     }
   }
 
+  const billingHasTrialContext = billing
+    ? billing.trial.isActive || billing.trial.isExpired || !billing.trial.isEligible
+    : false;
+
   return (
     <section className="page-grid">
       <div className="section-head" style={{ marginBottom: 0 }}>
@@ -800,15 +804,21 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 }}>
-                      {billing.planCatalog.map((plan) => (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 }}>
+                      {billing.planCatalog.map((plan) => {
+                        const isCurrentPlan =
+                          !billingHasTrialContext && plan.key === billing.account.currentPlanKey;
+                        const isTrialStarter =
+                          billingHasTrialContext && plan.key === "STARTER";
+
+                        return (
                         <div
                           key={plan.key}
                           style={{
                             border: plan.recommended ? "1px solid rgba(124,115,250,0.48)" : "1px solid var(--border)",
                             borderRadius: 14,
                             padding: 16,
-                            background: plan.key === billing.account.currentPlanKey ? "rgba(124,115,250,0.08)" : "rgba(255,255,255,0.02)"
+                            background: isCurrentPlan ? "rgba(124,115,250,0.08)" : "rgba(255,255,255,0.02)"
                           }}
                         >
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
@@ -816,8 +826,10 @@ export default function SettingsPage() {
                               <div style={{ fontSize: 18, fontWeight: 700 }}>{t(plan.label)}</div>
                               <p className="small text-muted" style={{ margin: "6px 0 0" }}>{t(plan.description)}</p>
                             </div>
-                            {plan.key === billing.account.currentPlanKey ? (
+                            {isCurrentPlan ? (
                               <StatusBadge ready label={t("Aktif plan")} />
+                            ) : isTrialStarter ? (
+                              <StatusBadge ready label={t("Deneme")} variant="warning" />
                             ) : plan.recommended ? (
                               <StatusBadge ready label={t("Önerilen")} />
                             ) : null}
@@ -850,7 +862,7 @@ export default function SettingsPage() {
                               <button
                                 type="button"
                                 className="ghost-button"
-                                disabled={!billing.stripeReady || billing.account.currentPlanKey === plan.key || busyKey === `billing-plan:${plan.key}`}
+                                disabled={!billing.stripeReady || isCurrentPlan || busyKey === `billing-plan:${plan.key}`}
                                 onClick={() =>
                                   void handlePlanCheckout(
                                     plan.key as Exclude<BillingPlanKey, "ENTERPRISE">
@@ -859,14 +871,17 @@ export default function SettingsPage() {
                               >
                                 {busyKey === `billing-plan:${plan.key}`
                                   ? t("Hazırlanıyor...")
-                                  : billing.account.currentPlanKey === plan.key
+                                  : isCurrentPlan
                                     ? t("Aktif plan")
-                                    : t(`${plan.label} seç`)}
+                                    : isTrialStarter
+                                      ? t("Starter'a geç")
+                                      : t(`${plan.label} seç`)}
                               </button>
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </section>
 
@@ -905,7 +920,7 @@ export default function SettingsPage() {
                             type="button"
                             className="ghost-button"
                             style={{ marginTop: 14 }}
-                            disabled={!billing.stripeReady || busyKey === `billing-addon:${addon.key}`}
+                            disabled={billingHasTrialContext || !billing.stripeReady || busyKey === `billing-addon:${addon.key}`}
                             onClick={() => void handleAddOnCheckout(addon.key)}
                           >
                             {busyKey === `billing-addon:${addon.key}` ? t("Hazırlanıyor...") : t("Ödeme linki oluştur")}
@@ -1693,9 +1708,37 @@ function NoticeBox({ message, tone }: { message: string; tone: "success" | "dang
   );
 }
 
-function StatusBadge({ ready, label }: { ready: boolean; label?: string }) {
+function StatusBadge({
+  ready,
+  label,
+  variant
+}: {
+  ready: boolean;
+  label?: string;
+  variant?: "success" | "warning" | "danger" | "muted";
+}) {
   const { t } = useUiText();
   const text = t(label ?? (ready ? "Hazır" : "Sorunlu"));
+  const resolvedVariant = variant ?? (ready ? "success" : "muted");
+  const tones = {
+    success: {
+      background: "rgba(34,197,94,0.12)",
+      color: "var(--success, #22c55e)"
+    },
+    warning: {
+      background: "rgba(245,158,11,0.12)",
+      color: "var(--warn, #f59e0b)"
+    },
+    danger: {
+      background: "rgba(239,68,68,0.12)",
+      color: "var(--danger, #ef4444)"
+    },
+    muted: {
+      background: "rgba(113,113,122,0.12)",
+      color: "var(--text-dim)"
+    }
+  } as const;
+
   return (
     <span
       style={{
@@ -1703,8 +1746,8 @@ function StatusBadge({ ready, label }: { ready: boolean; label?: string }) {
         padding: "2px 10px",
         borderRadius: 10,
         fontWeight: 600,
-        background: ready ? "rgba(34,197,94,0.12)" : "rgba(113,113,122,0.12)",
-        color: ready ? "var(--success, #22c55e)" : "var(--text-dim)"
+        background: tones[resolvedVariant].background,
+        color: tones[resolvedVariant].color
       }}
     >
       {text}
