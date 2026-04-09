@@ -1,5 +1,4 @@
 import { Controller, Get, Query, Res, Inject, BadRequestException, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import type { Response as ExpressResponse } from "express";
 import { IntegrationProvider } from "@prisma/client";
 import { Public } from "../../common/decorators/public.decorator";
@@ -7,6 +6,7 @@ import { CurrentTenant } from "../../common/decorators/current-tenant.decorator"
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Permissions } from "../../common/decorators/permissions.decorator";
 import type { RequestUser } from "../../common/interfaces/request-user.interface";
+import { RuntimeConfigService } from "../../config/runtime-config.service";
 import { IntegrationsService } from "./integrations.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { BillingService } from "../billing/billing.service";
@@ -28,16 +28,14 @@ export class GoogleOAuthController {
   private readonly logger = new Logger(GoogleOAuthController.name);
 
   constructor(
-    @Inject(ConfigService) private readonly configService: ConfigService,
+    @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService,
     @Inject(IntegrationsService) private readonly integrationsService: IntegrationsService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(BillingService) private readonly billingService: BillingService
   ) {}
 
   private integrationsSettingsUrl(search: Record<string, string>) {
-    const webBaseUrl =
-      this.configService.get<string>("PUBLIC_WEB_BASE_URL")?.trim() || "http://localhost:3000";
-    const url = new URL(`${webBaseUrl.replace(/\/+$/, "")}/settings`);
+    const url = new URL(`${this.runtimeConfig.publicWebBaseUrl}/settings`);
     url.searchParams.set("tab", "entegrasyonlar");
 
     for (const [key, value] of Object.entries(search)) {
@@ -60,8 +58,9 @@ export class GoogleOAuthController {
   ) {
     void user;
     await this.billingService.assertFeatureEnabled(tenantId, "calendarIntegrations");
-    const clientId = this.configService.get<string>("GOOGLE_OAUTH_CLIENT_ID")?.trim();
-    const redirectUri = this.configService.get<string>("GOOGLE_OAUTH_REDIRECT_URI")?.trim();
+    const googleCalendar = this.runtimeConfig.googleCalendarConfig;
+    const clientId = googleCalendar.oauthClientId;
+    const redirectUri = googleCalendar.oauthRedirectUri;
 
     if (!clientId || !redirectUri) {
       throw new BadRequestException(
@@ -69,14 +68,7 @@ export class GoogleOAuthController {
       );
     }
 
-    const scopes = (
-      this.configService.get<string>("GOOGLE_OAUTH_SCOPES") ??
-      "https://www.googleapis.com/auth/calendar.events,https://www.googleapis.com/auth/calendar.readonly"
-    )
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .join(" ");
+    const scopes = googleCalendar.oauthScopes.join(" ");
 
     // Encode tenant + user into state so callback knows who authorized
     const statePayload = Buffer.from(
@@ -136,9 +128,22 @@ export class GoogleOAuthController {
     }
 
     // Exchange authorization code for tokens
-    const clientId = this.configService.get<string>("GOOGLE_OAUTH_CLIENT_ID")?.trim() ?? "";
-    const clientSecret = this.configService.get<string>("GOOGLE_OAUTH_CLIENT_SECRET")?.trim() ?? "";
-    const redirectUri = this.configService.get<string>("GOOGLE_OAUTH_REDIRECT_URI")?.trim() ?? "";
+    const googleCalendar = this.runtimeConfig.googleCalendarConfig;
+    const clientId = googleCalendar.oauthClientId;
+    const clientSecret = googleCalendar.oauthClientSecret;
+    const redirectUri = googleCalendar.oauthRedirectUri;
+
+    if (
+      !googleCalendar.oauthClientIdConfigured ||
+      !googleCalendar.oauthClientSecretConfigured ||
+      !googleCalendar.oauthRedirectUriConfigured ||
+      !clientId ||
+      !clientSecret ||
+      !redirectUri
+    ) {
+      this.logger.error("Google OAuth callback reached without complete OAuth configuration");
+      return res.redirect(this.integrationsSettingsUrl({ error: "google_oauth_not_configured" }));
+    }
 
     let tokenResponse: globalThis.Response;
     try {

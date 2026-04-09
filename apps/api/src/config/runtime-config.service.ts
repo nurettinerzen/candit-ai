@@ -336,6 +336,11 @@ export class RuntimeConfigService {
 
   get googleCalendarConfig() {
     return {
+      oauthClientId: toOptionalString(this.configService.get<string>("GOOGLE_OAUTH_CLIENT_ID")) ?? "",
+      oauthClientSecret:
+        toOptionalString(this.configService.get<string>("GOOGLE_OAUTH_CLIENT_SECRET")) ?? "",
+      oauthRedirectUri:
+        toOptionalString(this.configService.get<string>("GOOGLE_OAUTH_REDIRECT_URI")) ?? "",
       oauthClientIdConfigured: Boolean(
         toOptionalString(this.configService.get<string>("GOOGLE_OAUTH_CLIENT_ID"))
       ),

@@ -81,7 +81,7 @@ export default function ForgotPasswordPage() {
           <input
             value={tenantId}
             onChange={(event) => setTenantId(event.target.value)}
-            placeholder="ten_demo"
+            placeholder="acme-hiring"
             style={inputStyle}
           />
         </label>

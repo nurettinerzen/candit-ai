@@ -255,7 +255,7 @@ export default function SubscriptionPage() {
             />
           ) : null}
 
-          {/* ── Telyx-style plan info strip ── */}
+          {/* ── Plan info strip ── */}
           <div className="tlx-plan-strip">
             <span className="tlx-plan-strip-name">{t(billing.currentPlan.label)}</span>
             <span className="tlx-plan-strip-sep">{"\u00B7"}</span>
@@ -291,7 +291,7 @@ export default function SubscriptionPage() {
             </div>
           ) : null}
 
-          {/* ── Telyx-style usage section ── */}
+          {/* ── Candit-style usage section ── */}
           <section className="panel">
             <div className="tlx-section-header">
               <h3 className="tlx-section-title">{t("Kullanım Durumu")}</h3>
@@ -313,7 +313,7 @@ export default function SubscriptionPage() {
             </div>
           </section>
 
-          {/* ── Telyx-style addon section ── */}
+          {/* ── Candit-style addon section ── */}
           <section className="panel">
             <h3 className="tlx-section-title">{t("Ek Paket Satın Al")}</h3>
             <p className="small text-muted" style={{ margin: "-4px 0 16px" }}>
@@ -342,7 +342,7 @@ export default function SubscriptionPage() {
             </div>
           </section>
 
-          {/* ── Telyx-style plan cards ── */}
+          {/* ── Candit-style plan cards ── */}
           <section>
             <h3 className="tlx-section-title" style={{ marginBottom: 16 }}>{t("Planlar")}</h3>
 

@@ -44,9 +44,28 @@ Ilgili arka plan notlari icin:
   - `GET /v1/auth/providers`
   - response: `{"google":{"enabled":true}}`
 - [x] Supabase/Postgres baglantisi ve migration zinciri calisiyor; API Prisma ile ayaga kalkiyor.
+- [x] Frontend local production build temiz geciyor.
+  - Komut:
+    - `corepack pnpm --filter @ai-interviewer/web build`
+- [x] Public blog / integrations / changelog copy tarafinda Telyx destek/e-ticaret referanslarini temizleyen local degisiklikler repo workspace'inde mevcut.
+  - Ana kaynak:
+    - `/Users/nurettinerzen/Desktop/ai-interviewer/apps/web/lib/public-site-data.ts`
 
 ### Tespit edilen blocker / misconfiguration
 
+- [ ] Gecici staging mimarisinde auth runtime modu netlestirilmeli.
+  - Mevcut durum:
+    - `APP_RUNTIME_MODE=production` + `AUTH_TOKEN_TRANSPORT=header` Render API'yi dusuruyor.
+    - Backend production modda yalnizca `cookie` transport kabul ediyor.
+    - Frontend de production modda token transport'u zorla `cookie`'ye ceviriyor.
+  - Kanit:
+    - `/Users/nurettinerzen/Desktop/ai-interviewer/apps/api/src/config/runtime-config.service.ts`
+    - `/Users/nurettinerzen/Desktop/ai-interviewer/apps/web/lib/auth/runtime.ts`
+  - Gecici staging onerisi:
+    - Render: `APP_RUNTIME_MODE=development`, `AUTH_SESSION_MODE=jwt`, `AUTH_TOKEN_TRANSPORT=header`
+    - Vercel: `NEXT_PUBLIC_APP_RUNTIME_MODE=development`, `NEXT_PUBLIC_AUTH_SESSION_MODE=jwt`, `NEXT_PUBLIC_AUTH_TOKEN_TRANSPORT=header`
+  - Launch notu:
+    - Gercek domain/proxy hazir oldugunda tekrar `production + cookie` moduna gecilecek.
 - [ ] Google auth public login redirect'i hala localhost callback'e gidiyor.
   - Mevcut durum:
     - `/v1/auth/google/authorize` -> `redirect_uri=http://localhost:4000/v1/auth/google/callback`
@@ -61,6 +80,7 @@ Ilgili arka plan notlari icin:
 ### Bir sonraki faz
 
 - [ ] P0/P1 icinde kalan blocker'lari kapat:
+  - staging auth runtime modunu sabitle
   - Google auth redirect env duzeltmeleri
   - Worker queue end-to-end smoke
 - [ ] Ardindan P2'ye gec:

@@ -1,6 +1,7 @@
-import { Injectable, Inject} from "@nestjs/common";
+import { Injectable, Inject } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { AuditActorType, NotificationDeliveryStatus, Prisma } from "@prisma/client";
+import { RuntimeConfigService } from "../../config/runtime-config.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditWriterService } from "../audit/audit-writer.service";
 import type {
@@ -244,7 +245,8 @@ export class NotificationsService {
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(AuditWriterService) private readonly auditWriterService: AuditWriterService
+    @Inject(AuditWriterService) private readonly auditWriterService: AuditWriterService,
+    @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService
   ) {}
 
   async send(
@@ -519,7 +521,7 @@ export class NotificationsService {
     const interviewLink =
       session.mode === "VOICE" && session.candidateAccessToken
         ? session.meetingJoinUrl ??
-          `${(process.env.PUBLIC_WEB_BASE_URL?.trim() || "http://localhost:3000").replace(/\/+$/, "")}/interview/${session.id}?token=${session.candidateAccessToken}`
+          `${this.runtimeConfig.publicWebBaseUrl}/interview/${session.id}?token=${session.candidateAccessToken}`
         : session.meetingJoinUrl ?? "-";
     const notificationMetadata = asRecord(input.payload.notificationMetadata);
 

@@ -216,8 +216,8 @@ export const PUBLIC_FEATURE_GROUPS: PublicCard[] = [
   },
   {
     title: "Entegrasyonlar",
-    body: "Mevcut İK araçlarınız ve takvimlerinizle sorunsuz çalışın.",
-    bullets: ["Google Calendar senkronizasyonu", "ATS entegrasyonları", "Webhook ve API desteği", "Kaynak Bulma (beta)"]
+    body: "Pilot kapsamındaki takvim ve API entegrasyonlarını kontrollü şekilde devreye alın.",
+    bullets: ["Google Calendar ve Google Meet", "Calendly bağlantısı", "ATS generic API / webhook", "Kaynak Bulma (beta)"]
   }
 ];
 
@@ -415,7 +415,7 @@ export const PUBLIC_FAQ: PublicFaq[] = [
   {
     question: "Mevcut ATS sistemimle entegre olabilir mi?",
     answer:
-      "Evet, REST API ve webhook desteği ile mevcut İK sistemlerinize entegre olabilirsiniz. Google Calendar, Outlook ve yaygın ATS platformları ile hazır entegrasyonlar mevcuttur."
+      "Evet. Pilot aşamada REST API ve webhook desteği ile ATS sistemleriyle kontrollü entegrasyon kurulabilir. Hazır ve aktif bağlantı tarafında Google Calendar, Google Meet ve Calendly odaklı ilerliyoruz; diğer entegrasyonlar roadmap'e göre açılıyor."
   }
 ];
 
@@ -504,236 +504,223 @@ export const PUBLIC_PAY_AS_YOU_GO: PublicCard = {
 
 export const PUBLIC_INTEGRATION_GROUPS: Array<{ title: string; items: PublicCard[] }> = [
   {
-    title: "İletişim",
+    title: "Takvim ve Planlama",
     items: [
-      { title: "WhatsApp Business", body: "WhatsApp Business API ile otomatik mesajlaşma", badge: "Mevcut", href: "/settings", actionLabel: "Panelde aç" },
-      { title: "Gmail", body: "Google Workspace ile e-posta entegrasyonu", badge: "Mevcut", href: "/settings", actionLabel: "Panelde aç" },
-      { title: "Outlook", body: "Microsoft 365 ile e-posta yönetimi", badge: "Mevcut", href: "/settings", actionLabel: "Panelde aç" }
+      { title: "Google Calendar", body: "Mülakat planlarını takvime bağlayın ve etkinlik oluşturun", badge: "Pilotta aktif", href: "/settings", actionLabel: "Panelde aç" },
+      { title: "Google Meet", body: "Uygun akışlarda görüşme linklerini Google ekosistemiyle yönetin", badge: "Pilotta aktif", href: "/settings", actionLabel: "Panelde aç" },
+      { title: "Calendly", body: "Uygun ekipler için aday-randevu akışını Calendly ile eşleyin", badge: "Pilotta aktif", href: "/settings", actionLabel: "Panelde aç" }
     ]
   },
   {
-    title: "E-Ticaret",
+    title: "ATS ve İşe Alım Sistemleri",
     items: [
-      { title: "Shopify", body: "Global e-ticaret platformu ile tam entegrasyon", badge: "Mevcut", href: "/settings", actionLabel: "Panelde aç" },
-      { title: "ikas", body: "Türkiye'nin önde gelen e-ticaret altyapısı ile sipariş ve müşteri yönetimi", badge: "Mevcut", href: "/settings", actionLabel: "Panelde aç" },
-      { title: "Ticimax", body: "E-ticaret siparişlerinizi otomatik takip edin", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" },
-      { title: "IdeaSoft", body: "Türkiye'nin köklü e-ticaret platformu entegrasyonu", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" }
+      { title: "ATS Generic API", body: "Mevcut ATS verinizi REST tabanlı senkronizasyonla bağlayın", badge: "Pilotta aktif", href: "/docs/api", actionLabel: "Dokümanı aç" },
+      { title: "Webhook Events", body: "Başvuru ve mülakat olaylarını kendi sistemlerinize aktarın", badge: "Pilotta aktif", href: "/docs/api", actionLabel: "Dokümanı aç" },
+      { title: "Özel ATS Bağlantısı", body: "Kurumsal ekipler için mevcut işe alım altyapısına özel entegrasyon", badge: "Kurumsal", href: "/contact", actionLabel: "İletişime geç" }
     ]
   },
   {
-    title: "CRM",
+    title: "Roadmap",
     items: [
-      { title: "Custom CRM", body: "Kendi CRM sisteminizle entegrasyon", badge: "Mevcut", href: "/settings", actionLabel: "Panelde aç" },
-      { title: "HubSpot", body: "Müşteri ve talep bilgilerini iki yönlü senkronize edin", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" }
-    ]
-  },
-  {
-    title: "Planlama",
-    items: [
-      { title: "Google Calendar", body: "Randevuları otomatik oluşturun ve yönetin", badge: "Mevcut", href: "/settings", actionLabel: "Panelde aç" }
-    ]
-  },
-  {
-    title: "Veri Entegrasyonları",
-    items: [
-      { title: "Webhook API", body: "Webhook API ile herhangi bir sisteme bağlanın", badge: "Mevcut", href: "/settings", actionLabel: "Panelde aç" },
-      { title: "Paraşüt", body: "Fatura ve cari hesap takibi", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" }
+      { title: "Microsoft Calendar", body: "Kurumsal planlama ihtiyaçları için roadmap üzerinde", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" },
+      { title: "Zoom", body: "Doğrudan meeting provisioning desteği roadmap üzerinde", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" },
+      { title: "Gelişmiş HRIS Sync", body: "Çift yönlü veri eşleme ve özel saha senaryoları için hazırlanıyor", badge: "Roadmap", href: "/contact", actionLabel: "İhtiyaç paylaş" }
     ]
   }
 ];
 
 export const PUBLIC_BLOG_ARTICLES: PublicBlogArticle[] = [
   {
-    slug: "ai-musteri-hizmetleri-gelecegi",
-    category: "AI & Teknoloji",
-    title: "AI ile Müşteri Hizmetlerinin Geleceği: 2026 Trendleri",
+    slug: "ai-mulakatlarin-gelecegi",
+    category: "AI İşe Alım",
+    title: "AI Mülakatların Geleceği: 2026'da Neler Değişiyor?",
     date: "15 Mart 2026",
     readTime: "5 dk",
     excerpt:
-      "Yapay zeka destekli müşteri hizmetleri hızla dönüşüyor. İşletmelerin bu değişime nasıl uyum sağlayabileceğini keşfedin.",
+      "Yapay zeka destekli mülakatlar sadece hız değil, daha tutarlı değerlendirme kalitesi de sunuyor. 2026'da öne çıkan pratikleri özetledik.",
     sections: [
       {
-        title: "Konuşabilir Yapay Zeka Yeni Standart",
+        title: "Yapılandırılmış Değerlendirme Yeni Standart",
         body:
-          "Eskiden chatbotlar belirli anahtar kelimelere göre önceden programlanmış yanıtlar verirdi. Bugün ise büyük dil modelleri sayesinde yapay zeka asistanları doğal dilde anlama, bağlamsal yanıt üretme ve karmaşık sorunları çözme yeteneğine sahip. 2026'da konuşanabilir AI, müşteri hizmetlerinde altın standart haline geldi."
+          "Ekipler artık serbest biçimli notlar yerine yetkinlik bazlı, denetlenebilir ve kıyaslanabilir çıktılar istiyor. AI mülakat katmanı bu yapısal değerlendirmeyi standardize ettiği için hız kadar karar kalitesine de etki ediyor."
       },
       {
-        title: "Omnichannel Deneyim: Tek Noktadan Yönetim",
+        title: "İnsan + AI Birlikte Çalışıyor",
         body:
-          "Müşteriler artık tek bir kanalda kalmak istemiyor. WhatsApp'tan başlayan bir konuşmayı e-posta ile sürdürmeyi, web sitenizden başlatılan bir talebi telefonla takip etmeyi bekliyorlar. Tüm kanalların tek bir yapay zeka asistanı tarafından yönetilmesi, tutarlı deneyimin temelini oluşturuyor."
+          "Kazanan ekipler insan karar vericiyi süreçten çıkarmıyor; tekrar eden ön eleme, soru standardizasyonu ve raporlama işini AI'a bırakıp nihai kararı recruiter ve hiring manager'a bağlıyor."
       },
       {
-        title: "Proaktif Müşteri Hizmeti",
+        title: "Aday Deneyimi de Ölçülüyor",
         body:
-          "Reaktif yaklaşımın yerini proaktif akışlar aldı. Yapay zeka destekli sistemler müşteri davranışlarını analiz ederek potansiyel sorunları önceden tespit edebiliyor ve memnuniyeti kayda değer biçimde artırıyor."
+          "Mülakat akışının netliği, erişilebilirliği, davet süresi ve dönüş hızı artık sadece operasyon metriği değil, işveren markasının bir parçası. AI destekli akışlar bu deneyimi daha tutarlı hale getiriyor."
       },
       {
-        title: "İşletmeler Nasıl Uyum Sağlayabilir?",
+        title: "Kazanan Model: Şeffaf ve Denetlenebilir Akış",
         body:
-          "Tekrarlayan görevleri belirlemek, tüm kanalları tek platformda birleştirmek, çözümü kendi verilerinizle eğitmek ve insan operatör ile yapay zeka arasında pürüzsüz bir geçiş kurmak dönüşümün temel adımlarıdır."
+          "Sistemin hangi sinyali neden ürettiği görülebildiğinde ekiplerin güveni artıyor. Bu yüzden özet, risk, eksik bilgi ve öneri katmanlarının açıklanabilir olması kritik hale geliyor."
       }
     ],
-    relatedSlugs: ["whatsapp-canli-destek-ai-handoff", "tahsilat-hatirlatma-otomasyonu", "cok-kanalli-destek-operasyonlari"]
+    relatedSlugs: ["yapilandirilmis-mulakat-skorlama", "aday-deneyimi-icin-en-iyi-pratikler", "ats-entegrasyonu-ne-zaman-gerekli"]
   },
   {
-    slug: "cok-kanalli-destek-operasyonlari",
-    category: "Destek Operasyonları",
-    title: "WhatsApp, Webchat ve E-postayı Tek Ekrandan Yönetmek Neden Fark Yaratır?",
+    slug: "yapilandirilmis-mulakat-skorlama",
+    category: "Recruiting Ops",
+    title: "Yapılandırılmış Mülakat Skorlaması Neden Daha Güvenilir?",
     date: "27 Mart 2026",
-    readTime: "5 dk",
+    readTime: "6 dk",
     excerpt:
-      "Kanallar ayrı ayrı yönetildiğinde ekipler zaman kaybediyor. Tek bir operasyon ekranının neden daha hızlı ve daha kontrollü çalıştığını anlatıyoruz.",
+      "Serbest notlar yerine yapılandırılmış skor kartları kullanan ekipler neden daha hızlı ve daha savunulabilir karar alıyor?",
     sections: [
       {
-        title: "Asıl Sorun Kanal Sayısı Değil, Dağınık Operasyon",
+        title: "Aynı Sorular, Daha Kıyaslanabilir Sonuçlar",
         body:
-          "Kanal sayısının artması tek başına problem değildir. Problem, her kanalın ayrı inbox, ayrı takip ve ayrı sahiplenme mantığıyla ilerlemesidir. Bu da geciken yanıtlar ve tekrarlayan iş yükü yaratır."
+          "Adaylar benzer sorularla değerlendirildiğinde ekipler pozisyon bazlı sinyal kalitesini çok daha rahat okuyabiliyor. Böylece görüşme performansı kişiden kişiye değişen bir yapıya sıkışmıyor."
       },
       {
-        title: "Tek Ekran Ne Sağlar?",
+        title: "Not Kalitesi Kişiye Bağımlı Olmaktan Çıkar",
         body:
-          "Tek operasyon ekranı ekibe önce en önemli işi gösterir. Bekleyen, canlı destek isteyen, AI tarafından yönetilen ve kapanmış konuşmaları aynı listede görmek karar yorgunluğunu azaltır ve hızı artırır."
+          "AI destekli skorlamada recruiter yalnızca serbest metin yazmak zorunda kalmaz. Yetkinlik, risk, eksik bilgi ve öneri katmanları hazır geldiği için değerlendirme kalitesi daha az değişken olur."
       },
       {
-        title: "Handoff ve Sahiplenme Daha Temiz Çalışır",
+        title: "Denetlenebilir Karar Çerçevesi",
         body:
-          "Bir temsilcinin konuşmayı devralması, diğer ekip arkadaşlarının bunu anında görmesi ve çakışmanın önlenmesi için tek ekran modeli kritik avantaj sağlar."
+          "İşe alım kararının neden verildiğini açıklayabilmek kritik. Yapılandırılmış skorlar; görüşme özeti, güçlü yön, risk ve eksik bilgi başlıklarıyla bu açıklanabilirliği güçlendirir."
       },
       {
-        title: "Yönetim Açısından Da Daha Güçlü",
+        title: "Sonuç: Daha Hızlı Kalibrasyon",
         body:
-          "Hangi kanalın daha çok yük ürettiğini, nerede handoff arttığını ve ekibin hangi konularda zorlandığını tek bakışta okumak yönetim kalitesini güçlendirir."
+          "Hiring manager ve recruiter aynı sinyalleri aynı formatta gördüğünde kalibrasyon toplantıları kısalır, karar döngüsü hızlanır ve gereksiz tekrar mülakatlar azalır."
       }
     ],
-    relatedSlugs: ["whatsapp-canli-destek-ai-handoff", "tahsilat-hatirlatma-otomasyonu", "ai-musteri-hizmetleri-gelecegi"]
+    relatedSlugs: ["ai-mulakatlarin-gelecegi", "cv-on-eleme-skoru-nasil-okunur", "hiring-manager-ile-kalibrasyon"]
   },
   {
-    slug: "e-ticaret-chatbot-karsilastirma",
-    category: "E-ticaret",
-    title: "E-ticaret İçin En İyi Chatbot Çözümleri: 2026 Karşılaştırması",
+    slug: "cv-on-eleme-skoru-nasil-okunur",
+    category: "AI İşe Alım",
+    title: "CV Ön Eleme Skorunu Doğru Okumak: Recruiter İçin Pratik Çerçeve",
     date: "15 Şubat 2026",
     readTime: "6 dk",
     excerpt:
-      "E-ticaret işletmeleri için doğru chatbot seçimini kolaylaştıran karşılaştırma çerçevesi.",
+      "Skor tek başına karar değildir. CV ön eleme çıktısını hızlandırıcı olarak kullanırken hangi sinyallere bakmanız gerektiğini özetledik.",
     sections: [
       {
-        title: "E-ticaret Chatbotlarında Dikkat Edilmesi Gerekenler",
+        title: "Skor, Bağlamla Birlikte Anlamlıdır",
         body:
-          "Doğal dil anlama kapasitesi, entegrasyon kolaylığı, çoklu kanal desteği, sipariş takibi yetkinliği, ölçeklenebilirlik ve maliyet yapısı seçim yaparken öne çıkan kriterlerdir."
+          "Aynı skor iki farklı pozisyonda farklı anlam taşıyabilir. Bu yüzden ham puanın yanında deneyim kanıtı, eksik bilgi alanları ve risk notları birlikte okunmalıdır."
       },
       {
-        title: "Piyasadaki Genel Eğilimler",
+        title: "Eksik Bilgi Alanları Kritik Sinyaldir",
         body:
-          "Rule-based botlardan LLM destekli, bağlamsal ve entegre çözümlere geçiş hızlandı. Özellikle sipariş ve iade süreçlerini gerçek iş verisiyle bağlayabilen ürünler öne çıkıyor."
+          "Yüksek skor ama yüksek belirsizlik, genellikle eksik veriyle oluşur. Recruiter için en verimli yaklaşım, eksik bilgi listesini takip sorularına çevirmektir."
       },
       {
-        title: "Candit Farkı: Yapay Zeka Öncelikli Mimari",
+        title: "Otomatik Red İçin Değil, Önceliklendirme İçin",
         body:
-          "Tek ekran operasyon görünürlüğü, omnichannel deneyim ve kontrollü handoff sayesinde müşteri deneyimi ile ekip verimliliği birlikte iyileşir."
+          "CV skoru sisteminize hız kazandırabilir; ancak nihai kararı otomatik vermek yerine hangi adayın önce inceleneceğini belirlemek için daha güvenli kullanılır."
       },
       {
-        title: "Doğru Çözümü Seçmek İçin Kontrol Listesi",
+        title: "Skor + Mülakat + Hiring Manager Notu",
         body:
-          "İşletmenizin kanal yoğunluğunu, entegrasyon ihtiyaçlarını, güvenlik beklentilerini ve handoff gereksinimlerini netleştirerek karar vermek seçim sürecini kolaylaştırır."
+          "En sağlıklı karar modeli, CV ön eleme çıktısını mülakat sinyali ve hiring manager değerlendirmesiyle birleştirir. Tek kaynağa dayalı kararlar yerine katmanlı doğrulama daha güçlüdür."
       }
     ],
-    relatedSlugs: ["ai-musteri-hizmetleri-gelecegi", "whatsapp-business-api-rehberi", "whatsapp-canli-destek-ai-handoff"]
+    relatedSlugs: ["yapilandirilmis-mulakat-skorlama", "ai-mulakatlarin-gelecegi", "ats-entegrasyonu-ne-zaman-gerekli"]
   },
   {
-    slug: "tahsilat-hatirlatma-otomasyonu",
+    slug: "aday-deneyimi-icin-en-iyi-pratikler",
     category: "Operasyon",
-    title: "Tahsilat Hatırlatmalarında Yapay Zeka ile Daha Nazik ve Sistemli Süreçler",
+    title: "Aday Deneyimini Bozmadan Hızlanmak İçin 5 Pratik",
     date: "4 Nisan 2026",
     readTime: "6 dk",
     excerpt:
-      "Tahsilat hatırlatmalarını manuel takipten çıkarıp daha düzenli, ölçülebilir ve müşteri dostu hale getirmenin yolları.",
+      "Daha hızlı işe alım ile daha iyi aday deneyimi arasında seçim yapmak zorunda değilsiniz. Küçük ama etkili 5 uygulamayı derledik.",
     sections: [
       {
-        title: "Manuel Takibin En Büyük Sorunu",
+        title: "İlk Teması Netleştirin",
         body:
-          "Manuel takip geciken hatırlatmalar, ton tutarsızlığı ve görünürlük kaybı üretir. Süreç kişilere bağımlı hale geldikçe tahsilat operasyonu kırılganlaşır."
+          "Başvurudan hemen sonra adayın önünde ne olacağını anlatan net bir akış güven yaratır. AI mülakat, değerlendirme süresi ve sonraki adımlar açık biçimde belirtilmelidir."
       },
       {
-        title: "Yapay Zeka Burada Ne Değiştirir?",
+        title: "Bekleme Süresini Sessizlikle Geçirmeyin",
         body:
-          "Yapay zeka doğru zamanı, doğru tonu ve uygun içeriği seçerek tekrarlayan tahsilat hatırlatma adımlarını standartlaştırır. Ekip ise istisna durumlara odaklanır."
+          "Adayın günlerce haber beklemesi en büyük kopuş noktalarından biridir. Küçük durum güncellemeleri bile güven duygusunu ciddi biçimde artırır."
       },
       {
-        title: "Doğru Kanalı Seçmek",
+        title: "Mülakat Sorularını Rol ile Uyumlu Tutun",
         body:
-          "Müşterinin geçmiş etkileşim alışkanlığına göre WhatsApp, e-posta veya telefon kanallarını kullanmak dönüş oranını yükseltir ve sürtünmeyi azaltır."
+          "Genel geçer sorular adayın deneyimini zayıflatır. Pozisyonun gerçekten ölçmek istediği davranış ve teknik sinyallere göre soru seti özelleştirilmelidir."
       },
       {
-        title: "Daha Sistemli, Daha Ölçülebilir",
+        title: "Raporu İnsan Diline Çevirin",
         body:
-          "Açılma oranı, yanıt oranı, tahsilat süresi ve handoff noktaları görünür oldukça süreç daha öngörülebilir ve daha yönetilebilir hale gelir."
+          "Hiring manager tarafında okunabilir, kısa ve denetlenebilir özetler karar süresini düşürür. AI çıktısının operasyonel değeri raporun okunabilirliğiyle doğrudan ilişkilidir."
       }
     ],
-    relatedSlugs: ["cok-kanalli-destek-operasyonlari", "whatsapp-canli-destek-ai-handoff", "ai-musteri-hizmetleri-gelecegi"]
+    relatedSlugs: ["ai-mulakatlarin-gelecegi", "yapilandirilmis-mulakat-skorlama", "hiring-manager-ile-kalibrasyon"]
   },
   {
-    slug: "whatsapp-business-api-rehberi",
-    category: "WhatsApp",
-    title: "WhatsApp Business API: Eksiksiz Başlangıç Rehberi",
+    slug: "ats-entegrasyonu-ne-zaman-gerekli",
+    category: "Entegrasyon",
+    title: "ATS Entegrasyonu Ne Zaman Gerekli, Ne Zaman Erken?",
     date: "22 Şubat 2026",
     readTime: "6 dk",
     excerpt:
-      "WhatsApp Business API’ye başlamak isteyen ekipler için temel kavramlar, adımlar ve dikkat noktaları.",
+      "Her ekip ilk günden karmaşık entegrasyona ihtiyaç duymaz. ATS entegrasyonunun gerçekten ne zaman değer ürettiğini anlatıyoruz.",
     sections: [
       {
-        title: "WhatsApp Business API Nedir?",
+        title: "İlk Kırılma Noktası: Çift Veri Girişi",
         body:
-          "WhatsApp Business API, yüksek hacimli mesajlaşma ve otomasyon ihtiyaçları için tasarlanmış kurumsal bir altyapıdır. Standart uygulamadan farklı olarak iş süreçleri ve entegrasyonlar için daha geniş imkân sağlar."
+          "Recruiter ekibi aynı aday bilgisini iki farklı sisteme giriyorsa entegrasyon ihtiyacı doğmuştur. Bu noktada webhook veya temel API senaryosu ciddi zaman kazandırır."
       },
       {
-        title: "WhatsApp Business API'nin İşletmenize Kattığı Değer",
+        title: "Pilotta Tam Kapsam Yerine Kontrollü Senaryo",
         body:
-          "Sipariş sorguları, rezervasyon, tahsilat ve destek süreçlerinde müşterinin zaten bulunduğu kanalda hızlı yanıt vermeyi mümkün kılar."
+          "İlk entegrasyonun tüm süreçleri kapsaması gerekmez. Aday oluşturma, mülakat sonucu geri yazma veya durum güncelleme gibi tek bir akışla başlamak daha güvenlidir."
       },
       {
-        title: "Entegrasyon Adımları",
+        title: "Takvim Entegrasyonu Ayrı Bir Katmandır",
         body:
-          "Hesap kurulumu, doğrulama, şablon mesajlar, webhook bağlantıları ve operasyon ekranı entegrasyonu temel kurulum basamaklarını oluşturur."
+          "ATS ile veri senkronizasyonu ayrı, takvim ve görüşme provisioning akışı ayrıdır. Bu iki ihtiyacın birlikte mi yoksa aşamalı mı çözüleceği baştan netleşmelidir."
       },
       {
-        title: "Başarılı Bir WhatsApp Stratejisi İçin İpuçları",
+        title: "Entegrasyonun Başarısı Teknikten Çok Operasyoneldir",
         body:
-          "Ton tutarlılığı, insan desteğe geçiş kuralları, cevap süreleri ve performans ölçümü gibi konuları baştan tasarlamak başarıyı belirler."
+          "Alan eşlemeleri, sahiplik, hata görünürlüğü ve retry kuralları net değilse teknik entegrasyon olsa bile süreç kırılgan kalır. Operasyon tasarımı burada belirleyicidir."
       }
     ],
-    relatedSlugs: ["whatsapp-canli-destek-ai-handoff", "ai-musteri-hizmetleri-gelecegi", "e-ticaret-chatbot-karsilastirma"]
+    relatedSlugs: ["cv-on-eleme-skoru-nasil-okunur", "ai-mulakatlarin-gelecegi", "aday-deneyimi-icin-en-iyi-pratikler"]
   },
   {
-    slug: "whatsapp-canli-destek-ai-handoff",
-    category: "WhatsApp",
-    title: "WhatsApp Desteğinde AI’dan Canlı Temsilciye Geçiş Nasıl Kurgulanır?",
+    slug: "hiring-manager-ile-kalibrasyon",
+    category: "Recruiting Ops",
+    title: "Hiring Manager ile Kalibrasyon Toplantıları Nasıl Kısalır?",
     date: "8 Nisan 2026",
     readTime: "7 dk",
     excerpt:
-      "Aynı konuşma içinde AI ile başlayıp gerektiğinde canlı ekibe devreden destek akışının en doğru kurgusu.",
+      "Hiring manager toplantıları uzuyorsa sorun çoğu zaman aday değil, sinyal formatıdır. Kalibrasyonu hızlandıran çerçeveyi paylaşıyoruz.",
     sections: [
       {
-        title: "Handoff Yeni Sohbet Açmak Değildir",
+        title: "Aynı Dili Konuşmak Gerekir",
         body:
-          "Canlı destek isteyen müşteriyi yeni bir numaraya, forma veya ekrana yönlendirmek sürtünme yaratır. Doğru handoff yaklaşımı mevcut konuşmanın bağlamını korumak ve temsilcinin kaldığı yerden devam etmesini sağlamaktır."
+          "Recruiter ile hiring manager aynı çıktıya bakıp farklı şeyler anlıyorsa toplantı uzar. Güçlü yön, risk, eksik bilgi ve öneri başlıklarının sabit olması ortak dil yaratır."
       },
       {
-        title: "AI Ne Zaman Devreden Çıkmalı?",
+        title: "Ham Notlar Yerine Karar Destek Paketi",
         body:
-          "Kullanıcı açıkça insan isterse, sistem aynı konuda iki kez takılırsa veya işlem yüksek güven gerektiriyorsa canlı desteğe geçiş kritik hale gelir. Sipariş uyuşmazlıkları ve ödeme konuları buna iyi örnektir."
+          "Hiring manager çoğu zaman tüm görüşme notunu okumak istemez. Kısa özet, alıntı niteliğinde kanıtlar ve net bir karar önerisi toplantı verimini ciddi biçimde artırır."
       },
       {
-        title: "Operasyon Ekibi İçin Doğru Arayüz",
+        title: "İtiraz Noktalarını Önceden Görünür Kılın",
         body:
-          "Bekleyen konuşmaların ayrı görünmesi, temsilcinin konuşmayı sahiplenebilmesi, ekip içi çakışmaların önlenmesi ve gerekirse konuşmanın tekrar AI'a devredilebilmesi gerekir."
+          "Eksik bilgi, belirsiz sinyal veya rol uyumu riski baştan görünür olduğunda tartışma daha somut ilerler. Bu da toplantıyı uzatan soyut yorumları azaltır."
       },
       {
-        title: "En Sağlıklı Akış",
+        title: "Sonuç: Daha Az Toplantı, Daha Net Karar",
         body:
-          "AI çözebiliyorsa devam eder, takıldığı yerde canlı desteği teklif eder, kullanıcı isterse aynı konuşma canlı ekibe geçer ve ekip işi tamamladıktan sonra gerekirse konuşma tekrar AI'a bırakılır."
+          "Kalibrasyonun amacı daha çok konuşmak değil, daha iyi hizalanmaktır. İyi yapılandırılmış AI çıktıları sayesinde ekip daha kısa sürede daha net karar verebilir."
       }
     ],
-    relatedSlugs: ["tahsilat-hatirlatma-otomasyonu", "cok-kanalli-destek-operasyonlari", "ai-musteri-hizmetleri-gelecegi"]
+    relatedSlugs: ["yapilandirilmis-mulakat-skorlama", "aday-deneyimi-icin-en-iyi-pratikler", "ai-mulakatlarin-gelecegi"]
   }
 ];
 
@@ -747,7 +734,7 @@ export const PUBLIC_HELP_QUICKSTART: PublicStep[] = [
 export const PUBLIC_HELP_TOPICS: PublicCard[] = [
   {
     title: "Entegrasyonlar",
-    body: "E-ticaret, CRM ve kanal entegrasyonları",
+    body: "Takvim, ATS ve API entegrasyonları",
     href: "/integrations",
     actionLabel: "Keşfet"
   },
@@ -794,7 +781,7 @@ export const PUBLIC_SECURITY_GROUPS: PublicCard[] = [
     title: "AI Güvenliği",
     body: "Yapay zeka asistanı çoklu güvenlik katmanıyla korunur.",
     bullets: [
-      "Müşteri verileri model eğitiminde kullanılmaz",
+      "Aday verileri model eğitiminde kullanılmaz",
       "Yanıtlar politika kontrolü ve içerik filtrelemeden geçer",
       "Hassas veri maskeleme ve halüsinasyon engelleme guardrail'leri"
     ]
@@ -872,79 +859,79 @@ export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
   {
     date: "Haziran 2026",
     version: "v0.6.0",
-    title: "Arama Desteği & Yeni Diller",
+    title: "Launch Hardening",
     body:
-      "Bilgi tabanı ve konuşma geçmişinde gelişmiş arama desteği eklendi. Portekizce, Almanca ve Fransızca dil destekleri ile global erişim genişletildi.",
+      "Pilot launch öncesi auth güvenliği, lead intake, admin visibility ve incident omurgası sertleştirildi.",
     items: [
-      "Yeni bilgi tabanında gelişmiş arama",
-      "Yeni konuşma geçmişi arama",
-      "Yeni Portekizce, Almanca ve Fransızca dil desteği",
-      "Arama sonuçları sıralama algoritması iyileştirildi"
+      "Public contact intake gerçek backend'e bağlandı",
+      "Internal admin lead inbox açıldı",
+      "Security event ve red-alert incident persistence eklendi",
+      "Production auth defaults sertleştirildi"
     ]
   },
   {
     date: "Mart 2026",
     version: "v0.5.0",
-    title: "Çok Kanallı İletişim",
+    title: "Takvim ve Scheduling Akışı",
     body:
-      "WhatsApp, email ve web chat tek platformda birleşti. Tüm kanallardan gelen müşteri mesajları tek panelden yönetilmeye başladı.",
+      "Mülakat planlama tarafında Google ekosistemi ve Calendly odaklı scheduling akışları güçlendirildi.",
     items: [
-      "Yeni WhatsApp Business entegrasyonu",
-      "Yeni Gmail ve Outlook email desteği",
-      "Yeni web chat widget",
-      "AI yanıt kalitesi iyileştirildi"
+      "Google Calendar bağlantı akışı güncellendi",
+      "Google Meet / scheduling context desteği genişletildi",
+      "Calendly webhook senkronizasyonu geliştirildi",
+      "Fallback meeting akışı görünür hale getirildi"
     ]
   },
   {
     date: "Şubat 2026",
     version: "v0.4.0",
-    title: "E-ticaret Entegrasyonları",
+    title: "Sourcing ve Aday Havuzu",
     body:
-      "Shopify ve ikas entegrasyonları ile sipariş takibi, iade yönetimi ve müşteri doğrulama süreçleri otomatikleştirildi.",
+      "Aday keşfi, prospect takibi ve mevcut havuzdan yeniden değerlendirme akışları ürünün çekirdeğine eklendi.",
     items: [
-      "Yeni Shopify entegrasyonu",
-      "Yeni ikas entegrasyonu",
-      "Yeni sipariş takibi ve iade yönetimi",
-      "Müşteri doğrulama sistemi güçlendirildi"
+      "Sourcing project ve prospect modeli açıldı",
+      "Talent profile kaynak katmanı eklendi",
+      "Fit scoring ve outreach temelleri güçlendirildi",
+      "Recruiter görünürlüğü geliştirildi"
     ]
   },
   {
     date: "Ocak 2026",
     version: "v0.3.0",
-    title: "Sesli AI Asistan",
+    title: "AI Mülakat Motoru",
     body:
-      "AI destekli sesli görüşme, takvim entegrasyonu ve toplu arama kampanyaları ile müşteri iletişimi yeni bir seviyeye taşındı.",
+      "AI destekli sesli ve yazılı mülakat altyapısı, transcript ve rapor katmanları ile birlikte devreye alındı.",
     items: [
-      "Yeni AI sesli görüşme desteği",
-      "Yeni Google Calendar entegrasyonu",
-      "Yeni toplu arama kampanyaları",
-      "Randevu çakışma sorunu giderildi"
+      "AI sesli görüşme desteği",
+      "Transcript summarization ve report generation",
+      "Recommendation ve recruiter review akışları",
+      "Interview runtime fallback davranışları"
     ]
   },
   {
     date: "Aralık 2025",
     version: "v0.2.0",
-    title: "Dashboard & Analitik",
+    title: "Recruiter Workspace",
     body:
-      "Gerçek zamanlı analitik, müşteri veri yönetimi ve takım rolleri ile işletmelerin görünürlüğü artırıldı.",
+      "Dashboard, jobs, candidates, applications ve reports yüzeyleri tek recruiter workspace altında birleştirildi.",
     items: [
-      "Yeni gerçek zamanlı analitik dashboard",
-      "Yeni müşteri veri yönetimi",
-      "Yeni takım yönetimi ve roller",
-      "Dark mode iyileştirmeleri"
+      "Genel bakış dashboard'u",
+      "Jobs ve applications akışı",
+      "Candidate havuzu ve profil ekranları",
+      "İlk raporlama yüzeyi"
     ]
   },
   {
     date: "Kasım 2025",
     version: "v0.1.0",
-    title: "İlk Adım",
+    title: "İlk Ürün Omurgası",
     body:
-      "AI asistan oluşturma, bilgi tabanı, temel chat ve çoklu dil desteği ile yolculuğun ilk sürümü yayınlandı.",
+      "Tenant, member, auth ve işe alım domain modelleriyle Candit'in ilk ürün omurgası kuruldu.",
     items: [
-      "Yeni AI asistan oluşturma",
-      "Yeni bilgi tabanı yönetimi",
-      "Yeni temel chat desteği",
-      "Yeni çoklu dil desteği"
+      "Tenant ve workspace modeli",
+      "Signup / login / invite temelleri",
+      "Job, candidate ve application domain'i",
+      "İlk iç yönetim omurgası"
     ]
   }
 ];

@@ -16,7 +16,7 @@ import {
 } from "../../../../lib/internal-admin-copy";
 import type { InternalAdminAccountListReadModel } from "../../../../lib/types";
 
-/* ── Icon components (inline SVG, Telyx-style) ── */
+/* ── Icon components (inline SVG, Candit-style) ── */
 
 function IconBuilding() {
   return (
@@ -278,7 +278,7 @@ export default function InternalAdminEnterprisePage() {
         </section>
       ) : (
         <>
-          {/* ── Stat cards (4 cols, Telyx-style with icon + colored bg) ── */}
+          {/* ── Stat cards (4 cols, Candit-style with icon + colored bg) ── */}
           {summary ? (
             <section className="admin-metric-grid">
               <article className="admin-metric-card tone-primary">

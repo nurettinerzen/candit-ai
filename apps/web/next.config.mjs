@@ -2,35 +2,62 @@
 const nextConfig = {
   reactStrictMode: true,
   typedRoutes: true,
-  async rewrites() {
+  async redirects() {
     return [
       {
-        source: "/",
-        destination: "/landing-page.html"
-      },
-      {
         source: "/landing",
-        destination: "/landing-page.html"
+        destination: "/",
+        permanent: true
       },
       {
-        source: "/solutions",
-        destination: "/solutions.html"
+        source: "/landing-page.html",
+        destination: "/",
+        permanent: true
+      },
+      {
+        source: "/solutions.html",
+        destination: "/solutions",
+        permanent: true
       },
       {
         source: "/solutions/ecommerce",
-        destination: "/solutions-ecommerce.html"
+        destination: "/solutions/perakende",
+        permanent: true
+      },
+      {
+        source: "/solutions-ecommerce.html",
+        destination: "/solutions/perakende",
+        permanent: true
       },
       {
         source: "/solutions/restaurant",
-        destination: "/solutions-restaurant.html"
+        destination: "/solutions",
+        permanent: true
+      },
+      {
+        source: "/solutions-restaurant.html",
+        destination: "/solutions",
+        permanent: true
       },
       {
         source: "/solutions/salon",
-        destination: "/solutions-salon.html"
+        destination: "/solutions",
+        permanent: true
+      },
+      {
+        source: "/solutions-salon.html",
+        destination: "/solutions",
+        permanent: true
       },
       {
         source: "/solutions/support",
-        destination: "/solutions-support.html"
+        destination: "/solutions",
+        permanent: true
+      },
+      {
+        source: "/solutions-support.html",
+        destination: "/solutions",
+        permanent: true
       }
     ];
   }

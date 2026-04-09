@@ -87,7 +87,7 @@ export default function InternalAdminDashboardPage() {
     );
   }
 
-  /* ── Stat card definitions (Telyx style: icon + label + value, 3-col grid) ── */
+  /* ── Stat card definitions (icon + label + value, 3-col grid) ── */
   const metrics = [
     { label: copy.totalCustomers, value: data.summary.totalCustomers, tone: "primary", icon: "\u{1F465}", iconTone: "primary" },
     { label: copy.activeCustomers, value: data.summary.activeCustomers, tone: "success", icon: "\u2713", iconTone: "success" },
