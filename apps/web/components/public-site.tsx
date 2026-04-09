@@ -43,7 +43,7 @@ import {
 } from "../lib/public-site-data";
 
 const SITE_BRAND = "Candit.ai";
-const SITE_TAGLINE = "AI ile ise alimin gelecegi.";
+const SITE_TAGLINE = "AI ile işe alımın geleceği.";
 
 function cn(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
@@ -98,10 +98,10 @@ function SiteHeader({ activeHref }: { activeHref?: string }) {
     <header className={styles.header}>
       <div className={cn(styles.shell, styles.headerInner)}>
         <a href="/" className={styles.brand} aria-label={`${SITE_BRAND} ana sayfa`}>
-          <span className={styles.brandMark}>T</span>
+          <span className={styles.brandMark}>C</span>
           <span className={styles.brandCopy}>
             <strong>{SITE_BRAND}</strong>
-            <span>Cok kanalli AI platformu</span>
+            <span>Çok kanallı AI platformu</span>
           </span>
         </a>
 
@@ -123,7 +123,7 @@ function SiteHeader({ activeHref }: { activeHref?: string }) {
             <span>EN</span>
           </div>
           <a href="/auth/login" className={styles.headerTextAction}>
-            Giris Yap
+            Giriş Yap
           </a>
           <ActionLink action={{ label: "Demo Talep Edin", href: "/waitlist" }} />
         </div>
@@ -139,15 +139,15 @@ function SiteFooter() {
         <div className={styles.footerGrid}>
           <div className={styles.footerBrand}>
             <a href="/" className={styles.brand}>
-              <span className={styles.brandMark}>T</span>
+              <span className={styles.brandMark}>C</span>
               <span className={styles.brandCopy}>
                 <strong>{SITE_BRAND}</strong>
-                <span>Telefon, WhatsApp, Chat ve Email icin tek AI katmani.</span>
+                <span>Telefon, WhatsApp, Chat ve Email için tek AI katmanı.</span>
               </span>
             </a>
             <p className={styles.footerCopy}>
-              Telyx public site kurgusu bu projeye tasindi. Iceriklerin tamamini sonraki turda
-              proje diline gore rahatca guncelleyebiliriz.
+              Telyx public site kurgusu bu projeye taşındı. İçeriklerin tamamını sonraki turda
+              proje diline göre rahatça güncelleyebiliriz.
             </p>
           </div>
 
@@ -166,11 +166,11 @@ function SiteFooter() {
         </div>
 
         <div className={styles.footerBottom}>
-          <span>(c) 2026 {SITE_BRAND}. Tum haklari saklidir.</span>
+          <span>(c) 2026 {SITE_BRAND}. Tüm hakları saklıdır.</span>
           <div className={styles.footerBottomLinks}>
             <a href="/privacy">Gizlilik</a>
-            <a href="/terms">Kullanim Kosullari</a>
-            <a href="/contact">Iletisim</a>
+            <a href="/terms">Kullanım Koşulları</a>
+            <a href="/contact">İletişim</a>
           </div>
         </div>
       </div>
@@ -282,7 +282,7 @@ function CTASection({
   title,
   body,
   primary = { label: "Demo Talep Edin", href: "/waitlist" },
-  secondary = { label: "Fiyatlari Incele", href: "/pricing", tone: "secondary" }
+  secondary = { label: "Fiyatları İncele", href: "/pricing", tone: "secondary" }
 }: {
   title: string;
   body: string;
@@ -293,7 +293,7 @@ function CTASection({
     <section className={styles.section}>
       <div className={cn(styles.shell, styles.ctaBand)}>
         <div>
-          <span className={styles.eyebrow}>Hazir misiniz?</span>
+          <span className={styles.eyebrow}>Hazır mısınız?</span>
           <h2 className={styles.ctaTitle}>{title}</h2>
           <p className={styles.ctaBody}>{body}</p>
         </div>
@@ -324,11 +324,11 @@ function ProductStage() {
       <div className={styles.stageHeadline}>
         <div>
           <span className={styles.stageEyebrow}>Omnichannel command center</span>
-          <h2>Tum kanallar ayni AI hafizasinda bulusur.</h2>
+          <h2>Tüm kanallar aynı AI hafızasında buluşur.</h2>
         </div>
         <div className={styles.stageScore}>
           <strong>%90</strong>
-          <span>otomatik cozum orani</span>
+          <span>otomatik çözüm oranı</span>
         </div>
       </div>
 
@@ -359,18 +359,18 @@ function ProductStage() {
         </article>
 
         <article className={cn(styles.stagePanel, styles.stagePanelWide)}>
-          <div className={styles.stagePanelLabel}>Canli operasyon gorunurlugu</div>
+          <div className={styles.stagePanelLabel}>Canlı operasyon görünürlüğü</div>
           <div className={styles.signalPanel}>
             <div className={styles.signalRing}>
               <span>7/24</span>
-              <small>yanit</small>
+              <small>yanıt</small>
             </div>
 
             <div className={styles.signalBody}>
-              <h3>Tek AI katmani ile daha hizli, daha temiz operasyon.</h3>
+              <h3>Tek AI katmanı ile daha hızlı, daha temiz operasyon.</h3>
               <p>
-                Telefon, WhatsApp, web chat ve email uzerinden gelen tum talepler ayni
-                sahiplenme mantigiyla yonetilir.
+                Telefon, WhatsApp, web chat ve email üzerinden gelen tüm talepler aynı
+                sahiplenme mantığıyla yönetilir.
               </p>
               <div className={styles.progressList}>
                 <div>
@@ -386,7 +386,7 @@ function ProductStage() {
                   </i>
                 </div>
                 <div>
-                  <span>Kanal kapsami</span>
+                  <span>Kanal kapsamı</span>
                   <i>
                     <b style={{ width: "96%" }} />
                   </i>
@@ -397,11 +397,11 @@ function ProductStage() {
         </article>
 
         <article className={styles.stagePanel}>
-          <div className={styles.stagePanelLabel}>Ornek akis</div>
+          <div className={styles.stagePanelLabel}>Örnek akış</div>
           <div className={styles.scheduleCard}>
-            <span className={styles.scheduleBadge}>Bugun</span>
+            <span className={styles.scheduleBadge}>Bugün</span>
             <strong>WhatsApp support handoff</strong>
-            <p>Kullanici AI ile baslar, gerekirse ayni konusma icinde canli ekibe gecer.</p>
+            <p>Kullanıcı AI ile başlar, gerekirse aynı konuşma içinde canlı ekibe geçer.</p>
             <div className={styles.tagList}>
               <span>Telefon</span>
               <span>WhatsApp</span>
@@ -410,7 +410,7 @@ function ProductStage() {
           </div>
           <div className={styles.miniLog}>
             <i />
-            <span>Operasyon loglari ve audit trail ayni panelde gorunur.</span>
+            <span>Operasyon logları ve audit trail aynı panelde görünür.</span>
           </div>
         </article>
       </div>
@@ -446,7 +446,7 @@ function ArticleCard({ article }: { article: PublicBlogArticle }) {
         <span>{article.readTime}</span>
       </div>
       <a href={`/blog/${article.slug}`} className={styles.inlineLink}>
-        Yaziyi oku
+        Yazıyı oku
       </a>
     </article>
   );
@@ -470,15 +470,15 @@ function MockContactForm({
       <div className={styles.formGrid}>
         <label className={styles.field}>
           <span>Ad Soyad</span>
-          <input type="text" placeholder="Orn: Nurettin Erzen" />
+          <input type="text" placeholder="Örn: Nurettin Erzen" />
         </label>
         <label className={styles.field}>
           <span>E-posta</span>
-          <input type="email" placeholder="ornek@sirket.com" />
+          <input type="email" placeholder="örnek@şirket.com" />
         </label>
         <label className={styles.field}>
-          <span>Sirket</span>
-          <input type="text" placeholder="Sirket adi" />
+          <span>Şirket</span>
+          <input type="text" placeholder="Şirket adı" />
         </label>
         <label className={styles.field}>
           <span>Rol / Ekip</span>
@@ -486,7 +486,7 @@ function MockContactForm({
         </label>
         <label className={cn(styles.field, styles.fieldWide)}>
           <span>Mesaj</span>
-          <textarea rows={5} placeholder="Ihtiyacinizi ve baglamak istediginiz kanallari yazin." />
+          <textarea rows={5} placeholder="İhtiyacınızı ve bağlamak istediğiniz kanalları yazın." />
         </label>
       </div>
 
@@ -540,17 +540,17 @@ function DocsEndpoints() {
     {
       method: "POST",
       path: "/v1/messages",
-      body: "Kanallardan gelen mesaji isler ve AI yanit akisini baslatir."
+      body: "Kanallardan gelen mesajı işler ve AI yanıt akışını başlatır."
     },
     {
       method: "GET",
       path: "/v1/conversations",
-      body: "Konusmalari, durumlari ve handoff bilgilerini listeler."
+      body: "Konuşmaları, durumları ve handoff bilgilerini listeler."
     },
     {
       method: "POST",
       path: "/v1/webhooks",
-      body: "Harici sistem olaylarini alip operasyon akisini tetikler."
+      body: "Harici sistem olaylarını alıp operasyon akışını tetikler."
     }
   ];
 
@@ -558,7 +558,7 @@ function DocsEndpoints() {
     <div className={styles.docsGrid}>
       <div className={styles.codeCard}>
         <span className={styles.cardEyebrow}>Quickstart</span>
-        <h3>API anahtariyla dakikalar icinde baglanin.</h3>
+        <h3>API anahtarıyla dakikalar içinde bağlanın.</h3>
         <pre className={styles.codeBlock}>
           <code>{`curl -X POST https://api.telyx.ai/v1/messages \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
@@ -566,7 +566,7 @@ function DocsEndpoints() {
   -d '{
     "channel": "whatsapp",
     "customerId": "cus_123",
-    "message": "Siparisim nerede?"
+    "message": "Siparişim nerede?"
   }'`}</code>
         </pre>
       </div>
@@ -590,23 +590,23 @@ function SolutionWorkflow({ solution }: { solution: PublicSolution }) {
   const workflow = [
     {
       step: "01",
-      title: "Bilgiyi bagla",
-      body: `${solution.label} operasyonunda sik tekrar eden sorular, veri kaynaklari ve kurallar baglanir.`
+      title: "Bilgiyi bağla",
+      body: `${solution.label} operasyonunda sık tekrar eden sorular, veri kaynakları ve kurallar bağlanır.`
     },
     {
       step: "02",
-      title: "Kanallari ac",
-      body: `${solution.channels.join(", ")} kanallarinda ayni AI davranisi aktif edilir.`
+      title: "Kanalları aç",
+      body: `${solution.channels.join(", ")} kanallarında aynı AI davranışı aktif edilir.`
     },
     {
       step: "03",
-      title: "AI yanitlasin",
-      body: "Kullanici niyeti algilanir, mevcut veriye gore aksiyon alinur ve gerekirse temsilciye devir olur."
+      title: "AI yanıtlasın",
+      body: "Kullanıcı niyeti algılanır, mevcut veriye göre aksiyon alınır ve gerekirse temsilciye devir olur."
     },
     {
       step: "04",
-      title: "Performansi olc",
-      body: "Cozum orani, handoff hizi ve memnuniyet verileri operasyon paneline duser."
+      title: "Performansı ölç",
+      body: "Çözüm oranı, handoff hızı ve memnuniyet verileri operasyon paneline düşer."
     }
   ];
 
@@ -652,20 +652,20 @@ export function PublicFeaturesPage() {
           <div className={cn(styles.shell, styles.ftHeroInner)}>
             <span className={styles.ftBadgeShimmer}>
               <SparklesSvg />
-              Guclu Ozellikler
+              Güçlü Özellikler
             </span>
             <h1 className={styles.ftHeroTitle}>
-              Ise alim surecinizi guclendirecek AI yetenekleri
+              İşe alım sürecinizi güçlendirecek AI yetenekleri
             </h1>
             <p className={styles.ftHeroSubtitle}>
-              AI mulakat, aday tarama, is ilani yonetimi ve analitik araclari tek platformda. Hizli kurulum, derin entegrasyonlar ve olceklenebilir otomasyon.
+              AI mülakat, aday tarama, iş ilanı yönetimi ve analitik araçları tek platformda. Hızlı kurulum, derin entegrasyonlar ve ölçeklenebilir otomasyon.
             </p>
             <div className={styles.ftHeroActions}>
               <a href="/waitlist" className={cn(styles.ftGlowBtn, styles.ftGlowBtnPrimary)}>
-                Ucretsiz Deneyin
+                Ücretsiz Deneyin
               </a>
               <a href="#features-grid" className={cn(styles.ftGlowBtn, styles.ftGlowBtnOutline)}>
-                Ozellikleri Kesfedin
+                Özellikleri Keşfedin
               </a>
             </div>
           </div>
@@ -730,9 +730,9 @@ export function PublicFeaturesPage() {
 
           <div className={cn(styles.shell)} style={{ position: 'relative', zIndex: 10 }}>
             <div className={styles.ftSectionHeader}>
-              <h2 className={styles.ftSectionTitle}>Operasyon gorunurlugu ve yonetim araclari</h2>
+              <h2 className={styles.ftSectionTitle}>Operasyon görünürlüğü ve yönetim araçları</h2>
               <p className={styles.ftSectionSubtitle}>
-                Dashboard, guvenlik ve entegrasyon katmanlariyla ekibiniz ve yoneticileriniz ayni veriden karar verir.
+                Dashboard, güvenlik ve entegrasyon katmanlarıyla ekibiniz ve yöneticileriniz aynı veriden karar verir.
               </p>
             </div>
             <div className={styles.ftDeepGrid}>
@@ -763,9 +763,9 @@ export function PublicFeaturesPage() {
         <section className={styles.ftSection}>
           <div className={styles.shell}>
             <div className={styles.ftSectionHeader}>
-              <h2 className={styles.ftSectionTitle}>Dakikalar icinde yayina alin</h2>
+              <h2 className={styles.ftSectionTitle}>Dakikalar içinde yayına alın</h2>
               <p className={styles.ftSectionSubtitle}>
-                Dort adimda AI mulakat sisteminizi kurun ve ise alim surecleinizde canli hizmete baslayin.
+                Dört adımda AI mülakat sisteminizi kurun ve işe alım süreçlerinizde canlı hizmete başlayın.
               </p>
             </div>
             <div className={styles.ftStepsGrid}>
@@ -786,9 +786,9 @@ export function PublicFeaturesPage() {
         <section className={styles.ftSection}>
           <div className={styles.shell}>
             <div className={styles.ftSectionHeader}>
-              <h2 className={styles.ftSectionTitle}>Her sektore ozel hazir AI akislari</h2>
+              <h2 className={styles.ftSectionTitle}>Her sektöre özel hazır AI akışları</h2>
               <p className={styles.ftSectionSubtitle}>
-                E-ticaret, restoran, salon ve musteri destegi icin optimize edilmis cozumler.
+                E-ticaret, restoran, salon ve müşteri desteği için optimize edilmiş çözümler.
               </p>
             </div>
             <div className={styles.ftSolutionGrid}>
@@ -800,7 +800,7 @@ export function PublicFeaturesPage() {
                       <h3 className={styles.ftSolutionTitle}>{solution.title}</h3>
                       <p className={styles.ftSolutionDesc}>{solution.shortDescription}</p>
                       <span className={styles.ftSolutionLink}>
-                        Cozumu incele <ArrowRightSvg />
+                        Çözümü incele <ArrowRightSvg />
                       </span>
                     </div>
                   </div>
@@ -816,7 +816,7 @@ export function PublicFeaturesPage() {
             <div className={styles.ftSectionHeader}>
               <h2 className={styles.ftSectionTitle}>Merak edilenler</h2>
               <p className={styles.ftSectionSubtitle}>
-                Ozellikler, entegrasyon ve kullanim hakkinda en cok sorulan sorular.
+                Özellikler, entegrasyon ve kullanım hakkında en çok sorulan sorular.
               </p>
             </div>
             <FAQBlock items={PUBLIC_FAQ} />
@@ -828,16 +828,16 @@ export function PublicFeaturesPage() {
           <div className={styles.shell}>
             <div className={styles.ftCta}>
               <div className={styles.ftCtaInner}>
-                <h2 className={styles.ftCtaTitle}>AI ile ise alim deneyiminizi donusturun</h2>
+                <h2 className={styles.ftCtaTitle}>AI ile işe alım deneyiminizi dönüştürün</h2>
                 <p className={styles.ftCtaSubtitle}>
-                  Tum ozelliklerimizi ucretsiz deneyin. Kurulum dakikalar icinde tamamlanir, teknik bilgi gerekmez.
+                  Tüm özelliklerimizi ücretsiz deneyin. Kurulum dakikalar içinde tamamlanır, teknik bilgi gerekmez.
                 </p>
                 <div className={styles.ftCtaActions}>
                   <a href="/waitlist" className={cn(styles.ftGlowBtn, styles.ftCtaBtnWhite)}>
-                    Ucretsiz Deneyin
+                    Ücretsiz Deneyin
                   </a>
                   <a href="/contact" className={cn(styles.ftGlowBtn, styles.ftCtaBtnGhost)}>
-                    Bize Ulasin
+                    Bize Ulaşın
                   </a>
                 </div>
               </div>
@@ -878,20 +878,20 @@ export function PublicSolutionsPage() {
           <div className={cn(styles.shell, styles.solHeroInner)}>
             <span className={styles.solBadge}>
               <SparklesSvg />
-              Sektorel AI Cozumleri
+              Sektörel AI Çözümleri
             </span>
             <h1 className={styles.solHeroTitle}>
-              Sektorunuze ozel AI mulakat asistani
+              Sektörünüze özel AI mülakat asistanı
             </h1>
             <p className={styles.solHeroSubtitle}>
-              E-ticaret, restoran, salon ve musteri destegi icin ozel olarak tasarlanmis hazir AI akislari ile hemen baslayabilirsiniz.
+              E-ticaret, restoran, salon ve müşteri desteği için özel olarak tasarlanmış hazır AI akışları ile hemen başlayabilirsiniz.
             </p>
             <div className={styles.solHeroActions}>
               <a href="#solutions-grid" className={cn(styles.solGlowBtn, styles.solGlowBtnPrimary)}>
-                Cozumleri Kesfedin
+                Çözümleri Keşfedin
               </a>
               <a href="/contact" className={cn(styles.solGlowBtn, styles.solGlowBtnOutline)}>
-                Bize Ulasin
+                Bize Ulaşın
               </a>
             </div>
           </div>
@@ -915,9 +915,9 @@ export function PublicSolutionsPage() {
         <section className={styles.solSection} id="solutions-grid">
           <div className={styles.shell}>
             <div className={styles.solSectionHeader}>
-              <h2 className={styles.solSectionTitle}>Sektorunuzu secin, hemen baslayin</h2>
+              <h2 className={styles.solSectionTitle}>Sektörünüzü seçin, hemen başlayın</h2>
               <p className={styles.solSectionSubtitle}>
-                Her cozum, sektorun ihtiyaclarina ozel AI akislari, entegrasyonlar ve kanal destegiyle donatildi.
+                Her çözüm, sektörün ihtiyaçlarına özel AI akışları, entegrasyonlar ve kanal desteğiyle donatıldı.
               </p>
             </div>
             <div className={styles.solGrid}>
@@ -937,7 +937,7 @@ export function PublicSolutionsPage() {
                       ))}
                     </div>
                     <span className={styles.solCardCta}>
-                      Cozumu incele
+                      Çözümü incele
                       <ArrowRightSvg />
                     </span>
                   </div>
@@ -953,7 +953,7 @@ export function PublicSolutionsPage() {
             <div className={styles.solSectionHeader}>
               <h2 className={styles.solSectionTitle}>Neden Candit.ai?</h2>
               <p className={styles.solSectionSubtitle}>
-                Sektorden bagimsiz olarak her isletmeye deger katan temel avantajlar.
+                Sektörden bağımsız olarak her işletmeye değer katan temel avantajlar.
               </p>
             </div>
             <div className={styles.solBentoGrid}>
@@ -974,9 +974,9 @@ export function PublicSolutionsPage() {
         <section className={styles.solSection}>
           <div className={styles.shell}>
             <div className={styles.solSectionHeader}>
-              <h2 className={styles.solSectionTitle}>Karar oncesi merak edilenler</h2>
+              <h2 className={styles.solSectionTitle}>Karar öncesi merak edilenler</h2>
               <p className={styles.solSectionSubtitle}>
-                Cozumler, entegrasyon sureci ve fiyatlandirma hakkinda en sik sorulan sorular.
+                Çözümler, entegrasyon süreci ve fiyatlandırma hakkında en sık sorulan sorular.
               </p>
             </div>
             <FAQBlock items={PUBLIC_FAQ} />
@@ -988,13 +988,13 @@ export function PublicSolutionsPage() {
           <div className={styles.shell}>
             <div className={styles.solCta}>
               <div className={styles.solCtaInner}>
-                <h2 className={styles.solCtaTitle}>Sektorunuze ozel AI cozumunu hemen deneyin</h2>
+                <h2 className={styles.solCtaTitle}>Sektörünüze özel AI çözümünü hemen deneyin</h2>
                 <p className={styles.solCtaSubtitle}>
-                  Listede olsun ya da olmasin, isletmenize uygun AI akisini birlikte tasarlayalim.
+                  Listede olsun ya da olmasın, işletmenize uygun AI akışını birlikte tasarlayalım.
                 </p>
                 <div className={styles.solCtaActions}>
                   <a href="/contact" className={styles.solCtaBtnWhite}>
-                    Bize Ulasin
+                    Bize Ulaşın
                   </a>
                   <a href="/waitlist" className={styles.solCtaBtnGhost}>
                     Demo Talep Edin
@@ -1024,7 +1024,7 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
             <Breadcrumbs
               items={[
                 { label: "Ana Sayfa", href: "/" },
-                { label: "Cozumler", href: "/solutions" },
+                { label: "Çözümler", href: "/solutions" },
                 { label: solution.label }
               ]}
             />
@@ -1034,7 +1034,7 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
             <div className={styles.heroActions}>
               <ActionLink action={{ label: "Demo Talep Edin", href: "/waitlist" }} />
               <ActionLink
-                action={{ label: "Fiyatlari Incele", href: "/pricing", tone: "secondary" }}
+                action={{ label: "Fiyatları İncele", href: "/pricing", tone: "secondary" }}
                 tone="secondary"
               />
             </div>
@@ -1042,7 +1042,7 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
 
           <div className={styles.solutionShowcase}>
             <div className={styles.showcaseCard}>
-              <span className={styles.cardEyebrow}>Kullanim Senaryolari</span>
+              <span className={styles.cardEyebrow}>Kullanım Senaryoları</span>
               <h3>{solution.shortDescription}</h3>
               <div className={styles.bulletList}>
                 {solution.useCases.map((item) => (
@@ -1065,9 +1065,9 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
       <section className={styles.section}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Nasil Calisir?"
-            title={`${solution.label} operasyonuna uygun kurulum akisi`}
-            subtitle="Detail sayfalarinda tekrar eden bilgi mimarisini route bazli veriyle dolduruyoruz."
+            eyebrow="Nasıl Çalışır?"
+            title={`${solution.label} operasyonuna uygun kurulum akışı`}
+            subtitle="Detail sayfalarında tekrar eden bilgi mimarisini route bazlı veriyle dolduruyoruz."
           />
           <SolutionWorkflow solution={solution} />
         </div>
@@ -1076,9 +1076,9 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Kullanim Senaryolari"
-            title="Saha gercegine yakin ornek akislar"
-            subtitle="Telyx solution detaylarindaki use-case bolumunu bullet kartlarla yeniden kurduk."
+            eyebrow="Kullanım Senaryoları"
+            title="Saha gerçeğine yakın örnek akışlar"
+            subtitle="Telyx solution detaylarındaki use-case bölümünü bullet kartlarla yeniden kurduk."
           />
           <CardGrid
             cards={solution.useCases.map((item, index) => ({
@@ -1093,14 +1093,14 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
       <section className={styles.section}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow={`${solution.label} Icin One Cikanlar`}
-            title="Operasyonun kritik avantajlari"
-            subtitle="Highlight listesini landing sayfasindaki premium kart sistemine yerlestirdik."
+            eyebrow={`${solution.label} İçin Öne Çıkanlar`}
+            title="Operasyonun kritik avantajları"
+            subtitle="Highlight listesini landing sayfasındaki premium kart sistemine yerleştirdik."
           />
           <CardGrid
             cards={solution.highlights.map((item) => ({
               title: item,
-              body: `${solution.label} ekibinin karar hizini ve kanal tutarliligini yukselten temel avantaji temsil eder.`
+              body: `${solution.label} ekibinin karar hızını ve kanal tutarlılığını yükselten temel avantajı temsil eder.`
             }))}
             columns={2}
           />
@@ -1110,14 +1110,14 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Tum Kanallardan Erisim"
-            title="Ayni urun dili tum temas noktalarina yayiliyor"
-            subtitle="Channel cards her solution detail sayfasinda tekrarlanacak sekilde reusable kuruldu."
+            eyebrow="Tüm Kanallardan Erişim"
+            title="Aynı ürün dili tüm temas noktalarına yayılıyor"
+            subtitle="Channel cards her solution detail sayfasında tekrarlanacak şekilde reusable kuruldu."
           />
           <CardGrid
             cards={solution.channels.map((channel) => ({
               title: channel,
-              body: `${solution.label} akisi ${channel} kanalinda ayni operasyon mantigi ile calisir.`
+              body: `${solution.label} akışı ${channel} kanalında aynı operasyon mantığı ile çalışır.`
             }))}
             columns={4}
           />
@@ -1132,16 +1132,16 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
 export function PublicPricingPage() {
   const OVERAGE_ROWS = [
     {
-      channel: "Destek etkilesimi",
-      unit: "1 etkilesim",
-      rate: "2,5\u20BA/etkilesim",
-      note: "PAYG bakiyesinden duser. Aylik planlarda once dahil kullanim, sonra ek paket, ardindan yazili kullanim asimi uygulanir."
+      channel: "Destek etkileşimi",
+      unit: "1 etkileşim",
+      rate: "2,5\u20BA/etkileşim",
+      note: "PAYG bakiyesinden düşer. Aylık planlarda önce dahil kullanım, sonra ek paket, ardından yazılı kullanım aşımı uygulanır."
     },
     {
-      channel: "Ses dakikasi",
+      channel: "Ses dakikası",
       unit: "1 dk",
       rate: "23\u20BA/dk",
-      note: "PAYG cuzdanindan duser. Pro ve Enterprise planlarinda dahil dakikalar bittiginde ses asimi devreye girer."
+      note: "PAYG cüzdanından düşer. Pro ve Enterprise planlarında dahil dakikalar bittiğinde ses aşımı devreye girer."
     }
   ];
 
@@ -1155,16 +1155,16 @@ export function PublicPricingPage() {
         <div className={cn(styles.shell, styles.prHeroInner)}>
           <span className={styles.prBadge}>
             <span className={styles.prBadgeDot} />
-            Seffaf Fiyatlandirma
+            Şeffaf Fiyatlandırma
           </span>
           <h1 className={styles.prHeroTitle}>
-            Ihtiyaciniza uygun plani secin
+            İhtiyacınıza uygun planı seçin
           </h1>
           <p className={styles.prHeroSubtitle}>
-            Ucretsiz deneme ile baslayip, buyudukce olceklendirin. Gizli ucret yok, surpriz yok.
+            Ücretsiz deneme ile başlayıp, büyüdükçe ölçeklendirin. Gizli ücret yok, sürpriz yok.
           </p>
           <p className={styles.prHeroKicker}>
-            Ucretsiz deneme &mdash; Kredi karti gerekmez
+            Ücretsiz deneme &mdash; Kredi kartı gerekmez
           </p>
         </div>
       </section>
@@ -1200,7 +1200,7 @@ export function PublicPricingPage() {
                       {isTrial ? (
                         <span className={styles.prPriceFree}>&Uuml;cretsiz</span>
                       ) : isEnterprise ? (
-                        <span className={styles.prPriceContact}>Iletisime Gecin</span>
+                        <span className={styles.prPriceContact}>İletişime Geçin</span>
                       ) : (
                         <>
                           <span className={styles.prPriceAmount}>
@@ -1218,9 +1218,9 @@ export function PublicPricingPage() {
                       {isTrial && plan.badge ? (
                         <span>{plan.badge}</span>
                       ) : isEnterprise ? (
-                        <span>&Ouml;zel fiyatlandirma</span>
+                        <span>&Ouml;zel fiyatlandırma</span>
                       ) : plan.meta?.includes("Asim") ? (
-                        <span>Asim: {plan.meta.split("Asim:")[1]?.split("•")[0]?.trim()}</span>
+                        <span>Aşım: {plan.meta.split("Asim:")[1]?.split("•")[0]?.trim()}</span>
                       ) : null}
                     </div>
                   </div>
@@ -1266,11 +1266,11 @@ export function PublicPricingPage() {
           <div className={styles.prPaygHeader}>
             <span className={styles.prPaygBadge}>
               <span className={styles.prBadgeDot} />
-              Esnek Kullanim
+              Esnek Kullanım
             </span>
-            <h2 className={styles.prSectionTitle}>Kullandikca Ode</h2>
+            <h2 className={styles.prSectionTitle}>Kullandıkça Öde</h2>
             <p className={styles.prSectionSubtitle}>
-              Aylik taahhut yok. Ses dakikalari ve yazili etkilesimler kullanim bakiyesinden duser.
+              Aylık taahhüt yok. Ses dakikaları ve yazılı etkileşimler kullanım bakiyesinden düşer.
             </p>
           </div>
 
@@ -1280,7 +1280,7 @@ export function PublicPricingPage() {
               <span className={styles.prPaygUnit}>/dk</span>
             </div>
             <p className={styles.prPaygNote}>
-              {PUBLIC_PAY_AS_YOU_GO.meta?.split("•")[1]?.trim() || "Minimum 4 dk yukleme (92\u20BA)"}
+              {PUBLIC_PAY_AS_YOU_GO.meta?.split("•")[1]?.trim() || "Minimum 4 dk yükleme (92\u20BA)"}
             </p>
 
             <div className={styles.prPaygTags}>
@@ -1303,9 +1303,9 @@ export function PublicPricingPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <div className={styles.prOverageHeader}>
-            <h2 className={styles.prSectionTitle}>Paket asim detaylari</h2>
+            <h2 className={styles.prSectionTitle}>Paket aşım detayları</h2>
             <p className={styles.prSectionSubtitle}>
-              Paket asimi, planinizda tanimli dakikalarin bitmesinden sonra olusan ek kullanimi ifade eder.
+              Paket aşımı, planınızda tanımlı dakikaların bitmesinden sonra oluşan ek kullanımı ifade eder.
             </p>
           </div>
 
@@ -1315,7 +1315,7 @@ export function PublicPricingPage() {
                 <tr>
                   <th>Kanal</th>
                   <th>Birim</th>
-                  <th>Asim ucreti</th>
+                  <th>Aşım ücreti</th>
                   <th>Not</th>
                 </tr>
               </thead>
@@ -1338,9 +1338,9 @@ export function PublicPricingPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <div className={styles.prCtaSection}>
-            <h2 className={styles.prCtaTitle}>Hala kararsiz misiniz?</h2>
+            <h2 className={styles.prCtaTitle}>Hala kararsız mısınız?</h2>
             <p className={styles.prCtaBody}>
-              Ihtiyaciniza gore dogru paketi birlikte secelim.
+              İhtiyacınıza göre doğru paketi birlikte seçelim.
             </p>
             <a href="/waitlist" className={styles.prGlowBtn}>
               <span>Demo Talep Edin</span>
@@ -1354,9 +1354,9 @@ export function PublicPricingPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Sik Sorulan Sorular"
-            title="Fiyatlandirma hakkinda merak edilenler"
-            subtitle="Karar vermeden once en sik gelen sorulara goz atin."
+            eyebrow="Sık Sorulan Sorular"
+            title="Fiyatlandırma hakkında merak edilenler"
+            subtitle="Karar vermeden önce en sık gelen sorulara göz atın."
             align="center"
           />
           <FAQBlock items={PUBLIC_FAQ} />
@@ -1367,8 +1367,8 @@ export function PublicPricingPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <p className={styles.prContactLine}>
-            Sorulariniz mi var?{" "}
-            <a href="/contact" className={styles.prContactLink}>Bize ulasin</a>
+            Sorularınız mı var?{" "}
+            <a href="/contact" className={styles.prContactLink}>Bize ulaşın</a>
           </p>
         </div>
       </section>
@@ -1383,8 +1383,8 @@ export function PublicIntegrationsPage() {
         <div className={styles.shell}>
           <SectionHeader
             eyebrow="Entegrasyonlar"
-            title="Kategori bazli entegrasyon sayfasi da ayni kurguyla tasindi"
-            subtitle="Iletisim, e-ticaret, CRM, planlama ve veri entegrasyonlari ayri bloklar halinde yer aliyor."
+            title="Kategori bazlı entegrasyon sayfası da aynı kurguyla taşındı"
+            subtitle="İletişim, e-ticaret, CRM, planlama ve veri entegrasyonları ayrı bloklar halinde yer alıyor."
             align="center"
           />
         </div>
@@ -1405,7 +1405,7 @@ export function PublicIntegrationsPage() {
 
       <CTASection
         title="Harici sistemlerinizi de bu public hikayeye dahil edebiliriz"
-        body="Yeni connector gruplari eklemek icin yalnizca veri katmanina yeni kartlar girmeniz yeterli."
+        body="Yeni connector grupları eklemek için yalnızca veri katmanına yeni kartlar girmeniz yeterli."
       />
     </PublicSiteFrame>
   );
@@ -1418,8 +1418,8 @@ export function PublicBlogIndexPage() {
         <div className={styles.shell}>
           <SectionHeader
             eyebrow="Telyx Blog"
-            title="Blog index, article detail ve related content akislariyla birlikte eklendi"
-            subtitle="Blog sayfalarinin public alanini birebir genisletebilmek icin tum yazilar veri katmanina tasindi."
+            title="Blog index, article detail ve related content akışlarıyla birlikte eklendi"
+            subtitle="Blog sayfalarının public alanını birebir genişletebilmek için tüm yazılar veri katmanına taşındı."
             align="center"
           />
         </div>
@@ -1438,11 +1438,11 @@ export function PublicBlogIndexPage() {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={cn(styles.shell, styles.newsletterBand)}>
           <div>
-            <span className={styles.eyebrow}>Yeni iceriklerden haberdar olun</span>
-            <h2 className={styles.ctaTitle}>Public blog yapisi artik bu projede de hazir.</h2>
+            <span className={styles.eyebrow}>Yeni içeriklerden haberdar olun</span>
+            <h2 className={styles.ctaTitle}>Public blog yapısı artık bu projede de hazır.</h2>
             <p className={styles.ctaBody}>
-              Icerikleri sonra degistirecek olsak bile kart yapilari, detail layout ve related
-              content deneyimi tamamlandi.
+              İçerikleri sonra değiştirecek olsak bile kart yapıları, detail layout ve related
+              content deneyimi tamamlandı.
             </p>
           </div>
           <div className={styles.newsletterForm}>
@@ -1503,7 +1503,7 @@ export function PublicBlogArticlePage({ slug }: { slug: string }) {
 
           <aside className={styles.articleAside}>
             <div className={styles.card}>
-              <span className={styles.cardEyebrow}>Yazi Bilgisi</span>
+              <span className={styles.cardEyebrow}>Yazı Bilgisi</span>
               <h3>{article.category}</h3>
               <div className={styles.bulletList}>
                 <span>{article.date}</span>
@@ -1518,9 +1518,9 @@ export function PublicBlogArticlePage({ slug }: { slug: string }) {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Ilgili Yazilar"
-            title="Detail sayfasindan yeni icerige dogal gecis"
-            subtitle="Related article grid yapisi blog detaylarini daha derli toplu kapatir."
+            eyebrow="İlgili Yazılar"
+            title="Detail sayfasından yeni içeriğe doğal geçiş"
+            subtitle="Related article grid yapısı blog detaylarını daha derli toplu kapatır."
           />
           <div className={styles.articleGrid}>
             {relatedArticles.map((relatedArticle) => (
@@ -1531,8 +1531,8 @@ export function PublicBlogArticlePage({ slug }: { slug: string }) {
       </section>
 
       <CTASection
-        title="Blog detay sayfalari da public siteye tasindi"
-        body="Siradaki turda makale iceriklerini bu urune ozgu konu basliklariyla degistirebiliriz."
+        title="Blog detay sayfaları da public siteye taşındı"
+        body="Sıradaki turda makale içeriklerini bu ürüne özgü konu başlıklarıyla değiştirebiliriz."
       />
     </PublicSiteFrame>
   );
@@ -1544,9 +1544,9 @@ export function PublicHelpPage() {
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Sikca Sorulan Sorular"
-            title="Help merkezi; hizli baslangic, populer konular ve SSS katmanlariyla hazir"
-            subtitle="Public help yapisini ayrica ayirdik; boylece dokumantasyon ve blogdan farkli bir destek girisi sagliyor."
+            eyebrow="Sıkça Sorulan Sorular"
+            title="Help merkezi; hızlı başlangıç, popüler konular ve SSS katmanlarıyla hazır"
+            subtitle="Public help yapısını ayrıca ayırdık; böylece dokümantasyon ve blogdan farklı bir destek girişi sağlıyor."
             align="center"
           />
         </div>
@@ -1555,8 +1555,8 @@ export function PublicHelpPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Hizli Baslangic"
-            title="Ilk 4 adimla urun aktivasyonunu aciklayin"
+            eyebrow="Hızlı Başlangıç"
+            title="İlk 4 adımla ürün aktivasyonunu açıklayın"
           />
           <StepsGrid steps={PUBLIC_HELP_QUICKSTART} />
         </div>
@@ -1565,8 +1565,8 @@ export function PublicHelpPage() {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Populer Konular"
-            title="Yardim merkezine giren kullaniciyi dogru sayfaya yonlendirin"
+            eyebrow="Popüler Konular"
+            title="Yardım merkezine giren kullanıcıyı doğru sayfaya yönlendirin"
           />
           <CardGrid cards={PUBLIC_HELP_TOPICS} columns={4} />
         </div>
@@ -1574,14 +1574,14 @@ export function PublicHelpPage() {
 
       <section className={styles.section}>
         <div className={styles.shell}>
-          <SectionHeader eyebrow="SSS" title="Baska sorunuz mu var?" />
+          <SectionHeader eyebrow="SSS" title="Başka sorunuz mu var?" />
           <FAQBlock items={PUBLIC_FAQ} />
         </div>
       </section>
 
       <CTASection
-        title="Yardim merkezini daha urune ozgu hale getirmek kolay"
-        body="Bugun tum public iskeleti aldik; sonra bunu urun support akisiniza gore yeniden metinlestirebiliriz."
+        title="Yardım merkezini daha ürüne özgü hale getirmek kolay"
+        body="Bugün tüm public iskeleti aldık; sonra bunu ürün support akışınıza göre yeniden metinleştirebiliriz."
       />
     </PublicSiteFrame>
   );
@@ -1593,9 +1593,9 @@ export function PublicDocsApiPage() {
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="API Dokumantasyonu"
-            title="Developer-facing public page de route agacina eklendi"
-            subtitle="Docs/API sayfasini; quickstart kod blogu, endpoint kartlari ve entegrasyon akisiyla birlikte olusturduk."
+            eyebrow="API Dokümantasyonu"
+            title="Developer-facing public page de route ağacına eklendi"
+            subtitle="Docs/API sayfasını; quickstart kod bloğu, endpoint kartları ve entegrasyon akışıyla birlikte oluşturduk."
             align="center"
           />
         </div>
@@ -1613,15 +1613,15 @@ export function PublicDocsApiPage() {
             cards={[
               {
                 title: "Authentication",
-                body: "Bearer token ile kanal bazli olaylari guvenli sekilde kabul edin."
+                body: "Bearer token ile kanal bazlı olayları güvenli şekilde kabul edin."
               },
               {
                 title: "Webhook Delivery",
-                body: "Handoff, cozum, basarisiz istek ve temsilci devri olaylarini takip edin."
+                body: "Handoff, çözüm, başarısız istek ve temsilci devri olaylarını takip edin."
               },
               {
                 title: "Rate Limits",
-                body: "Kanal bazli yuku korumak icin dakikalik ve saatlik limitler uygulanir."
+                body: "Kanal bazlı yükü korumak için dakikalık ve saatlik limitler uygulanır."
               }
             ]}
           />
@@ -1629,8 +1629,8 @@ export function PublicDocsApiPage() {
       </section>
 
       <CTASection
-        title="Public docs katmani da marketing siteyle ayni dilde calisiyor"
-        body="Isterseniz bir sonraki turda gercek endpointlerinizi bu sayfaya yerlestirelim."
+        title="Public docs katmanı da marketing siteyle aynı dilde çalışıyor"
+        body="İsterseniz bir sonraki turda gerçek endpointlerinizi bu sayfaya yerleştirelim."
       />
     </PublicSiteFrame>
   );
@@ -1642,9 +1642,9 @@ export function PublicSecurityPage() {
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Verileriniz Guvende"
-            title="Security sayfasi; veri guvenligi, yasal uyumluluk ve AI guvenligi katmanlariyla tamam"
-            subtitle="Telyx security bilgisini ayni premium public tasarim diliyle bu projeye aktardik."
+            eyebrow="Verileriniz Güvende"
+            title="Security sayfası; veri güvenliği, yasal uyumluluk ve AI güvenliği katmanlarıyla tamam"
+            subtitle="Telyx security bilgisini aynı premium public tasarım diliyle bu projeye aktardık."
             align="center"
           />
         </div>
@@ -1657,9 +1657,9 @@ export function PublicSecurityPage() {
       </section>
 
       <CTASection
-        title="Guvenlik ile ilgili sorularinizi public site uzerinden de toplayabilirsiniz"
-        body="Contact ve waitlist sayfalarini security CTA'lariyla birlestirecek temel altyapi da hazir."
-        primary={{ label: "Iletisime Gecin", href: "/contact" }}
+        title="Güvenlik ile ilgili sorularınızı public site üzerinden de toplayabilirsiniz"
+        body="Contact ve waitlist sayfalarını security CTA'larıyla birleştirecek temel altyapı da hazır."
+        primary={{ label: "İletişime Geçin", href: "/contact" }}
         secondary={{ label: "Demo Talep Edin", href: "/waitlist", tone: "secondary" }}
       />
     </PublicSiteFrame>
@@ -1673,9 +1673,9 @@ export function PublicAboutPage() {
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Hakkimizda"
-            title="Yapay zekayi isletmelerin hizmetine sunuyoruz"
-            subtitle="Her buyuklukteki isletmenin 7/24 profesyonel ve tutarli musteri hizmeti sunabilmesini sagliyoruz."
+            eyebrow="Hakkımızda"
+            title="Yapay zekayı işletmelerin hizmetine sunuyoruz"
+            subtitle="Her büyüklükteki işletmenin 7/24 profesyonel ve tutarlı müşteri hizmeti sunabilmesini sağlıyoruz."
             align="center"
           />
         </div>
@@ -1694,7 +1694,7 @@ export function PublicAboutPage() {
           <SectionHeader
             eyebrow="Hikayemiz"
             title="Nereden geldik, nereye gidiyoruz"
-            subtitle="Farklı sektorlerde edinilen deneyim, yapay zeka ile birleserek Telyx'i ortaya cikardi."
+            subtitle="Farklı sektörlerde edinilen deneyim, yapay zeka ile birleşerek Telyx'i ortaya çıkardı."
             align="center"
           />
           <CardGrid cards={PUBLIC_ABOUT_STORY} columns={2} />
@@ -1706,8 +1706,8 @@ export function PublicAboutPage() {
         <div className={styles.shell}>
           <SectionHeader
             eyebrow="Ekibimiz"
-            title="Kucuk ama tutkulu bir ekip"
-            subtitle="Her urun karari, her entegrasyon ve her iyilestirme musteri ihtiyaclarindan hareketle gelistiriliyor."
+            title="Küçük ama tutkulu bir ekip"
+            subtitle="Her ürün kararı, her entegrasyon ve her iyileştirme müşteri ihtiyaçlarından hareketle geliştiriliyor."
             align="center"
           />
           <CardGrid cards={PUBLIC_TEAM} columns={3} />
@@ -1716,10 +1716,10 @@ export function PublicAboutPage() {
 
       {/* ═══ CTA ═══ */}
       <CTASection
-        title="Hikayemizin bir parcasi olun"
-        body="Isletmenizi AI ile donusturerek musterilerinize hak ettikleri deneyimi sunun."
+        title="Hikayemizin bir parçası olun"
+        body="İşletmenizi AI ile dönüştürerek müşterilerinize hak ettikleri deneyimi sunun."
         primary={{ label: "Demo Talep Edin", href: "/waitlist" }}
-        secondary={{ label: "Iletisime Gecin", href: "/contact", tone: "secondary" }}
+        secondary={{ label: "İletişime Geçin", href: "/contact", tone: "secondary" }}
       />
     </PublicSiteFrame>
   );
@@ -1732,9 +1732,9 @@ export function PublicContactPage() {
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Iletisim"
-            title="Size nasil yardimci olabiliriz?"
-            subtitle="Sorularinizi iletin, ekibimiz en kisa surede size donecektir. Kurulum destegindenentegrasyon danismanligina kadar yaninizdayiz."
+            eyebrow="İletişim"
+            title="Size nasıl yardımcı olabiliriz?"
+            subtitle="Sorularınızı iletin, ekibimiz en kısa sürede size dönecektir. Kurulum desteğinden entegrasyon danışmanlığına kadar yanınızdayız."
             align="center"
           />
         </div>
@@ -1751,9 +1751,9 @@ export function PublicContactPage() {
       <section className={styles.section}>
         <div className={cn(styles.shell, styles.contactLayout)}>
           <MockContactForm
-            title="Bize Mesaj Gonderin"
-            body="Formu doldurarak bize ulasin. Ekibimiz en kisa surede donus yapacaktir."
-            submitLabel="Mesaji Gonder"
+            title="Bize Mesaj Gönderin"
+            body="Formu doldurarak bize ulaşın. Ekibimiz en kısa sürede dönüş yapacaktır."
+            submitLabel="Mesajı Gönder"
           />
 
           <div>
@@ -1802,8 +1802,8 @@ export function PublicLegalPage({
 export function PublicPrivacyPage() {
   return (
     <PublicLegalPage
-      title="Gizlilik Politikasi (Privacy Policy)"
-      subtitle="Toplanan verilerden retention politikasina kadar tum public yasal bolumler kart yapisinda duzenlendi."
+      title="Gizlilik Politikası (Privacy Policy)"
+      subtitle="Toplanan verilerden retention politikasına kadar tüm public yasal bölümler kart yapısında düzenlendi."
       sections={PUBLIC_PRIVACY_SECTIONS}
     />
   );
@@ -1812,8 +1812,8 @@ export function PublicPrivacyPage() {
 export function PublicTermsPage() {
   return (
     <PublicLegalPage
-      title="Kullanim Kosullari (Terms of Service)"
-      subtitle="Kullanim, planlar, entegrasyonlar ve sorumluluk sinirlari public legal layout ile eklendi."
+      title="Kullanım Koşulları (Terms of Service)"
+      subtitle="Kullanım, planlar, entegrasyonlar ve sorumluluk sınırları public legal layout ile eklendi."
       sections={PUBLIC_TERMS_SECTIONS}
     />
   );
@@ -1825,9 +1825,9 @@ export function PublicChangelogPage() {
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Neler Degisiyor?"
-            title="Changelog zaman cizgisi artik public site agacinda"
-            subtitle="Version history, release notes ve kapanis CTA'si ile public urun guncelleme sayfasi hazir."
+            eyebrow="Neler Değişiyor?"
+            title="Changelog zaman çizgisi artık public site ağacında"
+            subtitle="Version history, release notes ve kapanış CTA'sı ile public ürün güncelleme sayfası hazır."
             align="center"
           />
         </div>
@@ -1840,8 +1840,8 @@ export function PublicChangelogPage() {
       </section>
 
       <CTASection
-        title="Gelistirme surecimizin bir parcasi olun"
-        body="Changelog sayfasini product marketing yapisina dahil ettik. Sonraki adimda kendi release notlarinizla doldurabiliriz."
+        title="Geliştirme sürecimizin bir parçası olun"
+        body="Changelog sayfasını product marketing yapısına dahil ettik. Sonraki adımda kendi release notlarınızla doldurabiliriz."
       />
     </PublicSiteFrame>
   );
@@ -1855,23 +1855,23 @@ export function PublicWaitlistPage() {
           <div>
             <SectionHeader
               eyebrow="Demo Talep Edin"
-              title="Waitlist / demo talep sayfasi da ayni public tasarim sistemiyle eklendi"
-              subtitle="Telyx demo talep akisini, guven kartlari ve sade bir form kompozisyonuyla bu projeye tasidik."
+              title="Waitlist / demo talep sayfası da aynı public tasarım sistemiyle eklendi"
+              subtitle="Telyx demo talep akışını, güven kartları ve sade bir form kompozisyonuyla bu projeye taşıdık."
             />
             <StepsGrid
               steps={[
-                { step: "01", title: "Ihtiyaci anlatin", body: "Hangi kanallari yoneteceginizi paylasin." },
-                { step: "02", title: "Akisi tasarlayalim", body: "Operasyonunuza uygun demo senaryosunu kuralim." },
-                { step: "03", title: "Canli gostereyim", body: "Public sayfalardan urun deneyimine gecelim." },
-                { step: "04", title: "Karar verin", body: "Gerekirse icerigi ve fiyat yapisini uyarlayalim." }
+                { step: "01", title: "İhtiyacı anlatın", body: "Hangi kanalları yöneteceğinizi paylaşın." },
+                { step: "02", title: "Akışı tasarlayalım", body: "Operasyonunuza uygun demo senaryosunu kuralım." },
+                { step: "03", title: "Canlı göstereyim", body: "Public sayfalardan ürün deneyimine geçelim." },
+                { step: "04", title: "Karar verin", body: "Gerekirse içeriği ve fiyat yapısını uyarlayalım." }
               ]}
             />
           </div>
 
           <MockContactForm
             title="Demo formu"
-            body="Bu form su an kopyalanmis public iskeletin parcasi. Sonraki adimda gercek submission akisini baglayabiliriz."
-            submitLabel="Demo Iste"
+            body="Bu form şu an kopyalanmış public iskeletin parçası. Sonraki adımda gerçek submission akışını bağlayabiliriz."
+            submitLabel="Demo İste"
           />
         </div>
       </section>

@@ -1,36 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useMemo } from "react";
+import { useUiText } from "./site-language-provider";
 import "./landing-hero.css";
 
-const SITE_BRAND = "Candit.ai";
-
-/* ── Manifesto text and emphasis words ── */
-const MANIFESTO_TEXT =
-  "Her aday, hangi pozisyon veya kanaldan gelirse gelsin ayni profesyonellik ve objektiflikle degerlendirilmeli. Candit.ai bu vizyonu urunun merkezine yerlestirdi.";
-const MANIFESTO_EMPHASIS = "aday,profesyonellik,objektiflikle,Candit.ai,vizyonu";
-
-/* ── Chat demo messages ── */
-const CHAT_MESSAGES = [
-  { type: "candidate", text: "Merhaba, basvurumu gonderdim. Mulakat sureci nasil isliyor?" },
-  { type: "bot", text: "Hos geldiniz! Basvurunuz alindi. Simdi size kisa bir AI mulakat gonderecegim. Hazir oldugunuzda baslayabilirsiniz." },
-  { type: "candidate", text: "Harika, hemen baslamak istiyorum!" },
-  { type: "bot", text: "Mukemmel! Mulakat linkiniz hazirlandi. Basarilar dileriz! Ortalama sure 15 dakikadir." },
-];
-
 export function LandingHero() {
+  const { t } = useUiText();
   const pageRef = useRef<HTMLDivElement>(null);
   const chatDemoStarted = useRef(false);
   const chatLoopTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ── Manifesto: split text into words, mark emphasis ── */
   const manifestoWords = useMemo(() => {
-    const emphasisSet = new Set(MANIFESTO_EMPHASIS.split(",").map((w) => w.trim().toLowerCase()));
-    return MANIFESTO_TEXT.split(/\s+/).map((word) => ({
+    const text = t("Doğru adayı bulmak zaman almamalı. Candit.ai, yapay zekâ ile işe alımı hızlandırır.");
+    const emphasisRaw = t("adayı,Candit.ai,yapay zekâ,hızlandırır");
+    const emphasisSet = new Set(emphasisRaw.split(",").map((w) => w.trim().toLowerCase()));
+    return text.split(/\s+/).map((word) => ({
       word,
       em: emphasisSet.has(word.toLowerCase()),
     }));
-  }, []);
+  }, [t]);
+
+  const chatMessages = useMemo(() => [
+    { type: "candidate", text: t("Merhaba, başvurumu gönderdim. Mülakat süreci nasıl işliyor?") },
+    { type: "bot", text: t("Hoş geldiniz! Başvurunuz alındı. Şimdi size kısa bir AI mülakat göndereceğim.") },
+    { type: "candidate", text: t("Harika, hemen başlamak istiyorum!") },
+    { type: "bot", text: t("Mükemmel! Mülakat linkiniz hazırlandı. Başarılar dileriz!") },
+  ], [t]);
 
   useEffect(() => {
     const root = pageRef.current;
@@ -48,7 +44,7 @@ export function LandingHero() {
 
       function updateHero() {
         const scrolled = window.scrollY;
-        const thresholds = [0, 80, 150, 220];
+        const thresholds = [0, 100, 200];
         for (let i = 0; i < lines.length; i++) {
           lines[i].classList.toggle("lp-active", scrolled >= thresholds[i]);
         }
@@ -323,7 +319,7 @@ export function LandingHero() {
   return (
     <div className="lp-landing-page" ref={pageRef}>
       {/* Hidden data carriers for chat messages */}
-      {CHAT_MESSAGES.map((m, i) => (
+      {chatMessages.map((m, i) => (
         <span key={i} hidden data-chat-msg={m.text} data-chat-type={m.type} />
       ))}
 
@@ -335,20 +331,18 @@ export function LandingHero() {
         <section className="lp-hero" id="hero">
           <div className="lp-hero-grid-bg" aria-hidden="true" />
           <div className="lp-hero-text-stack">
-            <span className="lp-hero-line" data-index="0">AI ile</span>
-            <span className="lp-hero-line" data-index="1">ise alimin</span>
-            <span className="lp-hero-line" data-index="2">gelecegi</span>
-            <span className="lp-hero-line" data-index="3">burada.</span>
-            <span className="lp-hero-tagline">Mulakat. Degerlendirme. Ise Alim.</span>
+            <span className="lp-hero-line" data-index="0">{t("Screening.")}</span>
+            <span className="lp-hero-line" data-index="1">{t("Sourcing.")}</span>
+            <span className="lp-hero-line" data-index="2">{t("Mülakat.")}</span>
+            <span className="lp-hero-tagline">{t("Yapay zekâ destekli işe alım platformu.")}</span>
           </div>
           <div className="lp-hero-bottom">
             <p className="lp-hero-sub">
-              Adaylarinizi hangi kanaldan ulasirsa ulassin ayni hiz, ayni kalite ve ayni
-              profesyonellikle degerlendirin. {SITE_BRAND} ile ise alim surecini otomatiklestirin.
+              {t("Adaylarınızı hangi kanaldan ulaşırsa ulaşsın aynı hız, aynı kalite ve aynı profesyonellikle değerlendirin.")}
             </p>
             <div className="lp-hero-actions">
-              <a href="/auth/signup" className="lp-btn">Ucretsiz Deneyin</a>
-              <a href="#workflow" className="lp-btn-ghost">Nasil calisir?</a>
+              <a href="/auth/signup" className="lp-btn">{t("Ücretsiz Deneyin")}</a>
+              <a href="#workflow" className="lp-btn-ghost">{t("Nasıl çalışır?")}</a>
             </div>
           </div>
           <div className="lp-hero-scroll-cue" aria-hidden="true">
@@ -377,54 +371,54 @@ export function LandingHero() {
           <div className="lp-shell">
             <div className="lp-dashboard-frame lp-reveal-scale">
               <div className="lp-dashboard-topbar">
-                <span className="lp-dashboard-topbar-title">Ise Alim Paneli</span>
+                <span className="lp-dashboard-topbar-title">{t("İşe Alım Paneli")}</span>
                 <div className="lp-dashboard-topbar-pills">
-                  <span>Bugun</span>
-                  <span className="lp-active-pill">Bu Hafta</span>
-                  <span>Bu Ay</span>
+                  <span>{t("Bugün")}</span>
+                  <span className="lp-active-pill">{t("Bu Hafta")}</span>
+                  <span>{t("Bu Ay")}</span>
                 </div>
               </div>
               <div className="lp-metrics-row">
                 <div className="lp-metric-card lp-reveal lp-reveal-delay-1">
-                  <div className="lp-metric-label">Mulakatlar</div>
+                  <div className="lp-metric-label">{t("Mülakatlar")}</div>
                   <div className="lp-metric-value" data-color="primary" data-count="1247">0</div>
-                  <div className="lp-metric-trend">+23% onceki haftaya gore</div>
+                  <div className="lp-metric-trend">{t("+23% önceki haftaya göre")}</div>
                 </div>
                 <div className="lp-metric-card lp-reveal lp-reveal-delay-2">
-                  <div className="lp-metric-label">Tamamlanma Orani</div>
+                  <div className="lp-metric-label">{t("Tamamlanma Oranı")}</div>
                   <div className="lp-metric-value" data-color="accent" data-count="94.2" data-suffix="%" data-decimal="1">0</div>
-                  <div className="lp-metric-trend">+5.1% artis</div>
+                  <div className="lp-metric-trend">{t("+5.1% artış")}</div>
                 </div>
                 <div className="lp-metric-card lp-reveal lp-reveal-delay-3">
-                  <div className="lp-metric-label">Ort. Mulakat Suresi</div>
+                  <div className="lp-metric-label">{t("Ort. Mülakat Süresi")}</div>
                   <div className="lp-metric-value" data-color="info" data-count="14.8" data-suffix="dk" data-decimal="1">0</div>
-                  <div className="lp-metric-trend">-2.3dk iyilesme</div>
+                  <div className="lp-metric-trend">{t("-2.3dk iyileşme")}</div>
                 </div>
                 <div className="lp-metric-card lp-reveal lp-reveal-delay-4">
-                  <div className="lp-metric-label">Aday Memnuniyeti</div>
+                  <div className="lp-metric-label">{t("Aday Memnuniyeti")}</div>
                   <div className="lp-metric-value" data-color="warning" data-count="4.7" data-suffix="/5" data-decimal="1">0</div>
-                  <div className="lp-metric-trend">+0.3 puan artis</div>
+                  <div className="lp-metric-trend">{t("+0.3 puan artış")}</div>
                 </div>
               </div>
               <div className="lp-dashboard-body">
                 <div className="lp-channel-bars">
                   <div className="lp-channel-bar-item">
-                    <span className="lp-channel-bar-name">AI Mulakat</span>
+                    <span className="lp-channel-bar-name">{t("AI Mülakat")}</span>
                     <div className="lp-channel-bar-track"><div className="lp-channel-bar-fill" data-color="accent" data-width="42" /></div>
                     <span className="lp-channel-bar-pct">42%</span>
                   </div>
                   <div className="lp-channel-bar-item">
-                    <span className="lp-channel-bar-name">On Eleme</span>
+                    <span className="lp-channel-bar-name">{t("Ön Eleme")}</span>
                     <div className="lp-channel-bar-track"><div className="lp-channel-bar-fill" data-color="info" data-width="31" /></div>
                     <span className="lp-channel-bar-pct">31%</span>
                   </div>
                   <div className="lp-channel-bar-item">
-                    <span className="lp-channel-bar-name">CV Analizi</span>
+                    <span className="lp-channel-bar-name">{t("CV Analizi")}</span>
                     <div className="lp-channel-bar-track"><div className="lp-channel-bar-fill" data-color="warning" data-width="18" /></div>
                     <span className="lp-channel-bar-pct">18%</span>
                   </div>
                   <div className="lp-channel-bar-item">
-                    <span className="lp-channel-bar-name">Degerlendirme</span>
+                    <span className="lp-channel-bar-name">{t("Değerlendirme")}</span>
                     <div className="lp-channel-bar-track"><div className="lp-channel-bar-fill" data-color="primary" data-width="9" /></div>
                     <span className="lp-channel-bar-pct">9%</span>
                   </div>
@@ -432,23 +426,23 @@ export function LandingHero() {
                 <div className="lp-activity-feed">
                   <div className="lp-activity-item">
                     <span className="lp-activity-dot" style={{ background: "var(--lp-accent)" }} />
-                    <span className="lp-activity-text">Yeni aday mulakata basladi</span>
-                    <span className="lp-activity-time">2dk once</span>
+                    <span className="lp-activity-text">{t("Yeni aday mülakata başladı")}</span>
+                    <span className="lp-activity-time">{t("2dk önce")}</span>
                   </div>
                   <div className="lp-activity-item">
                     <span className="lp-activity-dot" style={{ background: "var(--lp-info)" }} />
-                    <span className="lp-activity-text">AI degerlendirme tamamlandi</span>
-                    <span className="lp-activity-time">5dk once</span>
+                    <span className="lp-activity-text">{t("AI değerlendirme tamamlandı")}</span>
+                    <span className="lp-activity-time">{t("5dk önce")}</span>
                   </div>
                   <div className="lp-activity-item">
                     <span className="lp-activity-dot" style={{ background: "var(--lp-warning)" }} />
-                    <span className="lp-activity-text">3 yeni basvuru alindi</span>
-                    <span className="lp-activity-time">12dk once</span>
+                    <span className="lp-activity-text">{t("3 yeni başvuru alındı")}</span>
+                    <span className="lp-activity-time">{t("12dk önce")}</span>
                   </div>
                   <div className="lp-activity-item">
                     <span className="lp-activity-dot" style={{ background: "var(--lp-primary)" }} />
-                    <span className="lp-activity-text">Aday raporu olusturuldu</span>
-                    <span className="lp-activity-time">18dk once</span>
+                    <span className="lp-activity-text">{t("Aday raporu oluşturuldu")}</span>
+                    <span className="lp-activity-time">{t("18dk önce")}</span>
                   </div>
                 </div>
               </div>
@@ -460,30 +454,30 @@ export function LandingHero() {
         <section className="lp-channels" id="channels">
           <div className="lp-shell">
             <div className="lp-channels-header lp-reveal">
-              <span className="lp-kicker">MODULLER</span>
-              <h2 className="lp-section-title">Her adimda ayni kalite</h2>
-              <p className="lp-section-sub" style={{ margin: "0 auto" }}>Is ilani, basvuru toplama, on eleme ve AI mulakat sureclerinin hepsi tek platformda yonetilir.</p>
+              <span className="lp-kicker">{t("MODÜLLER")}</span>
+              <h2 className="lp-section-title">{t("Her adımda aynı kalite")}</h2>
+              <p className="lp-section-sub" style={{ margin: "0 auto" }}>{t("İş ilanı, başvuru toplama, ön eleme ve AI mülakat süreçlerinin hepsi tek platformda yönetilir.")}</p>
             </div>
             <div className="lp-channels-grid" id="channelsGrid">
               <div className="lp-channel-card lp-ch-2 lp-scroll-card">
                 <div className="lp-channel-icon">{"\u{1F399}\u{FE0F}"}</div>
-                <h3>AI Mulakat</h3>
-                <p>Adaylara otomatik sesli veya yazili mulakat uygulatin. AI, yanitlari anlik analiz eder ve puanlar.</p>
+                <h3>{t("AI Mülakat")}</h3>
+                <p>{t("Adaylara otomatik sesli veya yazılı mülakat uygulayın. AI, yanıtları anlık analiz eder ve puanlar.")}</p>
               </div>
               <div className="lp-channel-card lp-ch-1 lp-scroll-card">
                 <div className="lp-channel-icon">{"\u{1F4CB}"}</div>
-                <h3>Aday Degerlendirme</h3>
-                <p>Yetkinlik bazli AI puanlamasi ile adaylari objektif sekilde karsilastirin ve sirayin.</p>
+                <h3>{t("Aday Değerlendirme")}</h3>
+                <p>{t("Yetkinlik bazlı AI puanlaması ile adayları objektif şekilde karşılaştırın ve sıralayın.")}</p>
               </div>
               <div className="lp-channel-card lp-ch-3 lp-scroll-card">
                 <div className="lp-channel-icon">{"\u{1F465}"}</div>
-                <h3>Aday Yonetimi</h3>
-                <p>Tum basvurulari tek panelden takip edin. Durum guncellemeleri ve iletisim otomatik yonetilir.</p>
+                <h3>{t("Aday Yönetimi")}</h3>
+                <p>{t("Tüm başvuruları tek panelden takip edin. Durum güncellemeleri ve iletişim otomatik yönetilir.")}</p>
               </div>
               <div className="lp-channel-card lp-ch-4 lp-scroll-card">
                 <div className="lp-channel-icon">{"\u{1F4CA}"}</div>
-                <h3>Analitik</h3>
-                <p>Ise alim sureci metriklerini gercek zamanli izleyin. Darbogazlari tespit edip sureci optimize edin.</p>
+                <h3>{t("Analitik")}</h3>
+                <p>{t("İşe alım süreci metriklerini gerçek zamanlı izleyin. Darboğazları tespit edip süreci optimize edin.")}</p>
               </div>
             </div>
           </div>
@@ -494,16 +488,16 @@ export function LandingHero() {
           <div className="lp-shell">
             <div className="lp-chat-demo-grid lp-reveal-sync" id="chatDemoGrid">
               <div className="lp-chat-demo-copy lp-sync-left">
-                <span className="lp-kicker">CANLI DEMO</span>
-                <h2 className="lp-section-title">Aday deneyimini canli gorun</h2>
-                <p className="lp-section-sub">AI mulakatinizin adayla nasil etkilesime gectigini gercek zamanli izleyin.</p>
+                <span className="lp-kicker">{t("CANLI DEMO")}</span>
+                <h2 className="lp-section-title">{t("Aday deneyimini canlı görün")}</h2>
+                <p className="lp-section-sub">{t("AI mülakatınızın adayla nasıl etkileşime geçtiğini gerçek zamanlı izleyin.")}</p>
               </div>
               <div className="lp-chat-window lp-sync-right">
                 <div className="lp-chat-header">
                   <div className="lp-chat-avatar">CA</div>
                   <div className="lp-chat-header-info">
-                    <strong>{SITE_BRAND} Asistani</strong>
-                    <span>&#9679; Cevrimici</span>
+                    <strong>{"Candit.ai "}{t("Asistanı")}</strong>
+                    <span>&#9679; {t("Çevrimiçi")}</span>
                   </div>
                 </div>
                 <div className="lp-chat-messages" id="chatDemo">
@@ -520,18 +514,18 @@ export function LandingHero() {
             <div className="lp-proof-grid" id="proofGrid">
               <div className="lp-proof-card lp-scroll-card">
                 <p className="lp-proof-value" data-color="primary" data-count="87" data-prefix="%">0</p>
-                <h2>Daha Hizli Ise Alim</h2>
-                <p>Ise alim surecini otomatiklestirerek ortalama kapanma suresini %87 kisaltin.</p>
+                <h2>{t("Daha Hızlı İşe Alım")}</h2>
+                <p>{t("İşe alım sürecini otomatikleştirerek ortalama kapanma süresini %87 kısaltın.")}</p>
               </div>
               <div className="lp-proof-card lp-scroll-card">
                 <p className="lp-proof-value" data-color="accent">7/24</p>
-                <h2>Kesintisiz Mulakat</h2>
-                <p>AI mulakat 7 gun 24 saat aktif. Adaylar istedikleri zaman mulakata girebilir.</p>
+                <h2>{t("Kesintisiz Mülakat")}</h2>
+                <p>{t("AI mülakat 7 gün 24 saat aktif. Adaylar istedikleri zaman mülakata girebilir.")}</p>
               </div>
               <div className="lp-proof-card lp-scroll-card">
                 <p className="lp-proof-value" data-color="info" data-count="12" data-suffix="x">0</p>
-                <h2>Verimlilik Artisi</h2>
-                <p>Insan kaynaklari ekibinizin verimliligi ortalama 12 kat artar.</p>
+                <h2>{t("Verimlilik Artışı")}</h2>
+                <p>{t("İnsan kaynakları ekibinizin verimliliği ortalama 12 kat artar.")}</p>
               </div>
             </div>
           </div>
@@ -541,30 +535,30 @@ export function LandingHero() {
         <section className="lp-workflow" id="workflow">
           <div className="lp-shell">
             <div className="lp-workflow-header lp-reveal">
-              <span className="lp-kicker">NASIL CALISIR</span>
-              <h2 className="lp-section-title">Dort adimda ise alima baslayin</h2>
-              <p className="lp-section-sub" style={{ margin: "0 auto" }}>Pozisyonu tanimlayin, adaylari toplayin, AI mulakat yaptirin, en iyi adayi secin.</p>
+              <span className="lp-kicker">{t("NASIL ÇALIŞIR")}</span>
+              <h2 className="lp-section-title">{t("Dört adımda işe alıma başlayın")}</h2>
+              <p className="lp-section-sub" style={{ margin: "0 auto" }}>{t("Pozisyonu tanımlayın, adayları toplayın, AI mülakat yaptırın, en iyi adayı seçin.")}</p>
             </div>
             <div className="lp-steps-grid" id="stepsGrid">
               <div className="lp-step-card lp-scroll-card">
                 <span className="lp-step-num">01</span>
-                <h3>Pozisyonu Tanimlayin</h3>
-                <p>Is ilanini olusturun, mulakat sorularini ve degerlendirme kriterlerini belirleyin.</p>
+                <h3>{t("Pozisyonu Tanımlayın")}</h3>
+                <p>{t("İş ilanını oluşturun, mülakat sorularını ve değerlendirme kriterlerini belirleyin.")}</p>
               </div>
               <div className="lp-step-card lp-scroll-card">
                 <span className="lp-step-num">02</span>
-                <h3>Adaylari Toplayin</h3>
-                <p>Basvuru formunu paylasin veya mevcut adaylara davetiye gonderin.</p>
+                <h3>{t("Adayları Toplayın")}</h3>
+                <p>{t("Başvuru formunu paylaşın veya mevcut adaylara davetiye gönderin.")}</p>
               </div>
               <div className="lp-step-card lp-scroll-card">
                 <span className="lp-step-num">03</span>
-                <h3>AI Mulakat Yaptirin</h3>
-                <p>Adaylar AI ile mulakat yapar, yanit kalitesi ve yetkinlikleri otomatik puanlanir.</p>
+                <h3>{t("AI Mülakat Yaptırın")}</h3>
+                <p>{t("Adaylar AI ile mülakat yapar, yanıt kalitesi ve yetkinlikleri otomatik puanlanır.")}</p>
               </div>
               <div className="lp-step-card lp-scroll-card">
                 <span className="lp-step-num">04</span>
-                <h3>En Iyi Adayi Secin</h3>
-                <p>Karsilastirmali raporlarla en uygun adayi belirleyin ve teklifinizi iletin.</p>
+                <h3>{t("En İyi Adayı Seçin")}</h3>
+                <p>{t("Karşılaştırmalı raporlarla en uygun adayı belirleyin ve teklifinizi iletin.")}</p>
               </div>
             </div>
           </div>
@@ -575,12 +569,12 @@ export function LandingHero() {
           <div className="lp-shell">
             <div className="lp-feature-row">
               <div className="lp-reveal-left lp-reveal-late">
-                <span className="lp-kicker">ENTEGRASYONLAR</span>
-                <h2 className="lp-section-title">Mevcut sistemlerinizle uyumlu</h2>
-                <p className="lp-section-sub">ATS, HRIS ve iletisim platformlarinizla entegre calisin. Veri senkronizasyonu otomatik yapilir.</p>
+                <span className="lp-kicker">{t("ENTEGRASYONLAR")}</span>
+                <h2 className="lp-section-title">{t("Mevcut sistemlerinizle uyumlu")}</h2>
+                <p className="lp-section-sub">{t("ATS, HRIS ve iletişim platformlarınızla entegre çalışın. Veri senkronizasyonu otomatik yapılır.")}</p>
               </div>
               <div className="lp-feature-visual lp-reveal-right lp-reveal-late">
-                <div className="lp-feature-visual-title">ENTEGRASYON PARTNERLERI</div>
+                <div className="lp-feature-visual-title">{t("ENTEGRASYON PARTNERLERİ")}</div>
                 <div className="lp-integration-logos-grid">
                   <div className="lp-integration-logo-card">
                     <span style={{ fontSize: "28px" }}>{"\u{1F4E7}"}</span>
@@ -603,28 +597,28 @@ export function LandingHero() {
             </div>
             <div className="lp-feature-row lp-reverse">
               <div className="lp-reveal-right lp-reveal-late">
-                <span className="lp-kicker">GUVENLIK</span>
-                <h2 className="lp-section-title">Verileriniz guvendedir</h2>
-                <p className="lp-section-sub">KVKK uyumlu altyapi, sifrelenmis veri depolama ve erisim kontrolleri ile tam guvenlik.</p>
+                <span className="lp-kicker">{t("GÜVENLİK")}</span>
+                <h2 className="lp-section-title">{t("Verileriniz güvendedir")}</h2>
+                <p className="lp-section-sub">{t("KVKK uyumlu altyapı, şifrelenmiş veri depolama ve erişim kontrolleri ile tam güvenlik.")}</p>
               </div>
               <div className="lp-feature-visual lp-reveal-left lp-reveal-late">
-                <div className="lp-feature-visual-title">GUVENLIK KATMANLARI</div>
+                <div className="lp-feature-visual-title">{t("GÜVENLİK KATMANLARI")}</div>
                 <div className="lp-shield-grid">
                   <div className="lp-shield-item">
-                    <strong>{"\u{1F510}"} Kimlik Dogrulama</strong>
-                    <span>Cok faktorlu guvenli giris</span>
+                    <strong>{"\u{1F510}"} {t("Kimlik Doğrulama")}</strong>
+                    <span>{t("Çok faktörlü güvenli giriş")}</span>
                   </div>
                   <div className="lp-shield-item">
-                    <strong>{"\u{1F6E1}\u{FE0F}"} AI Koruma</strong>
-                    <span>Uygunsuz icerik filtreleme</span>
+                    <strong>{"\u{1F6E1}\u{FE0F}"} {t("AI Koruma")}</strong>
+                    <span>{t("Uygunsuz içerik filtreleme")}</span>
                   </div>
                   <div className="lp-shield-item">
-                    <strong>{"\u{1F512}"} Veri Sifreleme</strong>
-                    <span>AES-256 sifreleme</span>
+                    <strong>{"\u{1F512}"} {t("Veri Şifreleme")}</strong>
+                    <span>{t("AES-256 şifreleme")}</span>
                   </div>
                   <div className="lp-shield-item">
-                    <strong>{"\u{1F4CB}"} KVKK Uyumu</strong>
-                    <span>Tam uyumlu veri isleme</span>
+                    <strong>{"\u{1F4CB}"} {t("KVKK Uyumu")}</strong>
+                    <span>{t("Tam uyumlu veri işleme")}</span>
                   </div>
                 </div>
               </div>
@@ -636,11 +630,11 @@ export function LandingHero() {
         <section className="lp-cta" id="cta">
           <div className="lp-shell">
             <div className="lp-cta-panel lp-reveal-scale">
-              <span className="lp-kicker">BASLAYALIM</span>
-              <h2 className="lp-section-title">Adaylara hak ettikleri deneyimi sunun</h2>
-              <p className="lp-section-sub">Ucretsiz deneme ile baslayip, dakikalar icinde ilk AI mulakatinizi olusturun.</p>
+              <span className="lp-kicker">{t("BAŞLAYALIM")}</span>
+              <h2 className="lp-section-title">{t("Adaylara hak ettikleri deneyimi sunun")}</h2>
+              <p className="lp-section-sub">{t("Ücretsiz deneme ile başlayıp, dakikalar içinde ilk AI mülakatınızı oluşturun.")}</p>
               <div className="lp-cta-actions">
-                <a href="/auth/signup" className="lp-btn">Ucretsiz Deneyin</a>
+                <a href="/auth/signup" className="lp-btn">{t("Ücretsiz Deneyin")}</a>
               </div>
             </div>
           </div>

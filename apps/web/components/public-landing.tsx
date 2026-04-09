@@ -5,44 +5,44 @@ import { useEffect, useRef } from "react";
 import { useUiText } from "./site-language-provider";
 
 const proofStats = [
-  { value: "3x", label: "daha hizli shortlist", detail: "CV tarama, uyum sinyalleri ve onceliklendirme tek akista." },
-  { value: "%87", label: "daha net operasyon gorunurlugu", detail: "Basvuru, gorusme ve karar adimlari ayni ekranda toplanir." },
-  { value: "24/7", label: "kesintisiz aday on gorusmesi", detail: "Sesli veya yazi tabanli tarama vardiya saatlerini beklemez." }
+  { value: "3x", label: "daha hızlı shortlist", detail: "CV tarama, uyum sinyalleri ve önceliklendirme tek akışta." },
+  { value: "%87", label: "daha net operasyon görünürlüğü", detail: "Başvuru, görüşme ve karar adımları aynı ekranda toplanır." },
+  { value: "24/7", label: "kesintisiz aday ön görüşmesi", detail: "Sesli veya yazı tabanlı tarama vardiya saatlerini beklemez." }
 ] as const;
 
 const workflowSteps = [
   {
     step: "01",
-    title: "Basvuruyu topla",
-    body: "Inbound adaylari, kanallari ve pozisyon bazli hareketi tek akista topla."
+    title: "Başvuruyu topla",
+    body: "Inbound adayları, kanalları ve pozisyon bazlı hareketi tek akışta topla."
   },
   {
     step: "02",
     title: "AI ile tarama yap",
-    body: "CV icerigini, deneyim derinligini ve rol uyumunu aninda aciga cikar."
+    body: "CV içeriğini, deneyim derinliğini ve rol uyumunu anında açığa çıkar."
   },
   {
     step: "03",
-    title: "On gorusmeyi otomatize et",
-    body: "Turkce sesli ya da yazili gorusmelerle aday fit sinyallerini standartlastir."
+    title: "Ön görüşmeyi otomatize et",
+    body: "Türkçe sesli ya da yazılı görüşmelerle aday fit sinyallerini standartlaştır."
   },
   {
     step: "04",
-    title: "Takvime bagla",
-    body: "Yuksek potansiyelli adaylari gorusmeye giden hizli bir akisa tasir."
+    title: "Takvime bağla",
+    body: "Yüksek potansiyelli adayları görüşmeye giden hızlı bir akışa taşır."
   }
 ] as const;
 
 const surfaceCards = [
   {
     eyebrow: "Operasyon paneli",
-    title: "Aday akisini sadece gormezsin, hizlandirirsin.",
-    body: "hireEZ'deki hero videosunun verdigi urun hissini burada animasyonlu bir workflow sahnesine cevirdik: basvuru, tarama, gorusme ve randevu tek bir premium hero icinde akiyor."
+    title: "Aday akışını sadece görmezsin, hızlandırırsın.",
+    body: "hireEZ'deki hero videosunun verdiği ürün hissini burada animasyonlu bir workflow sahnesine çevirdik: başvuru, tarama, görüşme ve randevu tek bir premium hero içinde akıyor."
   },
   {
-    eyebrow: "AI destekli on eleme",
-    title: "Anahtar kelime eslesmesinden fazlasi.",
-    body: "Rol uyumu, deneyim baglami, fraud sinyalleri ve gorusme ozeti ayni karar zemininde bulusuyor."
+    eyebrow: "AI destekli ön eleme",
+    title: "Anahtar kelime eşleşmesinden fazlası.",
+    body: "Rol uyumu, deneyim bağlamı, fraud sinyalleri ve görüşme özeti aynı karar zemininde buluşuyor."
   }
 ] as const;
 
@@ -216,7 +216,7 @@ function MarketingHeroCanvas() {
           [1, "#97d3ff"]
         ]);
         ctx.fillText("aday", 0, -Math.min(width * 0.11, 90) * 0.5);
-        ctx.fillText("akisi", 0, Math.min(width * 0.11, 90) * 0.54);
+        ctx.fillText("akışı", 0, Math.min(width * 0.11, 90) * 0.54);
         ctx.restore();
       }
 
@@ -225,10 +225,10 @@ function MarketingHeroCanvas() {
         const fadeIn = clamp01(sceneTime / 0.45);
         const fadeOut = sceneTime > 3.1 ? 1 - clamp01((sceneTime - 3.1) / 0.7) : 1;
         const features = [
-          { label: "Basvuru havuzu", tint: "#ff9068", delay: 0 },
+          { label: "Başvuru havuzu", tint: "#ff9068", delay: 0 },
           { label: "Rol uyum sinyali", tint: "#72d7ff", delay: 0.16 },
-          { label: "Sesli on gorusme", tint: "#79f1d9", delay: 0.32 },
-          { label: "Takvim esleme", tint: "#f6c56a", delay: 0.48 }
+          { label: "Sesli ön görüşme", tint: "#79f1d9", delay: 0.32 },
+          { label: "Takvim eşleme", tint: "#f6c56a", delay: 0.48 }
         ];
 
         ctx.save();
@@ -298,9 +298,9 @@ function MarketingHeroCanvas() {
         ctx.fillText("Candit Pipeline", frameX + 78, frameY + 32);
 
         const kpis = [
-          { label: "Basvuru", value: "642", color: "#ff8d70" },
-          { label: "Skorlandi", value: "214", color: "#6de7d6" },
-          { label: "On gorusme", value: "81", color: "#72d7ff" },
+          { label: "Başvuru", value: "642", color: "#ff8d70" },
+          { label: "Skorlandı", value: "214", color: "#6de7d6" },
+          { label: "Ön görüşme", value: "81", color: "#72d7ff" },
           { label: "Takvim", value: "17", color: "#f6c56a" }
         ];
 
@@ -330,9 +330,9 @@ function MarketingHeroCanvas() {
         });
 
         const rows = [
-          { name: "Ayse Kurt", role: "Depo Operasyon", status: "Uyum skoru hazir", statusColor: "#6de7d6", score: "94%" },
-          { name: "Mert Akar", role: "Magaza Vardiya", status: "Sesli on gorusme", statusColor: "#72d7ff", score: "88%" },
-          { name: "Seda Gonul", role: "Musteri Destek", status: "Takvime tasindi", statusColor: "#f6c56a", score: "81%" }
+          { name: "Ayşe Kurt", role: "Depo Operasyon", status: "Uyum skoru hazır", statusColor: "#6de7d6", score: "94%" },
+          { name: "Mert Akar", role: "Mağaza Vardiya", status: "Sesli ön görüşme", statusColor: "#72d7ff", score: "88%" },
+          { name: "Seda Gönül", role: "Müşteri Destek", status: "Takvime taşındı", statusColor: "#f6c56a", score: "81%" }
         ];
 
         const tableTop = frameY + 162;
@@ -408,8 +408,8 @@ function MarketingHeroCanvas() {
           [0.72, "#6de7d6"],
           [1, "#97d3ff"]
         ]);
-        ctx.fillText("Basvurudan gorusmeye uzanan", 0, -18);
-        ctx.fillText("tek ekranlik AI recruiter workflow'u", 0, 18);
+        ctx.fillText("Başvurudan görüşmeye uzanan", 0, -18);
+        ctx.fillText("tek ekranlık AI recruiter workflow'u", 0, 18);
         ctx.restore();
       }
 
@@ -509,10 +509,10 @@ export function PublicLanding() {
 
           <div className="marketing-nav-actions">
             <Link href="/auth/login" className="marketing-nav-link">
-              Giris yap
+              Giriş yap
             </Link>
             <Link href="/auth/signup" className="marketing-nav-button">
-              Hesap olustur
+              Hesap oluştur
             </Link>
           </div>
         </div>
@@ -524,26 +524,26 @@ export function PublicLanding() {
             <span className="marketing-eyebrow">From application to interview, automated.</span>
             <h1>
               hireEZ’deki hero hissini alan,
-              <span> size ozel bir AI recruiter sahnesi.</span>
+              <span> size özel bir AI recruiter sahnesi.</span>
             </h1>
             <p className="marketing-copy-body">
-              Basvuru toplama, CV tarama, aday fit sinyalleri, sesli on gorusme ve takvimleme
-              akisini tek bir premium hero icinde canlandirdim. Gercek video asset bagimliligi
-              olmadan, urun videosu hissi veren bir canvas animasyonu calisiyor.
+              Başvuru toplama, CV tarama, aday fit sinyalleri, sesli ön görüşme ve takvimleme
+              akışını tek bir premium hero içinde canlandırdım. Gerçek video asset bağımlılığı
+              olmadan, ürün videosu hissi veren bir canvas animasyonu çalışıyor.
             </p>
 
             <div className="marketing-hero-actions">
               <Link href="/auth/signup" className="marketing-primary-link">
-                Hesap olustur
+                Hesap oluştur
               </Link>
               <a href="#workflow" className="marketing-secondary-link">
-                Akisi incele
+                Akışı incele
               </a>
             </div>
 
             <div className="marketing-signal-row">
-              <span>Kanit baglantili tarama</span>
-              <span>Turkce AI on gorusme</span>
+              <span>Kanıt bağlantılı tarama</span>
+              <span>Türkçe AI ön görüşme</span>
               <span>Takvim ve recruiter operasyonu</span>
             </div>
           </div>
@@ -582,11 +582,11 @@ export function PublicLanding() {
         <div className="marketing-shell marketing-workflow-grid">
           <div className="marketing-workflow-copy">
             <span className="marketing-section-kicker">Hero architecture</span>
-            <h2>Video gibi akan ama koddan ureyen bir recruiter workflow hero.</h2>
+            <h2>Video gibi akan ama koddan üreyen bir recruiter workflow hero.</h2>
             <p>
-              hireEZ referansindaki mantigi birebir kopyalamadan tasidim: urun anlatan hareketli bir
-              sahne, hizli metin bloklari ve sistemin hangi adimlarda deger urettiğini gosteren net
-              asamalar.
+              hireEZ referansındaki mantığı birebir kopyalamadan taşıdım: ürün anlatan hareketli bir
+              sahne, hızlı metin blokları ve sistemin hangi adımlarda değer ürettiğini gösteren net
+              aşamalar.
             </p>
           </div>
 
@@ -618,15 +618,15 @@ export function PublicLanding() {
         <div className="marketing-shell">
           <div className="marketing-cta-panel">
             <span className="marketing-section-kicker">Ready to launch</span>
-            <h2>Bu hero artik ana deneyimin bir parcasi olarak calisiyor.</h2>
+            <h2>Bu hero artık ana deneyimin bir parçası olarak çalışıyor.</h2>
             <p>
-              Bu hero artik `"/landing"` uzerinden her zaman erisilebilir. Oturumu olmayan
-              kullanicilar `"/"` uzerinde de bu landing'i gorur, oturumu olan recruiter
-              kullanicilar ise mevcut dashboard akisina devam eder.
+              Bu hero artık `"/landing"` üzerinden her zaman erişilebilir. Oturumu olmayan
+              kullanıcılar `"/"` üzerinde de bu landing'i görür, oturumu olan recruiter
+              kullanıcılar ise mevcut dashboard akışına devam eder.
             </p>
             <div className="marketing-hero-actions">
               <Link href="/auth/signup" className="marketing-primary-link">
-                Ucretsiz basla
+                Ücretsiz başla
               </Link>
               <Link href="/auth/login" className="marketing-secondary-link">
                 Mevcut hesaba gir
