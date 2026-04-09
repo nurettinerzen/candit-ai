@@ -625,8 +625,8 @@ export function PublicFeaturesPage() {
       <div className={styles.ftPage}>
         {/* ═══ Hero with gradient blobs ═══ */}
         <section className={styles.ftHero}>
-          <div className={styles.ftGlowBlob} style={{ width: 600, height: 600, top: -200, left: '8%', background: '#006FEB' }} aria-hidden="true" />
-          <div className={styles.ftGlowBlob} style={{ width: 450, height: 450, top: -40, right: '5%', background: '#00C4E6' }} aria-hidden="true" />
+          <div className={styles.ftGlowBlob} style={{ width: 600, height: 600, top: -200, left: '8%', background: '#5046e5' }} aria-hidden="true" />
+          <div className={styles.ftGlowBlob} style={{ width: 450, height: 450, top: -40, right: '5%', background: '#7c3aed' }} aria-hidden="true" />
 
           <div className={cn(styles.shell, styles.ftHeroInner)}>
             <span className={styles.ftBadgeShimmer}>
@@ -705,7 +705,7 @@ export function PublicFeaturesPage() {
 
         {/* ═══ Deep Dive - Shimmer Top-Line Cards ═══ */}
         <section className={styles.ftSectionBg}>
-          <div className={styles.ftGlowBlob} style={{ width: 500, height: 500, bottom: -100, left: '50%', marginLeft: -250, background: '#006FEB', opacity: 0.06 }} aria-hidden="true" />
+          <div className={styles.ftGlowBlob} style={{ width: 500, height: 500, bottom: -100, left: '50%', marginLeft: -250, background: '#5046e5', opacity: 0.06 }} aria-hidden="true" />
 
           <div className={cn(styles.shell)} style={{ position: 'relative', zIndex: 10 }}>
             <div className={styles.ftSectionHeader}>
@@ -1370,8 +1370,8 @@ export function PublicIntegrationsPage() {
         <div className={styles.shell}>
           <SectionHeader
             eyebrow="Entegrasyonlar"
-            title="Mevcut araçlarınızla sorunsuz entegrasyon"
-            subtitle="Takvim, ATS, CRM ve iletişim araçlarınızı Candit ile kolayca bağlayın."
+            title="Pilot kapsamındaki entegrasyonlar"
+            subtitle="Takvim, ATS ve webhook odaklı bağlantıları kontrollü şekilde devreye alın."
             align="center"
           />
         </div>
@@ -1392,7 +1392,7 @@ export function PublicIntegrationsPage() {
 
       <CTASection
         title="İhtiyacınıza özel entegrasyon mu gerekiyor?"
-        body="Mevcut İK sistemlerinizle uyumlu çalışmak için ekibimizle iletişime geçin."
+        body="Mevcut işe alım altyapınıza uygun özel bağlantı ihtiyacınız varsa ekibimizle planlayalım."
       />
     </PublicSiteFrame>
   );
