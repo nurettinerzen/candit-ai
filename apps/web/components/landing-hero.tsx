@@ -20,10 +20,10 @@ export function LandingHero() {
   }, [t]);
 
   const chatMessages = useMemo(() => [
-    { type: "candidate", text: t("Merhaba, başvurumu gönderdim. Mülakat süreci nasıl işliyor?") },
-    { type: "bot", text: t("Hoş geldiniz! Başvurunuz alındı. Şimdi size kısa bir AI mülakat göndereceğim.") },
-    { type: "candidate", text: t("Harika, hemen başlamak istiyorum!") },
-    { type: "bot", text: t("Mükemmel! Mülakat linkiniz hazırlandı. Başarılar dileriz!") },
+    { type: "bot", text: t("Merhaba! Ben Candit AI asistanınızım. Yazılım Geliştirici pozisyonu için mülakatınıza hoş geldiniz.") },
+    { type: "bot", text: t("İlk sorum: Daha önce agile metodolojilerle çalıştınız mı? Deneyiminizi anlatır mısınız?") },
+    { type: "candidate", text: t("Evet, son 3 yıldır Scrum framework'ü ile çalışıyorum. Sprint planlaması ve retrospektif toplantılarına aktif katılıyorum.") },
+    { type: "bot", text: t("Harika bir yanıt! Teknik bilginiz ve deneyiminiz çok değerli. Şimdi ikinci soruya geçelim...") },
   ], [t]);
 
   useEffect(() => {
@@ -378,24 +378,24 @@ export function LandingHero() {
               </div>
               <div className="lp-metrics-row">
                 <div className="lp-metric-card lp-reveal lp-reveal-delay-1">
-                  <div className="lp-metric-label">{t("Mülakatlar")}</div>
-                  <div className="lp-metric-value" data-color="primary" data-count="1247">0</div>
-                  <div className="lp-metric-trend">{t("+23% önceki haftaya göre")}</div>
+                  <div className="lp-metric-label">{t("Toplam Aday")}</div>
+                  <div className="lp-metric-value" data-color="primary" data-count="3842">0</div>
+                  <div className="lp-metric-trend">{t("+186 bu hafta")}</div>
                 </div>
                 <div className="lp-metric-card lp-reveal lp-reveal-delay-2">
-                  <div className="lp-metric-label">{t("Tamamlanma Oranı")}</div>
-                  <div className="lp-metric-value" data-color="accent" data-count="94.2" data-suffix="%" data-decimal="1">0</div>
-                  <div className="lp-metric-trend">{t("+5.1% artış")}</div>
+                  <div className="lp-metric-label">{t("Aktif Pozisyon")}</div>
+                  <div className="lp-metric-value" data-color="accent" data-count="24">0</div>
+                  <div className="lp-metric-trend">{t("12 departmanda")}</div>
                 </div>
                 <div className="lp-metric-card lp-reveal lp-reveal-delay-3">
-                  <div className="lp-metric-label">{t("Ort. Mülakat Süresi")}</div>
-                  <div className="lp-metric-value" data-color="info" data-count="14.8" data-suffix="dk" data-decimal="1">0</div>
-                  <div className="lp-metric-trend">{t("-2.3dk iyileşme")}</div>
+                  <div className="lp-metric-label">{t("Tamamlanan Mülakat")}</div>
+                  <div className="lp-metric-value" data-color="info" data-count="1247">0</div>
+                  <div className="lp-metric-trend">{t("+23% önceki haftaya göre")}</div>
                 </div>
                 <div className="lp-metric-card lp-reveal lp-reveal-delay-4">
-                  <div className="lp-metric-label">{t("Aday Memnuniyeti")}</div>
-                  <div className="lp-metric-value" data-color="warning" data-count="4.7" data-suffix="/5" data-decimal="1">0</div>
-                  <div className="lp-metric-trend">{t("+0.3 puan artış")}</div>
+                  <div className="lp-metric-label">{t("İşe Alım Oranı")}</div>
+                  <div className="lp-metric-value" data-color="warning" data-count="18.4" data-suffix="%" data-decimal="1">0</div>
+                  <div className="lp-metric-trend">{t("+3.2% artış")}</div>
                 </div>
               </div>
               <div className="lp-dashboard-body">
@@ -481,25 +481,25 @@ export function LandingHero() {
           </div>
         </section>
 
-        {/* ═══ Chat demo ═══ */}
+        {/* ═══ Interview Demo ═══ */}
         <section className="lp-chat-demo">
           <div className="lp-shell">
             <div className="lp-chat-demo-grid lp-reveal-sync" id="chatDemoGrid">
               <div className="lp-chat-demo-copy lp-sync-left">
-                <span className="lp-kicker">{t("CANLI DEMO")}</span>
-                <h2 className="lp-section-title">{t("Aday deneyimini canlı görün")}</h2>
-                <p className="lp-section-sub">{t("AI mülakatınızın adayla nasıl etkileşime geçtiğini gerçek zamanlı izleyin.")}</p>
+                <span className="lp-kicker">{t("MÜLAKAT DENEYİMİ")}</span>
+                <h2 className="lp-section-title">{t("AI mülakat ekranını canlı görün")}</h2>
+                <p className="lp-section-sub">{t("Adayların mülakat sırasında gördüğü ekranı ve AI değerlendirme sürecini keşfedin.")}</p>
               </div>
               <div className="lp-chat-window lp-sync-right">
-                <div className="lp-chat-header">
-                  <div className="lp-chat-avatar">CA</div>
+                <div className="lp-chat-header" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <div className="lp-chat-avatar" style={{ background: "var(--lp-primary)", borderRadius: 8 }}>C</div>
                   <div className="lp-chat-header-info">
-                    <strong>{"Candit.ai "}{t("Asistanı")}</strong>
-                    <span>&#9679; {t("Çevrimiçi")}</span>
+                    <strong>{t("Candit AI Mülakat")}</strong>
+                    <span style={{ color: "var(--lp-accent)" }}>{"\u{25CF}"} {t("Mülakat devam ediyor")}</span>
                   </div>
                 </div>
-                <div className="lp-chat-messages" id="chatDemo">
-                  {/* Messages injected by JS */}
+                <div className="lp-chat-messages" id="chatDemo" style={{ gap: 10 }}>
+                  {/* Messages injected by JS - interview transcript style */}
                 </div>
               </div>
             </div>
@@ -535,7 +535,7 @@ export function LandingHero() {
             <div className="lp-workflow-header lp-reveal">
               <span className="lp-kicker">{t("NASIL ÇALIŞIR")}</span>
               <h2 className="lp-section-title">{t("Dört adımda işe alıma başlayın")}</h2>
-              <p className="lp-section-sub" style={{ margin: "0 auto" }}>{t("Pozisyonu tanımlayın, adayları toplayın, AI mülakat yaptırın, en iyi adayı seçin.")}</p>
+              <p className="lp-section-sub" style={{ margin: "0 auto" }}>{t("Pozisyonu tanımlayın, adayları analiz edin, AI mülakat yaptırın, en iyi adayı seçin.")}</p>
             </div>
             <div className="lp-steps-grid" id="stepsGrid">
               <div className="lp-step-card lp-scroll-card">
@@ -545,8 +545,8 @@ export function LandingHero() {
               </div>
               <div className="lp-step-card lp-scroll-card">
                 <span className="lp-step-num">02</span>
-                <h3>{t("Adayları Toplayın")}</h3>
-                <p>{t("Başvuru formunu paylaşın veya mevcut adaylara davetiye gönderin.")}</p>
+                <h3>{t("Adayları Analiz Edin")}</h3>
+                <p>{t("CV'leri otomatik analiz edin, ön eleme kriterleriyle adayları filtreleyin.")}</p>
               </div>
               <div className="lp-step-card lp-scroll-card">
                 <span className="lp-step-num">03</span>
@@ -572,23 +572,37 @@ export function LandingHero() {
                 <p className="lp-section-sub">{t("ATS, HRIS ve iletişim platformlarınızla entegre çalışın. Veri senkronizasyonu otomatik yapılır.")}</p>
               </div>
               <div className="lp-feature-visual lp-reveal-right lp-reveal-late">
-                <div className="lp-feature-visual-title">{t("ENTEGRASYON PARTNERLERİ")}</div>
+                <div className="lp-feature-visual-title">{t("BAĞLANTI NOKTALARI")}</div>
                 <div className="lp-integration-logos-grid">
                   <div className="lp-integration-logo-card">
-                    <span style={{ fontSize: "28px" }}>{"\u{1F4E7}"}</span>
-                    <span>Email</span>
+                    <span style={{ fontSize: "24px" }}>{"\u{1F4E7}"}</span>
+                    <span>{t("E-posta")}</span>
+                    <span style={{ fontSize: 11, opacity: 0.6 }}>{t("Davet & bildirim")}</span>
                   </div>
                   <div className="lp-integration-logo-card">
-                    <span style={{ fontSize: "28px" }}>{"\u{1F4AC}"}</span>
-                    <span>WhatsApp</span>
+                    <span style={{ fontSize: "24px" }}>{"\u{1F310}"}</span>
+                    <span>REST API</span>
+                    <span style={{ fontSize: 11, opacity: 0.6 }}>{t("Tam entegrasyon")}</span>
                   </div>
                   <div className="lp-integration-logo-card">
-                    <span style={{ fontSize: "28px" }}>{"\u{1F517}"}</span>
+                    <span style={{ fontSize: "24px" }}>{"\u{1F517}"}</span>
                     <span>Webhook</span>
+                    <span style={{ fontSize: 11, opacity: 0.6 }}>{t("Gerçek zamanlı")}</span>
                   </div>
                   <div className="lp-integration-logo-card">
-                    <span style={{ fontSize: "28px" }}>{"\u{2699}\u{FE0F}"}</span>
-                    <span>API</span>
+                    <span style={{ fontSize: "24px" }}>{"\u{1F4C5}"}</span>
+                    <span>{t("Takvim")}</span>
+                    <span style={{ fontSize: 11, opacity: 0.6 }}>Google / Outlook</span>
+                  </div>
+                  <div className="lp-integration-logo-card">
+                    <span style={{ fontSize: "24px" }}>{"\u{1F4BC}"}</span>
+                    <span>ATS</span>
+                    <span style={{ fontSize: 11, opacity: 0.6 }}>{t("İK sistemleri")}</span>
+                  </div>
+                  <div className="lp-integration-logo-card">
+                    <span style={{ fontSize: "24px" }}>{"\u{1F4CA}"}</span>
+                    <span>HRIS</span>
+                    <span style={{ fontSize: 11, opacity: 0.6 }}>{t("Veri senkron")}</span>
                   </div>
                 </div>
               </div>

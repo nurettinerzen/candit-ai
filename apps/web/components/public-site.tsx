@@ -142,12 +142,12 @@ function SiteFooter() {
               <span className={styles.brandMark}>C</span>
               <span className={styles.brandCopy}>
                 <strong>{SITE_BRAND}</strong>
-                <span>Telefon, WhatsApp, Chat ve Email için tek AI katmanı.</span>
+                <span>AI destekli işe alım platformu.</span>
               </span>
             </a>
             <p className={styles.footerCopy}>
-              Telyx public site kurgusu bu projeye taşındı. İçeriklerin tamamını sonraki turda
-              proje diline göre rahatça güncelleyebiliriz.
+              Ön eleme, kaynak bulma ve mülakat süreçlerini yapay zekâ ile otomatikleştirin.
+              Doğru adayı daha hızlı bulun.
             </p>
           </div>
 
