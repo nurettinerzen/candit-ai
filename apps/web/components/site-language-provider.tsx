@@ -251,7 +251,12 @@ export function SiteSettingsSwitcher({
 }
 
 export function SiteLanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<SiteLocale>(DEFAULT_SITE_LOCALE);
+  const [locale, setLocaleState] = useState<SiteLocale>(() => {
+    if (typeof window !== "undefined") {
+      return normalizeSiteLocale(window.localStorage.getItem(SITE_LOCALE_STORAGE_KEY));
+    }
+    return DEFAULT_SITE_LOCALE;
+  });
   const textSourceCacheRef = useRef<WeakMap<Text, string>>(new WeakMap());
   const attributeSourceCacheRef = useRef<WeakMap<Element, AttributeCache>>(new WeakMap());
   const previousLocaleRef = useRef<SiteLocale>(DEFAULT_SITE_LOCALE);

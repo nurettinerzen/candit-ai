@@ -447,6 +447,7 @@ function LegalSections({ sections }: { sections: PublicLegalSection[] }) {
 
 function DocsEndpoints() {
   const { t } = useUiText();
+  const exampleMessage = t("Siparişim nerede?");
   const endpoints = [
     {
       method: "POST",
@@ -477,7 +478,7 @@ function DocsEndpoints() {
   -d '{
     "channel": "whatsapp",
     "customerId": "cus_123",
-    "message": "Siparişim nerede?"
+    "message": "${exampleMessage}"
   }'`}</code>
         </pre>
       </div>

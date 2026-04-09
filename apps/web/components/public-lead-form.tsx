@@ -3,6 +3,7 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { publicContactApi } from "../lib/api/public-client";
 import styles from "./public-site.module.css";
+import { useUiText } from "./site-language-provider";
 
 type PublicLeadFormProps = {
   title: string;
@@ -46,6 +47,7 @@ export function PublicLeadForm({
   successTitle,
   successBody
 }: PublicLeadFormProps) {
+  const { t, locale } = useUiText();
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -81,10 +83,7 @@ export function PublicLeadForm({
           typeof document !== "undefined" && document.referrer.trim().length > 0
             ? document.referrer
             : undefined,
-        locale:
-          typeof navigator !== "undefined" && navigator.language.trim().length > 0
-            ? navigator.language
-            : undefined,
+        locale,
         utmSource: currentUrl ? getUtmValue(currentUrl, "utm_source") : undefined,
         utmMedium: currentUrl ? getUtmValue(currentUrl, "utm_medium") : undefined,
         utmCampaign: currentUrl ? getUtmValue(currentUrl, "utm_campaign") : undefined,
@@ -99,7 +98,7 @@ export function PublicLeadForm({
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Mesaj gönderilemedi. Lütfen tekrar deneyin."
+          : t("Mesaj gönderilemedi. Lütfen tekrar deneyin.")
       );
     } finally {
       setSubmitting(false);
@@ -108,31 +107,31 @@ export function PublicLeadForm({
 
   return (
     <form className={styles.formCard} onSubmit={handleSubmit}>
-      <span className={styles.eyebrow}>{title}</span>
-      <h3>{title}</h3>
-      <p>{body}</p>
+      <span className={styles.eyebrow}>{t(title)}</span>
+      <h3>{t(title)}</h3>
+      <p>{t(body)}</p>
 
       {successMessage ? (
         <div className={`${styles.formAlert} ${styles.formAlertSuccess}`}>
-          <strong>{successTitle}</strong>
-          <span>{successBody}</span>
-          <small>{successMessage}</small>
+          <strong>{t(successTitle)}</strong>
+          <span>{t(successBody)}</span>
+          <small>{t(successMessage)}</small>
         </div>
       ) : null}
 
       {error ? (
         <div className={`${styles.formAlert} ${styles.formAlertError}`}>
-          <strong>Gönderim başarısız oldu</strong>
-          <span>{error}</span>
+          <strong>{t("Gönderim başarısız oldu")}</strong>
+          <span>{t(error)}</span>
         </div>
       ) : null}
 
       <div className={styles.formGrid}>
         <label className={styles.field}>
-          <span>Ad Soyad</span>
+          <span>{t("Ad Soyad")}</span>
           <input
             type="text"
-            placeholder="Örn: Nurettin Erzen"
+            placeholder={t("Örn: Nurettin Erzen")}
             value={form.fullName}
             onChange={handleChange("fullName")}
             required
@@ -141,7 +140,7 @@ export function PublicLeadForm({
         </label>
 
         <label className={styles.field}>
-          <span>E-posta</span>
+          <span>{t("E-posta")}</span>
           <input
             type="email"
             placeholder="ornek@sirket.com"
@@ -153,10 +152,10 @@ export function PublicLeadForm({
         </label>
 
         <label className={styles.field}>
-          <span>Şirket</span>
+          <span>{t("Şirket")}</span>
           <input
             type="text"
-            placeholder="Şirket adı"
+            placeholder={t("Şirket adı")}
             value={form.company}
             onChange={handleChange("company")}
             autoComplete="organization"
@@ -164,17 +163,17 @@ export function PublicLeadForm({
         </label>
 
         <label className={styles.field}>
-          <span>Rol / Ekip</span>
+          <span>{t("Rol / Ekip")}</span>
           <input
             type="text"
-            placeholder="İK, kurucu, işe alım lideri..."
+            placeholder={t("İK, kurucu, işe alım lideri...")}
             value={form.role}
             onChange={handleChange("role")}
           />
         </label>
 
         <label className={styles.field}>
-          <span>Telefon</span>
+          <span>{t("Telefon")}</span>
           <input
             type="tel"
             placeholder="+90 5xx xxx xx xx"
@@ -196,10 +195,10 @@ export function PublicLeadForm({
         </label>
 
         <label className={`${styles.field} ${styles.fieldWide}`}>
-          <span>Mesaj</span>
+          <span>{t("Mesaj")}</span>
           <textarea
             rows={5}
-            placeholder="İşe alım süreçleriniz, pilot hedefiniz ve ihtiyacınız olan akışlar hakkında kısa bilgi verin."
+            placeholder={t("İşe alım süreçleriniz, pilot hedefiniz ve ihtiyacınız olan akışlar hakkında kısa bilgi verin.")}
             value={form.message}
             onChange={handleChange("message")}
             required
@@ -212,7 +211,7 @@ export function PublicLeadForm({
         disabled={submitting}
         className={`${styles.button} ${styles.buttonPrimary} ${styles.buttonBlock}`}
       >
-        <span>{submitting ? "Gönderiliyor..." : submitLabel}</span>
+        <span>{submitting ? t("Gönderiliyor...") : t(submitLabel)}</span>
       </button>
     </form>
   );

@@ -6,7 +6,7 @@ export const metadata: Metadata = {
     default: "Candit.ai",
     template: "%s | Candit.ai"
   },
-  description: "AI destekli ise alim platformu. Mulakat, degerlendirme ve aday yonetimini otomatiklestirin."
+  description: "AI destekli işe alım platformu. Mülakat, değerlendirme ve aday yönetimini otomatikleştirin."
 };
 
 export default function PublicLayout({ children }: { children: ReactNode }) {

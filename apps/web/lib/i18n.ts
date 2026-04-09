@@ -3577,6 +3577,51 @@ function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  // Public-site regression fixes
+  "Şirket adı": "Company name",
+  "Rol / Ekip": "Role / Team",
+  Mesaj: "Message",
+  "Örn: Nurettin Erzen": "Example: Nurettin Erzen",
+  "İK, kurucu, işe alım lideri...": "HR, founder, hiring lead...",
+  "İşe alım süreçleriniz, pilot hedefiniz ve ihtiyacınız olan akışlar hakkında kısa bilgi verin.":
+    "Share a short note about your hiring processes, pilot goals, and the workflows you need.",
+  "Mesaj gönderilemedi. Lütfen tekrar deneyin.":
+    "Message could not be sent. Please try again.",
+  "Gönderim başarısız oldu": "Submission failed",
+  "Candit.ai ana sayfa": "Candit.ai home page",
+  "Genel gezinme": "Main navigation",
+  "AI ile işe alımın geleceği.": "The future of hiring with AI.",
+  "Siparişim nerede?": "Where is my order?",
+  "Gelişmiş HRIS Senkronizasyonu": "Advanced HRIS Synchronization",
+  "Kazanan ekipler insan karar vericiyi süreçten çıkarmıyor; tekrar eden ön eleme, soru standardizasyonu ve raporlama işini AI'a bırakıp nihai kararı recruiter ve hiring manager'a bağlıyor.":
+    "Winning teams do not remove the human decision-maker from the process; they let AI handle repetitive pre-screening, question standardization, and reporting, while keeping the final decision with the recruiter and hiring manager.",
+  "Sistemin hangi sinyali neden ürettiği görülebildiğinde ekiplerin güveni artıyor. Bu yüzden özet, risk, eksik bilgi ve öneri katmanlarının açıklanabilir olması kritik hale geliyor.":
+    "When teams can see why the system produced a signal, trust increases. That is why explainable layers for summaries, risks, missing information, and recommendations become critical.",
+  "AI destekli skorlamada recruiter yalnızca serbest metin yazmak zorunda kalmaz. Yetkinlik, risk, eksik bilgi ve öneri katmanları hazır geldiği için değerlendirme kalitesi daha az değişken olur.":
+    "With AI-assisted scoring, recruiters do not have to rely solely on free-text notes. Since competency, risk, missing information, and recommendation layers arrive ready-made, evaluation quality becomes less variable.",
+  "Hiring manager ve recruiter aynı sinyalleri aynı formatta gördüğünde kalibrasyon toplantıları kısalır, karar döngüsü hızlanır ve gereksiz tekrar mülakatlar azalır.":
+    "When hiring managers and recruiters see the same signals in the same format, calibration meetings get shorter, decision cycles speed up, and unnecessary repeat interviews decrease.",
+  "Aynı skor iki farklı pozisyonda farklı anlam taşıyabilir. Bu yüzden ham puanın yanında deneyim kanıtı, eksik bilgi alanları ve risk notları birlikte okunmalıdır.":
+    "The same score can mean different things for two different positions. That is why experience evidence, missing-information areas, and risk notes should be read alongside the raw score.",
+  "CV skoru sisteminize hız kazandırabilir; ancak nihai kararı otomatik vermek yerine hangi adayın önce inceleneceğini belirlemek için daha güvenli kullanılır.":
+    "CV scoring can speed up your system; however, it is safer to use it to determine which candidate should be reviewed first rather than making the final decision automatically.",
+  "Adayın günlerce haber beklemesi en büyük kopuş noktalarından biridir. Küçük durum güncellemeleri bile güven duygusunu ciddi biçimde artırır.":
+    "One of the biggest drop-off points is when candidates wait days without hearing anything. Even small status updates significantly increase the sense of trust.",
+  "Genel geçer sorular adayın deneyimini zayıflatır. Pozisyonun gerçekten ölçmek istediği davranış ve teknik sinyallere göre soru seti özelleştirilmelidir.":
+    "Generic questions weaken the candidate experience. The question set should be customized according to the behavioral and technical signals the role truly needs to measure.",
+  "Hiring manager tarafında okunabilir, kısa ve denetlenebilir özetler karar süresini düşürür. AI çıktısının operasyonel değeri raporun okunabilirliğiyle doğrudan ilişkilidir.":
+    "Readable, concise, and auditable summaries for hiring managers reduce decision time. The operational value of AI output is directly related to how readable the report is.",
+  "Recruiter ekibi aynı aday bilgisini iki farklı sisteme giriyorsa entegrasyon ihtiyacı doğmuştur. Bu noktada webhook veya temel API senaryosu ciddi zaman kazandırır.":
+    "If the recruiter team enters the same candidate information into two different systems, an integration need has emerged. At that point, a webhook or basic API scenario saves serious time.",
+  "ATS ile veri senkronizasyonu ayrı, takvim ve görüşme provisioning akışı ayrıdır. Bu iki ihtiyacın birlikte mi yoksa aşamalı mı çözüleceği baştan netleşmelidir.":
+    "ATS data synchronization is separate from calendar and interview provisioning flows. It should be clarified upfront whether these two needs will be solved together or in phases.",
+  "Hiring manager çoğu zaman tüm görüşme notunu okumak istemez. Kısa özet, alıntı niteliğinde kanıtlar ve net bir karar önerisi toplantı verimini ciddi biçimde artırır.":
+    "Hiring managers often do not want to read the full interview note. A short summary, quote-like evidence, and a clear decision recommendation significantly increase meeting efficiency.",
+  "Eksik bilgi, belirsiz sinyal veya rol uyumu riski baştan görünür olduğunda tartışma daha somut ilerler. Bu da toplantıyı uzatan soyut yorumları azaltır.":
+    "When missing information, ambiguous signals, or role-fit risks are visible upfront, the discussion becomes more concrete. This reduces the abstract comments that prolong meetings."
+});
+
 const EN_TO_TR_PHRASE_TRANSLATIONS: Record<string, string> = Object.entries(
   EN_PHRASE_TRANSLATIONS
 ).reduce<Record<string, string>>((acc, [tr, en]) => {

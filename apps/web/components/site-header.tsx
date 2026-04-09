@@ -17,7 +17,7 @@ export function SiteHeader({ activeHref }: { activeHref?: string }) {
   return (
     <header className={styles.header}>
       <div className={cn(styles.shell, styles.headerInner)}>
-        <a href="/" className={styles.brand} aria-label={`${SITE_BRAND} ana sayfa`}>
+        <a href="/" className={styles.brand} aria-label={t("Candit.ai ana sayfa")}>
           <span className={styles.brandMark}>
             <img src="/brand/candit-mark.svg" alt="" aria-hidden="true" width="40" height="40" />
           </span>
@@ -27,7 +27,7 @@ export function SiteHeader({ activeHref }: { activeHref?: string }) {
           </span>
         </a>
 
-        <nav className={styles.nav} aria-label="Public navigation">
+        <nav className={styles.nav} aria-label={t("Genel gezinme")}>
           {PUBLIC_TOP_NAV.map((item) => (
             <a
               key={item.href}
