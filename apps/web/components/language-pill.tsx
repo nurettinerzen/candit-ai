@@ -9,6 +9,8 @@ const LANGUAGES = [
   { code: "en" as const, label: "English", flag: "EN" }
 ];
 
+const DEFAULT_LANGUAGE = { code: "tr" as const, label: "Türkçe", flag: "TR" };
+
 export function LanguagePill() {
   const { locale, setLocale } = useUiText();
   const [open, setOpen] = useState(false);
@@ -24,7 +26,7 @@ export function LanguagePill() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const current = LANGUAGES.find((l) => l.code === locale) ?? LANGUAGES[0];
+  const current = LANGUAGES.find((l) => l.code === locale) ?? DEFAULT_LANGUAGE;
 
   return (
     <div className={styles.langDropdown} ref={ref}>

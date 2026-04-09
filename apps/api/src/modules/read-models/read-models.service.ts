@@ -16,6 +16,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 
 const AI_SUPPORT_FLAG_KEYS = [
   "ai.cv_parsing.enabled",
+  "ai.applicant_fit_scoring.enabled",
   "ai.screening_support.enabled",
   "ai.report_generation.enabled",
   "ai.recommendation_generation.enabled",
@@ -118,8 +119,9 @@ export class ReadModelsService {
             take: 1,
             where: {
               taskType: {
-                in: [
+              in: [
                   AiTaskType.CV_PARSING,
+                  AiTaskType.APPLICANT_FIT_SCORING,
                   AiTaskType.SCREENING_SUPPORT,
                   AiTaskType.REPORT_GENERATION,
                   AiTaskType.RECOMMENDATION_GENERATION
@@ -242,6 +244,7 @@ export class ReadModelsService {
             taskType: {
               in: [
                 AiTaskType.CV_PARSING,
+                AiTaskType.APPLICANT_FIT_SCORING,
                 AiTaskType.SCREENING_SUPPORT,
                 AiTaskType.REPORT_GENERATION,
                 AiTaskType.RECOMMENDATION_GENERATION
@@ -624,6 +627,7 @@ export class ReadModelsService {
     }));
 
     const latestInterview = mappedSessions[0] ?? null;
+    const fitScoreRuns = aiTaskRuns.filter((taskRun) => taskRun.taskType === AiTaskType.APPLICANT_FIT_SCORING);
 
     return {
       summary: {
@@ -678,6 +682,8 @@ export class ReadModelsService {
       artifacts: {
         screeningRuns,
         latestScreeningRun: screeningRuns[0] ?? null,
+        fitScoreRuns,
+        latestFitScoreRun: fitScoreRuns[0] ?? null,
         reports,
         recommendations,
         taskRuns: aiTaskRuns

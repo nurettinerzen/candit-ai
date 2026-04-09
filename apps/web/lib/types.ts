@@ -1500,6 +1500,8 @@ export type ApplicationDetailReadModel = {
   artifacts: {
     screeningRuns: AiTaskRun[];
     latestScreeningRun: AiTaskRun | null;
+    fitScoreRuns: AiTaskRun[];
+    latestFitScoreRun: AiTaskRun | null;
     reports: AiReport[];
     recommendations: ApplicationRecommendationArtifact[];
     taskRuns: AiTaskRun[];

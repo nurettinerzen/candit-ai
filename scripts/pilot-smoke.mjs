@@ -334,35 +334,53 @@ async function main() {
 
   const applicationDetail = await poll(
     "Fit score completion",
-    () =>
-      requestJson("Poll application detail", `/read-models/applications/${applicationId}`, {
-        headers: auth
-      }),
-    (detail) => {
-      const fitStatus = detail?.artifacts?.latestFitScoreRun?.status;
-      return Boolean(fitStatus && !["PENDING", "QUEUED", "RUNNING"].includes(fitStatus));
+    async () => {
+      const [detail, latestFitScore] = await Promise.all([
+        requestJson("Poll application detail", `/read-models/applications/${applicationId}`, {
+          headers: auth
+        }),
+        requestJson("Poll latest fit score", `/applications/${applicationId}/fit-score/latest`, {
+          headers: auth
+        })
+      ]);
+
+      return {
+        detail,
+        latestFitScore
+      };
+    },
+    (snapshot) => {
+      const fitStatus = snapshot?.detail?.artifacts?.latestFitScoreRun?.status;
+      const fitScoreReady = Boolean(snapshot?.latestFitScore?.id);
+      return Boolean(
+        fitScoreReady ||
+        (fitStatus && !["PENDING", "QUEUED", "RUNNING"].includes(fitStatus))
+      );
     },
     { attempts: 20, intervalMs: 2000 }
   );
 
+  const detail = applicationDetail.detail;
+  const latestFitScore = applicationDetail.latestFitScore;
+
   ensure(
-    applicationDetail?.artifacts?.latestFitScoreRun?.status === "SUCCEEDED",
+    Boolean(latestFitScore?.id),
     "Fit score did not succeed",
-    applicationDetail?.artifacts?.latestFitScoreRun?.errorMessage ??
-      JSON.stringify(applicationDetail?.artifacts?.latestFitScoreRun?.outputJson ?? {})
+    detail?.artifacts?.latestFitScoreRun?.errorMessage ??
+      JSON.stringify(detail?.artifacts?.latestFitScoreRun?.outputJson ?? {})
   );
   logStatus(
     "PASS",
     "Fit score completed",
-    applicationDetail?.artifacts?.latestFitScoreRun?.id ?? "latest fit score succeeded"
+    latestFitScore?.id ?? detail?.artifacts?.latestFitScoreRun?.id ?? "latest fit score succeeded"
   );
 
-  const screeningStatus = applicationDetail?.artifacts?.latestScreeningRun?.status;
+  const screeningStatus = detail?.artifacts?.latestScreeningRun?.status;
   if (screeningStatus && screeningStatus === "SUCCEEDED") {
     logStatus(
       "PASS",
       "Screening completed",
-      applicationDetail?.artifacts?.latestScreeningRun?.id ?? "latest screening succeeded"
+      detail?.artifacts?.latestScreeningRun?.id ?? "latest screening succeeded"
     );
   } else {
     addWarning(
