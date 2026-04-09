@@ -33,10 +33,12 @@ Ilgili arka plan notlari icin:
   - Kapsam:
     - API health
     - web root
+    - auth signup + session
     - recruiter overview
     - provider/infrastructure readiness
-    - job secimi
+    - job secimi / yoksa olusturma
     - candidate create
+    - CV upload + parse
     - application create
     - fit score tetikleme + worker sonucu
     - interview invite
@@ -127,6 +129,13 @@ Ilgili arka plan notlari icin:
     - Session: `200`
     - Refresh: `201`
     - Logout: `201`
+- [x] Worker staging'de ayağa kalkiyor.
+  - Gozlenen log:
+    - `worker.started`
+  - Runtime snapshot:
+    - `databaseConfigured: true`
+    - `queueName: ai-interviewer-jobs`
+    - `concurrency: 4`
 
 ### Tespit edilen blocker / misconfiguration
 
@@ -162,33 +171,33 @@ Ilgili arka plan notlari icin:
 - [ ] Public integrations copy'sinde Calendly hazirlik seviyesi runtime readiness ile tekrar hizalanmali.
   - Canli risk:
     - `/integrations` sayfasi Calendly'i fazla hazir gosterebilir.
-- [ ] Worker queue end-to-end smoke su anda fail durumda.
-  - Test edilen akis:
-    - owner test kullanicisi ile `POST /v1/async-jobs`
-    - type: `webhook_retry`
-  - Sonuc:
-    - Job create: `201`
-    - 3-12 sn sonra job status: `PENDING`
-    - `attempts=0`
-  - Yorum:
-    - API job kaydini olusturuyor ama worker kuyrugu tuketmuyor gibi gorunuyor.
-  - Son tekrar dogrulama:
-    - Migration sonrasi yeniden test edildi
-    - `APPLICANT_FIT_SCORING` ve `SCREENING_SUPPORT` task'lari 12 saniye sonra bile `QUEUED`
-    - `errorMessage: null`
-  - Worker log'unda aranacak satir:
-    - `worker.started`
-    - `worker.bullmq.completed`
-    - `worker.bullmq.failed`
-  - Local durum:
-    - Worker startup fail-fast log/fix'i hazir
-    - `DATABASE_URL` ve BullMQ readiness kontrolu startup sirasina eklendi
-    - Hedef: worker'in "ayakta ama sessizce bozuk" kalmasi yerine acik hata vermesi
+- [ ] CV parsing, ayri API/worker servis topolojisinde su anda blocker.
+  - Canli tekrar:
+    - `POST /v1/candidates/:id/cv-files` -> `201`
+    - `POST /v1/candidates/:id/cv-parsing/trigger` -> `201`
+    - ilk `GET /v1/candidates/:id/cv-parsing/latest` -> `FAILED`
+  - Donen hata:
+    - `CV dosyasi storage alanindan okunamadi.`
+    - `ENOENT ... /opt/render/project/src/data/storage/...`
+  - Kok neden:
+    - API CV dosyasini `local_fs` altina yaziyor
+    - Worker ayri Render servisinde ayni filesystem'i gormuyor
+  - Hazir kod/cozum:
+    - `CVFileBlob` relation + DB blob fallback worker extraction akısına eklendi
+    - migration:
+      - `20260409224500_cv_file_blob_fallback`
+  - Gereken rollout:
+    - API redeploy
+    - Worker redeploy
+    - `corepack pnpm --filter @ai-interviewer/api exec prisma migrate deploy`
+  - Not:
+    - rollout sonrasi yeni yuklenen CV'ler parse edilebilecek
+    - daha once yuklenmis CV'lerin yeniden yuklenmesi gerekebilir
 - [x] Recruiter fit-score quick action yeni tenant icin tekrar kuyruga alinabiliyor.
   - Son dogrulama:
     - `POST /applications/:id/quick-action { action: "trigger_fit_score" }` -> `201 queued`
   - Not:
-    - Worker halen tuketmedigi icin task run status'u `QUEUED` kalmaya devam ediyor
+    - Worker artik tuketiyor; CV parsed profile yoksa domain hatasina dusuyor
 - [x] Interview invite akisi yeni tenant icin template bagimliligindan kurtarildi.
   - Son dogrulama:
     - `POST /applications/:id/quick-action { action: "invite_interview" }` -> `201`
@@ -207,8 +216,8 @@ Ilgili arka plan notlari icin:
 ### Bir sonraki faz
 
 - [ ] P0/P1 icinde kalan blocker'lari kapat:
-  - public contact migration drift'ini kapat
-  - Worker queue end-to-end smoke
+  - CV blob fallback migration + redeploy
+  - yeni CV upload ile parse + fit-score smoke
 - [ ] Ardindan P2'ye gec:
   - landing page claim/copy/dogruluk kontrolu
 

@@ -357,7 +357,7 @@ export class CandidatesService {
             blob: {
               create: {
                 tenantId: input.tenantId,
-                contentBytes: input.file.content
+                contentBytes: new Uint8Array(input.file.content)
               }
             }
           }
