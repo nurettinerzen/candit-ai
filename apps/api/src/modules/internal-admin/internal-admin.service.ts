@@ -14,6 +14,7 @@ import {
   IntegrationConnectionStatus,
   NotificationDeliveryStatus,
   Prisma,
+  PublicLeadStatus,
   Role,
   TenantStatus,
   UserStatus
@@ -38,6 +39,11 @@ type RedAlertFilters = {
   windowDays: number;
   category?: AdminAlertCategory | "ALL";
   severity?: AdminAlertSeverity | "ALL";
+};
+
+type PublicLeadFilters = {
+  query?: string;
+  status?: PublicLeadStatus | "ALL";
 };
 
 type PlanOverrideInput = {
@@ -176,7 +182,8 @@ export class InternalAdminService {
       todayAiInterviews,
       planRows,
       redAlertSnapshot,
-      enterpriseTenants
+      enterpriseTenants,
+      openLeadInbox
     ] = await Promise.all([
       this.prisma.tenant.count({
         where: {
@@ -235,6 +242,13 @@ export class InternalAdminService {
         where: {
           currentPlanKey: BillingPlanKey.ENTERPRISE
         }
+      }),
+      this.prisma.publicLeadSubmission.count({
+        where: {
+          status: {
+            in: [PublicLeadStatus.NEW, PublicLeadStatus.REVIEWING]
+          }
+        }
       })
     ]);
 
@@ -252,13 +266,15 @@ export class InternalAdminService {
         todayCandidateProcessing: todayCandidateProcessing._sum.quantity ?? 0,
         todayAiInterviews: todayAiInterviews._sum.quantity ?? 0,
         openAlerts: redAlertSnapshot.items.length,
-        enterpriseCustomers: enterpriseTenants
+        enterpriseCustomers: enterpriseTenants,
+        openLeadInbox
       },
       planDistribution: distribution,
       quickLinks: {
         customers: totalTenants,
         redAlerts: redAlertSnapshot.items.length,
-        enterprise: enterpriseTenants
+        enterprise: enterpriseTenants,
+        leads: openLeadInbox
       }
     };
   }
@@ -266,6 +282,129 @@ export class InternalAdminService {
   async getRedAlerts(filters: RedAlertFilters, viewerEmail?: string | null) {
     this.assertInternalAdmin(viewerEmail);
     return this.getRedAlertSnapshot(filters);
+  }
+
+  async listPublicLeads(filters: PublicLeadFilters, viewerEmail?: string | null) {
+    this.assertInternalAdmin(viewerEmail);
+
+    const query = filters.query?.trim();
+    const where: Prisma.PublicLeadSubmissionWhereInput = {
+      ...(filters.status && filters.status !== "ALL"
+        ? {
+            status: filters.status
+          }
+        : {}),
+      ...(query
+        ? {
+            OR: [
+              {
+                fullName: {
+                  contains: query,
+                  mode: "insensitive"
+                }
+              },
+              {
+                email: {
+                  contains: query,
+                  mode: "insensitive"
+                }
+              },
+              {
+                company: {
+                  contains: query,
+                  mode: "insensitive"
+                }
+              },
+              {
+                message: {
+                  contains: query,
+                  mode: "insensitive"
+                }
+              }
+            ]
+          }
+        : {})
+    };
+
+    const [rows, total, newCount, reviewingCount, contactedCount, archivedCount] =
+      await Promise.all([
+        this.prisma.publicLeadSubmission.findMany({
+          where,
+          orderBy: {
+            lastSubmittedAt: "desc"
+          },
+          take: 200
+        }),
+        this.prisma.publicLeadSubmission.count({
+          where
+        }),
+        this.prisma.publicLeadSubmission.count({
+          where: {
+            ...where,
+            status: PublicLeadStatus.NEW
+          }
+        }),
+        this.prisma.publicLeadSubmission.count({
+          where: {
+            ...where,
+            status: PublicLeadStatus.REVIEWING
+          }
+        }),
+        this.prisma.publicLeadSubmission.count({
+          where: {
+            ...where,
+            status: PublicLeadStatus.CONTACTED
+          }
+        }),
+        this.prisma.publicLeadSubmission.count({
+          where: {
+            ...where,
+            status: PublicLeadStatus.ARCHIVED
+          }
+        })
+      ]);
+
+    return {
+      filters: {
+        query: query ?? "",
+        status: filters.status ?? "ALL"
+      },
+      summary: {
+        total,
+        new: newCount,
+        reviewing: reviewingCount,
+        contacted: contactedCount,
+        archived: archivedCount
+      },
+      rows
+    };
+  }
+
+  async updatePublicLeadStatus(input: {
+    leadId: string;
+    actorEmail?: string | null;
+    status: PublicLeadStatus;
+  }) {
+    this.assertInternalAdmin(input.actorEmail);
+
+    const existingLead = await this.prisma.publicLeadSubmission.findUnique({
+      where: {
+        id: input.leadId
+      }
+    });
+
+    if (!existingLead) {
+      throw new NotFoundException("Lead kaydı bulunamadı.");
+    }
+
+    return this.prisma.publicLeadSubmission.update({
+      where: {
+        id: input.leadId
+      },
+      data: {
+        status: input.status
+      }
+    });
   }
 
   private async getRedAlertSnapshot(filters: RedAlertFilters) {

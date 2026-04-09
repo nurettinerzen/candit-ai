@@ -778,10 +778,10 @@ export type BillingFeatureKey =
   | "brandedCandidateExperience"
   | "customIntegrations";
 export type BillingAddonKey =
+  | "CANDIDATE_PROCESSING_PACK_50"
+  | "INTERVIEW_PACK_10"
   | "INTERVIEW_PACK_25"
-  | "CANDIDATE_PROCESSING_PACK_100"
-  | "PROFESSIONAL_ONBOARDING"
-  | "CUSTOM_INTEGRATION_SETUP";
+  | "CANDIDATE_PROCESSING_PACK_100";
 
 export type BillingPlanDefinition = {
   key: BillingPlanKey;
@@ -886,6 +886,7 @@ export type InternalAdminDashboardReadModel = {
     todayAiInterviews: number;
     openAlerts: number;
     enterpriseCustomers: number;
+    openLeadInbox: number;
   };
   planDistribution: Array<{
     key: BillingPlanKey;
@@ -896,6 +897,7 @@ export type InternalAdminDashboardReadModel = {
     customers: number;
     redAlerts: number;
     enterprise: number;
+    leads: number;
   };
 };
 
@@ -1029,6 +1031,53 @@ export type InternalAdminAccountDetailReadModel = {
       createdAt: string;
     }>;
   };
+};
+
+export type InternalAdminPublicLeadStatus = "NEW" | "REVIEWING" | "CONTACTED" | "ARCHIVED";
+
+export type InternalAdminPublicLeadListReadModel = {
+  filters: {
+    query: string;
+    status: "ALL" | InternalAdminPublicLeadStatus;
+  };
+  summary: {
+    total: number;
+    new: number;
+    reviewing: number;
+    contacted: number;
+    archived: number;
+  };
+  rows: Array<{
+    id: string;
+    status: InternalAdminPublicLeadStatus;
+    fullName: string;
+    email: string;
+    normalizedEmail: string;
+    company: string | null;
+    phone: string | null;
+    role: string | null;
+    teamSize: string | null;
+    message: string | null;
+    sourcePage: string | null;
+    landingUrl: string | null;
+    referrerUrl: string | null;
+    locale: string | null;
+    utmSource: string | null;
+    utmMedium: string | null;
+    utmCampaign: string | null;
+    utmTerm: string | null;
+    utmContent: string | null;
+    userAgent: string | null;
+    submissionCount: number;
+    lastSubmittedAt: string;
+    createdAt: string;
+    updatedAt: string;
+    opsNotificationStatus: "QUEUED" | "SENT" | "FAILED" | null;
+    opsNotificationProvider: string | null;
+    opsNotificationError: string | null;
+    opsNotificationLastTriedAt: string | null;
+    opsNotificationSentAt: string | null;
+  }>;
 };
 
 export type AnalyticsFunnelRow = {

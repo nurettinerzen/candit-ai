@@ -156,9 +156,19 @@
   letter-spacing: 0.05em;
 }
 
-.languagePill span {
+.languagePill span,
+.languagePill button {
   padding: 6px 10px;
   border-radius: 999px;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
 }
 
 .languagePillActive {
@@ -1164,6 +1174,36 @@
   height: fit-content;
 }
 
+.formAlert {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.formAlert strong {
+  color: #f8fafc;
+  font-size: 14px;
+}
+
+.formAlert span,
+.formAlert small {
+  color: #cbd5e1;
+  line-height: 1.6;
+}
+
+.formAlertSuccess {
+  background: rgba(20, 184, 166, 0.12);
+  border-color: rgba(45, 212, 191, 0.28);
+}
+
+.formAlertError {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.28);
+}
+
 .formGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1184,6 +1224,18 @@
   color: #dfe6ef;
   font-size: 13px;
   font-weight: 600;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .field input,

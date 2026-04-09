@@ -11,7 +11,12 @@ import {
   Min,
   MinLength
 } from "class-validator";
-import { BillingAccountStatus, BillingPlanKey, TenantStatus } from "@prisma/client";
+import {
+  BillingAccountStatus,
+  BillingPlanKey,
+  PublicLeadStatus,
+  TenantStatus
+} from "@prisma/client";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { Permissions } from "../../common/decorators/permissions.decorator";
 import type { RequestUser } from "../../common/interfaces/request-user.interface";
@@ -46,6 +51,21 @@ class RedAlertQuery {
   @IsOptional()
   @IsIn(["ALL", "critical", "warning"])
   severity?: "ALL" | "critical" | "warning";
+}
+
+class PublicLeadQuery {
+  @IsOptional()
+  @IsString()
+  query?: string;
+
+  @IsOptional()
+  @IsIn(["ALL", "NEW", "REVIEWING", "CONTACTED", "ARCHIVED"])
+  status?: "ALL" | "NEW" | "REVIEWING" | "CONTACTED" | "ARCHIVED";
+}
+
+class UpdatePublicLeadStatusBody {
+  @IsEnum(PublicLeadStatus)
+  status!: PublicLeadStatus;
 }
 
 class UpdateAccountStatusBody {
@@ -212,6 +232,18 @@ export class InternalAdminController {
     );
   }
 
+  @Get("public-leads")
+  @Permissions("tenant.manage")
+  publicLeads(@CurrentUser() user: RequestUser, @Query() query: PublicLeadQuery) {
+    return this.internalAdminService.listPublicLeads(
+      {
+        query: query.query,
+        status: query.status ?? "ALL"
+      },
+      user.email
+    );
+  }
+
   @Get("accounts")
   @Permissions("tenant.manage")
   accounts(@CurrentUser() user: RequestUser, @Query() query: AdminAccountQuery) {
@@ -311,6 +343,22 @@ export class InternalAdminController {
       actorUserId: user.userId,
       actorEmail: user.email
     });
+  }
+
+  @Patch("public-leads/:leadId/status")
+  @Permissions("tenant.manage")
+  updatePublicLeadStatus(
+    @CurrentUser() user: RequestUser,
+    @Param("leadId") leadId: string,
+    @Body() body: UpdatePublicLeadStatusBody
+  ) {
+    return this.internalAdminService.updatePublicLeadStatus(
+      {
+        leadId,
+        actorEmail: user.email,
+        status: body.status
+      }
+    );
   }
 
   @Get("enterprise")

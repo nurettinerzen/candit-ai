@@ -3,7 +3,7 @@ export type BillingPlanDefinition = {
   label: string;
   description: string;
   monthlyAmountCents: number | null;
-  currency: "usd";
+  currency: "usd" | "try";
   seatsIncluded: number;
   activeJobsIncluded: number;
   candidateProcessingIncluded: number;
@@ -23,7 +23,7 @@ export type BillingTrialDefinition = {
   description: string;
   durationDays: number;
   monthlyAmountCents: number;
-  currency: "usd";
+  currency: "usd" | "try";
   seatsIncluded: number;
   activeJobsIncluded: number;
   candidateProcessingIncluded: number;
@@ -35,13 +35,13 @@ export type BillingTrialDefinition = {
 export type BillingAddonDefinition = {
   key:
     | "INTERVIEW_PACK_25"
+    | "INTERVIEW_PACK_10"
     | "CANDIDATE_PROCESSING_PACK_100"
-    | "PROFESSIONAL_ONBOARDING"
-    | "CUSTOM_INTEGRATION_SETUP";
+    | "CANDIDATE_PROCESSING_PACK_50";
   label: string;
   description: string;
   amountCents: number;
-  currency: "usd";
+  currency: "usd" | "try";
   quotaKey?: "AI_INTERVIEWS" | "CANDIDATE_PROCESSING";
   quantity?: number;
   serviceOnly?: boolean;
@@ -55,13 +55,13 @@ export const BILLING_PLAN_CATALOG: Record<
     key: "STARTER",
     label: "Starter",
     description:
-      "Küçük ekipler ve düşük hacim için. Az sayıda aktif ilan ve temel recruiter operasyonu.",
-    monthlyAmountCents: 14900,
-    currency: "usd",
-    seatsIncluded: 3,
-    activeJobsIncluded: 3,
-    candidateProcessingIncluded: 150,
-    aiInterviewsIncluded: 30,
+      "Tek recruiter ile düzenli işe alım yapan ekipler için. Düşük hacim, düşük koltuk, net operasyon.",
+    monthlyAmountCents: 449900,
+    currency: "try",
+    seatsIncluded: 1,
+    activeJobsIncluded: 2,
+    candidateProcessingIncluded: 100,
+    aiInterviewsIncluded: 15,
     features: {
       advancedReporting: false,
       calendarIntegrations: false,
@@ -74,13 +74,13 @@ export const BILLING_PLAN_CATALOG: Record<
     key: "GROWTH",
     label: "Growth",
     description:
-      "Asıl satış paketi. Daha yüksek hacim, AI interview kapasitesi ve takvim entegrasyonları.",
-    monthlyAmountCents: 49900,
-    currency: "usd",
-    seatsIncluded: 8,
+      "Düzenli işe alım yapan küçük ekipler için. Daha fazla hacim, takvim entegrasyonu ve raporlama.",
+    monthlyAmountCents: 1299900,
+    currency: "try",
+    seatsIncluded: 2,
     activeJobsIncluded: 10,
     candidateProcessingIncluded: 500,
-    aiInterviewsIncluded: 100,
+    aiInterviewsIncluded: 50,
     features: {
       advancedReporting: true,
       calendarIntegrations: true,
@@ -115,53 +115,55 @@ export const BILLING_ADDON_CATALOG: Record<
   BillingAddonDefinition["key"],
   BillingAddonDefinition
 > = {
-  INTERVIEW_PACK_25: {
-    key: "INTERVIEW_PACK_25",
-    label: "Ek AI mülakat paketi",
-    description: "Mevcut dönem için +25 AI mülakat hakkı.",
-    amountCents: 7900,
-    currency: "usd",
-    quotaKey: "AI_INTERVIEWS",
-    quantity: 25
+  CANDIDATE_PROCESSING_PACK_50: {
+    key: "CANDIDATE_PROCESSING_PACK_50",
+    label: "Ek Aday İşleme Paketi 50",
+    description: "Mevcut dönem için +50 aday işleme hakkı.",
+    amountCents: 109900,
+    currency: "try",
+    quotaKey: "CANDIDATE_PROCESSING",
+    quantity: 50
   },
   CANDIDATE_PROCESSING_PACK_100: {
     key: "CANDIDATE_PROCESSING_PACK_100",
-    label: "Ek Aday İşleme Paketi",
+    label: "Ek Aday İşleme Paketi 100",
     description: "Mevcut dönem için +100 aday işleme hakkı.",
-    amountCents: 5900,
-    currency: "usd",
+    amountCents: 199900,
+    currency: "try",
     quotaKey: "CANDIDATE_PROCESSING",
     quantity: 100
   },
-  PROFESSIONAL_ONBOARDING: {
-    key: "PROFESSIONAL_ONBOARDING",
-    label: "Profesyonel Kurulum / Onboarding",
-    description: "Kurulum desteği, süreç tasarımı ve ekip onboarding hizmeti.",
-    amountCents: 24900,
-    currency: "usd",
-    serviceOnly: true
+  INTERVIEW_PACK_10: {
+    key: "INTERVIEW_PACK_10",
+    label: "Ek AI Mülakat Paketi 10",
+    description: "Mevcut dönem için +10 AI mülakat hakkı.",
+    amountCents: 119900,
+    currency: "try",
+    quotaKey: "AI_INTERVIEWS",
+    quantity: 10
   },
-  CUSTOM_INTEGRATION_SETUP: {
-    key: "CUSTOM_INTEGRATION_SETUP",
-    label: "Özel Entegrasyon Kurulumu",
-    description: "Özel entegrasyon kurulumu ve teknik uyarlama hizmeti.",
-    amountCents: 149900,
-    currency: "usd",
-    serviceOnly: true
+  INTERVIEW_PACK_25: {
+    key: "INTERVIEW_PACK_25",
+    label: "Ek AI Mülakat Paketi 25",
+    description: "Mevcut dönem için +25 AI mülakat hakkı.",
+    amountCents: 249900,
+    currency: "try",
+    quotaKey: "AI_INTERVIEWS",
+    quantity: 25
   }
 };
 
 export const FREE_TRIAL_DEFINITION: BillingTrialDefinition = {
   label: "Ücretsiz Deneme",
   description:
-    "14 gün boyunca tek ilan üzerinde screening ve AI mülakat akışını deneyin. Kredi kartı gerekmez.",
-  durationDays: 14,
+    "7 gün boyunca tek ilan üzerinde screening ve AI mülakat akışını deneyin. Kredi kartı gerekmez.",
+  durationDays: 7,
   monthlyAmountCents: 0,
-  currency: "usd",
-  seatsIncluded: 2,
+  currency: "try",
+  seatsIncluded: 1,
   activeJobsIncluded: 1,
-  candidateProcessingIncluded: 50,
-  aiInterviewsIncluded: 5,
+  candidateProcessingIncluded: 25,
+  aiInterviewsIncluded: 3,
   features: {
     advancedReporting: false,
     calendarIntegrations: true,

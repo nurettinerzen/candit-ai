@@ -20,10 +20,8 @@ export function LandingHero() {
   }, [t]);
 
   const chatMessages = useMemo(() => [
-    { type: "bot", text: t("Selen Hanım, son deneyiminizden bahseder misiniz? Hangi teknolojilerle çalıştınız?") },
-    { type: "candidate", text: t("Son 2 yıldır React ve TypeScript ile e-ticaret projeleri geliştiriyorum. Performans optimizasyonu ve CI/CD süreçlerinde aktif rol aldım.") },
-    { type: "bot", text: t("Bir projede beklenmedik bir teknik sorunla karşılaştığınızda nasıl bir yol izlediniz?") },
-    { type: "candidate", text: t("Canlıda kritik bir bellek sızıntısı yaşadık. Profiler ile root cause'u bulup, memo ve lazy loading ile çözdüm. Sayfa yüklenme süresi %40 düştü.") },
+    { type: "bot", text: t("Selen Hanım, son pozisyonunuzdaki en büyük teknik zorluğu anlatır mısınız?") },
+    { type: "candidate", text: t("Yüksek trafikli bir e-ticaret sitesinde performans sorunları yaşadık. React memo ve code splitting ile sayfa yüklenme süresini 3 saniyeden 800 milisaniyeye düşürdüm.") },
   ], [t]);
 
   useEffect(() => {
@@ -235,9 +233,12 @@ export function LandingHero() {
       }
     }
 
-    // 6. Chat demo typing with loop
+    // 6. Chat demo typing with word-by-word effect
     {
       const container = root.querySelector("#chatDemo");
+      const participantBot = root.querySelector("#participantBot");
+      const participantCandidate = root.querySelector("#participantCandidate");
+
       if (container) {
         const msgEls = root.querySelectorAll("[data-chat-msg]");
         const messages = Array.from(msgEls).map((el) => ({
@@ -247,50 +248,75 @@ export function LandingHero() {
 
         let cancelled = false;
 
-        function addMessage(msg: { type: string; text: string }, delay: number) {
+        function setSpeaking(type: string) {
+          participantBot?.classList.toggle("lp-speaking", type === "bot");
+          participantCandidate?.classList.toggle("lp-speaking", type === "candidate");
+        }
+
+        function clearSpeaking() {
+          participantBot?.classList.remove("lp-speaking");
+          participantCandidate?.classList.remove("lp-speaking");
+        }
+
+        function typeMessageWordByWord(msg: { type: string; text: string }, initialDelay: number) {
           return new Promise<void>((resolve) => {
             const t = setTimeout(() => {
               if (cancelled) return;
-              if (msg.type === "bot") {
-                const typing = document.createElement("div");
-                typing.className = "lp-chat-msg lp-bot";
-                typing.innerHTML = '<div class="lp-typing-dots"><span></span><span></span><span></span></div>';
-                container!.appendChild(typing);
-                container!.scrollTop = container!.scrollHeight;
-                const t2 = setTimeout(() => {
-                  if (cancelled) return;
-                  typing.remove();
-                  const el = document.createElement("div");
-                  el.className = "lp-chat-msg lp-bot";
-                  el.textContent = msg.text;
-                  el.style.opacity = "0";
-                  el.style.transform = "translateY(8px)";
-                  container!.appendChild(el);
-                  requestAnimationFrame(() => {
-                    el.style.transition = "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
-                    el.style.opacity = "1";
-                    el.style.transform = "translateY(0)";
-                  });
-                  container!.scrollTop = container!.scrollHeight;
+
+              setSpeaking(msg.type);
+
+              const words = msg.text.split(/\s+/);
+              const isBot = msg.type === "bot";
+              const label = isBot ? "Candit Asistan" : "Selen Yılmaz";
+
+              const wrapper = document.createElement("div");
+              wrapper.className = `lp-chat-msg ${isBot ? "lp-bot" : "lp-candidate"}`;
+              wrapper.style.opacity = "0";
+              wrapper.style.transform = "translateY(8px)";
+
+              const labelEl = document.createElement("span");
+              labelEl.className = "lp-chat-label";
+              labelEl.textContent = label;
+              wrapper.appendChild(labelEl);
+
+              const textEl = document.createElement("span");
+              textEl.className = "lp-chat-text";
+              wrapper.appendChild(textEl);
+
+              const cursor = document.createElement("span");
+              cursor.className = "lp-typing-cursor";
+              textEl.appendChild(cursor);
+
+              container!.appendChild(wrapper);
+
+              requestAnimationFrame(() => {
+                wrapper.style.transition = "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
+                wrapper.style.opacity = "1";
+                wrapper.style.transform = "translateY(0)";
+              });
+
+              let wordIndex = 0;
+              function typeNextWord() {
+                if (cancelled || wordIndex >= words.length) {
+                  cursor.remove();
+                  clearSpeaking();
                   resolve();
-                }, 500 + Math.random() * 200);
-                cleanups.push(() => clearTimeout(t2));
-              } else {
-                const el = document.createElement("div");
-                el.className = "lp-chat-msg lp-candidate";
-                el.textContent = msg.text;
-                el.style.opacity = "0";
-                el.style.transform = "translateY(8px)";
-                container!.appendChild(el);
-                requestAnimationFrame(() => {
-                  el.style.transition = "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
-                  el.style.opacity = "1";
-                  el.style.transform = "translateY(0)";
-                });
+                  return;
+                }
+                const word = words[wordIndex];
+                if (wordIndex > 0) {
+                  textEl.insertBefore(document.createTextNode(" "), cursor);
+                }
+                textEl.insertBefore(document.createTextNode(word ?? ""), cursor);
+                wordIndex++;
                 container!.scrollTop = container!.scrollHeight;
-                resolve();
+                const delay = 80 + Math.random() * 30;
+                const wt = setTimeout(typeNextWord, delay);
+                cleanups.push(() => clearTimeout(wt));
               }
-            }, delay);
+
+              typeNextWord();
+            }, initialDelay);
             cleanups.push(() => clearTimeout(t));
           });
         }
@@ -298,6 +324,7 @@ export function LandingHero() {
         async function runChat() {
           if (cancelled) return;
           container!.innerHTML = "";
+          clearSpeaking();
           for (let i = 0; i < messages.length; i++) {
             if (cancelled) return;
             const message = messages[i];
@@ -305,10 +332,10 @@ export function LandingHero() {
               continue;
             }
 
-            await addMessage(message, i === 0 ? 200 : 700 + Math.random() * 300);
+            await typeMessageWordByWord(message, i === 0 ? 200 : 700 + Math.random() * 300);
           }
           if (cancelled) return;
-          chatLoopTimeout.current = setTimeout(runChat, 2000);
+          chatLoopTimeout.current = setTimeout(runChat, 4000);
         }
 
         const chatGrid = root.querySelector("#chatDemoGrid") || container;
@@ -324,6 +351,7 @@ export function LandingHero() {
         cleanups.push(() => {
           cancelled = true;
           chatObserver.disconnect();
+          clearSpeaking();
           if (chatLoopTimeout.current) clearTimeout(chatLoopTimeout.current);
         });
       }
@@ -508,28 +536,32 @@ export function LandingHero() {
             <div className="lp-chat-demo-grid lp-reveal-sync" id="chatDemoGrid">
               <div className="lp-chat-demo-copy lp-sync-left">
                 <span className="lp-kicker">{t("Canlı Mülakat")}</span>
-                <h2 className="lp-section-title">{t("Gerçek zamanlı AI görüşme odası")}</h2>
-                <p className="lp-section-sub">{t("Aday ve AI asistan karşılıklı görüşür. Transcript anlık oluşur, değerlendirme otomatik yapılır.")}</p>
+                <h2 className="lp-section-title">{t("Mülakatı izleyin, sonucu hemen görün")}</h2>
+                <p className="lp-section-sub">{t("AI asistanımız adayla birebir görüşme yapar, yanıtları anında analiz eder. Siz sadece sonuçları değerlendirin.")}</p>
               </div>
               <div className="lp-interview-room lp-sync-right">
                 {/* Video area - 2 participants */}
                 <div className="lp-interview-video-grid">
-                  <div className="lp-interview-participant">
+                  <div className="lp-interview-participant" id="participantBot">
                     <div className="lp-interview-avatar-candit">
                       <span>C</span>
                     </div>
+                    <div className="lp-speaker-indicator" aria-hidden="true">
+                      <span /><span /><span />
+                    </div>
                     <span className="lp-interview-name">{t("Candit Asistan")}</span>
-                    <span className="lp-interview-role-tag">{t("AI Mülakat")}</span>
                   </div>
-                  <div className="lp-interview-participant">
+                  <div className="lp-interview-participant" id="participantCandidate">
                     <div className="lp-interview-avatar-candidate">
-                      <svg viewBox="0 0 40 40" width="56" height="56" fill="none">
-                        <circle cx="20" cy="14" r="8" fill="var(--lp-accent)" opacity="0.7" />
-                        <ellipse cx="20" cy="36" rx="14" ry="10" fill="var(--lp-accent)" opacity="0.5" />
+                      <svg viewBox="0 0 64 64" width="56" height="56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="32" cy="22" r="10" fill="rgba(255,255,255,0.85)" />
+                        <path d="M32 36c-11 0-20 6.5-20 14.5V54h40v-3.5C52 42.5 43 36 32 36z" fill="rgba(255,255,255,0.65)" />
                       </svg>
                     </div>
+                    <div className="lp-speaker-indicator" aria-hidden="true">
+                      <span /><span /><span />
+                    </div>
                     <span className="lp-interview-name">{t("Selen Yılmaz")}</span>
-                    <span className="lp-interview-role-tag">{t("Aday")}</span>
                   </div>
                 </div>
                 {/* Live transcript */}
@@ -586,7 +618,7 @@ export function LandingHero() {
               <div className="lp-step-card lp-scroll-card">
                 <span className="lp-step-num">03</span>
                 <h3>{t("AI Mülakat Yaptırın")}</h3>
-                <p>{t("Adaylar AI ile mülakat yapar, yanıt kalitesi ve yetkinlikleri otomatik puanlanır.")}</p>
+                <p>{t("Adaylar sizin belirlediğiniz sorularla mülakata girer. AI yanıtları analiz eder, yetkinlik raporu oluşturur.")}</p>
               </div>
               <div className="lp-step-card lp-scroll-card">
                 <span className="lp-step-num">04</span>
@@ -603,8 +635,8 @@ export function LandingHero() {
             <div className="lp-feature-row">
               <div className="lp-reveal-right lp-reveal-late">
                 <span className="lp-kicker">{t("Güvenlik")}</span>
-                <h2 className="lp-section-title">{t("Verileriniz güvendedir")}</h2>
-                <p className="lp-section-sub">{t("KVKK uyumlu altyapı, şifrelenmiş veri depolama ve erişim kontrolleri ile tam güvenlik.")}</p>
+                <h2 className="lp-section-title">{t("Güvenlik bizim işimiz")}</h2>
+                <p className="lp-section-sub">{t("Aday verileri KVKK ve GDPR standartlarında korunur. Şifreli depolama, rol bazlı erişim ve otomatik veri yaşam döngüsü yönetimi.")}</p>
               </div>
               <div className="lp-feature-visual lp-reveal-left lp-reveal-late">
                 <div className="lp-feature-visual-title">{t("Güvenlik Katmanları")}</div>
@@ -636,8 +668,8 @@ export function LandingHero() {
           <div className="lp-shell">
             <div className="lp-cta-panel lp-reveal-scale">
               <span className="lp-kicker">{t("Başlayalım")}</span>
-              <h2 className="lp-section-title">{t("Adaylara hak ettikleri deneyimi sunun")}</h2>
-              <p className="lp-section-sub">{t("Ücretsiz deneme ile başlayıp, dakikalar içinde ilk AI mülakatınızı oluşturun.")}</p>
+              <h2 className="lp-section-title">{t("İlk mülakatınız 5 dakika uzağınızda")}</h2>
+              <p className="lp-section-sub">{t("Hesap oluşturun, pozisyonu tanımlayın, soruları belirleyin. AI mülakatınız hemen çalışmaya başlasın.")}</p>
               <div className="lp-cta-actions">
                 <a href="/auth/signup" className="lp-btn">{t("Ücretsiz Deneyin")}</a>
               </div>

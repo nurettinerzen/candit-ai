@@ -212,6 +212,13 @@ enum NotificationDeliveryStatus {
   FAILED
 }
 
+enum PublicLeadStatus {
+  NEW
+  REVIEWING
+  CONTACTED
+  ARCHIVED
+}
+
 enum BillingPlanKey {
   STARTER
   GROWTH
@@ -253,10 +260,10 @@ enum BillingCheckoutStatus {
 }
 
 enum BillingAddonKey {
+  CANDIDATE_PROCESSING_PACK_50
+  INTERVIEW_PACK_10
   INTERVIEW_PACK_25
   CANDIDATE_PROCESSING_PACK_100
-  PROFESSIONAL_ONBOARDING
-  CUSTOM_INTEGRATION_SETUP
 }
 
 enum SourcingProjectStatus {
@@ -1654,6 +1661,45 @@ model NotificationDelivery {
   @@index([tenantId, status, queuedAt(sort: Desc)])
   @@index([tenantId, channel, queuedAt(sort: Desc)])
   @@index([domainEventId])
+}
+
+model PublicLeadSubmission {
+  id                        String                     @id @default(uuid())
+  status                    PublicLeadStatus           @default(NEW)
+  fullName                  String
+  email                     String
+  normalizedEmail           String
+  company                   String?
+  phone                     String?
+  role                      String?
+  teamSize                  String?
+  message                   String?
+  sourcePage                String?
+  landingUrl                String?
+  referrerUrl               String?
+  locale                    String?
+  utmSource                 String?
+  utmMedium                 String?
+  utmCampaign               String?
+  utmTerm                   String?
+  utmContent                String?
+  ipAddressHash             String?
+  userAgent                 String?
+  metadata                  Json?
+  submissionCount           Int                        @default(1)
+  lastSubmittedAt           DateTime                   @default(now())
+  opsNotificationStatus     NotificationDeliveryStatus?
+  opsNotificationProvider   String?
+  opsNotificationError      String?
+  opsNotificationLastTriedAt DateTime?
+  opsNotificationSentAt     DateTime?
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+
+  @@unique([normalizedEmail])
+  @@index([normalizedEmail])
+  @@index([status, lastSubmittedAt(sort: Desc)])
+  @@index([ipAddressHash, lastSubmittedAt(sort: Desc)])
 }
 
 model SchedulingWorkflow {

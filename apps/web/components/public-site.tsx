@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import styles from "./public-site.module.css";
 import { LandingHero } from "./landing-hero";
+import { PublicLeadForm } from "./public-lead-form";
+import { LanguagePill } from "./language-pill";
 import {
   PUBLIC_ABOUT_STATS,
   PUBLIC_ABOUT_STORY,
@@ -101,7 +103,7 @@ function SiteHeader({ activeHref }: { activeHref?: string }) {
           <span className={styles.brandMark}>C</span>
           <span className={styles.brandCopy}>
             <strong>{SITE_BRAND}</strong>
-            <span>Çok kanallı AI platformu</span>
+            <span>AI destekli işe alım platformu</span>
           </span>
         </a>
 
@@ -118,14 +120,11 @@ function SiteHeader({ activeHref }: { activeHref?: string }) {
         </nav>
 
         <div className={styles.headerActions}>
-          <div className={styles.languagePill} aria-hidden="true">
-            <span className={styles.languagePillActive}>TR</span>
-            <span>EN</span>
-          </div>
+          <LanguagePill />
           <a href="/auth/login" className={styles.headerTextAction}>
             Giriş Yap
           </a>
-          <ActionLink action={{ label: "Demo Talep Edin", href: "/waitlist" }} />
+          <ActionLink action={{ label: "Ücretsiz Deneyin", href: "/auth/signup" }} />
         </div>
       </div>
     </header>
@@ -281,7 +280,7 @@ function FAQBlock({ items }: { items: PublicFaq[] }) {
 function CTASection({
   title,
   body,
-  primary = { label: "Demo Talep Edin", href: "/waitlist" },
+  primary = { label: "Hesap Oluştur", href: "/auth/signup" },
   secondary = { label: "Fiyatları İncele", href: "/pricing", tone: "secondary" }
 }: {
   title: string;
@@ -452,49 +451,30 @@ function ArticleCard({ article }: { article: PublicBlogArticle }) {
   );
 }
 
-function MockContactForm({
+function LeadCaptureForm({
   title,
   body,
-  submitLabel
+  submitLabel,
+  sourcePage,
+  successTitle,
+  successBody
 }: {
   title: string;
   body: string;
   submitLabel: string;
+  sourcePage: string;
+  successTitle: string;
+  successBody: string;
 }) {
   return (
-    <div className={styles.formCard}>
-      <span className={styles.eyebrow}>Form</span>
-      <h3>{title}</h3>
-      <p>{body}</p>
-
-      <div className={styles.formGrid}>
-        <label className={styles.field}>
-          <span>Ad Soyad</span>
-          <input type="text" placeholder="Örn: Nurettin Erzen" />
-        </label>
-        <label className={styles.field}>
-          <span>E-posta</span>
-          <input type="email" placeholder="örnek@şirket.com" />
-        </label>
-        <label className={styles.field}>
-          <span>Şirket</span>
-          <input type="text" placeholder="Şirket adı" />
-        </label>
-        <label className={styles.field}>
-          <span>Rol / Ekip</span>
-          <input type="text" placeholder="İK, yönetici, kurucu..." />
-        </label>
-        <label className={cn(styles.field, styles.fieldWide)}>
-          <span>Mesaj</span>
-          <textarea rows={5} placeholder="İşe alım süreçleriniz ve ihtiyaçlarınız hakkında bilgi verin." />
-        </label>
-      </div>
-
-      <button type="button" className={cn(styles.button, styles.buttonPrimary, styles.buttonBlock)}>
-        <span>{submitLabel}</span>
-        <span aria-hidden="true">-&gt;</span>
-      </button>
-    </div>
+    <PublicLeadForm
+      title={title}
+      body={body}
+      submitLabel={submitLabel}
+      sourcePage={sourcePage}
+      successTitle={successTitle}
+      successBody={successBody}
+    />
   );
 }
 
@@ -661,8 +641,8 @@ export function PublicFeaturesPage() {
               AI mülakat, aday tarama, iş ilanı yönetimi ve analitik araçları tek platformda. Hızlı kurulum, derin entegrasyonlar ve ölçeklenebilir otomasyon.
             </p>
             <div className={styles.ftHeroActions}>
-              <a href="/waitlist" className={cn(styles.ftGlowBtn, styles.ftGlowBtnPrimary)}>
-                Ücretsiz Deneyin
+              <a href="/auth/signup" className={cn(styles.ftGlowBtn, styles.ftGlowBtnPrimary)}>
+                Hemen Başlayın
               </a>
               <a href="#features-grid" className={cn(styles.ftGlowBtn, styles.ftGlowBtnOutline)}>
                 Özellikleri Keşfedin
@@ -833,8 +813,8 @@ export function PublicFeaturesPage() {
                   Tüm özelliklerimizi ücretsiz deneyin. Kurulum dakikalar içinde tamamlanır, teknik bilgi gerekmez.
                 </p>
                 <div className={styles.ftCtaActions}>
-                  <a href="/waitlist" className={cn(styles.ftGlowBtn, styles.ftCtaBtnWhite)}>
-                    Ücretsiz Deneyin
+                  <a href="/auth/signup" className={cn(styles.ftGlowBtn, styles.ftCtaBtnWhite)}>
+                    Hemen Başlayın
                   </a>
                   <a href="/contact" className={cn(styles.ftGlowBtn, styles.ftCtaBtnGhost)}>
                     Bize Ulaşın
@@ -996,8 +976,8 @@ export function PublicSolutionsPage() {
                   <a href="/contact" className={styles.solCtaBtnWhite}>
                     Bize Ulaşın
                   </a>
-                  <a href="/waitlist" className={styles.solCtaBtnGhost}>
-                    Demo Talep Edin
+                  <a href="/auth/signup" className={styles.solCtaBtnGhost}>
+                    Hesap Oluştur
                   </a>
                 </div>
               </div>
@@ -1032,7 +1012,7 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
             <h1 className={styles.solutionTitle}>{solution.title}</h1>
             <p className={styles.solutionIntro}>{solution.intro}</p>
             <div className={styles.heroActions}>
-              <ActionLink action={{ label: "Demo Talep Edin", href: "/waitlist" }} />
+              <ActionLink action={{ label: "Hesap Oluştur", href: "/auth/signup" }} />
               <ActionLink
                 action={{ label: "Fiyatları İncele", href: "/pricing", tone: "secondary" }}
                 tone="secondary"
@@ -1132,16 +1112,28 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
 export function PublicPricingPage() {
   const OVERAGE_ROWS = [
     {
-      channel: "Ek AI mülakat",
-      unit: "25 mülakat",
-      rate: "$79/paket",
-      note: "Mevcut planınızdaki AI mülakat kotası dolduğunda ek paket satın alabilirsiniz."
+      channel: "Ek aday işleme",
+      unit: "50 aday",
+      rate: "1.099₺/paket",
+      note: "Düşük hacimli ek ihtiyaçlarda hızlı kapasite artışı için kullanılır."
     },
     {
       channel: "Ek aday işleme",
       unit: "100 aday",
-      rate: "$59/paket",
-      note: "Aday ön eleme kotası dolduğunda ek aday işleme hakkı satın alabilirsiniz."
+      rate: "1.999₺/paket",
+      note: "Aday ön eleme kotası dolduğunda daha avantajlı geniş paket seçeneğidir."
+    },
+    {
+      channel: "Ek AI mülakat",
+      unit: "10 mülakat",
+      rate: "1.199₺/paket",
+      note: "Kısa süreli ek görüşme ihtiyacı için küçük mülakat paketi."
+    },
+    {
+      channel: "Ek AI mülakat",
+      unit: "25 mülakat",
+      rate: "2.499₺/paket",
+      note: "Dönem içinde daha yoğun AI mülakat kullanımı için daha avantajlı büyük paket seçeneğidir."
     }
   ];
 
@@ -1266,21 +1258,20 @@ export function PublicPricingPage() {
           <div className={styles.prPaygHeader}>
             <span className={styles.prPaygBadge}>
               <span className={styles.prBadgeDot} />
-              Esnek Kullanım
+              {PUBLIC_PAY_AS_YOU_GO.eyebrow}
             </span>
-            <h2 className={styles.prSectionTitle}>Kullandıkça Öde</h2>
+            <h2 className={styles.prSectionTitle}>{PUBLIC_PAY_AS_YOU_GO.title}</h2>
             <p className={styles.prSectionSubtitle}>
-              Aylık taahhüt yok. Ses dakikaları ve yazılı etkileşimler kullanım bakiyesinden düşer.
+              Planınızı yükseltmeden, sadece ihtiyacınız olan ek kotayı satın alın.
             </p>
           </div>
 
           <div className={styles.prPaygCard}>
             <div className={styles.prPaygPrice}>
-              {PUBLIC_PAY_AS_YOU_GO.meta?.split("•")[0]?.trim()}
-              <span className={styles.prPaygUnit}>/dk</span>
+              {PUBLIC_PAY_AS_YOU_GO.meta}
             </div>
             <p className={styles.prPaygNote}>
-              {PUBLIC_PAY_AS_YOU_GO.meta?.split("•")[1]?.trim() || "Minimum 4 dk yükleme (92\u20BA)"}
+              {PUBLIC_PAY_AS_YOU_GO.body}
             </p>
 
             <div className={styles.prPaygTags}>
@@ -1303,9 +1294,9 @@ export function PublicPricingPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <div className={styles.prOverageHeader}>
-            <h2 className={styles.prSectionTitle}>Paket aşım detayları</h2>
+            <h2 className={styles.prSectionTitle}>Ek paket detayları</h2>
             <p className={styles.prSectionSubtitle}>
-              Paket aşımı, planınızda tanımlı dakikaların bitmesinden sonra oluşan ek kullanımı ifade eder.
+              Bu paketler mevcut plan kotanız yetmediğinde dönem içinde tek seferlik kapasite artışı sağlar.
             </p>
           </div>
 
@@ -1315,7 +1306,7 @@ export function PublicPricingPage() {
                 <tr>
                   <th>Kanal</th>
                   <th>Birim</th>
-                  <th>Aşım ücreti</th>
+                  <th>Paket fiyatı</th>
                   <th>Not</th>
                 </tr>
               </thead>
@@ -1342,8 +1333,8 @@ export function PublicPricingPage() {
             <p className={styles.prCtaBody}>
               İhtiyacınıza göre doğru paketi birlikte seçelim.
             </p>
-            <a href="/waitlist" className={styles.prGlowBtn}>
-              <span>Demo Talep Edin</span>
+            <a href="/auth/signup" className={styles.prGlowBtn}>
+              <span>Hesap Oluştur</span>
               <span aria-hidden="true">&rarr;</span>
             </a>
           </div>
@@ -1658,9 +1649,9 @@ export function PublicSecurityPage() {
 
       <CTASection
         title="Güvenlik ile ilgili sorularınızı public site üzerinden de toplayabilirsiniz"
-        body="Contact ve waitlist sayfalarını security CTA'larıyla birleştirecek temel altyapı da hazır."
+        body="Contact akışını ve direct signup funnel'ını security CTA'larıyla birleştirecek temel altyapı hazır."
         primary={{ label: "İletişime Geçin", href: "/contact" }}
-        secondary={{ label: "Demo Talep Edin", href: "/waitlist", tone: "secondary" }}
+        secondary={{ label: "Hesap Oluştur", href: "/auth/signup", tone: "secondary" }}
       />
     </PublicSiteFrame>
   );
@@ -1718,7 +1709,7 @@ export function PublicAboutPage() {
       <CTASection
         title="Hikayemizin bir parçası olun"
         body="İşe alım süreçlerinizi AI ile dönüştürerek en doğru adayları en hızlı şekilde bulun."
-        primary={{ label: "Demo Talep Edin", href: "/waitlist" }}
+        primary={{ label: "Hesap Oluştur", href: "/auth/signup" }}
         secondary={{ label: "İletişime Geçin", href: "/contact", tone: "secondary" }}
       />
     </PublicSiteFrame>
@@ -1750,10 +1741,13 @@ export function PublicContactPage() {
       {/* ═══ Contact Form + Info ═══ */}
       <section className={styles.section}>
         <div className={cn(styles.shell, styles.contactLayout)}>
-          <MockContactForm
+          <LeadCaptureForm
             title="Bize Mesaj Gönderin"
-            body="Formu doldurarak bize ulaşın. Ekibimiz en kısa sürede dönüş yapacaktır."
+            body="Formu doldurarak bize ulaşın. Pilot hedefiniz, mevcut işe alım akışınız ve ihtiyaç duyduğunuz otomasyonları paylaşın."
             submitLabel="Mesajı Gönder"
+            sourcePage="contact"
+            successTitle="Mesajınız ulaştı"
+            successBody="Ekibimiz kısa süre içinde size dönüş yapacak."
           />
 
           <div>
@@ -1854,25 +1848,38 @@ export function PublicWaitlistPage() {
         <div className={cn(styles.shell, styles.contactLayout)}>
           <div>
             <SectionHeader
-              eyebrow="Demo Talep Edin"
-              title="Waitlist / demo talep sayfası da aynı public tasarım sistemiyle eklendi"
-              subtitle="Telyx demo talep akışını, güven kartları ve sade bir form kompozisyonuyla bu projeye taşıdık."
+              eyebrow="Hemen Başlayın"
+              title="Bekleme listesi yerine doğrudan hesap oluşturun"
+              subtitle="Pilot dönemde ana aksiyonu signup akışına çevirdik. Owner hesabınızı açıp ürün kurulumuna doğrudan geçebilirsiniz."
             />
             <StepsGrid
               steps={[
-                { step: "01", title: "İhtiyacı anlatın", body: "Hangi kanalları yöneteceğinizi paylaşın." },
-                { step: "02", title: "Akışı tasarlayalım", body: "Operasyonunuza uygun demo senaryosunu kuralım." },
-                { step: "03", title: "Canlı göstereyim", body: "Public sayfalardan ürün deneyimine geçelim." },
-                { step: "04", title: "Karar verin", body: "Gerekirse içeriği ve fiyat yapısını uyarlayalım." }
+                { step: "01", title: "Owner hesabını açın", body: "İlk çalışma alanınızı ve yönetici hesabınızı birkaç dakika içinde oluşturun." },
+                { step: "02", title: "Temel ayarları tamamlayın", body: "Takım üyeleri, entegrasyonlar ve ürün ayarlarını içeriden yönetin." },
+                { step: "03", title: "Pilotu başlatın", body: "İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın." },
+                { step: "04", title: "Destek gerekiyorsa yazın", body: "Ekibimiz contact kanalından onboarding ve kurulum tarafında size destek olsun." }
               ]}
             />
           </div>
 
-          <MockContactForm
-            title="Demo formu"
-            body="Bu form şu an kopyalanmış public iskeletin parçası. Sonraki adımda gerçek submission akışını bağlayabiliriz."
-            submitLabel="Demo İste"
-          />
+          <div className={styles.formCard}>
+            <span className={styles.eyebrow}>Signup</span>
+            <h3>Doğrudan hesap oluşturun</h3>
+            <p>Bekleme listesi yerine doğrudan ürün hesabı açabilirsiniz. Kurulum sırasında destek isterseniz contact formu her zaman açık.</p>
+            <div className={styles.tagList}>
+              <span>Owner hesabı</span>
+              <span>E-posta doğrulama</span>
+              <span>İlk workspace kurulumu</span>
+            </div>
+            <div className={styles.ctaActions} style={{ marginTop: 18 }}>
+              <ActionLink action={{ label: "Hesap Oluştur", href: "/auth/signup" }} fullWidth />
+              <ActionLink
+                action={{ label: "İletişime Geçin", href: "/contact", tone: "secondary" }}
+                tone="secondary"
+                fullWidth
+              />
+            </div>
+          </div>
         </div>
       </section>
     </PublicSiteFrame>

@@ -34,6 +34,7 @@ type NavItem = {
     | "/subscription"
     | "/admin"
     | "/admin/red-alert"
+    | "/admin/leads"
     | "/admin/users"
     | "/admin/enterprise"
     | "/settings";
@@ -71,6 +72,7 @@ const primaryNavGroups: NavGroup[] = [
     items: [
       { href: "/admin", label: "Yönetici Paneli", permission: "tenant.manage", internalOnly: true },
       { href: "/admin/red-alert", label: "Kırmızı Alarm", permission: "tenant.manage", internalOnly: true },
+      { href: "/admin/leads", label: "Leadler", permission: "tenant.manage", internalOnly: true },
       { href: "/admin/users", label: "Kullanıcılar", permission: "tenant.manage", internalOnly: true },
       { href: "/admin/enterprise", label: "Kurumsal", permission: "tenant.manage", internalOnly: true },
       { href: "/sourcing", label: "Kaynak Bulma", permission: "job.read", internalOnly: true, badge: "Beta" }
@@ -143,6 +145,10 @@ function resolveActiveNavHref(pathname: string): NavItem["href"] | null {
 
   if (pathname === "/admin/red-alert" || pathname.startsWith("/admin/red-alert/")) {
     return "/admin/red-alert";
+  }
+
+  if (pathname === "/admin/leads" || pathname.startsWith("/admin/leads/")) {
+    return "/admin/leads";
   }
 
   if (pathname === "/admin/users" || pathname.startsWith("/admin/users/")) {

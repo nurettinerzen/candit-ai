@@ -94,6 +94,7 @@ export default function InternalAdminDashboardPage() {
     { label: copy.todayCandidateProcessing, value: data.summary.todayCandidateProcessing, tone: "warning", icon: "\u{1F4CB}", iconTone: "warning" },
     { label: copy.todayAiInterviews, value: data.summary.todayAiInterviews, tone: "info", icon: "\u{1F399}", iconTone: "info" },
     { label: copy.openAlerts, value: data.summary.openAlerts, tone: "danger", icon: "\u26A0", iconTone: "danger" },
+    { label: copy.openLeadInbox, value: data.summary.openLeadInbox, tone: "warning", icon: "\u2709", iconTone: "warning" },
     { label: copy.enterpriseCustomers, value: data.summary.enterpriseCustomers, tone: "muted", icon: "\u{1F3E2}", iconTone: "muted" }
   ];
 
@@ -110,6 +111,12 @@ export default function InternalAdminDashboardPage() {
       title: copy.redAlerts,
       detail: `${data.quickLinks.redAlerts} ${locale === "en" ? "open signal" : "açık sinyal"}`,
       icon: "\u26A0"
+    },
+    {
+      href: "/admin/leads" as Route,
+      title: copy.leads,
+      detail: `${data.quickLinks.leads} ${locale === "en" ? "open inbound lead" : "açık inbound lead"}`,
+      icon: "\u2709"
     },
     {
       href: "/admin/enterprise" as Route,

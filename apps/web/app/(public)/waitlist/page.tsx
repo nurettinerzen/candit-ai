@@ -1,5 +1,5 @@
-import { PublicWaitlistPage } from "../../../components/public-site";
+import { redirect } from "next/navigation";
 
 export default function WaitlistPage() {
-  return <PublicWaitlistPage />;
+  redirect("/auth/signup");
 }

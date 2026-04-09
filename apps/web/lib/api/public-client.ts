@@ -59,6 +59,25 @@ export type PublicSlotBookResult = {
   selectedSlot: Record<string, unknown>;
 };
 
+export type PublicContactSubmissionPayload = {
+  fullName: string;
+  email: string;
+  company?: string;
+  role?: string;
+  phone?: string;
+  message: string;
+  sourcePage?: string;
+  landingUrl?: string;
+  referrerUrl?: string;
+  locale?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+  website?: string;
+};
+
 export const publicSchedulingApi = {
   getWorkflow(workflowId: string, token: string) {
     return publicRequest<PublicSchedulingWorkflow>(`scheduling/public/workflows/${workflowId}`, {
@@ -77,6 +96,21 @@ export const publicSchedulingApi = {
   getConfirmation(workflowId: string, token: string) {
     return publicRequest<PublicSchedulingWorkflow>(`scheduling/public/workflows/${workflowId}/confirmation`, {
       query: { token }
+    });
+  }
+};
+
+export const publicContactApi = {
+  submit(payload: PublicContactSubmissionPayload) {
+    return publicRequest<{
+      success: true;
+      id?: string;
+      deduplicated: boolean;
+      ignored?: boolean;
+      message: string;
+    }>("public/contact", {
+      method: "POST",
+      body: payload
     });
   }
 };

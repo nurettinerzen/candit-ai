@@ -326,7 +326,7 @@ export default function SubscriptionPage() {
               {billing.addOnCatalog.map((addon) => (
                 <div key={addon.key} className="tlx-addon-item">
                   <div className="tlx-addon-item-info">
-                    <strong>{addon.quotaKey && addon.quantity ? `${addon.quantity} ${t(addon.label).toLowerCase()}` : t(addon.label)}</strong>
+                    <strong>{t(addon.label)}</strong>
                     <span className="text-muted">{formatPlanPrice(addon.amountCents, addon.currency, localeTag)}</span>
                   </div>
                   <button

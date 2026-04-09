@@ -1,6 +1,7 @@
 import type { AuthSessionMode } from "./types";
 
 export type AuthTokenTransport = "header" | "cookie";
+export type WebRuntimeMode = "development" | "demo" | "production";
 
 function trimSlashSuffix(value: string) {
   return value.replace(/\/+$/, "");
@@ -30,12 +31,36 @@ function toCsvList(value: string | undefined) {
     .filter(Boolean) ?? [];
 }
 
+function readRuntimeMode(raw: string | undefined): WebRuntimeMode {
+  const normalized = raw?.trim().toLowerCase();
+
+  if (normalized === "production") {
+    return "production";
+  }
+
+  if (normalized === "demo") {
+    return "demo";
+  }
+
+  return process.env.NODE_ENV === "production" ? "production" : "development";
+}
+
+export const WEB_RUNTIME_MODE = readRuntimeMode(process.env.NEXT_PUBLIC_APP_RUNTIME_MODE);
+
 function readMode(raw: string | undefined): AuthSessionMode {
   if (raw === "jwt" || raw === "hybrid" || raw === "dev_header") {
+    if (WEB_RUNTIME_MODE === "production" && raw !== "jwt") {
+      return "jwt";
+    }
+
     return raw;
   }
 
-  return process.env.NODE_ENV === "production" ? "jwt" : "dev_header";
+  if (WEB_RUNTIME_MODE === "production") {
+    return "jwt";
+  }
+
+  return WEB_RUNTIME_MODE === "demo" ? "hybrid" : "dev_header";
 }
 
 export const API_BASE_URL =
@@ -53,6 +78,10 @@ export const API_BASE_URL =
 export const AUTH_SESSION_MODE = readMode(process.env.NEXT_PUBLIC_AUTH_SESSION_MODE);
 
 function readTransport(raw: string | undefined): AuthTokenTransport {
+  if (WEB_RUNTIME_MODE === "production") {
+    return "cookie";
+  }
+
   if (raw === "header" || raw === "cookie") {
     return raw;
   }
@@ -69,7 +98,7 @@ export const AUTH_REFRESH_COOKIE_NAME =
 
 export const ENABLE_DEMO_SESSION = toBool(
   process.env.NEXT_PUBLIC_ENABLE_DEMO_SESSION,
-  AUTH_SESSION_MODE !== "jwt"
+  WEB_RUNTIME_MODE === "development" && AUTH_SESSION_MODE !== "jwt"
 );
 
 export const DEMO_SESSION_DEFAULTS = {
@@ -89,7 +118,7 @@ const INTERNAL_ADMIN_EMAIL_ALLOWLIST = (() => {
     return Array.from(new Set(configured));
   }
 
-  return process.env.NODE_ENV === "production" ? [] : ["owner@demo.local"];
+  return WEB_RUNTIME_MODE === "development" ? ["owner@demo.local"] : [];
 })();
 
 const INTERNAL_ADMIN_DOMAIN_ALLOWLIST = [

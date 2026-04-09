@@ -188,7 +188,7 @@ export const PUBLIC_HOME_STEPS: PublicStep[] = [
 ];
 
 export const PUBLIC_FEATURE_HERO_ACTIONS: PublicAction[] = [
-  { label: "Demo Talep Edin", href: "/waitlist" },
+  { label: "Hesap Oluştur", href: "/auth/signup" },
   { label: "Özellikleri Keşfedin", href: "#feature-groups", tone: "secondary" }
 ];
 
@@ -409,7 +409,7 @@ export const PUBLIC_FAQ: PublicFaq[] = [
   {
     question: "Deneme sürümünde neler var?",
     answer:
-      "14 gün boyunca 2 kullanıcı, 1 aktif ilan, 50 aday ön eleme ve 5 AI mülakat hakkı ile platformu ücretsiz deneyebilirsiniz. Kredi kartı gerekmez."
+      "7 gün boyunca 1 kullanıcı, 1 aktif ilan, 25 aday ön eleme ve 3 AI mülakat hakkı ile platformu ücretsiz deneyebilirsiniz. Kredi kartı gerekmez."
   },
   {
     question: "KVKK ve veri güvenliği nasıl sağlanıyor?",
@@ -425,15 +425,15 @@ export const PUBLIC_FAQ: PublicFaq[] = [
 
 export const PUBLIC_PRICING_PLANS: PublicCard[] = [
   {
-    badge: "14 gün ücretsiz — Kredi kartı gerekmez",
+    badge: "7 gün ücretsiz — Kredi kartı gerekmez",
     title: "Deneme",
-    body: "Platformu keşfedin. 14 gün boyunca temel özellikleri deneyin.",
+    body: "Platformu keşfedin. 7 gün boyunca temel özellikleri deneyin.",
     meta: "Ücretsiz",
     bullets: [
-      "2 kullanıcı",
+      "1 kullanıcı",
       "1 aktif ilan",
-      "50 aday ön eleme",
-      "5 AI mülakat",
+      "25 aday ön eleme",
+      "3 AI mülakat",
       "Temel raporlama",
       "E-posta desteği"
     ],
@@ -442,13 +442,13 @@ export const PUBLIC_PRICING_PLANS: PublicCard[] = [
   },
   {
     title: "Starter",
-    body: "Küçük ekipler için. Temel işe alım operasyonu.",
-    meta: "$149/ay (~4.500₺)",
+    body: "Tek recruiter ile düzenli işe alım yapan ekipler için.",
+    meta: "4.499₺/ay",
     bullets: [
-      "3 kullanıcı",
-      "3 aktif ilan",
-      "150 aday işleme",
-      "30 AI mülakat",
+      "1 kullanıcı",
+      "2 aktif ilan",
+      "100 aday işleme",
+      "15 AI mülakat",
       "Temel raporlama",
       "E-posta desteği"
     ],
@@ -458,13 +458,13 @@ export const PUBLIC_PRICING_PLANS: PublicCard[] = [
   {
     badge: "En Popüler",
     title: "Growth",
-    body: "Büyüyen ekipler için. Yüksek hacimli işe alım.",
-    meta: "$499/ay (~15.000₺)",
+    body: "Düzenli işe alım yapan küçük ekipler için.",
+    meta: "12.999₺/ay",
     bullets: [
-      "8 kullanıcı",
+      "2 kullanıcı",
       "10 aktif ilan",
       "500 aday işleme",
-      "100 AI mülakat",
+      "50 AI mülakat",
       "Takvim entegrasyonları",
       "Gelişmiş raporlama",
       "Öncelikli destek"
@@ -492,14 +492,15 @@ export const PUBLIC_PRICING_PLANS: PublicCard[] = [
 
 export const PUBLIC_PAY_AS_YOU_GO: PublicCard = {
   eyebrow: "Ek Paketler",
-  title: "İhtiyaç Duyduğunuzda Ekleyin",
-  body: "Mevcut planınıza ek kullanım hakkı satın alın. Dönem içinde kotanız bittiğinde devreye girer.",
-  meta: "Ek AI mülakat paketi: $79 / 25 mülakat",
+  title: "Planınızı Bozmadan Kapasite Artırın",
+  body: "Planınızı değiştirmeden yoğun dönemlerde ek aday işleme ve AI mülakat kotası satın alın.",
+  meta: "1.099₺ - 2.499₺",
   bullets: [
-    "Ek aday işleme: $59 / 100 aday",
-    "Ek AI mülakat: $79 / 25 mülakat",
-    "Profesyonel onboarding: $249",
-    "Mevcut plana eklenir, anında aktif"
+    "Ek aday işleme: 1.099₺ / 50 aday",
+    "Ek aday işleme: 1.999₺ / 100 aday",
+    "Ek AI mülakat: 1.199₺ / 10 mülakat",
+    "Ek AI mülakat: 2.499₺ / 25 mülakat",
+    "Mevcut plana eklenir, dönem içinde aktif olur"
   ],
   href: "/subscription",
   actionLabel: "Plana Ekle"

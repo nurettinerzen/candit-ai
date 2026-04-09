@@ -22,6 +22,7 @@ import { InternalAdminModule } from "./modules/internal-admin/internal-admin.mod
 import { InterviewsModule } from "./modules/interviews/interviews.module";
 import { JobsModule } from "./modules/jobs/jobs.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
+import { PublicIntakeModule } from "./modules/public-intake/public-intake.module";
 import { RecommendationsModule } from "./modules/recommendations/recommendations.module";
 import { ReadModelsModule } from "./modules/read-models/read-models.module";
 import { ReportsModule } from "./modules/reports/reports.module";
@@ -64,6 +65,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     IntegrationsModule,
     InternalAdminModule,
     NotificationsModule,
+    PublicIntakeModule,
     ReadModelsModule,
     TenantConfigModule,
     ElevenLabsModule

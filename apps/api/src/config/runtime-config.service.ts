@@ -182,6 +182,14 @@ export class RuntimeConfigService {
       violations.push("AUTH_SESSION_MODE production ortaminda jwt olmalidir.");
     }
 
+    if (this.authTokenTransport !== "cookie") {
+      violations.push("AUTH_TOKEN_TRANSPORT production ortaminda cookie olmalidir.");
+    }
+
+    if (!this.cookieSecure) {
+      violations.push("AUTH_COOKIE_SECURE production ortaminda aktif olmalidir.");
+    }
+
     if (this.allowDevHeaderAuth) {
       violations.push("ALLOW_DEV_AUTH_HEADERS production ortaminda aktif olamaz.");
     }
@@ -192,6 +200,11 @@ export class RuntimeConfigService {
 
     if (this.allowDemoCredentialLogin) {
       violations.push("ALLOW_DEMO_CREDENTIAL_LOGIN production ortaminda aktif olamaz.");
+    }
+
+    const jwtSecret = this.configService.get<string>("JWT_SECRET")?.trim();
+    if (!jwtSecret || jwtSecret === "change-me") {
+      violations.push("JWT_SECRET production ortaminda guclu bir deger ile ayarlanmalidir.");
     }
 
     if (violations.length > 0) {
@@ -387,18 +400,17 @@ export class RuntimeConfigService {
           toOptionalString(this.configService.get<string>("STRIPE_PRICE_ENTERPRISE_MONTHLY")) ?? ""
       },
       addOnPriceIds: {
+        CANDIDATE_PROCESSING_PACK_50:
+          toOptionalString(
+            this.configService.get<string>("STRIPE_PRICE_CANDIDATE_PROCESSING_PACK_50")
+          ) ?? "",
+        INTERVIEW_PACK_10:
+          toOptionalString(this.configService.get<string>("STRIPE_PRICE_INTERVIEW_PACK_10")) ?? "",
         INTERVIEW_PACK_25:
           toOptionalString(this.configService.get<string>("STRIPE_PRICE_INTERVIEW_PACK_25")) ?? "",
         CANDIDATE_PROCESSING_PACK_100:
           toOptionalString(
             this.configService.get<string>("STRIPE_PRICE_CANDIDATE_PROCESSING_PACK_100")
-          ) ?? "",
-        PROFESSIONAL_ONBOARDING:
-          toOptionalString(this.configService.get<string>("STRIPE_PRICE_PROFESSIONAL_ONBOARDING")) ??
-          "",
-        CUSTOM_INTEGRATION_SETUP:
-          toOptionalString(
-            this.configService.get<string>("STRIPE_PRICE_CUSTOM_INTEGRATION_SETUP")
           ) ?? ""
       }
     };

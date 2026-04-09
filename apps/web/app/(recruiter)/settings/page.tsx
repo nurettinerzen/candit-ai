@@ -890,7 +890,7 @@ export default function SettingsPage() {
                       <div>
                         <h3 style={{ margin: 0 }}>{t("Add-onlar")}</h3>
                         <p className="small text-muted" style={{ marginTop: 4 }}>
-                          {t("Limit asmadan once ek interview, ek aday isleme veya servis odakli paket satin alabilirsiniz.")}
+                          {t("Limit asmadan once ek aday isleme ve ek AI mulakat paketleri satin alabilirsiniz.")}
                         </p>
                       </div>
                     </div>
@@ -914,7 +914,9 @@ export default function SettingsPage() {
                             {formatPlanPrice(addon.amountCents, addon.currency)}
                           </div>
                           <div className="small text-muted" style={{ marginTop: 4 }}>
-                            {addon.quotaKey && addon.quantity ? `+${addon.quantity} ${t(addon.quotaKey)}` : t("Servis paketi")}
+                            {addon.quotaKey === "AI_INTERVIEWS"
+                              ? `+${addon.quantity} ${t("AI mülakat")}`
+                              : `+${addon.quantity} ${t("Aday işleme")}`}
                           </div>
                           <button
                             type="button"

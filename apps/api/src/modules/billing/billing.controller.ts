@@ -26,10 +26,10 @@ import { BillingService } from "./billing.service";
 
 const PLAN_KEYS = ["STARTER", "GROWTH"] as const;
 const ADDON_KEYS = [
+  "CANDIDATE_PROCESSING_PACK_50",
+  "INTERVIEW_PACK_10",
   "INTERVIEW_PACK_25",
-  "CANDIDATE_PROCESSING_PACK_100",
-  "PROFESSIONAL_ONBOARDING",
-  "CUSTOM_INTEGRATION_SETUP"
+  "CANDIDATE_PROCESSING_PACK_100"
 ] as const;
 
 class PlanCheckoutBody {

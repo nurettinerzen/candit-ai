@@ -18,6 +18,8 @@ import type {
   InternalAdminAccountDetailReadModel,
   InternalAdminAccountListReadModel,
   InternalAdminDashboardReadModel,
+  InternalAdminPublicLeadListReadModel,
+  InternalAdminPublicLeadStatus,
   InternalAdminRedAlertReadModel,
   JobInboxReadModel,
   JobPostingDraftResponse,
@@ -903,6 +905,14 @@ export const apiClient = {
   internalAdminDashboard() {
     return request<InternalAdminDashboardReadModel>("internal-admin/dashboard");
   },
+  internalAdminPublicLeads(params?: {
+    query?: string;
+    status?: "ALL" | InternalAdminPublicLeadStatus;
+  }) {
+    return request<InternalAdminPublicLeadListReadModel>("internal-admin/public-leads", {
+      query: params
+    });
+  },
   internalAdminRedAlert(params?: {
     windowDays?: number;
     category?: "ALL" | "APPLICATION" | "SECURITY" | "ASSISTANT" | "OPERATIONS";
@@ -983,6 +993,18 @@ export const apiClient = {
       {
         method: "POST",
         body: {}
+      }
+    );
+  },
+  internalAdminUpdatePublicLeadStatus(
+    leadId: string,
+    payload: { status: InternalAdminPublicLeadStatus }
+  ) {
+    return request<{ id: string; status: InternalAdminPublicLeadStatus }>(
+      `internal-admin/public-leads/${leadId}/status`,
+      {
+        method: "PATCH",
+        body: payload
       }
     );
   },

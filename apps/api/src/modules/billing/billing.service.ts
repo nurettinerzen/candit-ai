@@ -539,10 +539,10 @@ export class BillingService {
     tenantId: string;
     requestedBy: string;
     addOnKey:
+      | "CANDIDATE_PROCESSING_PACK_50"
+      | "INTERVIEW_PACK_10"
       | "INTERVIEW_PACK_25"
-      | "CANDIDATE_PROCESSING_PACK_100"
-      | "PROFESSIONAL_ONBOARDING"
-      | "CUSTOM_INTEGRATION_SETUP";
+      | "CANDIDATE_PROCESSING_PACK_100";
     billingEmail?: string;
   }) {
     const addOn = BILLING_ADDON_CATALOG[input.addOnKey];
