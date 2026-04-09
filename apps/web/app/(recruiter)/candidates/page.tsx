@@ -33,6 +33,7 @@ export default function CandidatesPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
 
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("");
@@ -42,15 +43,50 @@ export default function CandidatesPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
+    setWarning("");
     try {
-      const [candidateRows, appData, jobRows] = await Promise.all([
+      const [candidateResult, applicationResult, jobResult] = await Promise.allSettled([
         apiClient.listCandidates(),
         apiClient.recruiterApplicationsReadModel({}),
         apiClient.listJobs()
       ]);
-      setCandidates(candidateRows);
-      setApplications(appData.items);
-      setJobs(jobRows);
+
+      const nextWarnings: string[] = [];
+
+      if (candidateResult.status === "fulfilled") {
+        setCandidates(candidateResult.value);
+      } else {
+        setCandidates([]);
+        nextWarnings.push(
+          t("Merkezi aday listesi şu an tam yüklenemedi. Başvurusu olmayan adaylar görünmeyebilir.")
+        );
+      }
+
+      if (applicationResult.status === "fulfilled") {
+        setApplications(applicationResult.value.items);
+      } else {
+        setApplications([]);
+        nextWarnings.push(
+          t("Başvuru kuyruğu şu an yüklenemedi. Ekran yalnızca erişilebilen aday verisini gösteriyor olabilir.")
+        );
+      }
+
+      if (jobResult.status === "fulfilled") {
+        setJobs(jobResult.value);
+      } else {
+        setJobs([]);
+        nextWarnings.push(
+          t("İlan filtresi şu an yüklenemedi. Filtre seçenekleri kısıtlı olabilir.")
+        );
+      }
+
+      if (candidateResult.status === "rejected" && applicationResult.status === "rejected") {
+        throw candidateResult.reason instanceof Error
+          ? candidateResult.reason
+          : applicationResult.reason;
+      }
+
+      setWarning(nextWarnings.join(" "));
     } catch (e) {
       setError(e instanceof Error ? e.message : t("Veriler yüklenemedi."));
     } finally {
@@ -237,6 +273,20 @@ export default function CandidatesPage() {
       {loading && <LoadingState message={t("Adaylar yükleniyor...")} />}
       {!loading && error && (
         <ErrorState error={error} actions={<button className="ghost-button" onClick={() => void loadData()}>{t("Tekrar dene")}</button>} />
+      )}
+      {!loading && !error && warning && (
+        <section
+          className="panel"
+          style={{
+            padding: "12px 16px",
+            background: "rgba(245,158,11,0.08)",
+            border: "1px solid rgba(245,158,11,0.2)"
+          }}
+        >
+          <p className="small" style={{ margin: 0, color: "var(--warn, #f59e0b)" }}>
+            {warning}
+          </p>
+        </section>
       )}
       {!loading && !error && rows.length === 0 && (
         <EmptyState message={t("Filtreye uygun sonuç bulunamadı.")} />

@@ -100,6 +100,7 @@ export default function ApplicationsPage() {
   const [jobId, setJobId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [activeCard, setActiveCard] = useState<"ready" | "decision" | "interview" | "all">("all");
@@ -107,9 +108,10 @@ export default function ApplicationsPage() {
   const loadPageData = useCallback(async () => {
     setLoading(true);
     setError("");
+    setWarning("");
 
     try {
-      const [jobRows, candidateRows, applicationRows] = await Promise.all([
+      const [jobResult, candidateResult, applicationResult] = await Promise.allSettled([
         apiClient.listJobs(),
         apiClient.listCandidates(),
         apiClient.recruiterApplicationsReadModel({
@@ -117,9 +119,32 @@ export default function ApplicationsPage() {
         })
       ]);
 
-      setJobs(jobRows);
-      setCandidates(candidateRows);
-      setApplications(applicationRows.items);
+      if (applicationResult.status !== "fulfilled") {
+        throw applicationResult.reason;
+      }
+
+      const nextWarnings: string[] = [];
+
+      if (jobResult.status === "fulfilled") {
+        setJobs(jobResult.value);
+      } else {
+        setJobs([]);
+        nextWarnings.push(
+          t("İlan listesi şu an yüklenemedi. Filtreler ve yeni başvuru formu kısıtlı çalışabilir.")
+        );
+      }
+
+      if (candidateResult.status === "fulfilled") {
+        setCandidates(candidateResult.value);
+      } else {
+        setCandidates([]);
+        nextWarnings.push(
+          t("Aday listesi şu an yüklenemedi. Yeni başvuru açma alanı geçici olarak kullanılamayabilir.")
+        );
+      }
+
+      setApplications(applicationResult.value.items);
+      setWarning(nextWarnings.join(" "));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Başvuru verileri alınamadı.");
     } finally {
@@ -272,6 +297,22 @@ export default function ApplicationsPage() {
           </button>
         </form>
 
+        {!loading && !error && warning ? (
+          <div
+            style={{
+              marginTop: 12,
+              padding: "12px 16px",
+              borderRadius: 8,
+              background: "rgba(245,158,11,0.08)",
+              border: "1px solid rgba(245,158,11,0.2)",
+              color: "var(--warn, #f59e0b)",
+              fontSize: 13
+            }}
+          >
+            {warning}
+          </div>
+        ) : null}
+
         {loading ? <LoadingState message={t("Başvurular yükleniyor...")} /> : null}
         {!loading && error ? (
           <ErrorState
@@ -368,6 +409,7 @@ export default function ApplicationsPage() {
                 value={candidateId}
                 onChange={(event) => setCandidateId(event.target.value)}
                 required
+                disabled={candidates.length === 0}
               >
                 <option value="">Aday seçiniz</option>
                 {candidates.map((candidate) => (
@@ -377,7 +419,13 @@ export default function ApplicationsPage() {
                 ))}
               </select>
 
-              <select className="select" value={jobId} onChange={(event) => setJobId(event.target.value)} required>
+              <select
+                className="select"
+                value={jobId}
+                onChange={(event) => setJobId(event.target.value)}
+                required
+                disabled={jobs.length === 0}
+              >
                 <option value="">İlan seçiniz</option>
                 {jobs.map((job) => (
                   <option key={job.id} value={job.id}>
@@ -386,7 +434,11 @@ export default function ApplicationsPage() {
                 ))}
               </select>
 
-              <button type="submit" className="button-link" disabled={submitting}>
+              <button
+                type="submit"
+                className="button-link"
+                disabled={submitting || candidates.length === 0 || jobs.length === 0}
+              >
                 {submitting ? "Oluşturuluyor..." : "Başvuru Aç"}
               </button>
             </form>

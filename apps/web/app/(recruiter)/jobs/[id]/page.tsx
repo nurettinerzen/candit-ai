@@ -737,8 +737,17 @@ export default function JobDetailPage() {
                 className="button-link"
                 style={{ padding: "10px 14px" }}
                 onClick={async () => {
-                  const result = await apiClient.createSourcingProject({ jobId });
-                  router.push(withApiBaseOverride(sourcingProjectDetailHref(result.projectId), searchParams));
+                  setActionError("");
+                  try {
+                    const result = await apiClient.createSourcingProject({ jobId });
+                    router.push(withApiBaseOverride(sourcingProjectDetailHref(result.projectId), searchParams));
+                  } catch (createError) {
+                    setActionError(
+                      createError instanceof Error
+                        ? createError.message
+                        : t("Kaynak bulma projesi şu an açılamadı.")
+                    );
+                  }
                 }}
               >
                 {t("Kaynak Bulma’yı Aç")}
@@ -751,8 +760,15 @@ export default function JobDetailPage() {
                 style={{ fontSize: 12, color: "var(--warn, #f59e0b)" }}
                 onClick={async () => {
                   if (!confirm(t("İlan arşivlenecek ve yeni başvuru kabul edilmeyecek. Onaylıyor musunuz?"))) return;
-                  await apiClient.updateJobStatus(jobId, "ARCHIVED");
-                  void loadInbox({ silent: true });
+                  setActionError("");
+                  try {
+                    await apiClient.updateJobStatus(jobId, "ARCHIVED");
+                    void loadInbox({ silent: true });
+                  } catch (archiveError) {
+                    setActionError(
+                      archiveError instanceof Error ? archiveError.message : t("İlan arşivlenemedi.")
+                    );
+                  }
                 }}
               >
                 {t("Arşivle")}
@@ -767,8 +783,17 @@ export default function JobDetailPage() {
                   if (!ensurePublishCapacity()) {
                     return;
                   }
-                  await apiClient.updateJobStatus(jobId, "PUBLISHED");
-                  void loadInbox({ silent: true });
+                  setActionError("");
+                  try {
+                    await apiClient.updateJobStatus(jobId, "PUBLISHED");
+                    void loadInbox({ silent: true });
+                  } catch (publishError) {
+                    setActionError(
+                      publishError instanceof Error
+                        ? publishError.message
+                        : t("İlan yeniden yayınlanamadı.")
+                    );
+                  }
                 }}
                 disabled={!canPublishJob}
               >
@@ -784,8 +809,15 @@ export default function JobDetailPage() {
                   if (!ensurePublishCapacity()) {
                     return;
                   }
-                  await apiClient.updateJobStatus(jobId, "PUBLISHED");
-                  void loadInbox({ silent: true });
+                  setActionError("");
+                  try {
+                    await apiClient.updateJobStatus(jobId, "PUBLISHED");
+                    void loadInbox({ silent: true });
+                  } catch (publishError) {
+                    setActionError(
+                      publishError instanceof Error ? publishError.message : t("İlan yayınlanamadı.")
+                    );
+                  }
                 }}
                 disabled={!canPublishJob}
               >

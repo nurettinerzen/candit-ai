@@ -80,6 +80,7 @@ export default function CandidateDetailPage() {
   const [applicationError, setApplicationError] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
 
   const [selectedCvFile, setSelectedCvFile] = useState<File | null>(null);
   const [uploadingCv, setUploadingCv] = useState(false);
@@ -93,11 +94,16 @@ export default function CandidateDetailPage() {
   const loadCandidate = useCallback(async () => {
     setLoading(true);
     setError("");
+    setWarning("");
     try {
-      const [candidatePayload, jobRows] = await Promise.all([
+      const [candidateResult, jobsResult] = await Promise.allSettled([
         apiClient.getCandidate(candidateId),
         apiClient.listJobs()
       ]);
+      if (candidateResult.status !== "fulfilled") {
+        throw candidateResult.reason;
+      }
+      const candidatePayload = candidateResult.value;
       const canonicalApplicationId = pickCanonicalApplicationId(candidatePayload.applications);
       if (canonicalApplicationId) {
         setRedirectingToApplication(true);
@@ -105,7 +111,14 @@ export default function CandidateDetailPage() {
         return;
       }
       setCandidate(candidatePayload);
-      setJobs(jobRows);
+      if (jobsResult.status === "fulfilled") {
+        setJobs(jobsResult.value);
+      } else {
+        setJobs([]);
+        setWarning(
+          t("İlan listesi şu an yüklenemedi. Bu aday için yeni başvuru açma bölümü geçici olarak sınırlı olabilir.")
+        );
+      }
       setSelectedJobId("");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("Aday detayı yüklenemedi."));
@@ -224,6 +237,22 @@ export default function CandidateDetailPage() {
 
   return (
     <div className="page-grid">
+      {warning ? (
+        <section
+          className="panel"
+          style={{
+            marginBottom: 16,
+            padding: "12px 16px",
+            background: "rgba(245,158,11,0.08)",
+            border: "1px solid rgba(245,158,11,0.2)"
+          }}
+        >
+          <p className="small" style={{ margin: 0, color: "var(--warn, #f59e0b)" }}>
+            {warning}
+          </p>
+        </section>
+      ) : null}
+
       {/* Breadcrumb */}
       <div style={{ marginBottom: 16 }}>
         <Link href="/candidates" className="text-muted text-sm" style={{ textDecoration: "none" }}>
@@ -474,7 +503,11 @@ export default function CandidateDetailPage() {
             )}
 
             {availableJobs.length === 0 ? (
-              <p className="text-sm text-muted">Tüm aktif ilanlara zaten bağlı.</p>
+              <p className="text-sm text-muted">
+                {jobs.length === 0
+                  ? "İlan listesi şu an erişilemedi."
+                  : "Tüm aktif ilanlara zaten bağlı."}
+              </p>
             ) : (
               <form onSubmit={handleCreateApplication} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <select

@@ -200,6 +200,29 @@ Ilgili arka plan notlari icin:
     - non-admin user icin ham `403` hata gorunuyordu
   - Yeni durum:
     - kontrollu beta erisim mesaji ile acik sekilde explain ediliyor
+- [x] P6 recruiter liste/detail yuzeyleri kismi veri hatalarina karsi sertlestirildi.
+  - Onceki sorun:
+    - `candidates`, `applications` ve `candidate detail` ekranlari yardimci endpoint'lerden biri dusunce komple hata ekranina gidiyordu
+    - `jobs/[id]` icinde sourcing acma / yayinlama / arsivleme aksiyonlari hata yakalamadan sessiz patlayabiliyordu
+  - Yeni durum:
+    - liste/detail ekranlari ana veri varsa warning notice ile kisitli modda ayakta kaliyor
+    - yeni basvuru acma alanlari gerekli veri yoksa proaktif disable oluyor
+    - job detail aksiyonlari kontrollu hata mesaji uretiyor
+  - Teknik kanit:
+    - `corepack pnpm --filter @ai-interviewer/web lint`
+    - `corepack pnpm --filter @ai-interviewer/web build`
+- [x] Sertlestirme sonrasi canli pilot smoke tekrar basarili.
+  - Son tekrar:
+    - signup
+    - CV parse
+    - fit score
+    - screening
+    - invite interview
+    - public interview complete
+    - report + recommendation
+  - Kalan beklenen uyarilar:
+    - `provider=console`
+    - `stripeReady=false`
 
 ### Tespit edilen blocker / misconfiguration
 
