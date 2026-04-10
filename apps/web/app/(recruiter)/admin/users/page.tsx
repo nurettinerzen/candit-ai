@@ -16,6 +16,7 @@ import {
   getInternalAdminCopy,
   translateInternalAdminMessage
 } from "../../../../lib/internal-admin-copy";
+import type { SiteLocale } from "../../../../lib/i18n";
 import type {
   BillingPlanKey,
   InternalAdminAccountListReadModel,
@@ -28,6 +29,8 @@ type CustomerSegment =
   | "TRIAL_ACTIVE"
   | "TRIAL_EXPIRED"
   | "BILLING_RISK";
+
+type PlanCardKey = "TRIAL" | BillingPlanKey;
 
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -59,8 +62,20 @@ function normalizeSegment(raw: string | null): CustomerSegment {
     : "ALL";
 }
 
+function isTrialRow(row: InternalAdminCustomerRow) {
+  return row.billing.trial.isActive || row.billing.trial.isExpired;
+}
+
 function isBillingRiskStatus(status: string) {
   return status === "PAST_DUE" || status === "INCOMPLETE" || status === "CANCELED";
+}
+
+function matchesPlanKey(row: InternalAdminCustomerRow, planKey: "ALL" | BillingPlanKey) {
+  if (planKey === "ALL") {
+    return true;
+  }
+
+  return !isTrialRow(row) && row.billing.currentPlanKey === planKey;
 }
 
 function matchesSegment(row: InternalAdminCustomerRow, segment: CustomerSegment) {
@@ -69,7 +84,7 @@ function matchesSegment(row: InternalAdminCustomerRow, segment: CustomerSegment)
   }
 
   if (segment === "TRIAL") {
-    return row.billing.trial.isActive || row.billing.trial.isExpired;
+    return isTrialRow(row);
   }
 
   if (segment === "TRIAL_ACTIVE") {
@@ -81,6 +96,56 @@ function matchesSegment(row: InternalAdminCustomerRow, segment: CustomerSegment)
   }
 
   return isBillingRiskStatus(row.billing.status);
+}
+
+function getPlanLabel(
+  row: InternalAdminCustomerRow,
+  locale: SiteLocale,
+  copy: ReturnType<typeof getInternalAdminCopy>
+) {
+  return isTrialRow(row) ? copy.segmentTrial : formatInternalPlan(row.billing.currentPlanKey, locale);
+}
+
+function getStartDate(row: InternalAdminCustomerRow) {
+  return row.billing.trial.startedAt ?? row.createdAt;
+}
+
+function getEndDate(row: InternalAdminCustomerRow) {
+  return row.billing.trial.endsAt ?? row.billing.currentPeriodEnd;
+}
+
+function getActiveFilterLabel(
+  locale: SiteLocale,
+  copy: ReturnType<typeof getInternalAdminCopy>,
+  segment: CustomerSegment,
+  planKey: "ALL" | BillingPlanKey,
+  status: "ALL" | "ACTIVE" | "SUSPENDED" | "DELETED"
+) {
+  if (segment === "TRIAL") {
+    return copy.segmentTrial;
+  }
+
+  if (segment === "TRIAL_ACTIVE") {
+    return copy.segmentTrialActive;
+  }
+
+  if (segment === "TRIAL_EXPIRED") {
+    return copy.segmentTrialExpired;
+  }
+
+  if (segment === "BILLING_RISK") {
+    return copy.segmentBillingRisk;
+  }
+
+  if (planKey !== "ALL") {
+    return formatInternalPlan(planKey, locale);
+  }
+
+  if (status !== "ALL") {
+    return formatTenantStatus(status, locale);
+  }
+
+  return locale === "en" ? "All customers" : "Tüm müşteriler";
 }
 
 export default function InternalAdminUsersPage() {
@@ -111,7 +176,6 @@ export default function InternalAdminUsersPage() {
     try {
       const result = await apiClient.internalAdminAccounts({
         query: query || undefined,
-        planKey,
         status
       });
       setData(result);
@@ -121,7 +185,7 @@ export default function InternalAdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [copy.internalOnly, locale, planKey, query, status]);
+  }, [copy.internalOnly, locale, query, status]);
 
   useEffect(() => {
     void loadPage();
@@ -173,28 +237,61 @@ export default function InternalAdminUsersPage() {
       return [];
     }
 
-    return data.rows.filter((row) => matchesSegment(row, segment));
-  }, [data, segment]);
+    return data.rows.filter((row) => matchesPlanKey(row, planKey) && matchesSegment(row, segment));
+  }, [data, planKey, segment]);
+
+  const cardCounts = useMemo(() => {
+    const rows = data?.rows ?? [];
+
+    return {
+      trial: rows.filter((row) => isTrialRow(row)).length,
+      starter: rows.filter((row) => !isTrialRow(row) && row.billing.currentPlanKey === "STARTER").length,
+      growth: rows.filter((row) => !isTrialRow(row) && row.billing.currentPlanKey === "GROWTH").length,
+      enterprise: rows.filter((row) => !isTrialRow(row) && row.billing.currentPlanKey === "ENTERPRISE").length
+    };
+  }, [data]);
 
   const summary = useMemo(() => {
     return {
       total: filteredRows.length,
-      active: filteredRows.filter((row) => row.tenantStatus === "ACTIVE").length,
-      suspended: filteredRows.filter((row) => row.tenantStatus === "SUSPENDED").length,
       trialActive: filteredRows.filter((row) => row.billing.trial.isActive).length,
       trialExpired: filteredRows.filter((row) => row.billing.trial.isExpired).length,
       billingRisk: filteredRows.filter((row) => isBillingRiskStatus(row.billing.status)).length
     };
   }, [filteredRows]);
 
-  const metrics = [
-    { label: copy.totalCustomers, value: summary.total, tone: "primary" },
-    { label: copy.activeCustomers, value: summary.active, tone: "success" },
-    { label: copy.suspendedCustomers, value: summary.suspended, tone: "warning" },
-    { label: copy.trialActive, value: summary.trialActive, tone: "info" },
-    { label: copy.trialExpired, value: summary.trialExpired, tone: "muted" },
-    { label: copy.billingRisk, value: summary.billingRisk, tone: "danger" }
+  const activeFilterLabel = getActiveFilterLabel(locale, copy, segment, planKey, status);
+  const listDescription =
+    segment === "TRIAL"
+      ? locale === "en"
+        ? `${summary.total} accounts shown. ${summary.trialActive} active trial and ${summary.trialExpired} expired trial.`
+        : `${summary.total} hesap gösteriliyor. ${summary.trialActive} aktif deneme ve ${summary.trialExpired} süresi dolmuş deneme var.`
+      : locale === "en"
+        ? `${summary.total} accounts shown. Active filter: ${activeFilterLabel}.`
+        : `${summary.total} hesap gösteriliyor. Aktif filtre: ${activeFilterLabel}.`;
+
+  const planCards = [
+    { key: "TRIAL" as const, label: copy.segmentTrial, count: cardCounts.trial, tone: "warning" },
+    { key: "STARTER" as const, label: formatInternalPlan("STARTER", locale), count: cardCounts.starter, tone: "warn" },
+    { key: "GROWTH" as const, label: formatInternalPlan("GROWTH", locale), count: cardCounts.growth, tone: "success" },
+    {
+      key: "ENTERPRISE" as const,
+      label: formatInternalPlan("ENTERPRISE", locale),
+      count: cardCounts.enterprise,
+      tone: "info"
+    }
   ];
+
+  function handlePlanCardSelect(key: PlanCardKey) {
+    if (key === "TRIAL") {
+      setPlanKey("ALL");
+      setSegment((current) => (current === "TRIAL" ? "ALL" : "TRIAL"));
+      return;
+    }
+
+    setSegment("ALL");
+    setPlanKey((current) => (current === key ? "ALL" : key));
+  }
 
   return (
     <section className="page-grid">
@@ -203,31 +300,40 @@ export default function InternalAdminUsersPage() {
           <h1>{copy.usersTitle}</h1>
           <p>{copy.usersSubtitle}</p>
         </div>
-        <div className="page-header-actions">
-          <button type="button" className="ghost-button" onClick={() => void loadPage()}>
-            {copy.refresh}
-          </button>
-        </div>
       </div>
 
+      {!loading && data ? (
+        <section className="admin-distribution-grid">
+          {planCards.map((item) => {
+            const isActive =
+              item.key === "TRIAL"
+                ? segment === "TRIAL"
+                : segment === "ALL" && planKey === item.key;
+
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={`admin-distribution-card admin-segment-card${isActive ? " is-active" : ""}`}
+                onClick={() => handlePlanCardSelect(item.key)}
+              >
+                <span className={`badge ${item.tone}`}>{item.label}</span>
+                <strong>{item.count}</strong>
+                <span>{locale === "en" ? "Customer accounts" : "Müşteri hesabı"}</span>
+              </button>
+            );
+          })}
+        </section>
+      ) : null}
+
       <section className="panel">
-        <div className="admin-filter-row">
+        <div className="admin-filter-row admin-users-filter-row">
           <input
             className="input admin-search-input"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={copy.searchUsersPlaceholder}
           />
-          <select
-            className="select"
-            value={planKey}
-            onChange={(event) => setPlanKey(event.target.value as "ALL" | BillingPlanKey)}
-          >
-            <option value="ALL">{copy.allPlans}</option>
-            <option value="STARTER">{formatInternalPlan("STARTER", locale)}</option>
-            <option value="GROWTH">{formatInternalPlan("GROWTH", locale)}</option>
-            <option value="ENTERPRISE">{formatInternalPlan("ENTERPRISE", locale)}</option>
-          </select>
           <select
             className="select"
             value={status}
@@ -238,30 +344,10 @@ export default function InternalAdminUsersPage() {
             <option value="SUSPENDED">{copy.suspended}</option>
             <option value="DELETED">{copy.deleted}</option>
           </select>
-          <select
-            className="select"
-            value={segment}
-            onChange={(event) => setSegment(event.target.value as CustomerSegment)}
-          >
-            <option value="ALL">{copy.allSegments}</option>
-            <option value="TRIAL">{copy.segmentTrial}</option>
-            <option value="TRIAL_ACTIVE">{copy.segmentTrialActive}</option>
-            <option value="TRIAL_EXPIRED">{copy.segmentTrialExpired}</option>
-            <option value="BILLING_RISK">{copy.segmentBillingRisk}</option>
-          </select>
-          <button type="button" className="btn-primary-sm" onClick={() => void loadPage()}>
+          <button type="button" className="btn-primary-sm" onClick={() => setQuery(search.trim())}>
             {copy.search}
           </button>
         </div>
-      </section>
-
-      <section className="admin-metric-grid">
-        {metrics.map((metric) => (
-          <article key={metric.label} className={`admin-metric-card tone-${metric.tone}`}>
-            <span className="admin-metric-label">{metric.label}</span>
-            <strong className="admin-metric-value">{metric.value}</strong>
-          </article>
-        ))}
       </section>
 
       <section className="panel">
@@ -279,99 +365,108 @@ export default function InternalAdminUsersPage() {
         ) : !data || filteredRows.length === 0 ? (
           <EmptyState message={copy.noCustomers} />
         ) : (
-          <div className="table-scroll">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{copy.workspace}</th>
-                  <th>{copy.workspaceOwner}</th>
-                  <th>{copy.plan}</th>
-                  <th>{copy.usageSummary}</th>
-                  <th>{copy.status}</th>
-                  <th>{copy.details}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.map((row) => (
-                  <tr key={row.tenantId}>
-                    <td>
-                      <div className="admin-table-cell-stack">
-                        <strong>{row.tenantName}</strong>
-                        <span className="small">{formatDate(row.createdAt)}</span>
-                      </div>
-                    </td>
-                    <td>
-                      {row.owner ? (
+          <>
+            <div className="admin-list-header">
+              <div>
+                <h2>{copy.customerListTitle}</h2>
+                <p>{listDescription}</p>
+              </div>
+            </div>
+            <div className="table-scroll">
+              <table className="admin-table admin-users-table">
+                <colgroup>
+                  <col style={{ width: "22%" }} />
+                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "19%" }} />
+                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "5%" }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>{copy.customerName}</th>
+                    <th>{copy.companyName}</th>
+                    <th>{copy.plan}</th>
+                    <th>{copy.startDate}</th>
+                    <th>{copy.endDate}</th>
+                    <th>{copy.usageSummary}</th>
+                    <th>{copy.status}</th>
+                    <th>{copy.details}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((row) => (
+                    <tr key={row.tenantId}>
+                      <td>
+                        {row.owner ? (
+                          <div className="admin-table-cell-stack">
+                            <strong>{row.owner.fullName}</strong>
+                            <span className="small">{row.owner.email}</span>
+                            {row.owner.status !== "ACTIVE" ? (
+                              <span className="small">{formatMemberStatus(row.owner.status, locale)}</span>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <div className="admin-table-cell-stack">
+                            <strong>—</strong>
+                            <span className="small">{copy.noOwner}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td>
                         <div className="admin-table-cell-stack">
-                          <strong>{row.owner.fullName}</strong>
-                          <span className="small">{row.owner.email}</span>
-                          <span className={`status-badge status-${statusVariant(row.owner.status)}`}>
-                            {formatMemberStatus(row.owner.status, locale)}
+                          <strong>{row.tenantName}</strong>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="admin-table-cell-stack">
+                          <strong>{getPlanLabel(row, locale, copy)}</strong>
+                          {isBillingRiskStatus(row.billing.status) ? (
+                            <span className="small">{formatBillingStatus(row.billing.status, locale)}</span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td>{formatDate(getStartDate(row))}</td>
+                      <td>{formatDate(getEndDate(row))}</td>
+                      <td>
+                        <div className="admin-table-cell-stack admin-usage-stack">
+                          <span className="small">
+                            {locale === "en" ? "Seats" : "Koltuk"} {row.usage.seats?.used ?? 0}/{row.usage.seats?.limit ?? 0}
+                            {" · "}
+                            {locale === "en" ? "Jobs" : "İlan"} {row.usage.activeJobs?.used ?? 0}/{row.usage.activeJobs?.limit ?? 0}
+                          </span>
+                          <span className="small">
+                            {locale === "en" ? "Candidates" : "Aday"} {row.usage.candidateProcessing?.used ?? 0}/
+                            {row.usage.candidateProcessing?.limit ?? 0}
+                            {" · "}
+                            {locale === "en" ? "AI Interviews" : "AI mülakat"} {row.usage.aiInterviews?.used ?? 0}/
+                            {row.usage.aiInterviews?.limit ?? 0}
                           </span>
                         </div>
-                      ) : (
-                        <span className="small">{copy.noOwner}</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="admin-table-cell-stack">
-                        <span
-                          className={`badge ${row.billing.currentPlanKey === "ENTERPRISE" ? "info" : row.billing.currentPlanKey === "GROWTH" ? "success" : "warn"}`}
-                        >
-                          {formatInternalPlan(row.billing.currentPlanKey, locale)}
-                        </span>
-                        <span className={`status-badge status-${statusVariant(row.billing.status)}`}>
-                          {formatBillingStatus(row.billing.status, locale)}
-                        </span>
-                        {row.billing.trial.isActive ? (
-                          <span className="small">
-                            {locale === "en"
-                              ? `Trial ends ${formatDate(row.billing.trial.endsAt ?? row.billing.currentPeriodEnd)} · ${row.billing.trial.daysRemaining} days left`
-                              : `Deneme ${formatDate(row.billing.trial.endsAt ?? row.billing.currentPeriodEnd)} tarihinde bitiyor · ${row.billing.trial.daysRemaining} gün kaldı`}
+                      </td>
+                      <td>
+                        <div className="admin-table-cell-stack">
+                          <span className={`admin-inline-status tone-${statusVariant(row.tenantStatus)}`}>
+                            {formatTenantStatus(row.tenantStatus, locale)}
                           </span>
-                        ) : row.billing.trial.isExpired ? (
-                          <span className="small">
-                            {locale === "en"
-                              ? `Trial ended ${formatDate(row.billing.trial.endsAt ?? row.billing.currentPeriodEnd)}`
-                              : `Deneme ${formatDate(row.billing.trial.endsAt ?? row.billing.currentPeriodEnd)} tarihinde bitti`}
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="admin-table-cell-stack">
-                        <span className="small">
-                          {copy.quotaLabelSeats}: {row.usage.seats?.used ?? 0}/{row.usage.seats?.limit ?? 0}
-                        </span>
-                        <span className="small">
-                          {copy.quotaLabelActiveJobs}: {row.usage.activeJobs?.used ?? 0}/{row.usage.activeJobs?.limit ?? 0}
-                        </span>
-                        <span className="small">
-                          {copy.quotaLabelCandidateProcessing}: {row.usage.candidateProcessing?.used ?? 0}/{row.usage.candidateProcessing?.limit ?? 0}
-                        </span>
-                        <span className="small">
-                          {copy.quotaLabelAiInterviews}: {row.usage.aiInterviews?.used ?? 0}/{row.usage.aiInterviews?.limit ?? 0}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="admin-table-cell-stack">
-                        <span className={`status-badge status-${statusVariant(row.tenantStatus)}`}>
-                          {formatTenantStatus(row.tenantStatus, locale)}
-                        </span>
-                        <span className="small">{copy.createdOn}: {formatDate(row.createdAt)}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <Link href={`/admin/users/${row.tenantId}`} className="ghost-button">
-                        {copy.viewDetails}
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                          {isBillingRiskStatus(row.billing.status) && row.tenantStatus === "ACTIVE" ? (
+                            <span className="small">{formatBillingStatus(row.billing.status, locale)}</span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td>
+                        <Link href={`/admin/users/${row.tenantId}`} className="ghost-button">
+                          {copy.viewDetails}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </section>

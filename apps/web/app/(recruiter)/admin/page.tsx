@@ -26,6 +26,10 @@ function dashboardBadgeVariant(key: string) {
   return "warn";
 }
 
+function isTrialAccount(account: InternalAdminAccountListReadModel["rows"][number]) {
+  return account.billing.trial.isActive || account.billing.trial.isExpired;
+}
+
 type MetricCard = {
   label: string;
   value: number;
@@ -106,6 +110,15 @@ export default function InternalAdminDashboardPage() {
   }
 
   const trialTotal = accounts.summary.trialActive + accounts.summary.trialExpired;
+  const starterCount = accounts.rows.filter(
+    (row) => !isTrialAccount(row) && row.billing.currentPlanKey === "STARTER"
+  ).length;
+  const growthCount = accounts.rows.filter(
+    (row) => !isTrialAccount(row) && row.billing.currentPlanKey === "GROWTH"
+  ).length;
+  const enterpriseCount = accounts.rows.filter(
+    (row) => !isTrialAccount(row) && row.billing.currentPlanKey === "ENTERPRISE"
+  ).length;
 
   const metrics: MetricCard[] = [
     {
@@ -117,8 +130,8 @@ export default function InternalAdminDashboardPage() {
       href: "/admin/users",
       detail:
         locale === "en"
-          ? `${accounts.summary.starter} Starter, ${accounts.summary.growth} Growth, ${accounts.summary.enterprise} Enterprise`
-          : `${accounts.summary.starter} Starter, ${accounts.summary.growth} Growth, ${accounts.summary.enterprise} Enterprise`
+          ? `${starterCount} Starter, ${growthCount} Growth, ${enterpriseCount} Enterprise`
+          : `${starterCount} Starter, ${growthCount} Growth, ${enterpriseCount} Kurumsal`
     },
     {
       label: copy.activeCustomers,
@@ -130,7 +143,7 @@ export default function InternalAdminDashboardPage() {
       detail:
         locale === "en"
           ? `${accounts.summary.suspended} suspended workspace`
-          : `${accounts.summary.suspended} askıdaki çalışma alanı`
+          : `${accounts.summary.suspended} askıdaki hesap`
     },
     {
       label: copy.openAlerts,
@@ -166,13 +179,27 @@ export default function InternalAdminDashboardPage() {
       tone: "warning",
       href: "/admin/users?segment=TRIAL" as Route
     },
-    ...data.planDistribution.map((plan) => ({
-      key: plan.key,
-      label: formatInternalPlan(plan.key, locale),
-      count: plan.count,
-      tone: dashboardBadgeVariant(plan.key),
-      href: `/admin/users?planKey=${plan.key}` as Route
-    }))
+    {
+      key: "STARTER",
+      label: formatInternalPlan("STARTER", locale),
+      count: starterCount,
+      tone: dashboardBadgeVariant("STARTER"),
+      href: "/admin/users?planKey=STARTER" as Route
+    },
+    {
+      key: "GROWTH",
+      label: formatInternalPlan("GROWTH", locale),
+      count: growthCount,
+      tone: dashboardBadgeVariant("GROWTH"),
+      href: "/admin/users?planKey=GROWTH" as Route
+    },
+    {
+      key: "ENTERPRISE",
+      label: formatInternalPlan("ENTERPRISE", locale),
+      count: enterpriseCount,
+      tone: dashboardBadgeVariant("ENTERPRISE"),
+      href: "/admin/users?planKey=ENTERPRISE" as Route
+    }
   ];
 
   const quickLinks = [
@@ -181,8 +208,8 @@ export default function InternalAdminDashboardPage() {
       title: copy.customers,
       detail:
         locale === "en"
-          ? "Open customer list, filter plans, and inspect workspace-level details."
-          : "Müşteri listesini açın, planları filtreleyin ve çalışma alanı detaylarını inceleyin.",
+          ? "Open customer list, filter plans, and inspect account details."
+          : "Müşteri listesini açın, planları filtreleyin ve hesap detaylarını inceleyin.",
       icon: "\u{1F465}"
     },
     {
@@ -221,11 +248,6 @@ export default function InternalAdminDashboardPage() {
           <h1>{copy.dashboardTitle}</h1>
           <p>{copy.dashboardSubtitle}</p>
         </div>
-        <div className="page-header-actions">
-          <button type="button" className="ghost-button" onClick={() => void loadPage()}>
-            {copy.refresh}
-          </button>
-        </div>
       </div>
 
       <section className="admin-metric-grid">
@@ -252,7 +274,7 @@ export default function InternalAdminDashboardPage() {
             <Link key={item.key} href={item.href} className="admin-distribution-card admin-distribution-link">
               <span className={`badge ${item.tone}`}>{item.label}</span>
               <strong>{item.count}</strong>
-              <span>{item.label}</span>
+              <span>{locale === "en" ? "Customer accounts" : "Müşteri hesabı"}</span>
             </Link>
           ))}
         </div>

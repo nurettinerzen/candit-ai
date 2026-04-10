@@ -728,7 +728,15 @@ export function PublicFeaturesPage() {
               {PUBLIC_SOLUTIONS.map((solution, index) => (
                 <a key={solution.slug} href={`/solutions/${solution.slug}`} className={styles.ftSolutionCard}>
                   <div className={styles.ftSolutionCardInner}>
-                    <div className={cn(styles.ftSolutionIcon, featureGradients[index % featureGradients.length])} />
+                    <div className={cn(styles.ftSolutionIcon, featureGradients[index % featureGradients.length])}>
+                      {[
+                        <svg key="tech" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>,
+                        <svg key="retail" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>,
+                        <svg key="health" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+                        <svg key="finance" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+                        <svg key="mfg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+                      ][index]}
+                    </div>
                     <div style={{ flex: 1 }}>
                       <h3 className={styles.ftSolutionTitle}>{t(solution.title)}</h3>
                       <p className={styles.ftSolutionDesc}>{t(solution.shortDescription)}</p>

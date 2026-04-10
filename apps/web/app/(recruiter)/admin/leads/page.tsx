@@ -180,11 +180,6 @@ export default function InternalAdminLeadsPage() {
           <h1>{copy.leadsTitle}</h1>
           <p>{copy.leadsSubtitle}</p>
         </div>
-        <div className="page-header-actions">
-          <button type="button" className="ghost-button" onClick={() => void loadPage()}>
-            {copy.refresh}
-          </button>
-        </div>
       </div>
 
       <section className="panel">

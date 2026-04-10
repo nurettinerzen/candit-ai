@@ -293,11 +293,6 @@ export default function InternalAdminEnterprisePage() {
           <h1>{copy.enterpriseTitle}</h1>
           <p>{copy.enterpriseSubtitle}</p>
         </div>
-        <div className="page-header-actions">
-          <button type="button" className="ghost-button" onClick={() => void loadPage()}>
-            {copy.refresh}
-          </button>
-        </div>
       </div>
 
       {/* ── Notices ── */}

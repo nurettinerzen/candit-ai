@@ -109,9 +109,6 @@ export default function InternalAdminRedAlertPage() {
             <option value="7">{locale === "en" ? "Last 7 Days" : "Son 7 Gün"}</option>
             <option value="30">{locale === "en" ? "Last 30 Days" : "Son 30 Gün"}</option>
           </select>
-          <button type="button" className="btn-primary-sm" onClick={() => void loadPage()}>
-            {copy.refresh}
-          </button>
         </div>
       </div>
 

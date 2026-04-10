@@ -328,11 +328,6 @@ export default function InternalAdminAccountDetailPage() {
           <h1>{detail.tenant.name}</h1>
           <p>{copy.accountDetailSubtitle}</p>
         </div>
-        <div className="page-header-actions">
-          <button type="button" className="ghost-button" onClick={() => void loadPage()}>
-            {copy.refresh}
-          </button>
-        </div>
       </div>
 
       {notice ? <div className="notice-box notice-success">{notice}</div> : null}

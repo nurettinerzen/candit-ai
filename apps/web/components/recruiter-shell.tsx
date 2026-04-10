@@ -195,6 +195,10 @@ export function RecruiterShell({ children }: { children: ReactNode }) {
     (pathname.startsWith("/sourcing/") && pathname !== "/sourcing") ||
     (pathname.startsWith("/candidates/") && pathname !== "/candidates" && pathname !== "/candidates/new") ||
     (pathname.startsWith("/applications/") && pathname !== "/applications");
+  const isWidePage =
+    isDetailPage ||
+    pathname === "/admin/users" ||
+    pathname.startsWith("/admin/users/");
   const [session, setSession] = useState<WebAuthSession | null>(() => resolveActiveSession());
   const [checkingCookieSession, setCheckingCookieSession] = useState(
     AUTH_SESSION_MODE === "jwt" || AUTH_SESSION_MODE === "hybrid"
@@ -308,7 +312,7 @@ export function RecruiterShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="main-content">
-        <div className={`main-content-inner${isDetailPage ? " main-content-inner-wide" : ""}`}>
+        <div className={`main-content-inner${isWidePage ? " main-content-inner-wide" : ""}`}>
           {children}
         </div>
       </div>
