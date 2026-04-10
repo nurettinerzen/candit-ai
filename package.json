@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.11.0",
   "scripts": {
     "dev": "corepack pnpm -r --parallel --if-present dev",
-    "build": "corepack pnpm -r --if-present build",
+    "build": "corepack pnpm db:generate && corepack pnpm -r --if-present build",
     "lint": "corepack pnpm -r --if-present lint",
     "test": "corepack pnpm -r --if-present test",
     "launch:verify": "corepack pnpm db:generate && corepack pnpm lint && corepack pnpm test && corepack pnpm build",

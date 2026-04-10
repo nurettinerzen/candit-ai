@@ -17,23 +17,24 @@ export function LanguagePill() {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handlePointerDown(e: PointerEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
   }, []);
 
   const current = LANGUAGES.find((l) => l.code === locale) ?? DEFAULT_LANGUAGE;
 
   return (
-    <div className={styles.langDropdown} ref={ref}>
+    <div className={styles.langDropdown} ref={ref} data-no-translate="">
       <button
         type="button"
         className={styles.langDropdownTrigger}
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
       >
         <span className={styles.langDropdownFlag}>{current.flag}</span>

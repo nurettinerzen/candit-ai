@@ -4,7 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -13,6 +13,7 @@ import {
 export type ThemeMode = "system" | "light" | "dark";
 
 const STORAGE_KEY = "ai_interviewer_theme";
+const RESOLVED_THEME_COOKIE_KEY = "ai_interviewer_theme_resolved";
 
 type ThemeContextValue = {
   mode: ThemeMode;
@@ -34,28 +35,78 @@ function resolveTheme(mode: ThemeMode): "light" | "dark" {
   return mode;
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>("system");
-  const [resolved, setResolved] = useState<"light" | "dark">("light");
+function normalizeThemeMode(raw: string | null | undefined): ThemeMode {
+  return raw === "light" || raw === "dark" || raw === "system" ? raw : "system";
+}
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-    const initial = stored === "light" || stored === "dark" ? stored : "system";
-    setModeState(initial);
-    setResolved(resolveTheme(initial));
-  }, []);
+function getInitialThemeMode() {
+  if (typeof document !== "undefined") {
+    const attr = document.documentElement.getAttribute("data-theme-mode");
+    if (attr) {
+      return normalizeThemeMode(attr);
+    }
 
-  // Apply theme to <html> + listen for system changes
-  useEffect(() => {
+    try {
+      return normalizeThemeMode(window.localStorage.getItem(STORAGE_KEY));
+    } catch {
+      return "system";
+    }
+  }
+
+  return "system";
+}
+
+function getInitialResolvedTheme(mode: ThemeMode) {
+  if (typeof document !== "undefined") {
+    const attr = document.documentElement.getAttribute("data-theme");
+    if (attr === "light" || attr === "dark") {
+      return attr;
+    }
+  }
+
+  return resolveTheme(mode);
+}
+
+function persistTheme(mode: ThemeMode, resolved: "light" | "dark") {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  document.documentElement.setAttribute("data-theme", resolved);
+  document.documentElement.setAttribute("data-theme-mode", mode);
+  document.documentElement.style.backgroundColor = resolved === "dark" ? "#0b0d14" : "#f8f9fb";
+  document.documentElement.style.colorScheme = resolved;
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, mode);
+  } catch {}
+
+  document.cookie = `${STORAGE_KEY}=${mode}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  document.cookie = `${RESOLVED_THEME_COOKIE_KEY}=${resolved}; Path=/; Max-Age=31536000; SameSite=Lax`;
+}
+
+export function ThemeProvider({
+  children,
+  initialMode,
+  initialResolved
+}: {
+  children: ReactNode;
+  initialMode?: ThemeMode;
+  initialResolved?: "light" | "dark";
+}) {
+  const fallbackMode = initialMode ?? getInitialThemeMode();
+  const fallbackResolved = initialResolved ?? getInitialResolvedTheme(fallbackMode);
+  const [mode, setModeState] = useState<ThemeMode>(fallbackMode);
+  const [resolved, setResolved] = useState<"light" | "dark">(fallbackResolved);
+
+  useLayoutEffect(() => {
     const apply = () => {
-      const r = resolveTheme(mode);
-      setResolved(r);
-      document.documentElement.setAttribute("data-theme", r);
+      const nextResolved = resolveTheme(mode);
+      setResolved(nextResolved);
+      persistTheme(mode, nextResolved);
     };
 
     apply();
-    localStorage.setItem(STORAGE_KEY, mode);
 
     if (mode === "system") {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -65,7 +116,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [mode]);
 
-  const setMode = useCallback((m: ThemeMode) => setModeState(m), []);
+  const setMode = useCallback((nextMode: ThemeMode) => {
+    const normalized = normalizeThemeMode(nextMode);
+    const nextResolved = resolveTheme(normalized);
+    persistTheme(normalized, nextResolved);
+    setResolved(nextResolved);
+    setModeState(normalized);
+  }, []);
 
   const value = useMemo<ThemeContextValue>(
     () => ({ mode, setMode, resolved }),

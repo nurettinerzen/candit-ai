@@ -12,6 +12,7 @@ const TURKISH_PHRASE_FIXES: Record<string, string> = {
   "isletim paneli": "işletim paneli",
   "Yenile": "Yenile",
   "Tekrar dene": "Tekrar dene",
+  "Oturum Aç": "Giriş Yap",
   "Login ekranina git": "Giriş ekranına git",
   "Header Dev Session": "Header Geliştirme Oturumu",
   "JWT Session": "JWT Oturumu",

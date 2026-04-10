@@ -1,16 +1,14 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap");
-
 .page {
   position: relative;
   min-height: 100vh;
   overflow: hidden;
   background:
-    radial-gradient(circle at 14% 12%, rgba(255, 133, 102, 0.16), transparent 22%),
-    radial-gradient(circle at 82% 10%, rgba(97, 129, 255, 0.18), transparent 24%),
-    radial-gradient(circle at 55% 58%, rgba(74, 214, 196, 0.1), transparent 30%),
-    linear-gradient(180deg, #03050a 0%, #07101a 52%, #05070d 100%);
+    radial-gradient(circle at 14% 12%, rgba(124, 58, 237, 0.18), transparent 22%),
+    radial-gradient(circle at 82% 10%, rgba(80, 70, 229, 0.2), transparent 24%),
+    radial-gradient(circle at 55% 58%, rgba(139, 92, 246, 0.1), transparent 30%),
+    linear-gradient(180deg, #020818 0%, #0c0a2a 52%, #020818 100%);
   color: #ebf0f8;
-  font-family: "DM Sans", "Google Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Google Sans", "Google Sans Flex", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .page::before {
@@ -40,13 +38,13 @@
 .pageGlowLeft {
   top: 4rem;
   left: -10rem;
-  background: #ff7c5c;
+  background: #7c3aed;
 }
 
 .pageGlowRight {
   top: 5rem;
   right: -12rem;
-  background: #617eff;
+  background: #5046e5;
 }
 
 .shell {
@@ -74,9 +72,9 @@
 }
 
 .headerInner {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 20px;
   padding: 15px 0;
 }
@@ -86,6 +84,8 @@
   align-items: center;
   gap: 12px;
   text-decoration: none;
+  min-width: 0;
+  justify-self: start;
 }
 
 .brandMark {
@@ -104,6 +104,7 @@
 .brandCopy {
   display: grid;
   gap: 1px;
+  min-width: 0;
 }
 
 .brandCopy strong {
@@ -121,6 +122,7 @@
   display: flex;
   align-items: center;
   gap: 28px;
+  justify-self: center;
 }
 
 .navLink {
@@ -139,17 +141,23 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-content: flex-end;
+  justify-self: end;
+  min-width: 320px;
 }
 
 /* ── Language dropdown ── */
 .langDropdown {
   position: relative;
+  flex: 0 0 64px;
 }
 
 .langDropdownTrigger {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  width: 64px;
   padding: 6px 12px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -236,9 +244,13 @@
 .languagePillActive { display: none; }
 
 .headerTextAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: #dce5f2;
   font-size: 14px;
   text-decoration: none;
+  min-width: 88px;
 }
 
 .button {
@@ -267,6 +279,7 @@
   background: linear-gradient(135deg, #5046e5 0%, #6554ff 54%, #9057ff 100%);
   box-shadow: 0 18px 46px rgba(73, 104, 255, 0.28);
   color: white;
+  min-width: 148px;
 }
 
 .buttonPrimary:hover {
@@ -1551,7 +1564,12 @@
     display: none;
   }
 
-  .headerInner,
+  .headerInner {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .ctaBand,
   .newsletterBand,
   .footerBottom {
@@ -1645,11 +1663,11 @@
 }
 
 .prGlowBlob {
-  background: #617eff;
+  background: #5046e5;
 }
 
 .prGlowBlobPurple {
-  background: #a157ff;
+  background: #7c3aed;
 }
 
 /* ── Hero ── */

@@ -29,3 +29,7 @@ test("public-site regression strings translate to English", () => {
     assert.equal(transformUiText(source, "en"), expected);
   }
 });
+
+test("reverse-translated public auth labels normalize to canonical Turkish", () => {
+  assert.equal(transformUiText("Sign In", "tr"), "Giriş Yap");
+});

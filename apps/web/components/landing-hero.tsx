@@ -5,10 +5,18 @@ import { useUiText } from "./site-language-provider";
 import "./landing-hero.css";
 
 export function LandingHero() {
-  const { t } = useUiText();
+  const { locale, t } = useUiText();
   const pageRef = useRef<HTMLDivElement>(null);
   const chatDemoStarted = useRef(false);
   const chatLoopTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const speakerLabels = useMemo(
+    () => ({
+      bot: t("Candit Asistan"),
+      candidate: t("Selen Yılmaz")
+    }),
+    [t]
+  );
+  const numberFormatLocale = locale === "en" ? "en-US" : "tr-TR";
 
   /* ── Manifesto: split text into words, mark emphasis ── */
   const manifestoWords = useMemo(() => {
@@ -197,7 +205,12 @@ export function LandingHero() {
                 const p = Math.min(elapsed / duration, 1);
                 const eased = 1 - Math.pow(1 - p, 3);
                 const current = target * eased;
-                el.textContent = prefix + (decimals > 0 ? current.toFixed(decimals) : Math.round(current).toLocaleString("tr-TR")) + suffix;
+                el.textContent =
+                  prefix +
+                  (decimals > 0
+                    ? current.toFixed(decimals)
+                    : Math.round(current).toLocaleString(numberFormatLocale)) +
+                  suffix;
                 if (p < 1) requestAnimationFrame(tick);
                 else delete el.dataset.counting;
               }
@@ -269,7 +282,7 @@ export function LandingHero() {
 
               const words = msg.text.split(/\s+/);
               const isBot = msg.type === "bot";
-              const label = isBot ? "Candit Asistan" : "Selen Yılmaz";
+              const label = isBot ? speakerLabels.bot : speakerLabels.candidate;
 
               const wrapper = document.createElement("div");
               wrapper.className = `lp-chat-msg ${isBot ? "lp-bot" : "lp-candidate"}`;
@@ -363,7 +376,7 @@ export function LandingHero() {
       cleanups.forEach((fn) => fn());
       chatDemoStarted.current = false;
     };
-  }, []);
+  }, [chatMessages, numberFormatLocale, speakerLabels]);
 
   return (
     <div className="lp-landing-page" ref={pageRef}>
@@ -380,7 +393,7 @@ export function LandingHero() {
         <section className="lp-hero" id="hero">
           <div className="lp-hero-grid-bg" aria-hidden="true" />
           <div className="lp-hero-text-stack">
-            <span className="lp-hero-line" data-index="0">{t("Ön Eleme.")}</span>
+            <span className="lp-hero-line lp-active" data-index="0">{t("Ön Eleme.")}</span>
             <span className="lp-hero-line" data-index="1">{t("Kaynak Bulma.")}</span>
             <span className="lp-hero-line" data-index="2">{t("Mülakat.")}</span>
             <span className="lp-hero-tagline">{t("Yapay zekâ destekli işe alım platformu.")}</span>
