@@ -94,12 +94,16 @@ export default function InternalAdminRedAlertPage() {
   return (
     <section className="page-grid">
       {/* ===== HEADER: title + time-range select + refresh ===== */}
-      <div className="page-header">
+      <div className="page-header page-header-plain">
         <div className="page-header-copy">
           <h1>{copy.redAlertTitle}</h1>
           <p>{copy.redAlertSubtitle}</p>
         </div>
-        <div className="page-header-actions">
+      </div>
+
+      {/* ===== FILTER BAR: category + severity side-by-side ===== */}
+      <section className="panel">
+        <div className="admin-filter-row">
           <select
             className="select"
             value={String(windowDays)}
@@ -109,12 +113,6 @@ export default function InternalAdminRedAlertPage() {
             <option value="7">{locale === "en" ? "Last 7 Days" : "Son 7 Gün"}</option>
             <option value="30">{locale === "en" ? "Last 30 Days" : "Son 30 Gün"}</option>
           </select>
-        </div>
-      </div>
-
-      {/* ===== FILTER BAR: category + severity side-by-side ===== */}
-      <section className="panel">
-        <div className="admin-filter-row">
           <select
             className="select"
             value={category}

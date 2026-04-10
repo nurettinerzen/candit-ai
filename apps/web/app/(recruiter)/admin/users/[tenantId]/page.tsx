@@ -320,11 +320,11 @@ export default function InternalAdminAccountDetailPage() {
 
   return (
     <section className="page-grid">
-      <div className="page-header">
+      <Link href={"/admin/users" as Route} className="ghost-button admin-inline-back">
+        ← {copy.backToUsers}
+      </Link>
+      <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <Link href={"/admin/users" as Route} className="ghost-button admin-inline-back">
-            ← {copy.backToUsers}
-          </Link>
           <h1>{detail.tenant.name}</h1>
           <p>{copy.accountDetailSubtitle}</p>
         </div>

@@ -288,7 +288,7 @@ export default function InternalAdminEnterprisePage() {
   return (
     <section className="page-grid">
       {/* ── Header ── */}
-      <div className="page-header">
+      <div className="page-header page-header-plain">
         <div className="page-header-copy">
           <h1>{copy.enterpriseTitle}</h1>
           <p>{copy.enterpriseSubtitle}</p>

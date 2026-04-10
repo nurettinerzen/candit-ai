@@ -11,6 +11,12 @@ export function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+export function formatDateOnly(value: string) {
+  return new Intl.DateTimeFormat(resolveLocaleTag(), {
+    dateStyle: "medium"
+  }).format(new Date(value));
+}
+
 export function formatCurrencyTry(value?: string | number | null) {
   if (value === null || value === undefined || value === "") {
     return "-";

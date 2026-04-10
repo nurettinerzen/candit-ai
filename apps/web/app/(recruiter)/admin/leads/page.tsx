@@ -175,7 +175,7 @@ export default function InternalAdminLeadsPage() {
 
   return (
     <section className="page-grid">
-      <div className="page-header">
+      <div className="page-header page-header-plain">
         <div className="page-header-copy">
           <h1>{copy.leadsTitle}</h1>
           <p>{copy.leadsSubtitle}</p>

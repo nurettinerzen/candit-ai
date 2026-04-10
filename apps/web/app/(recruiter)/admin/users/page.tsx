@@ -7,11 +7,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState, ErrorState, LoadingState } from "../../../../components/ui-states";
 import { useUiText } from "../../../../components/site-language-provider";
 import { apiClient } from "../../../../lib/api-client";
-import { formatDate } from "../../../../lib/format";
+import { formatDateOnly } from "../../../../lib/format";
 import {
-  formatBillingStatus,
   formatInternalPlan,
-  formatMemberStatus,
   formatTenantStatus,
   getInternalAdminCopy,
   translateInternalAdminMessage
@@ -49,8 +47,8 @@ function normalizePlanKey(raw: string | null): "ALL" | BillingPlanKey {
   return raw === "STARTER" || raw === "GROWTH" || raw === "ENTERPRISE" ? raw : "ALL";
 }
 
-function normalizeWorkspaceStatus(raw: string | null): "ALL" | "ACTIVE" | "SUSPENDED" | "DELETED" {
-  return raw === "ACTIVE" || raw === "SUSPENDED" || raw === "DELETED" ? raw : "ALL";
+function normalizeWorkspaceStatus(raw: string | null): "ALL" | "ACTIVE" {
+  return raw === "ACTIVE" ? raw : "ALL";
 }
 
 function normalizeSegment(raw: string | null): CustomerSegment {
@@ -119,7 +117,7 @@ function getActiveFilterLabel(
   copy: ReturnType<typeof getInternalAdminCopy>,
   segment: CustomerSegment,
   planKey: "ALL" | BillingPlanKey,
-  status: "ALL" | "ACTIVE" | "SUSPENDED" | "DELETED"
+  status: "ALL" | "ACTIVE"
 ) {
   if (segment === "TRIAL") {
     return copy.segmentTrial;
@@ -164,7 +162,7 @@ export default function InternalAdminUsersPage() {
   const [search, setSearch] = useState(initialQuery);
   const [query, setQuery] = useState(initialQuery);
   const [planKey, setPlanKey] = useState<"ALL" | BillingPlanKey>(initialPlanKey);
-  const [status, setStatus] = useState<"ALL" | "ACTIVE" | "SUSPENDED" | "DELETED">(initialStatus);
+  const [status, setStatus] = useState<"ALL" | "ACTIVE">(initialStatus);
   const [segment, setSegment] = useState<CustomerSegment>(initialSegment);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -295,14 +293,14 @@ export default function InternalAdminUsersPage() {
 
   return (
     <section className="page-grid">
-      <div className="page-header">
+      <div className="page-header page-header-plain">
         <div className="page-header-copy">
           <h1>{copy.usersTitle}</h1>
           <p>{copy.usersSubtitle}</p>
         </div>
       </div>
 
-      {!loading && data ? (
+      {data ? (
         <section className="admin-distribution-grid">
           {planCards.map((item) => {
             const isActive =
@@ -319,7 +317,6 @@ export default function InternalAdminUsersPage() {
               >
                 <span className={`badge ${item.tone}`}>{item.label}</span>
                 <strong>{item.count}</strong>
-                <span>{locale === "en" ? "Customer accounts" : "Müşteri hesabı"}</span>
               </button>
             );
           })}
@@ -337,12 +334,10 @@ export default function InternalAdminUsersPage() {
           <select
             className="select"
             value={status}
-            onChange={(event) => setStatus(event.target.value as "ALL" | "ACTIVE" | "SUSPENDED" | "DELETED")}
+            onChange={(event) => setStatus(event.target.value as "ALL" | "ACTIVE")}
           >
             <option value="ALL">{copy.allWorkspaceStatuses}</option>
             <option value="ACTIVE">{copy.active}</option>
-            <option value="SUSPENDED">{copy.suspended}</option>
-            <option value="DELETED">{copy.deleted}</option>
           </select>
           <button type="button" className="btn-primary-sm" onClick={() => setQuery(search.trim())}>
             {copy.search}
@@ -351,7 +346,7 @@ export default function InternalAdminUsersPage() {
       </section>
 
       <section className="panel">
-        {loading ? (
+        {loading && !data ? (
           <LoadingState message={copy.loading} />
         ) : error && !data ? (
           <ErrorState
@@ -375,14 +370,14 @@ export default function InternalAdminUsersPage() {
             <div className="table-scroll">
               <table className="admin-table admin-users-table">
                 <colgroup>
-                  <col style={{ width: "22%" }} />
-                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "23%" }} />
+                  <col style={{ width: "15%" }} />
                   <col style={{ width: "11%" }} />
                   <col style={{ width: "11%" }} />
                   <col style={{ width: "11%" }} />
-                  <col style={{ width: "19%" }} />
-                  <col style={{ width: "5%" }} />
-                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "17%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "6%" }} />
                 </colgroup>
                 <thead>
                   <tr>
@@ -404,9 +399,6 @@ export default function InternalAdminUsersPage() {
                           <div className="admin-table-cell-stack">
                             <strong>{row.owner.fullName}</strong>
                             <span className="small">{row.owner.email}</span>
-                            {row.owner.status !== "ACTIVE" ? (
-                              <span className="small">{formatMemberStatus(row.owner.status, locale)}</span>
-                            ) : null}
                           </div>
                         ) : (
                           <div className="admin-table-cell-stack">
@@ -423,13 +415,10 @@ export default function InternalAdminUsersPage() {
                       <td>
                         <div className="admin-table-cell-stack">
                           <strong>{getPlanLabel(row, locale, copy)}</strong>
-                          {isBillingRiskStatus(row.billing.status) ? (
-                            <span className="small">{formatBillingStatus(row.billing.status, locale)}</span>
-                          ) : null}
                         </div>
                       </td>
-                      <td>{formatDate(getStartDate(row))}</td>
-                      <td>{formatDate(getEndDate(row))}</td>
+                      <td>{formatDateOnly(getStartDate(row))}</td>
+                      <td>{formatDateOnly(getEndDate(row))}</td>
                       <td>
                         <div className="admin-table-cell-stack admin-usage-stack">
                           <span className="small">
@@ -451,9 +440,6 @@ export default function InternalAdminUsersPage() {
                           <span className={`admin-inline-status tone-${statusVariant(row.tenantStatus)}`}>
                             {formatTenantStatus(row.tenantStatus, locale)}
                           </span>
-                          {isBillingRiskStatus(row.billing.status) && row.tenantStatus === "ACTIVE" ? (
-                            <span className="small">{formatBillingStatus(row.billing.status, locale)}</span>
-                          ) : null}
                         </div>
                       </td>
                       <td>

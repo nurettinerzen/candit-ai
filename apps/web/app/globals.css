@@ -1702,6 +1702,14 @@ main {
   box-shadow: var(--shadow-card);
 }
 
+.page-header.page-header-plain {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
 .page-header h1 {
   margin: 0 0 6px;
   font-size: 26px;
@@ -5356,7 +5364,8 @@ a.admin-distribution-card:hover {
 }
 
 .admin-users-table {
-  min-width: 1280px;
+  min-width: 0;
+  width: 100%;
   table-layout: fixed;
 }
 
@@ -5365,7 +5374,8 @@ a.admin-distribution-card:hover {
 }
 
 .admin-usage-stack .small {
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.45;
 }
 
 .admin-inline-status {
@@ -5482,7 +5492,7 @@ a.admin-distribution-card:hover {
   }
 
   .admin-users-table {
-    min-width: 880px;
+    min-width: 960px;
   }
 }
 

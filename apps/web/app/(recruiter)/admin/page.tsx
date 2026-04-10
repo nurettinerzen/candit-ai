@@ -243,7 +243,7 @@ export default function InternalAdminDashboardPage() {
 
   return (
     <section className="page-grid">
-      <div className="page-header">
+      <div className="page-header page-header-plain">
         <div className="page-header-copy">
           <h1>{copy.dashboardTitle}</h1>
           <p>{copy.dashboardSubtitle}</p>
@@ -274,7 +274,6 @@ export default function InternalAdminDashboardPage() {
             <Link key={item.key} href={item.href} className="admin-distribution-card admin-distribution-link">
               <span className={`badge ${item.tone}`}>{item.label}</span>
               <strong>{item.count}</strong>
-              <span>{locale === "en" ? "Customer accounts" : "Müşteri hesabı"}</span>
             </Link>
           ))}
         </div>
