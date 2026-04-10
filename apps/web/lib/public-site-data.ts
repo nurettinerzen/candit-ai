@@ -196,7 +196,7 @@ export const PUBLIC_FEATURE_GROUPS: PublicCard[] = [
     bullets: ["Pozisyona özel soru setleri", "Sesli ve yazılı mülakat desteği", "Gerçek zamanlı değerlendirme", "Otomatik transkript ve özet"]
   },
   {
-    title: "Ön Eleme (Screening)",
+    title: "Ön Eleme",
     body: "Başvuruları AI ile hızlıca tarayın, uygun adayları öne çıkarın.",
     bullets: ["CV ve başvuru formu analizi", "Pozisyon-aday uyum skoru", "Otomatik kısa liste oluşturma", "Özelleştirilebilir eleme kriterleri"]
   },
@@ -216,9 +216,9 @@ export const PUBLIC_FEATURE_GROUPS: PublicCard[] = [
     bullets: ["Mülakat performans metrikleri", "Aday dönüşüm hunisi", "Pozisyon bazlı süre analizi", "Ekip verimliliği raporları"]
   },
   {
-    title: "Entegrasyonlar",
-    body: "Takvim ve API bağlantılarını ekip ihtiyacına göre kademeli şekilde devreye alın.",
-    bullets: ["Google Calendar bağlantısı", "Google kimliği ile planlama akışı", "ATS REST API / webhook", "Özel entegrasyon keşfi"]
+    title: "Aday Havuzu",
+    body: "Tüm adayları merkezi havuzda yönetin, geçmiş değerlendirmelere anında erişin.",
+    bullets: ["Merkezi aday veritabanı", "Geçmiş mülakat ve skorlar", "Etiketleme ve filtreleme", "Pozisyonlar arası aday paylaşımı"]
   }
 ];
 

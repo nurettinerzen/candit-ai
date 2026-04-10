@@ -3945,3 +3945,16 @@ export function transformUiText(text: string, locale: SiteLocale) {
 export function translateUiText(text: string, locale: SiteLocale) {
   return transformUiText(text, locale);
 }
+
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  "Farklı sektörler, aynı verimlilik": "Different industries, same efficiency",
+  "Her sektörde doğru adayı daha hızlı bulun": "Find the right candidate faster in every industry",
+  "Çözümler": "Solutions",
+  "Ön Eleme": "Pre-screening",
+  "Aday Havuzu": "Candidate Pool",
+  "Tüm adayları merkezi havuzda yönetin, geçmiş değerlendirmelere anında erişin.": "Manage all candidates in a central pool, instantly access past evaluations.",
+  "Merkezi aday veritabanı": "Central candidate database",
+  "Geçmiş mülakat ve skorlar": "Past interviews and scores",
+  "Etiketleme ve filtreleme": "Tagging and filtering",
+  "Pozisyonlar arası aday paylaşımı": "Cross-position candidate sharing",
+});

@@ -558,7 +558,7 @@ export function PublicFeaturesPage() {
     /* Aday Değerlendirme */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
     /* İş İlanı Yönetimi */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
     /* Analitik */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
-    /* Entegrasyonlar */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+    /* Aday Havuzu */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
   ];
 
   /* Gradient classes mapped to feature groups */
@@ -719,7 +719,7 @@ export function PublicFeaturesPage() {
         <section className={styles.ftSection}>
           <div className={styles.shell}>
             <div className={styles.ftSectionHeader}>
-              <h2 className={styles.ftSectionTitle}>{t("Her sektöre özel AI işe alım çözümleri")}</h2>
+              <h2 className={styles.ftSectionTitle}>{t("Farklı sektörler, aynı verimlilik")}</h2>
               <p className={styles.ftSectionSubtitle}>
                 {t("Teknoloji, perakende, sağlık, finans ve üretim sektörlerine özel mülakat akışları.")}
               </p>
@@ -807,6 +807,12 @@ export function PublicSolutionsPage() {
   const advantageGradients = [
     styles.ftGradCyan, styles.ftGradNavy, styles.ftGradBlue, styles.ftGradDeep
   ];
+  const advantageIcons = [
+    /* Hızlı */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+    /* Objektif */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+    /* Ölçeklenebilir */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+    /* Uyum */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  ];
 
   return (
     <PublicSiteFrame activeHref="/solutions">
@@ -819,10 +825,10 @@ export function PublicSolutionsPage() {
           <div className={cn(styles.shell, styles.solHeroInner)}>
             <span className={styles.solBadge}>
               <SparklesSvg />
-              {t("Sektörel AI Çözümleri")}
+              {t("Çözümler")}
             </span>
             <h1 className={styles.solHeroTitle}>
-              {t("Sektörünüze özel AI mülakat asistanı")}
+              {t("Her sektörde doğru adayı daha hızlı bulun")}
             </h1>
             <p className={styles.solHeroSubtitle}>
               {t("Teknoloji, perakende, sağlık, finans ve üretim sektörlerine özel AI mülakat ve ön eleme akışları ile hemen başlayın.")}
@@ -901,7 +907,7 @@ export function PublicSolutionsPage() {
               {PUBLIC_SOLUTIONS_ADVANTAGES.map((advantage, index) => (
                 <article key={advantage.title} className={styles.solBentoItem}>
                   <div className={styles.solBentoItemInner}>
-                    <div className={cn(styles.solBentoIcon, advantageGradients[index % advantageGradients.length])} />
+                    <div className={cn(styles.solBentoIcon, advantageGradients[index % advantageGradients.length])}>{advantageIcons[index]}</div>
                     <h3 className={styles.solBentoTitle}>{t(advantage.title)}</h3>
                     <p className={styles.solBentoDesc}>{t(advantage.body)}</p>
                   </div>
