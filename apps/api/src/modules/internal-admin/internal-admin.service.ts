@@ -817,13 +817,15 @@ export class InternalAdminService {
         enterprise: rows.filter((row) => row.billing.currentPlanKey === BillingPlanKey.ENTERPRISE).length,
         trialActive: rows.filter((row) => row.billing.trial.isActive).length,
         trialExpired: rows.filter((row) => row.billing.trial.isExpired).length,
-        billingRisk: rows.filter((row) =>
-          [
+        billingRisk: rows.filter((row) => {
+          const riskyStatuses: BillingAccountStatus[] = [
             BillingAccountStatus.PAST_DUE,
             BillingAccountStatus.INCOMPLETE,
             BillingAccountStatus.CANCELED
-          ].includes(row.billing.status as BillingAccountStatus)
-        ).length
+          ];
+
+          return riskyStatuses.includes(row.billing.status as BillingAccountStatus);
+        }).length
       },
       rows
     };
@@ -845,24 +847,16 @@ export class InternalAdminService {
         createdAt: true,
         users: {
           where: {
-            deletedAt: null
+            deletedAt: null,
+            role: Role.OWNER
           },
-          orderBy: [
-            {
-              role: "asc"
-            },
-            {
-              createdAt: "asc"
-            }
-          ],
+          take: 1,
           select: {
             id: true,
             fullName: true,
             email: true,
-            role: true,
             status: true,
-            lastLoginAt: true,
-            createdAt: true
+            lastLoginAt: true
           }
         }
       }
@@ -872,82 +866,29 @@ export class InternalAdminService {
       throw new NotFoundException("Müşteri hesabı bulunamadı.");
     }
 
-    const owner = tenant.users.find((user) => user.role === Role.OWNER) ?? null;
+    const owner = tenant.users[0] ?? null;
     const billing = await this.billingService.getOverview(tenantId, viewerEmail ?? undefined);
 
-    const [jobs, candidates, applications, interviews, recentNotifications, recentCheckouts] =
-      await Promise.all([
-        this.prisma.job.findMany({
-          where: {
-            tenantId,
-            archivedAt: null
-          },
-          orderBy: {
-            createdAt: "desc"
-          },
-          take: 5,
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            createdAt: true
-          }
-        }),
-        this.prisma.candidate.count({
-          where: {
-            tenantId,
-            deletedAt: null
-          }
-        }),
-        this.prisma.candidateApplication.count({
-          where: {
-            tenantId
-          }
-        }),
-        this.prisma.interviewSession.count({
-          where: {
-            tenantId
-          }
-        }),
-        this.prisma.notificationDelivery.findMany({
-          where: {
-            tenantId
-          },
-          orderBy: {
-            queuedAt: "desc"
-          },
-          take: 5,
-          select: {
-            id: true,
-            channel: true,
-            subject: true,
-            toAddress: true,
-            status: true,
-            queuedAt: true,
-            errorMessage: true
-          }
-        }),
-        this.prisma.billingCheckoutSession.findMany({
-          where: {
-            tenantId
-          },
-          orderBy: {
-            createdAt: "desc"
-          },
-          take: 5,
-          select: {
-            id: true,
-            checkoutType: true,
-            status: true,
-            label: true,
-            billingEmail: true,
-            checkoutUrl: true,
-            amountCents: true,
-            currency: true,
-            createdAt: true
-          }
-        })
-      ]);
+    const recentCheckouts = await this.prisma.billingCheckoutSession.findMany({
+      where: {
+        tenantId
+      },
+      orderBy: {
+        createdAt: "desc"
+      },
+      take: 5,
+      select: {
+        id: true,
+        checkoutType: true,
+        status: true,
+        label: true,
+        billingEmail: true,
+        checkoutUrl: true,
+        amountCents: true,
+        currency: true,
+        createdAt: true
+      }
+    });
 
     return {
       tenant: {
@@ -967,30 +908,8 @@ export class InternalAdminService {
             lastLoginAt: owner.lastLoginAt?.toISOString() ?? null
           }
         : null,
-      members: tenant.users.map((user) => ({
-        userId: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
-        createdAt: user.createdAt.toISOString()
-      })),
       billing,
       activity: {
-        candidateCount: candidates,
-        applicationCount: applications,
-        interviewCount: interviews,
-        recentJobs: jobs.map((job) => ({
-          id: job.id,
-          title: job.title,
-          status: job.status,
-          createdAt: job.createdAt.toISOString()
-        })),
-        recentNotifications: recentNotifications.map((row) => ({
-          ...row,
-          queuedAt: row.queuedAt.toISOString()
-        })),
         recentCheckouts: recentCheckouts.map((row) => ({
           ...row,
           createdAt: row.createdAt.toISOString()

@@ -7,23 +7,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState, ErrorState, LoadingState } from "../../../../../components/ui-states";
 import { useUiText } from "../../../../../components/site-language-provider";
 import { apiClient } from "../../../../../lib/api-client";
-import { formatDate } from "../../../../../lib/format";
+import { formatDate, formatDateOnly } from "../../../../../lib/format";
 import {
   formatBillingStatus,
   formatGenericDeliveryStatus,
   formatInternalPlan,
-  formatInternalRole,
-  formatJobStatus,
-  formatMemberStatus,
   formatTenantStatus,
   getInternalAdminCopy,
   translateInternalAdminMessage
 } from "../../../../../lib/internal-admin-copy";
+import type { SiteLocale } from "../../../../../lib/i18n";
 import type { BillingPlanKey, InternalAdminAccountDetailReadModel } from "../../../../../lib/types";
 
 type PlanFormState = {
   planKey: BillingPlanKey;
-  billingEmail: string;
   status: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED" | "INCOMPLETE";
   monthlyAmountCents: string;
   seatsIncluded: string;
@@ -80,7 +77,6 @@ function buildPlanFormState(detail: InternalAdminAccountDetailReadModel): PlanFo
 
   return {
     planKey: detail.billing.account.currentPlanKey,
-    billingEmail: account.billingEmail ?? "",
     status: (account.status as PlanFormState["status"]) ?? "ACTIVE",
     monthlyAmountCents: String(currentPlan.monthlyAmountCents ?? ""),
     seatsIncluded: String(currentPlan.seatsIncluded),
@@ -92,6 +88,27 @@ function buildPlanFormState(detail: InternalAdminAccountDetailReadModel): PlanFo
     brandedCandidateExperience: account.features.brandedCandidateExperience,
     customIntegrations: account.features.customIntegrations,
     note: ""
+  };
+}
+
+function isTrialAccount(detail: InternalAdminAccountDetailReadModel) {
+  return detail.billing.trial.isActive || detail.billing.trial.isExpired;
+}
+
+function getDisplayedPlanLabel(
+  detail: InternalAdminAccountDetailReadModel,
+  locale: SiteLocale,
+  copy: ReturnType<typeof getInternalAdminCopy>
+) {
+  return isTrialAccount(detail) ? copy.segmentTrial : formatInternalPlan(detail.billing.account.currentPlanKey, locale);
+}
+
+function normalizeAccountDetail(detail: InternalAdminAccountDetailReadModel): InternalAdminAccountDetailReadModel {
+  return {
+    ...detail,
+    activity: {
+      recentCheckouts: Array.isArray(detail.activity?.recentCheckouts) ? detail.activity.recentCheckouts : []
+    }
   };
 }
 
@@ -115,7 +132,7 @@ export default function InternalAdminAccountDetailPage() {
     setError("");
 
     try {
-      const result = await apiClient.internalAdminAccountDetail(tenantId);
+      const result = normalizeAccountDetail(await apiClient.internalAdminAccountDetail(tenantId));
       setDetail(result);
       setPlanForm(buildPlanFormState(result));
     } catch (loadError) {
@@ -130,7 +147,7 @@ export default function InternalAdminAccountDetailPage() {
     void loadPage();
   }, [loadPage]);
 
-  const currentPlanDefaults = useMemo(() => {
+  const selectedPlanDefaults = useMemo(() => {
     if (!detail || !planForm) return null;
     return detail.billing.planCatalog.find((plan) => plan.key === planForm.planKey) ?? null;
   }, [detail, planForm]);
@@ -162,23 +179,20 @@ export default function InternalAdminAccountDetailPage() {
   async function handleStatusUpdate(status: "ACTIVE" | "SUSPENDED" | "DELETED") {
     if (!tenantId) return;
 
-    if (status === "SUSPENDED") {
-      const approved = confirmAdminAction(
-        locale === "en"
-          ? "Suspend this workspace? Recruiter access will be blocked until re-activated."
-          : "Bu workspace askıya alınsın mı? Recruiter erişimi tekrar aktive edilene kadar kapanacak."
-      );
-      if (!approved) return;
-    }
-
-    if (status === "DELETED") {
-      const approved = confirmAdminAction(
-        locale === "en"
-          ? "Delete this workspace? This is a destructive admin action."
-          : "Bu workspace silinsin mi? Bu işlem yıkıcı bir yönetim aksiyonudur."
-      );
-      if (!approved) return;
-    }
+    const approved = confirmAdminAction(
+      status === "ACTIVE"
+        ? locale === "en"
+          ? "Activate this customer account?"
+          : "Bu müşteri hesabı aktifleştirilsin mi?"
+        : status === "SUSPENDED"
+          ? locale === "en"
+            ? "Suspend this customer account?"
+            : "Bu müşteri hesabı askıya alınsın mı?"
+          : locale === "en"
+            ? "Mark this customer account as deleted?"
+            : "Bu müşteri hesabı silinmiş olarak işaretlensin mi?"
+    );
+    if (!approved) return;
 
     setBusyAction(`status:${status}`);
     setNotice("");
@@ -189,7 +203,7 @@ export default function InternalAdminAccountDetailPage() {
       setNotice(copy.workspaceStatusSaved);
       await loadPage();
     } catch (actionError) {
-          setError(translateInternalAdminMessage(toErrorMessage(actionError, copy.internalOnly), locale));
+      setError(translateInternalAdminMessage(toErrorMessage(actionError, copy.internalOnly), locale));
     } finally {
       setBusyAction("");
     }
@@ -200,8 +214,8 @@ export default function InternalAdminAccountDetailPage() {
 
     const approved = confirmAdminAction(
       locale === "en"
-        ? "Send a password reset invite to the workspace owner?"
-        : "Workspace sahibine şifre sıfırlama daveti gönderilsin mi?"
+        ? "Send a fresh owner access link?"
+        : "Hesap sahibine yeni erişim bağlantısı gönderilsin mi?"
     );
     if (!approved) return;
 
@@ -230,7 +244,6 @@ export default function InternalAdminAccountDetailPage() {
     try {
       const result = await apiClient.internalAdminUpdateAccountPlan(tenantId, {
         planKey: planForm.planKey,
-        billingEmail: planForm.billingEmail || undefined,
         status: planForm.status,
         monthlyAmountCents: planForm.monthlyAmountCents ? Number(planForm.monthlyAmountCents) : undefined,
         seatsIncluded: Number(planForm.seatsIncluded),
@@ -316,256 +329,139 @@ export default function InternalAdminAccountDetailPage() {
     );
   }
 
-  const quotaMap = new Map(detail.billing.usage.quotas.map((quota) => [quota.key, quota]));
+  const displayedPlanLabel = getDisplayedPlanLabel(detail, locale, copy);
+  const isTrial = isTrialAccount(detail);
+  const planFieldHint = isTrial
+    ? locale === "en"
+      ? "Trial status is tracked separately from the base catalog plan."
+      : "Deneme durumu, temel katalog plandan ayrı takip edilir."
+    : "";
+  const accountCardTitle = locale === "en" ? "Account" : "Hesap";
+  const accountCardSubtitle = locale === "en" ? "Customer workspace and owner details." : "Müşteri hesabı ve sahip bilgileri.";
+  const billingSummaryTitle = locale === "en" ? "Subscription Summary" : "Abonelik Özeti";
+  const billingSummarySubtitle = isTrial
+    ? locale === "en"
+      ? "Trial lifecycle is shown separately from the base catalog plan."
+      : "Deneme yaşam döngüsü, temel katalog plandan ayrı gösterilir."
+    : locale === "en"
+      ? "Current billing state and renewal window."
+      : "Güncel abonelik durumu ve yenileme dönemi.";
+  const adminActionsTitle = locale === "en" ? "Admin Actions" : "Yönetim İşlemleri";
+  const adminActionsSubtitle = locale === "en"
+    ? "Use only when you need to change customer access."
+    : "Sadece müşteri erişimini değiştirmek gerektiğinde kullanın.";
+  const billingSettingsTitle = locale === "en" ? "Plan Settings" : "Plan Ayarları";
+  const billingSettingsSubtitle = locale === "en"
+    ? "Adjust the base plan, billing status, limits, and enabled capabilities."
+    : "Temel planı, abonelik durumunu, limitleri ve açık özellikleri yönetin.";
+  const quotaTitle = locale === "en" ? "Manual Quota" : "Manuel Kota";
+  const quotaSubtitle = locale === "en"
+    ? "Add temporary quota on top of the current plan when needed."
+    : "Gerektiğinde mevcut planın üzerine geçici kota tanımlayın.";
+  const paymentLinksTitle = locale === "en" ? "Payment Links" : "Ödeme Linkleri";
+  const paymentLinksSubtitle = locale === "en"
+    ? "Recent checkout links created for this customer."
+    : "Bu müşteri için oluşturulan son ödeme linkleri.";
+  const recentCheckouts = detail.activity?.recentCheckouts ?? [];
 
   return (
-    <section className="page-grid">
+    <section className="page-grid admin-detail-page">
       <Link href={"/admin/users" as Route} className="ghost-button admin-inline-back">
         ← {copy.backToUsers}
       </Link>
-      <div className="page-header page-header-plain">
+
+      <div className="page-header">
         <div className="page-header-copy">
           <h1>{detail.tenant.name}</h1>
           <p>{copy.accountDetailSubtitle}</p>
+        </div>
+        <div className="page-header-actions">
+          <span className={`status-badge status-${statusVariant(detail.tenant.status)}`}>
+            {formatTenantStatus(detail.tenant.status, locale)}
+          </span>
+          <span className={`status-badge status-${statusVariant(detail.billing.account.status)}`}>
+            {formatBillingStatus(detail.billing.account.status, locale)}
+          </span>
         </div>
       </div>
 
       {notice ? <div className="notice-box notice-success">{notice}</div> : null}
       {error && detail ? <div className="notice-box notice-danger">{error}</div> : null}
 
-      <section className="admin-metric-grid">
-        <article className="admin-metric-card tone-primary">
-          <span className="admin-metric-label">{copy.currentPlan}</span>
-          <strong className="admin-metric-value">{formatInternalPlan(detail.billing.account.currentPlanKey, locale)}</strong>
-          <p className="admin-metric-copy">{formatBillingStatus(detail.billing.account.status, locale)}</p>
-        </article>
-        <article className="admin-metric-card tone-success">
-          <span className="admin-metric-label">{copy.teamMembers}</span>
-          <strong className="admin-metric-value">{detail.members.length}</strong>
-        </article>
-        <article className="admin-metric-card tone-warning">
-          <span className="admin-metric-label">{copy.quotaLabelCandidateProcessing}</span>
-          <strong className="admin-metric-value">
-            {quotaMap.get("CANDIDATE_PROCESSING")?.used ?? 0}/{quotaMap.get("CANDIDATE_PROCESSING")?.limit ?? 0}
-          </strong>
-        </article>
-        <article className="admin-metric-card tone-info">
-          <span className="admin-metric-label">{copy.quotaLabelAiInterviews}</span>
-          <strong className="admin-metric-value">
-            {quotaMap.get("AI_INTERVIEWS")?.used ?? 0}/{quotaMap.get("AI_INTERVIEWS")?.limit ?? 0}
-          </strong>
-        </article>
-      </section>
+      <div className="admin-detail-top-grid">
+        <section className="panel admin-detail-card">
+          <div className="admin-panel-head">
+            <h2>{accountCardTitle}</h2>
+            <p>{accountCardSubtitle}</p>
+          </div>
+          <ul className="admin-detail-list admin-kv-list">
+            <li><span>{copy.companyName}</span><strong>{detail.tenant.name}</strong></li>
+            <li><span>{copy.ownerFullName}</span><strong>{detail.owner?.fullName ?? "—"}</strong></li>
+            <li><span>{copy.ownerEmail}</span><strong>{detail.owner?.email ?? "—"}</strong></li>
+            <li><span>{copy.workspaceStatus}</span><strong>{formatTenantStatus(detail.tenant.status, locale)}</strong></li>
+            <li><span>{copy.createdAt}</span><strong>{formatDateOnly(detail.tenant.createdAt)}</strong></li>
+          </ul>
+        </section>
 
-      <section className="admin-detail-layout">
+        <section className="panel admin-detail-card">
+          <div className="admin-panel-head">
+            <h2>{billingSummaryTitle}</h2>
+            <p>{billingSummarySubtitle}</p>
+          </div>
+          <ul className="admin-detail-list admin-kv-list">
+            <li><span>{copy.currentPlan}</span><strong>{displayedPlanLabel}</strong></li>
+            <li><span>{copy.billingStatus}</span><strong>{formatBillingStatus(detail.billing.account.status, locale)}</strong></li>
+            <li><span>{copy.billingEmail}</span><strong>{detail.billing.account.billingEmail ?? "—"}</strong></li>
+            <li>
+              <span>{detail.billing.trial.isActive || detail.billing.trial.isExpired ? copy.trialStartedAt : copy.createdAt}</span>
+              <strong>
+                {detail.billing.trial.startedAt
+                  ? formatDateOnly(detail.billing.trial.startedAt)
+                  : formatDateOnly(detail.tenant.createdAt)}
+              </strong>
+            </li>
+            <li>
+              <span>{detail.billing.trial.isActive || detail.billing.trial.isExpired ? copy.trialEndsAt : copy.nextInvoice}</span>
+              <strong>{formatDateOnly(detail.billing.trial.endsAt ?? detail.billing.account.currentPeriodEnd)}</strong>
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <div className="admin-detail-main-grid">
         <div className="admin-section-stack">
-          <section className="panel">
-            <div className="tlx-section-header">
-              <h2 className="tlx-section-title">{copy.overview}</h2>
+          <section className="panel admin-detail-card">
+            <div className="admin-panel-head">
+              <h2>{billingSettingsTitle}</h2>
+              <p>{billingSettingsSubtitle}</p>
             </div>
-            <div className="admin-detail-grid">
-              <article className="admin-subtle-card">
-                <span className="section-label">{copy.workspace}</span>
-                <ul className="admin-detail-list">
-                  <li><span>{copy.workspaceStatus}</span><strong>{formatTenantStatus(detail.tenant.status, locale)}</strong></li>
-                  <li><span>{copy.createdAt}</span><strong>{formatDate(detail.tenant.createdAt)}</strong></li>
-                  <li><span>Locale</span><strong>{detail.tenant.locale}</strong></li>
-                  <li><span>Timezone</span><strong>{detail.tenant.timezone}</strong></li>
-                </ul>
-              </article>
-              <article className="admin-subtle-card">
-                <span className="section-label">{copy.billing}</span>
-                <ul className="admin-detail-list">
-                  <li><span>{copy.billingEmail}</span><strong>{detail.billing.account.billingEmail ?? "—"}</strong></li>
-                  <li><span>{copy.currentPlan}</span><strong>{formatInternalPlan(detail.billing.account.currentPlanKey, locale)}</strong></li>
-                  <li><span>{copy.billingStatus}</span><strong>{formatBillingStatus(detail.billing.account.status, locale)}</strong></li>
-                  <li><span>{copy.nextInvoice}</span><strong>{formatDate(detail.billing.account.currentPeriodEnd)}</strong></li>
-                </ul>
-              </article>
-              <article className="admin-subtle-card">
-                <span className="section-label">{copy.trialLifecycle}</span>
-                <ul className="admin-detail-list">
-                  <li>
-                    <span>{copy.trialStatus}</span>
-                    <strong>
-                      {detail.billing.trial.isActive
-                        ? copy.trialActive
-                        : detail.billing.trial.isExpired
-                          ? copy.trialExpired
-                          : "—"}
-                    </strong>
-                  </li>
-                  <li>
-                    <span>{copy.trialStartedAt}</span>
-                    <strong>{detail.billing.trial.startedAt ? formatDate(detail.billing.trial.startedAt) : "—"}</strong>
-                  </li>
-                  <li>
-                    <span>{copy.trialEndsAt}</span>
-                    <strong>{detail.billing.trial.endsAt ? formatDate(detail.billing.trial.endsAt) : "—"}</strong>
-                  </li>
-                  <li>
-                    <span>{copy.daysRemaining}</span>
-                    <strong>{detail.billing.trial.isActive ? detail.billing.trial.daysRemaining : "—"}</strong>
-                  </li>
-                </ul>
-              </article>
-            </div>
-          </section>
-
-          <section className="panel">
-            <div className="tlx-section-header">
-              <h2 className="tlx-section-title">{copy.teamMembers}</h2>
-            </div>
-            <div className="table-scroll">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>{copy.owner}</th>
-                    <th>{copy.status}</th>
-                    <th>{copy.createdAt}</th>
-                    <th>{copy.lastLogin}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.members.map((member) => (
-                    <tr key={member.userId}>
-                      <td>
-                        <div className="admin-table-cell-stack">
-                          <strong>{member.fullName}</strong>
-                          <span className="small">{member.email}</span>
-                          <span className="small">{formatInternalRole(member.role, locale)}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`status-badge status-${statusVariant(member.status)}`}>
-                          {formatMemberStatus(member.status, locale)}
-                        </span>
-                      </td>
-                      <td>{formatDate(member.createdAt)}</td>
-                      <td>{member.lastLoginAt ? formatDate(member.lastLoginAt) : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="panel">
-            <div className="tlx-section-header">
-              <h2 className="tlx-section-title">{copy.recentActivity}</h2>
-            </div>
-            <div className="admin-detail-grid">
-              <article className="admin-subtle-card">
-                <span className="section-label">{copy.recentJobs}</span>
-                {detail.activity.recentJobs.length === 0 ? (
-                  <EmptyState message={copy.noRecentJobs} />
-                ) : (
-                  <div className="admin-stack">
-                    {detail.activity.recentJobs.map((job) => (
-                      <div key={job.id} className="admin-list-row">
-                        <div>
-                          <strong>{job.title}</strong>
-                          <p className="small">{formatDate(job.createdAt)}</p>
-                        </div>
-                        <span className={`status-badge status-${statusVariant(job.status)}`}>
-                          {formatJobStatus(job.status, locale)}
-                        </span>
-                      </div>
+            <div className="form-grid admin-compact-form">
+              <div className="admin-detail-grid">
+                <div className="field">
+                  <label className="field-label">{isTrial ? copy.basePlan : copy.planKey}</label>
+                  <select className="select" value={planForm.planKey} onChange={(event) => handlePlanKeyChange(event.target.value as BillingPlanKey)}>
+                    <option value="STARTER">{formatInternalPlan("STARTER", locale)}</option>
+                    <option value="GROWTH">{formatInternalPlan("GROWTH", locale)}</option>
+                    <option value="ENTERPRISE">{formatInternalPlan("ENTERPRISE", locale)}</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label className="field-label">{copy.billingStatus}</label>
+                  <select
+                    className="select"
+                    value={planForm.status}
+                    onChange={(event) => setPlanForm({ ...planForm, status: event.target.value as PlanFormState["status"] })}
+                  >
+                    {(["TRIALING", "ACTIVE", "PAST_DUE", "INCOMPLETE", "CANCELED"] as const).map((status) => (
+                      <option key={status} value={status}>
+                        {formatBillingStatus(status, locale)}
+                      </option>
                     ))}
-                  </div>
-                )}
-              </article>
-              <article className="admin-subtle-card">
-                <span className="section-label">{copy.recentNotifications}</span>
-                {detail.activity.recentNotifications.length === 0 ? (
-                  <EmptyState message={copy.noRecentNotifications} />
-                ) : (
-                  <div className="admin-stack">
-                    {detail.activity.recentNotifications.map((notification) => (
-                      <div key={notification.id} className="admin-list-row">
-                        <div>
-                          <strong>{notification.subject ?? notification.channel}</strong>
-                          <p className="small">{notification.toAddress}</p>
-                        </div>
-                        <span className={`status-badge status-${statusVariant(notification.status)}`}>
-                          {formatGenericDeliveryStatus(notification.status, locale)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </article>
-            </div>
-          </section>
-        </div>
-
-        <div className="admin-section-stack">
-          <section className="panel">
-            <div className="tlx-section-header">
-              <h2 className="tlx-section-title">{copy.statusActions}</h2>
-            </div>
-            <div className="admin-action-grid">
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() => void handleStatusUpdate("ACTIVE")}
-                disabled={busyAction !== "" || detail.tenant.status === "ACTIVE"}
-              >
-                {busyAction === "status:ACTIVE" ? copy.processing : copy.activateWorkspaceConfirm}
-              </button>
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() => void handleStatusUpdate("SUSPENDED")}
-                disabled={busyAction !== "" || detail.tenant.status === "SUSPENDED"}
-              >
-                {busyAction === "status:SUSPENDED" ? copy.processing : copy.suspendWorkspaceConfirm}
-              </button>
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() => void handleStatusUpdate("DELETED")}
-                disabled={busyAction !== "" || detail.tenant.status === "DELETED"}
-              >
-                {busyAction === "status:DELETED" ? copy.processing : copy.deleteWorkspaceConfirm}
-              </button>
-              <button type="button" className="btn-primary-sm" onClick={() => void handleOwnerReset()} disabled={busyAction !== "" || !detail.owner}>
-                {busyAction === "owner-reset" ? copy.processing : copy.sendResetLink}
-              </button>
-            </div>
-            <p className="small" style={{ marginTop: 12 }}>{copy.ownerResetInfo}</p>
-          </section>
-
-          <section className="panel">
-            <div className="tlx-section-header">
-              <h2 className="tlx-section-title">{copy.planSettings}</h2>
-            </div>
-            <div className="form-grid">
-              <div className="field">
-                <label className="field-label">{copy.planKey}</label>
-                <select className="select" value={planForm.planKey} onChange={(event) => handlePlanKeyChange(event.target.value as BillingPlanKey)}>
-                  <option value="STARTER">{formatInternalPlan("STARTER", locale)}</option>
-                  <option value="GROWTH">{formatInternalPlan("GROWTH", locale)}</option>
-                  <option value="ENTERPRISE">{formatInternalPlan("ENTERPRISE", locale)}</option>
-                </select>
-                <span className="field-hint">{copy.planHintStarterGrowth}</span>
+                  </select>
+                </div>
               </div>
 
-              <div className="field">
-                <label className="field-label">{copy.billingEmail}</label>
-                <input className="input" value={planForm.billingEmail} onChange={(event) => setPlanForm({ ...planForm, billingEmail: event.target.value })} />
-              </div>
-
-              <div className="field">
-                <label className="field-label">{copy.billingStatus}</label>
-                <select className="select" value={planForm.status} onChange={(event) => setPlanForm({ ...planForm, status: event.target.value as PlanFormState["status"] })}>
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="TRIALING">TRIALING</option>
-                  <option value="PAST_DUE">PAST_DUE</option>
-                  <option value="INCOMPLETE">INCOMPLETE</option>
-                  <option value="CANCELED">CANCELED</option>
-                </select>
-              </div>
+              {planFieldHint ? <p className="admin-form-note">{planFieldHint}</p> : null}
 
               <div className="field">
                 <label className="field-label">{copy.monthlyAmount}</label>
@@ -574,7 +470,6 @@ export default function InternalAdminAccountDetailPage() {
                   value={planForm.monthlyAmountCents}
                   onChange={(event) => setPlanForm({ ...planForm, monthlyAmountCents: event.target.value })}
                 />
-                <span className="field-hint">{copy.billingAmountHint}</span>
               </div>
 
               <div className="admin-detail-grid">
@@ -626,23 +521,25 @@ export default function InternalAdminAccountDetailPage() {
                 <textarea className="textarea" value={planForm.note} onChange={(event) => setPlanForm({ ...planForm, note: event.target.value })} />
               </div>
 
-              <button type="button" className="btn-primary-sm" onClick={() => void handlePlanSave()} disabled={busyAction !== ""}>
-                {busyAction === "plan" ? copy.saving : copy.saveChanges}
-              </button>
-
-              {currentPlanDefaults ? (
-                <p className="small">
-                  {copy.currentPlan}: {formatInternalPlan(currentPlanDefaults.key, locale)} • {copy.seatsIncluded}: {currentPlanDefaults.seatsIncluded}
-                </p>
-              ) : null}
+              <div className="admin-inline-actions">
+                <button type="button" className="btn-primary-sm" onClick={() => void handlePlanSave()} disabled={busyAction !== ""}>
+                  {busyAction === "plan" ? copy.saving : copy.saveChanges}
+                </button>
+                {selectedPlanDefaults ? (
+                  <span className="small">
+                    {locale === "en" ? "Base catalog" : "Temel katalog"}: {formatInternalPlan(selectedPlanDefaults.key, locale)}
+                  </span>
+                ) : null}
+              </div>
             </div>
           </section>
 
-          <section className="panel">
-            <div className="tlx-section-header">
-              <h2 className="tlx-section-title">{copy.quotaGrants}</h2>
+          <section className="panel admin-detail-card">
+            <div className="admin-panel-head">
+              <h2>{quotaTitle}</h2>
+              <p>{quotaSubtitle}</p>
             </div>
-            <div className="form-grid">
+            <div className="form-grid admin-compact-form">
               <div className="field">
                 <label className="field-label">{copy.grantLabel}</label>
                 <input className="input" value={grantForm.label} onChange={(event) => setGrantForm({ ...grantForm, label: event.target.value })} />
@@ -667,30 +564,71 @@ export default function InternalAdminAccountDetailPage() {
                 </div>
               </div>
 
-              <button type="button" className="btn-primary-sm" onClick={() => void handleGrantSubmit()} disabled={busyAction !== ""}>
-                {busyAction === "grant" ? copy.processing : copy.addQuota}
+              <div className="admin-inline-actions">
+                <button type="button" className="btn-primary-sm" onClick={() => void handleGrantSubmit()} disabled={busyAction !== ""}>
+                  {busyAction === "grant" ? copy.processing : copy.addQuota}
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside className="admin-section-stack">
+          <section className="panel admin-detail-card">
+            <div className="admin-panel-head">
+              <h2>{adminActionsTitle}</h2>
+              <p>{adminActionsSubtitle}</p>
+            </div>
+            <div className="admin-action-stack">
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => void handleStatusUpdate("ACTIVE")}
+                disabled={busyAction !== "" || detail.tenant.status === "ACTIVE"}
+              >
+                {busyAction === "status:ACTIVE" ? copy.processing : copy.activateWorkspaceConfirm}
+              </button>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => void handleStatusUpdate("SUSPENDED")}
+                disabled={busyAction !== "" || detail.tenant.status === "SUSPENDED"}
+              >
+                {busyAction === "status:SUSPENDED" ? copy.processing : copy.suspendWorkspaceConfirm}
+              </button>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => void handleStatusUpdate("DELETED")}
+                disabled={busyAction !== "" || detail.tenant.status === "DELETED"}
+              >
+                {busyAction === "status:DELETED" ? copy.processing : copy.deleteWorkspaceConfirm}
+              </button>
+              <button type="button" className="btn-primary-sm" onClick={() => void handleOwnerReset()} disabled={busyAction !== "" || !detail.owner}>
+                {busyAction === "owner-reset" ? copy.processing : copy.sendResetLink}
               </button>
             </div>
           </section>
 
-          <section className="panel">
-            <div className="tlx-section-header">
-              <h2 className="tlx-section-title">{copy.recentPaymentLinks}</h2>
+          <section className="panel admin-detail-card">
+            <div className="admin-panel-head">
+              <h2>{paymentLinksTitle}</h2>
+              <p>{paymentLinksSubtitle}</p>
             </div>
-            {detail.activity.recentCheckouts.length === 0 ? (
+            {recentCheckouts.length === 0 ? (
               <EmptyState message={copy.noRecentCheckouts} />
             ) : (
               <div className="admin-stack">
-                {detail.activity.recentCheckouts.map((checkout) => (
+                {recentCheckouts.map((checkout) => (
                   <div key={checkout.id} className="admin-list-row">
                     <div>
                       <strong>{checkout.label ?? checkout.checkoutType}</strong>
                       <p className="small">{formatDate(checkout.createdAt)}</p>
                     </div>
                     <div className="admin-inline-actions">
-                        <span className={`status-badge status-${statusVariant(checkout.status)}`}>
-                          {formatGenericDeliveryStatus(checkout.status, locale)}
-                        </span>
+                      <span className={`admin-inline-status tone-${statusVariant(checkout.status)}`}>
+                        {formatGenericDeliveryStatus(checkout.status, locale)}
+                      </span>
                       {checkout.checkoutUrl ? (
                         <a href={checkout.checkoutUrl} target="_blank" rel="noreferrer" className="ghost-button">
                           {copy.openCheckoutLink}
@@ -702,8 +640,8 @@ export default function InternalAdminAccountDetailPage() {
               </div>
             )}
           </section>
-        </div>
-      </section>
+        </aside>
+      </div>
     </section>
   );
 }

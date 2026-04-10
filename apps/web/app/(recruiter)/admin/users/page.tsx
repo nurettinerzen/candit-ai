@@ -370,14 +370,14 @@ export default function InternalAdminUsersPage() {
             <div className="table-scroll">
               <table className="admin-table admin-users-table">
                 <colgroup>
-                  <col style={{ width: "23%" }} />
-                  <col style={{ width: "15%" }} />
-                  <col style={{ width: "11%" }} />
-                  <col style={{ width: "11%" }} />
-                  <col style={{ width: "11%" }} />
-                  <col style={{ width: "17%" }} />
-                  <col style={{ width: "6%" }} />
-                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "22%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "10%" }} />
                 </colgroup>
                 <thead>
                   <tr>

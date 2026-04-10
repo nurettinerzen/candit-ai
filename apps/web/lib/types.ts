@@ -1000,35 +1000,8 @@ export type InternalAdminAccountDetailReadModel = {
     status: MemberStatus;
     lastLoginAt: string | null;
   } | null;
-  members: Array<{
-    userId: string;
-    fullName: string;
-    email: string;
-    role: "OWNER" | "MANAGER" | "STAFF";
-    status: MemberStatus;
-    lastLoginAt: string | null;
-    createdAt: string;
-  }>;
   billing: BillingOverviewReadModel;
   activity: {
-    candidateCount: number;
-    applicationCount: number;
-    interviewCount: number;
-    recentJobs: Array<{
-      id: string;
-      title: string;
-      status: JobStatus;
-      createdAt: string;
-    }>;
-    recentNotifications: Array<{
-      id: string;
-      channel: string;
-      subject: string | null;
-      toAddress: string;
-      status: string;
-      queuedAt: string;
-      errorMessage: string | null;
-    }>;
     recentCheckouts: Array<{
       id: string;
       checkoutType: string;
