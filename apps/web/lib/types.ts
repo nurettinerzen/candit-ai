@@ -947,6 +947,13 @@ export type InternalAdminCustomerRow = {
     currentPlanKey: BillingPlanKey;
     status: string;
     currentPeriodEnd: string;
+    trial: {
+      isActive: boolean;
+      isExpired: boolean;
+      startedAt: string | null;
+      endsAt: string | null;
+      daysRemaining: number;
+    };
   };
   usage: {
     seats: BillingQuotaOverview | null;
@@ -970,6 +977,9 @@ export type InternalAdminAccountListReadModel = {
     starter: number;
     growth: number;
     enterprise: number;
+    trialActive: number;
+    trialExpired: number;
+    billingRisk: number;
   };
   rows: InternalAdminCustomerRow[];
 };

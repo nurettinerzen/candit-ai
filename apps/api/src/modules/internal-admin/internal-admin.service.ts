@@ -780,7 +780,14 @@ export class InternalAdminService {
             billingEmail: billing.account.billingEmail,
             currentPlanKey: billing.account.currentPlanKey,
             status: billing.account.status,
-            currentPeriodEnd: billing.account.currentPeriodEnd
+            currentPeriodEnd: billing.account.currentPeriodEnd,
+            trial: {
+              isActive: billing.trial.isActive,
+              isExpired: billing.trial.isExpired,
+              startedAt: billing.trial.startedAt,
+              endsAt: billing.trial.endsAt,
+              daysRemaining: billing.trial.daysRemaining
+            }
           },
           usage: {
             seats: billing.usage.quotas.find((quota) => quota.key === "SEATS") ?? null,
@@ -807,7 +814,16 @@ export class InternalAdminService {
         suspended: rows.filter((row) => row.tenantStatus === TenantStatus.SUSPENDED).length,
         starter: rows.filter((row) => row.billing.currentPlanKey === BillingPlanKey.STARTER).length,
         growth: rows.filter((row) => row.billing.currentPlanKey === BillingPlanKey.GROWTH).length,
-        enterprise: rows.filter((row) => row.billing.currentPlanKey === BillingPlanKey.ENTERPRISE).length
+        enterprise: rows.filter((row) => row.billing.currentPlanKey === BillingPlanKey.ENTERPRISE).length,
+        trialActive: rows.filter((row) => row.billing.trial.isActive).length,
+        trialExpired: rows.filter((row) => row.billing.trial.isExpired).length,
+        billingRisk: rows.filter((row) =>
+          [
+            BillingAccountStatus.PAST_DUE,
+            BillingAccountStatus.INCOMPLETE,
+            BillingAccountStatus.CANCELED
+          ].includes(row.billing.status as BillingAccountStatus)
+        ).length
       },
       rows
     };

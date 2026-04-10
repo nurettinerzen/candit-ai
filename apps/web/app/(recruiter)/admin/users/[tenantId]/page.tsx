@@ -387,6 +387,33 @@ export default function InternalAdminAccountDetailPage() {
                   <li><span>{copy.nextInvoice}</span><strong>{formatDate(detail.billing.account.currentPeriodEnd)}</strong></li>
                 </ul>
               </article>
+              <article className="admin-subtle-card">
+                <span className="section-label">{copy.trialLifecycle}</span>
+                <ul className="admin-detail-list">
+                  <li>
+                    <span>{copy.trialStatus}</span>
+                    <strong>
+                      {detail.billing.trial.isActive
+                        ? copy.trialActive
+                        : detail.billing.trial.isExpired
+                          ? copy.trialExpired
+                          : "—"}
+                    </strong>
+                  </li>
+                  <li>
+                    <span>{copy.trialStartedAt}</span>
+                    <strong>{detail.billing.trial.startedAt ? formatDate(detail.billing.trial.startedAt) : "—"}</strong>
+                  </li>
+                  <li>
+                    <span>{copy.trialEndsAt}</span>
+                    <strong>{detail.billing.trial.endsAt ? formatDate(detail.billing.trial.endsAt) : "—"}</strong>
+                  </li>
+                  <li>
+                    <span>{copy.daysRemaining}</span>
+                    <strong>{detail.billing.trial.isActive ? detail.billing.trial.daysRemaining : "—"}</strong>
+                  </li>
+                </ul>
+              </article>
             </div>
           </section>
 

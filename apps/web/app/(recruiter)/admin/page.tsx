@@ -6,13 +6,15 @@ import { useCallback, useEffect, useState } from "react";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { useUiText } from "../../../components/site-language-provider";
 import { apiClient } from "../../../lib/api-client";
-import { formatDate } from "../../../lib/format";
 import {
   formatInternalPlan,
   getInternalAdminCopy,
   translateInternalAdminMessage
 } from "../../../lib/internal-admin-copy";
-import type { InternalAdminDashboardReadModel } from "../../../lib/types";
+import type {
+  InternalAdminAccountListReadModel,
+  InternalAdminDashboardReadModel
+} from "../../../lib/types";
 
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -24,10 +26,21 @@ function dashboardBadgeVariant(key: string) {
   return "warn";
 }
 
+type MetricCard = {
+  label: string;
+  value: number;
+  tone: "primary" | "success" | "warning" | "danger" | "info" | "muted";
+  icon: string;
+  iconTone: "primary" | "success" | "warning" | "danger" | "info" | "muted";
+  href: Route;
+  detail?: string;
+};
+
 export default function InternalAdminDashboardPage() {
   const { locale } = useUiText();
   const copy = getInternalAdminCopy(locale);
   const [data, setData] = useState<InternalAdminDashboardReadModel | null>(null);
+  const [accounts, setAccounts] = useState<InternalAdminAccountListReadModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -36,10 +49,15 @@ export default function InternalAdminDashboardPage() {
     setError("");
 
     try {
-      const result = await apiClient.internalAdminDashboard();
-      setData(result);
+      const [dashboardResult, accountResult] = await Promise.all([
+        apiClient.internalAdminDashboard(),
+        apiClient.internalAdminAccounts()
+      ]);
+      setData(dashboardResult);
+      setAccounts(accountResult);
     } catch (loadError) {
       setData(null);
+      setAccounts(null);
       setError(translateInternalAdminMessage(toErrorMessage(loadError, copy.internalOnly), locale));
     } finally {
       setLoading(false);
@@ -60,7 +78,7 @@ export default function InternalAdminDashboardPage() {
     );
   }
 
-  if (error && !data) {
+  if (error && (!data || !accounts)) {
     return (
       <section className="page-grid">
         <section className="panel">
@@ -77,7 +95,7 @@ export default function InternalAdminDashboardPage() {
     );
   }
 
-  if (!data) {
+  if (!data || !accounts) {
     return (
       <section className="page-grid">
         <section className="panel">
@@ -87,48 +105,117 @@ export default function InternalAdminDashboardPage() {
     );
   }
 
-  /* ── Stat card definitions (icon + label + value, 3-col grid) ── */
-  const metrics = [
-    { label: copy.totalCustomers, value: data.summary.totalCustomers, tone: "primary", icon: "\u{1F465}", iconTone: "primary" },
-    { label: copy.activeCustomers, value: data.summary.activeCustomers, tone: "success", icon: "\u2713", iconTone: "success" },
-    { label: copy.todayCandidateProcessing, value: data.summary.todayCandidateProcessing, tone: "warning", icon: "\u{1F4CB}", iconTone: "warning" },
-    { label: copy.todayAiInterviews, value: data.summary.todayAiInterviews, tone: "info", icon: "\u{1F399}", iconTone: "info" },
-    { label: copy.openAlerts, value: data.summary.openAlerts, tone: "danger", icon: "\u26A0", iconTone: "danger" },
-    { label: copy.openLeadInbox, value: data.summary.openLeadInbox, tone: "warning", icon: "\u2709", iconTone: "warning" },
-    { label: copy.enterpriseCustomers, value: data.summary.enterpriseCustomers, tone: "muted", icon: "\u{1F3E2}", iconTone: "muted" }
+  const trialTotal = accounts.summary.trialActive + accounts.summary.trialExpired;
+
+  const metrics: MetricCard[] = [
+    {
+      label: copy.totalCustomers,
+      value: data.summary.totalCustomers,
+      tone: "primary",
+      icon: "\u{1F465}",
+      iconTone: "primary",
+      href: "/admin/users",
+      detail:
+        locale === "en"
+          ? `${accounts.summary.starter} Starter, ${accounts.summary.growth} Growth, ${accounts.summary.enterprise} Enterprise`
+          : `${accounts.summary.starter} Starter, ${accounts.summary.growth} Growth, ${accounts.summary.enterprise} Enterprise`
+    },
+    {
+      label: copy.activeCustomers,
+      value: data.summary.activeCustomers,
+      tone: "success",
+      icon: "\u2713",
+      iconTone: "success",
+      href: "/admin/users?status=ACTIVE",
+      detail:
+        locale === "en"
+          ? `${accounts.summary.suspended} suspended workspace`
+          : `${accounts.summary.suspended} askıdaki çalışma alanı`
+    },
+    {
+      label: copy.openAlerts,
+      value: data.summary.openAlerts,
+      tone: "danger",
+      icon: "\u26A0",
+      iconTone: "danger",
+      href: "/admin/red-alert",
+      detail:
+        locale === "en"
+          ? `${data.quickLinks.leads} open inbound lead`
+          : `${data.quickLinks.leads} açık inbound lead`
+    },
+    {
+      label: copy.trialAccounts,
+      value: trialTotal,
+      tone: "warning",
+      icon: "\u23F3",
+      iconTone: "warning",
+      href: "/admin/users?segment=TRIAL",
+      detail:
+        locale === "en"
+          ? `${accounts.summary.trialActive} active · ${accounts.summary.trialExpired} ended`
+          : `${accounts.summary.trialActive} aktif · ${accounts.summary.trialExpired} biten`
+    }
   ];
 
-  /* ── Quick-link definitions ── */
+  const segmentCards = [
+    {
+      key: "TRIAL",
+      label: copy.segmentTrial,
+      count: trialTotal,
+      tone: "warning",
+      href: "/admin/users?segment=TRIAL" as Route
+    },
+    ...data.planDistribution.map((plan) => ({
+      key: plan.key,
+      label: formatInternalPlan(plan.key, locale),
+      count: plan.count,
+      tone: dashboardBadgeVariant(plan.key),
+      href: `/admin/users?planKey=${plan.key}` as Route
+    }))
+  ];
+
   const quickLinks = [
     {
       href: "/admin/users" as Route,
       title: copy.customers,
-      detail: `${data.quickLinks.customers} ${locale === "en" ? "customer workspace" : "müşteri çalışma alanı"}`,
+      detail:
+        locale === "en"
+          ? "Open customer list, filter plans, and inspect workspace-level details."
+          : "Müşteri listesini açın, planları filtreleyin ve çalışma alanı detaylarını inceleyin.",
       icon: "\u{1F465}"
     },
     {
       href: "/admin/red-alert" as Route,
       title: copy.redAlerts,
-      detail: `${data.quickLinks.redAlerts} ${locale === "en" ? "open signal" : "açık sinyal"}`,
+      detail:
+        locale === "en"
+          ? "Review platform failures, delivery issues, and commercial risk signals."
+          : "Platform hatalarını, teslimat sorunlarını ve ticari risk sinyallerini inceleyin.",
       icon: "\u26A0"
     },
     {
       href: "/admin/leads" as Route,
       title: copy.leads,
-      detail: `${data.quickLinks.leads} ${locale === "en" ? "open inbound lead" : "açık inbound lead"}`,
+      detail:
+        locale === "en"
+          ? "Review inbound demo and pilot demand from the public site."
+          : "Public siteden gelen demo ve pilot taleplerini inceleyin.",
       icon: "\u2709"
     },
     {
       href: "/admin/enterprise" as Route,
       title: copy.enterprise,
-      detail: `${data.quickLinks.enterprise} ${locale === "en" ? "contract account" : "kurumsal hesap"}`,
+      detail:
+        locale === "en"
+          ? "Manage contract customers, custom offers, and payment link flows."
+          : "Sözleşmeli müşterileri, özel teklifleri ve ödeme linki akışlarını yönetin.",
       icon: "\u{1F3E2}"
     }
   ];
 
   return (
     <section className="page-grid">
-      {/* ── Header: title + subtitle + refresh ── */}
       <div className="page-header">
         <div className="page-header-copy">
           <h1>{copy.dashboardTitle}</h1>
@@ -141,40 +228,36 @@ export default function InternalAdminDashboardPage() {
         </div>
       </div>
 
-      {/* ── Stat cards grid (3 cols on desktop) ── */}
       <section className="admin-metric-grid">
         {metrics.map((metric) => (
-          <article key={metric.label} className={`admin-metric-card tone-${metric.tone}`}>
+          <Link key={metric.label} href={metric.href} className={`admin-metric-card tone-${metric.tone}`}>
             <div className="admin-metric-text">
               <span className="admin-metric-label">{metric.label}</span>
               <strong className="admin-metric-value">{metric.value}</strong>
+              {metric.detail ? <p className="admin-metric-copy">{metric.detail}</p> : null}
             </div>
             <div className={`admin-metric-icon icon-${metric.iconTone}`} aria-hidden="true">
               {metric.icon}
             </div>
-          </article>
+          </Link>
         ))}
       </section>
 
-      {/* ── Plan Distribution ── */}
       <section className="panel">
         <div className="tlx-section-header">
-          <h2 className="tlx-section-title">{copy.planDistribution}</h2>
+          <h2 className="tlx-section-title">{copy.planSegments}</h2>
         </div>
         <div className="admin-distribution-grid">
-          {data.planDistribution.map((plan) => (
-            <article key={plan.key} className="admin-distribution-card">
-              <span className={`badge ${dashboardBadgeVariant(plan.key)}`}>
-                {formatInternalPlan(plan.key, locale)}
-              </span>
-              <strong>{plan.count}</strong>
-              <span>{formatInternalPlan(plan.key, locale)}</span>
-            </article>
+          {segmentCards.map((item) => (
+            <Link key={item.key} href={item.href} className="admin-distribution-card admin-distribution-link">
+              <span className={`badge ${item.tone}`}>{item.label}</span>
+              <strong>{item.count}</strong>
+              <span>{item.label}</span>
+            </Link>
           ))}
         </div>
       </section>
 
-      {/* ── Quick Links grid ── */}
       <section className="admin-quick-grid">
         {quickLinks.map((link) => (
           <Link key={link.href} href={link.href} className="admin-quick-card">
@@ -186,39 +269,6 @@ export default function InternalAdminDashboardPage() {
             <span aria-hidden="true">{"\u2192"}</span>
           </Link>
         ))}
-      </section>
-
-      {/* ── Overview section ── */}
-      <section className="panel">
-        <div className="tlx-section-header">
-          <h2 className="tlx-section-title">{copy.overview}</h2>
-        </div>
-        <div className="admin-overview-grid">
-          <div className="admin-overview-item">
-            <strong>{copy.enterprise}</strong>
-            <p className="small text-muted" style={{ margin: "4px 0 0" }}>
-              {locale === "en"
-                ? "Enterprise offers, payment links, and custom quotas are managed from the Enterprise page."
-                : "Kurumsal teklifler, ödeme linkleri ve özel kotalar Kurumsal sayfasından yönetilir."}
-            </p>
-          </div>
-          <div className="admin-overview-item">
-            <strong>{copy.redAlerts}</strong>
-            <p className="small text-muted" style={{ margin: "4px 0 0" }}>
-              {locale === "en"
-                ? "Operational, assistant, security, and delivery signals are consolidated in one list."
-                : "Operasyon, asistan, güvenlik ve teslimat sinyalleri tek listede toplanır."}
-            </p>
-          </div>
-          <div className="admin-overview-item">
-            <strong>{copy.billing}</strong>
-            <p className="small text-muted" style={{ margin: "4px 0 0" }}>
-              {locale === "en"
-                ? `Snapshot generated on ${formatDate(new Date().toISOString())}.`
-                : `${formatDate(new Date().toISOString())} itibarıyla anlık görünüm.`}
-            </p>
-          </div>
-        </div>
       </section>
     </section>
   );

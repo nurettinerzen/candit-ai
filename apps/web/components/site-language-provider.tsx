@@ -51,7 +51,7 @@ function isInSkippedTree(element: Element | null) {
   return false;
 }
 
-function resolveSourceValue(params: {
+export function resolveSourceValue(params: {
   cachedSource: string | undefined;
   currentValue: string;
   locale: SiteLocale;
@@ -63,11 +63,9 @@ function resolveSourceValue(params: {
     return currentValue;
   }
 
-  if (locale === previousLocale) {
-    const previousRendered = transformUiText(cachedSource, locale);
-    if (previousRendered !== currentValue) {
-      return currentValue;
-    }
+  const previousRendered = transformUiText(cachedSource, previousLocale);
+  if (previousRendered !== currentValue) {
+    return currentValue;
   }
 
   return cachedSource;

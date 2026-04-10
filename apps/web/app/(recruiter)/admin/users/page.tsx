@@ -2,6 +2,7 @@
 
 import type { Route } from "next";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState, ErrorState, LoadingState } from "../../../../components/ui-states";
 import { useUiText } from "../../../../components/site-language-provider";
@@ -15,7 +16,18 @@ import {
   getInternalAdminCopy,
   translateInternalAdminMessage
 } from "../../../../lib/internal-admin-copy";
-import type { BillingPlanKey, InternalAdminAccountListReadModel } from "../../../../lib/types";
+import type {
+  BillingPlanKey,
+  InternalAdminAccountListReadModel,
+  InternalAdminCustomerRow
+} from "../../../../lib/types";
+
+type CustomerSegment =
+  | "ALL"
+  | "TRIAL"
+  | "TRIAL_ACTIVE"
+  | "TRIAL_EXPIRED"
+  | "BILLING_RISK";
 
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -23,19 +35,72 @@ function toErrorMessage(error: unknown, fallback: string) {
 
 function statusVariant(status: string) {
   if (status === "ACTIVE") return "success";
-  if (status === "SUSPENDED" || status === "PAST_DUE") return "warning";
+  if (status === "SUSPENDED" || status === "PAST_DUE" || status === "TRIALING" || status === "INCOMPLETE") {
+    return "warning";
+  }
   if (status === "DELETED" || status === "CANCELED") return "danger";
   return "muted";
+}
+
+function normalizePlanKey(raw: string | null): "ALL" | BillingPlanKey {
+  return raw === "STARTER" || raw === "GROWTH" || raw === "ENTERPRISE" ? raw : "ALL";
+}
+
+function normalizeWorkspaceStatus(raw: string | null): "ALL" | "ACTIVE" | "SUSPENDED" | "DELETED" {
+  return raw === "ACTIVE" || raw === "SUSPENDED" || raw === "DELETED" ? raw : "ALL";
+}
+
+function normalizeSegment(raw: string | null): CustomerSegment {
+  return raw === "TRIAL" ||
+    raw === "TRIAL_ACTIVE" ||
+    raw === "TRIAL_EXPIRED" ||
+    raw === "BILLING_RISK"
+    ? raw
+    : "ALL";
+}
+
+function isBillingRiskStatus(status: string) {
+  return status === "PAST_DUE" || status === "INCOMPLETE" || status === "CANCELED";
+}
+
+function matchesSegment(row: InternalAdminCustomerRow, segment: CustomerSegment) {
+  if (segment === "ALL") {
+    return true;
+  }
+
+  if (segment === "TRIAL") {
+    return row.billing.trial.isActive || row.billing.trial.isExpired;
+  }
+
+  if (segment === "TRIAL_ACTIVE") {
+    return row.billing.trial.isActive;
+  }
+
+  if (segment === "TRIAL_EXPIRED") {
+    return row.billing.trial.isExpired;
+  }
+
+  return isBillingRiskStatus(row.billing.status);
 }
 
 export default function InternalAdminUsersPage() {
   const { locale } = useUiText();
   const copy = getInternalAdminCopy(locale);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const initialQuery = searchParams.get("query") ?? "";
+  const initialPlanKey = normalizePlanKey(searchParams.get("planKey"));
+  const initialStatus = normalizeWorkspaceStatus(searchParams.get("status"));
+  const initialSegment = normalizeSegment(searchParams.get("segment"));
+
   const [data, setData] = useState<InternalAdminAccountListReadModel | null>(null);
-  const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
-  const [planKey, setPlanKey] = useState<"ALL" | BillingPlanKey>("ALL");
-  const [status, setStatus] = useState<"ALL" | "ACTIVE" | "SUSPENDED" | "DELETED">("ALL");
+  const [search, setSearch] = useState(initialQuery);
+  const [query, setQuery] = useState(initialQuery);
+  const [planKey, setPlanKey] = useState<"ALL" | BillingPlanKey>(initialPlanKey);
+  const [status, setStatus] = useState<"ALL" | "ACTIVE" | "SUSPENDED" | "DELETED">(initialStatus);
+  const [segment, setSegment] = useState<CustomerSegment>(initialSegment);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -70,29 +135,69 @@ export default function InternalAdminUsersPage() {
     return () => window.clearTimeout(timeout);
   }, [search]);
 
-  const metrics = useMemo(() => {
-    if (!data) {
-      return [
-        { label: copy.totalCustomers, value: 0, tone: "primary" },
-        { label: copy.activeCustomers, value: 0, tone: "success" },
-        { label: copy.suspendedCustomers, value: 0, tone: "warning" },
-        { label: formatInternalPlan("GROWTH", locale), value: 0, tone: "info" },
-        { label: formatInternalPlan("ENTERPRISE", locale), value: 0, tone: "muted" }
-      ];
+  useEffect(() => {
+    const nextQuery = searchParams.get("query") ?? "";
+    const nextPlanKey = normalizePlanKey(searchParams.get("planKey"));
+    const nextStatus = normalizeWorkspaceStatus(searchParams.get("status"));
+    const nextSegment = normalizeSegment(searchParams.get("segment"));
+
+    setSearch((current) => (current === nextQuery ? current : nextQuery));
+    setQuery((current) => (current === nextQuery ? current : nextQuery));
+    setPlanKey((current) => (current === nextPlanKey ? current : nextPlanKey));
+    setStatus((current) => (current === nextStatus ? current : nextStatus));
+    setSegment((current) => (current === nextSegment ? current : nextSegment));
+  }, [searchParams]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    if (query) {
+      params.set("query", query);
+    }
+    if (planKey !== "ALL") {
+      params.set("planKey", planKey);
+    }
+    if (status !== "ALL") {
+      params.set("status", status);
+    }
+    if (segment !== "ALL") {
+      params.set("segment", segment);
     }
 
-    return [
-      { label: copy.totalCustomers, value: data.summary.total, tone: "primary" },
-      { label: copy.activeCustomers, value: data.summary.active, tone: "success" },
-      { label: copy.suspendedCustomers, value: data.summary.suspended, tone: "warning" },
-      { label: formatInternalPlan("GROWTH", locale), value: data.summary.growth, tone: "info" },
-      { label: formatInternalPlan("ENTERPRISE", locale), value: data.summary.enterprise, tone: "muted" }
-    ];
-  }, [copy.activeCustomers, copy.suspendedCustomers, copy.totalCustomers, data, locale]);
+    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.replace(nextUrl as Route, { scroll: false });
+  }, [pathname, planKey, query, router, segment, status]);
+
+  const filteredRows = useMemo(() => {
+    if (!data) {
+      return [];
+    }
+
+    return data.rows.filter((row) => matchesSegment(row, segment));
+  }, [data, segment]);
+
+  const summary = useMemo(() => {
+    return {
+      total: filteredRows.length,
+      active: filteredRows.filter((row) => row.tenantStatus === "ACTIVE").length,
+      suspended: filteredRows.filter((row) => row.tenantStatus === "SUSPENDED").length,
+      trialActive: filteredRows.filter((row) => row.billing.trial.isActive).length,
+      trialExpired: filteredRows.filter((row) => row.billing.trial.isExpired).length,
+      billingRisk: filteredRows.filter((row) => isBillingRiskStatus(row.billing.status)).length
+    };
+  }, [filteredRows]);
+
+  const metrics = [
+    { label: copy.totalCustomers, value: summary.total, tone: "primary" },
+    { label: copy.activeCustomers, value: summary.active, tone: "success" },
+    { label: copy.suspendedCustomers, value: summary.suspended, tone: "warning" },
+    { label: copy.trialActive, value: summary.trialActive, tone: "info" },
+    { label: copy.trialExpired, value: summary.trialExpired, tone: "muted" },
+    { label: copy.billingRisk, value: summary.billingRisk, tone: "danger" }
+  ];
 
   return (
     <section className="page-grid">
-      {/* ── Header ── */}
       <div className="page-header">
         <div className="page-header-copy">
           <h1>{copy.usersTitle}</h1>
@@ -105,7 +210,6 @@ export default function InternalAdminUsersPage() {
         </div>
       </div>
 
-      {/* ── Search / Filter Bar ── */}
       <section className="panel">
         <div className="admin-filter-row">
           <input
@@ -134,13 +238,23 @@ export default function InternalAdminUsersPage() {
             <option value="SUSPENDED">{copy.suspended}</option>
             <option value="DELETED">{copy.deleted}</option>
           </select>
+          <select
+            className="select"
+            value={segment}
+            onChange={(event) => setSegment(event.target.value as CustomerSegment)}
+          >
+            <option value="ALL">{copy.allSegments}</option>
+            <option value="TRIAL">{copy.segmentTrial}</option>
+            <option value="TRIAL_ACTIVE">{copy.segmentTrialActive}</option>
+            <option value="TRIAL_EXPIRED">{copy.segmentTrialExpired}</option>
+            <option value="BILLING_RISK">{copy.segmentBillingRisk}</option>
+          </select>
           <button type="button" className="btn-primary-sm" onClick={() => void loadPage()}>
             {copy.search}
           </button>
         </div>
       </section>
 
-      {/* ── Stat Cards ── */}
       <section className="admin-metric-grid">
         {metrics.map((metric) => (
           <article key={metric.label} className={`admin-metric-card tone-${metric.tone}`}>
@@ -150,7 +264,6 @@ export default function InternalAdminUsersPage() {
         ))}
       </section>
 
-      {/* ── Data Table ── */}
       <section className="panel">
         {loading ? (
           <LoadingState message={copy.loading} />
@@ -163,7 +276,7 @@ export default function InternalAdminUsersPage() {
               </button>
             }
           />
-        ) : !data || data.rows.length === 0 ? (
+        ) : !data || filteredRows.length === 0 ? (
           <EmptyState message={copy.noCustomers} />
         ) : (
           <div className="table-scroll">
@@ -179,7 +292,7 @@ export default function InternalAdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.rows.map((row) => (
+                {filteredRows.map((row) => (
                   <tr key={row.tenantId}>
                     <td>
                       <div className="admin-table-cell-stack">
@@ -210,6 +323,19 @@ export default function InternalAdminUsersPage() {
                         <span className={`status-badge status-${statusVariant(row.billing.status)}`}>
                           {formatBillingStatus(row.billing.status, locale)}
                         </span>
+                        {row.billing.trial.isActive ? (
+                          <span className="small">
+                            {locale === "en"
+                              ? `Trial ends ${formatDate(row.billing.trial.endsAt ?? row.billing.currentPeriodEnd)} · ${row.billing.trial.daysRemaining} days left`
+                              : `Deneme ${formatDate(row.billing.trial.endsAt ?? row.billing.currentPeriodEnd)} tarihinde bitiyor · ${row.billing.trial.daysRemaining} gün kaldı`}
+                          </span>
+                        ) : row.billing.trial.isExpired ? (
+                          <span className="small">
+                            {locale === "en"
+                              ? `Trial ended ${formatDate(row.billing.trial.endsAt ?? row.billing.currentPeriodEnd)}`
+                              : `Deneme ${formatDate(row.billing.trial.endsAt ?? row.billing.currentPeriodEnd)} tarihinde bitti`}
+                          </span>
+                        ) : null}
                       </div>
                     </td>
                     <td>
@@ -237,7 +363,7 @@ export default function InternalAdminUsersPage() {
                       </div>
                     </td>
                     <td>
-                      <Link href={`/admin/users/${row.tenantId}` as Route} className="ghost-button">
+                      <Link href={`/admin/users/${row.tenantId}`} className="ghost-button">
                         {copy.viewDetails}
                       </Link>
                     </td>
