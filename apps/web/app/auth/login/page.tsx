@@ -81,9 +81,9 @@ function LoginPageContent() {
 
   return (
     <AuthShell
-      badge={t("Hesaba giriş")}
-      title={t("İşe alım platformuna giriş yapın")}
-      description={t("Parola ile giriş yapabilir, şifrenizi sıfırlayabilir veya Google ile oturum açabilirsiniz.")}
+      badge={t("Giriş")}
+      title={t("Hesabınıza giriş yapın")}
+      description={t("E-posta ve şifrenizle veya Google hesabınızla oturum açın.")}
       footer={
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>
@@ -111,7 +111,7 @@ function LoginPageContent() {
             onChange={(event) => setEmail(event.target.value)}
             type="email"
             autoComplete="email"
-            placeholder="name@company.com"
+            placeholder="is@sirketiniz.com"
             required
             style={inputStyle}
           />
@@ -183,7 +183,7 @@ function LoginPageContent() {
         {!googleEnabled ? (
           <AuthNotice
             tone="info"
-            message={t("Google giriş altyapısı hazır; redirect URI ve client ayarları tamamlandığında aktif olacak.")}
+            message={t("Google ile giriş yakında aktif olacak.")}
           />
         ) : null}
 

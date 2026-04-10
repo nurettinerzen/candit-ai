@@ -82,7 +82,8 @@ export function AuthShell({ title, description, children, footer, badge }: AuthS
                   borderRadius: 999,
                   fontSize: 12,
                   fontWeight: 700,
-                  letterSpacing: "0.04em",
+                  letterSpacing: "0.01em",
+                  textTransform: "none" as const,
                   color: "#c4b5fd",
                   background: "rgba(2,6,23,0.32)",
                   marginBottom: 14

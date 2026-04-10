@@ -26,8 +26,8 @@ function SignupPageContent() {
   const nextPath = useMemo(() => resolveNextPath(searchParams.get("returnTo")), [searchParams]);
   const oauthError = formatAuthErrorMessage(searchParams.get("oauth_error"));
 
-  const [companyName, setCompanyName] = useState("");
   const [fullName, setFullName] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -106,9 +106,9 @@ function SignupPageContent() {
   if (createdState) {
     return (
       <AuthShell
-        badge={t("Üyelik hazır")}
-        title={t("Hesabın oluşturuldu")}
-        description={t("Owner hesabın açıldı. Şimdi e-posta adresini doğrulayarak kurulum akışını tamamlayabilirsin.")}
+        badge={t("Hesap hazır")}
+        title={t("Hesabınız oluşturuldu")}
+        description={t("E-posta adresinizi doğrulayarak kurulumu tamamlayabilirsiniz.")}
         footer={
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <a href={nextPath} style={{ color: "inherit", textDecoration: "none" }}>
@@ -123,17 +123,17 @@ function SignupPageContent() {
         <div style={{ display: "grid", gap: 14 }}>
           <AuthNotice
             tone="success"
-            message={`${createdState.email} ${t("adresi için doğrulama e-postası hazırlandı.")}`}
+            message={`${createdState.email} ${t("adresi için doğrulama e-postası gönderildi.")}`}
           />
           {createdState.previewUrl ? (
             <AuthNotice
               tone="info"
-              message={t("Mail sağlayıcısı yerine lokal preview bağlantısı üretildi. Aşağıdaki düğmeden doğrulama ekranını açabilirsin.")}
+              message={t("Geliştirme ortamı: Aşağıdaki bağlantıdan doğrulama ekranını açabilirsiniz.")}
             />
           ) : (
             <AuthNotice
               tone="info"
-              message={t("Doğrulama e-postası gönderildi. Mail kutunu kontrol edip bağlantıya tıklayabilirsin.")}
+              message={t("E-posta kutunuzu kontrol edip doğrulama bağlantısına tıklayın.")}
             />
           )}
 
@@ -144,7 +144,7 @@ function SignupPageContent() {
           ) : null}
 
           <a href={nextPath} style={secondaryButtonStyle}>
-            {t("Kuruluma panelden devam et")}
+            {t("Panele devam et")}
           </a>
         </div>
       </AuthShell>
@@ -154,15 +154,15 @@ function SignupPageContent() {
   return (
     <AuthShell
       badge={t("Yeni hesap")}
-      title={t("İlk owner hesabını oluştur")}
-      description={t("Şirket çalışma alanını aç, ilk kullanıcıyı owner yap ve ekip davet akışını hazır hale getir.")}
+      title={t("Candit'e katılın")}
+      description={t("Şirketiniz için bir hesap oluşturun ve ekibinizi davet etmeye başlayın.")}
       footer={
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>
             {t("Ana sayfa")}
           </Link>
           <Link href="/auth/login" style={{ color: "inherit", textDecoration: "none" }}>
-            {t("Zaten hesabın var mı? Giriş yap")}
+            {t("Zaten hesabınız var mı? Giriş yapın")}
           </Link>
         </div>
       }
@@ -172,37 +172,42 @@ function SignupPageContent() {
         {error ? <AuthNotice tone="danger" message={error} /> : null}
 
         <label style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Şirket adı")}</span>
-          <input
-            value={companyName}
-            onChange={(event) => setCompanyName(event.target.value)}
-            placeholder="Candit"
-            required
-            style={inputStyle}
-          />
-        </label>
-
-        <label style={{ display: "grid", gap: 8 }}>
           <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Ad soyad")}</span>
           <input
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
             autoComplete="name"
+            placeholder="Adınız Soyadınız"
             required
             style={inputStyle}
           />
         </label>
 
         <label style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "#cbd5e1", fontSize: 14 }}>E-posta</span>
+          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Şirket adı")}</span>
+          <input
+            value={companyName}
+            onChange={(event) => setCompanyName(event.target.value)}
+            placeholder="Şirketinizin adı"
+            required
+            style={inputStyle}
+          />
+        </label>
+
+        <label style={{ display: "grid", gap: 6 }}>
+          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("E-posta")}</span>
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
+            placeholder="is@sirketiniz.com"
             required
             style={inputStyle}
           />
+          <span style={{ color: "#94a3b8", fontSize: 12 }}>
+            {t("Şirket e-posta adresi önerilir")}
+          </span>
         </label>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -213,6 +218,7 @@ function SignupPageContent() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="new-password"
+              placeholder="En az 8 karakter"
               minLength={8}
               required
               style={inputStyle}
@@ -225,6 +231,7 @@ function SignupPageContent() {
               value={passwordConfirm}
               onChange={(event) => setPasswordConfirm(event.target.value)}
               autoComplete="new-password"
+              placeholder="••••••••"
               minLength={8}
               required
               style={inputStyle}
@@ -233,7 +240,7 @@ function SignupPageContent() {
         </div>
 
         <button type="submit" disabled={loading} style={primaryButtonStyle}>
-          {loading ? t("Hesap oluşturuluyor...") : t("Owner hesabını oluştur")}
+          {loading ? t("Hesap oluşturuluyor...") : t("Hesap Oluştur")}
         </button>
       </form>
 
@@ -285,7 +292,7 @@ function SignupPageContent() {
         {!googleEnabled ? (
           <AuthNotice
             tone="info"
-            message={t("Google signup akışı hazır; client ve redirect ayarları tamamlandığında aktif olacak.")}
+            message={t("Google ile kayıt yakında aktif olacak.")}
           />
         ) : null}
       </div>

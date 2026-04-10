@@ -349,8 +349,7 @@
   line-height: 1.8;
 }
 
-.heroKicker,
-.eyebrow {
+.heroKicker {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -364,14 +363,38 @@
   letter-spacing: 0.12em;
 }
 
-.heroKicker::before,
-.eyebrow::before {
+.heroKicker::before {
   content: "";
   width: 8px;
   height: 8px;
   border-radius: 999px;
   background: #c4b5fd;
   box-shadow: 0 0 18px rgba(124, 241, 220, 0.8);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 24px;
+  background: linear-gradient(90deg, #5046e5, #8b5cf6, #5046e5);
+  background-size: 200% 100%;
+  animation: ftShimmer 3s ease-in-out infinite;
+  letter-spacing: 0;
+}
+
+.eyebrow::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #c4b5fd;
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.7);
 }
 
 .heroActions,
@@ -888,6 +911,7 @@
   line-height: 1.04;
   letter-spacing: -0.06em;
   font-weight: 800;
+  color: #fff;
 }
 
 .sectionSubtitle {
@@ -1079,6 +1103,7 @@
   line-height: 1.06;
   letter-spacing: -0.06em;
   font-weight: 800;
+  color: #fff;
 }
 
 .centerActions {
@@ -1687,14 +1712,15 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 18px;
+  padding: 6px 18px;
   border-radius: 999px;
-  background: rgba(99, 118, 255, 0.08);
-  border: 1px solid rgba(99, 118, 255, 0.2);
-  color: #afbeff;
-  font-size: 13px;
+  font-size: 0.875rem;
   font-weight: 600;
+  color: #fff;
   margin-bottom: 24px;
+  background: linear-gradient(90deg, #5046e5, #8b5cf6, #5046e5);
+  background-size: 200% 100%;
+  animation: ftShimmer 3s ease-in-out infinite;
 }
 
 .prBadgeDot {
@@ -1978,14 +2004,15 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 18px;
+  padding: 6px 18px;
   border-radius: 999px;
-  background: rgba(255, 180, 50, 0.08);
-  border: 1px solid rgba(255, 180, 50, 0.2);
-  color: #ffc864;
-  font-size: 13px;
+  font-size: 0.875rem;
   font-weight: 600;
+  color: #fff;
   margin-bottom: 16px;
+  background: linear-gradient(90deg, #5046e5, #8b5cf6, #5046e5);
+  background-size: 200% 100%;
+  animation: ftShimmer 3s ease-in-out infinite;
 }
 
 .prSectionTitle {
@@ -1993,6 +2020,15 @@
   font-weight: 800;
   letter-spacing: -0.05em;
   margin: 0 0 12px;
+  color: #fff;
+}
+
+.prPaygHeading {
+  font-size: clamp(1.4rem, 2.4vw, 1.8rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 10px;
+  color: #fff;
 }
 
 .prSectionSubtitle {
@@ -2005,93 +2041,85 @@
   margin-right: auto;
 }
 
-.prPaygCard {
-  position: relative;
-  max-width: 600px;
+/* ── Addon Grid ── */
+.prAddonGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  max-width: 720px;
   margin: 0 auto;
-  text-align: center;
-  border-radius: 24px;
-  padding: 40px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-  overflow: hidden;
 }
 
-.prPaygCard::after {
-  content: "";
+.prAddonCard {
+  position: relative;
+  border-radius: 18px;
+  padding: 28px 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.018));
+  border: 1px solid rgba(124, 58, 237, 0.22);
+  backdrop-filter: blur(10px);
+  text-align: center;
+  overflow: hidden;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.prAddonCard:hover {
+  border-color: rgba(124, 58, 237, 0.45);
+  box-shadow: 0 0 24px rgba(124, 58, 237, 0.12);
+}
+
+.prAddonCardTop {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #5046e5, #c4b5fd, #5046e5);
-  background-size: 200% 100%;
-  animation: prShimmer 4s ease-in-out infinite;
+  height: 2px;
+  background: linear-gradient(90deg, #5046e5, #a78bfa);
 }
 
-.prPaygPrice {
-  font-size: clamp(2.4rem, 4vw, 3.4rem);
-  font-weight: 800;
-  letter-spacing: -0.06em;
-  color: #a78bfa;
-}
-
-.prPaygUnit {
-  font-size: 16px;
-  font-weight: 400;
-  color: #8396aa;
-  margin-left: 4px;
-}
-
-.prPaygNote {
-  font-size: 14px;
-  color: #aab8c9;
-  margin: 8px 0 24px;
-}
-
-.prPaygTags {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 32px;
-}
-
-.prPaygTag {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: #aab8c9;
-}
-
-.prPaygBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 32px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
-  color: #ebf0f8;
-  font-size: 14px;
+.prAddonName {
+  font-size: 0.95rem;
   font-weight: 700;
-  text-decoration: none;
-  transition:
-    background 0.3s ease,
-    border-color 0.3s ease,
-    transform 0.22s ease;
+  color: #ebf0f8;
+  margin: 0 0 4px;
 }
 
-.prPaygBtn:hover {
-  background: rgba(99, 118, 255, 0.08);
-  border-color: rgba(99, 118, 255, 0.25);
+.prAddonQty {
+  font-size: 0.8rem;
+  color: #8396aa;
+  margin: 0 0 12px;
+}
+
+.prAddonPrice {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #a78bfa;
+  letter-spacing: -0.03em;
+  margin-bottom: 16px;
+}
+
+.prAddonBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 22px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #5046e5, #7c3aed);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.prAddonBtn:hover {
+  opacity: 0.88;
   transform: translateY(-1px);
+}
+
+@media (max-width: 560px) {
+  .prAddonGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Overage Table ── */
@@ -2275,8 +2303,8 @@
     padding: 24px 20px;
   }
 
-  .prPaygCard {
-    padding: 28px 20px;
+  .prAddonCard {
+    padding: 22px 18px;
   }
 
   .prCtaSection {
@@ -3112,12 +3140,13 @@
   gap: 8px;
   padding: 6px 16px;
   border-radius: 999px;
-  border: 1px solid rgba(80, 70, 229, 0.2);
-  background: rgba(80, 70, 229, 0.06);
-  color: #1e1b4b;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
+  color: #fff;
   margin-bottom: 24px;
+  background: linear-gradient(90deg, #5046e5, #8b5cf6, #5046e5);
+  background-size: 200% 100%;
+  animation: ftShimmer 3s ease-in-out infinite;
 }
 
 .solBadge svg {

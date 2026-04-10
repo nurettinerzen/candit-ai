@@ -1228,31 +1228,24 @@ export function PublicPricingPage() {
               <span className={styles.prBadgeDot} />
               {t(PUBLIC_PAY_AS_YOU_GO.eyebrow ?? "")}
             </span>
-            <h2 className={styles.prSectionTitle}>{t(PUBLIC_PAY_AS_YOU_GO.title)}</h2>
+            <h3 className={styles.prPaygHeading}>{t("Ek Paketler")}</h3>
             <p className={styles.prSectionSubtitle}>
               {t("Planınızı yükseltmeden, sadece ihtiyacınız olan ek kotayı satın alın.")}
             </p>
           </div>
 
-          <div className={styles.prPaygCard}>
-            <div className={styles.prPaygPrice}>
-              {PUBLIC_PAY_AS_YOU_GO.meta}
-            </div>
-            <p className={styles.prPaygNote}>
-              {t(PUBLIC_PAY_AS_YOU_GO.body)}
-            </p>
-
-            <div className={styles.prPaygTags}>
-              {PUBLIC_PAY_AS_YOU_GO.bullets?.map((tag) => (
-                <span key={tag} className={styles.prPaygTag}>{t(tag)}</span>
-              ))}
-            </div>
-
-            {PUBLIC_PAY_AS_YOU_GO.href && PUBLIC_PAY_AS_YOU_GO.actionLabel ? (
-              <a href={PUBLIC_PAY_AS_YOU_GO.href} className={styles.prPaygBtn}>
-                <span>{t(PUBLIC_PAY_AS_YOU_GO.actionLabel)}</span>
-              </a>
-            ) : null}
+          <div className={styles.prAddonGrid}>
+            {OVERAGE_ROWS.map((row) => (
+              <article key={`${row.channel}-${row.unit}`} className={styles.prAddonCard}>
+                <div className={styles.prAddonCardTop} />
+                <h4 className={styles.prAddonName}>{t(row.channel)}</h4>
+                <p className={styles.prAddonQty}>{t(row.unit)}</p>
+                <div className={styles.prAddonPrice}>{row.rate}</div>
+                <a href="/subscription" className={styles.prAddonBtn}>
+                  <span>{t("Plana Ekle")}</span>
+                </a>
+              </article>
+            ))}
           </div>
         </div>
       </section>
