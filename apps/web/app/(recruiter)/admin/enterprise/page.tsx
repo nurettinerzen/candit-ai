@@ -110,6 +110,15 @@ function statusVariant(status: string) {
   return "muted";
 }
 
+function parsePositiveInteger(value: string) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function isLikelyEmail(value: string) {
+  return /\S+@\S+\.\S+/.test(value.trim());
+}
+
 /* ── Page component ── */
 
 export default function InternalAdminEnterprisePage() {
@@ -179,9 +188,62 @@ export default function InternalAdminEnterprisePage() {
     return data.rows.filter((r) => r.billing.status === "INCOMPLETE");
   }, [data, tabFilter]);
 
+  const enterpriseFormError = useMemo(() => {
+    if (!form.companyName.trim()) {
+      return locale === "en" ? "Company name is required." : "Şirket adı zorunludur.";
+    }
+    if (!form.ownerFullName.trim()) {
+      return locale === "en" ? "Owner full name is required." : "Hesap sahibi adı zorunludur.";
+    }
+    if (!isLikelyEmail(form.ownerEmail)) {
+      return locale === "en" ? "Enter a valid owner email." : "Geçerli bir owner e-postası girin.";
+    }
+    if (!isLikelyEmail(form.billingEmail)) {
+      return locale === "en" ? "Enter a valid billing email." : "Geçerli bir fatura e-postası girin.";
+    }
+    if (parsePositiveInteger(form.monthlyAmountCents) === null) {
+      return locale === "en" ? "Monthly amount must be a positive integer." : "Aylık tutar pozitif tam sayı olmalıdır.";
+    }
+    if (parsePositiveInteger(form.seatsIncluded) === null) {
+      return locale === "en" ? "Included seats must be a positive integer." : "Kullanıcı limiti pozitif tam sayı olmalıdır.";
+    }
+    if (parsePositiveInteger(form.activeJobsIncluded) === null) {
+      return locale === "en" ? "Included active jobs must be a positive integer." : "Aktif ilan limiti pozitif tam sayı olmalıdır.";
+    }
+    if (parsePositiveInteger(form.candidateProcessingIncluded) === null) {
+      return locale === "en" ? "Included candidate processing must be a positive integer." : "Aday işleme limiti pozitif tam sayı olmalıdır.";
+    }
+    if (parsePositiveInteger(form.aiInterviewsIncluded) === null) {
+      return locale === "en" ? "Included AI interviews must be a positive integer." : "AI mülakat limiti pozitif tam sayı olmalıdır.";
+    }
+    return "";
+  }, [form, locale]);
+
   /* ── Create enterprise customer ── */
 
   async function handleCreateEnterpriseCustomer() {
+    if (enterpriseFormError) {
+      setError(enterpriseFormError);
+      return;
+    }
+
+    const monthlyAmountCents = parsePositiveInteger(form.monthlyAmountCents);
+    const seatsIncluded = parsePositiveInteger(form.seatsIncluded);
+    const activeJobsIncluded = parsePositiveInteger(form.activeJobsIncluded);
+    const candidateProcessingIncluded = parsePositiveInteger(form.candidateProcessingIncluded);
+    const aiInterviewsIncluded = parsePositiveInteger(form.aiInterviewsIncluded);
+
+    if (
+      monthlyAmountCents === null ||
+      seatsIncluded === null ||
+      activeJobsIncluded === null ||
+      candidateProcessingIncluded === null ||
+      aiInterviewsIncluded === null
+    ) {
+      setError(locale === "en" ? "Please review the enterprise offer fields." : "Lütfen enterprise teklif alanlarını gözden geçirin.");
+      return;
+    }
+
     setBusy("create");
     setError("");
     setNotice("");
@@ -189,15 +251,15 @@ export default function InternalAdminEnterprisePage() {
 
     try {
       const result = await apiClient.internalAdminCreateEnterpriseCustomer({
-        companyName: form.companyName,
-        ownerFullName: form.ownerFullName,
-        ownerEmail: form.ownerEmail,
-        billingEmail: form.billingEmail,
-        monthlyAmountCents: Number(form.monthlyAmountCents),
-        seatsIncluded: Number(form.seatsIncluded),
-        activeJobsIncluded: Number(form.activeJobsIncluded),
-        candidateProcessingIncluded: Number(form.candidateProcessingIncluded),
-        aiInterviewsIncluded: Number(form.aiInterviewsIncluded),
+        companyName: form.companyName.trim(),
+        ownerFullName: form.ownerFullName.trim(),
+        ownerEmail: form.ownerEmail.trim(),
+        billingEmail: form.billingEmail.trim(),
+        monthlyAmountCents,
+        seatsIncluded,
+        activeJobsIncluded,
+        candidateProcessingIncluded,
+        aiInterviewsIncluded,
         advancedReporting: form.advancedReporting,
         calendarIntegrations: form.calendarIntegrations,
         brandedCandidateExperience: form.brandedCandidateExperience,
@@ -409,21 +471,26 @@ export default function InternalAdminEnterprisePage() {
               </button>
             </div>
             <div className="modal-body">
+              {enterpriseFormError ? (
+                <div className="notice-box notice-danger" style={{ marginBottom: 12 }}>
+                  {enterpriseFormError}
+                </div>
+              ) : null}
               {/* Company name */}
               <div className="field">
                 <label className="field-label">{copy.companyName}</label>
-                <input className="input" value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} />
+                <input className="input" required value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} />
               </div>
 
               {/* Owner row */}
               <div className="form-grid">
                 <div className="field">
                   <label className="field-label">{copy.ownerFullName}</label>
-                  <input className="input" value={form.ownerFullName} onChange={(e) => setForm({ ...form, ownerFullName: e.target.value })} />
+                  <input className="input" required value={form.ownerFullName} onChange={(e) => setForm({ ...form, ownerFullName: e.target.value })} />
                 </div>
                 <div className="field">
                   <label className="field-label">{copy.ownerEmail}</label>
-                  <input className="input" type="email" value={form.ownerEmail} onChange={(e) => setForm({ ...form, ownerEmail: e.target.value })} />
+                  <input className="input" type="email" required value={form.ownerEmail} onChange={(e) => setForm({ ...form, ownerEmail: e.target.value })} />
                 </div>
               </div>
 
@@ -431,11 +498,11 @@ export default function InternalAdminEnterprisePage() {
               <div className="form-grid">
                 <div className="field">
                   <label className="field-label">{copy.billingEmail}</label>
-                  <input className="input" type="email" value={form.billingEmail} onChange={(e) => setForm({ ...form, billingEmail: e.target.value })} />
+                  <input className="input" type="email" required value={form.billingEmail} onChange={(e) => setForm({ ...form, billingEmail: e.target.value })} />
                 </div>
                 <div className="field">
                   <label className="field-label">{copy.monthlyAmount}</label>
-                  <input className="input" value={form.monthlyAmountCents} onChange={(e) => setForm({ ...form, monthlyAmountCents: e.target.value })} />
+                  <input className="input" type="number" min={100} step={100} required value={form.monthlyAmountCents} onChange={(e) => setForm({ ...form, monthlyAmountCents: e.target.value })} />
                 </div>
               </div>
 
@@ -443,19 +510,19 @@ export default function InternalAdminEnterprisePage() {
               <div className="admin-detail-grid">
                 <div className="field">
                   <label className="field-label">{copy.seatsIncluded}</label>
-                  <input className="input" value={form.seatsIncluded} onChange={(e) => setForm({ ...form, seatsIncluded: e.target.value })} />
+                  <input className="input" type="number" min={1} step={1} required value={form.seatsIncluded} onChange={(e) => setForm({ ...form, seatsIncluded: e.target.value })} />
                 </div>
                 <div className="field">
                   <label className="field-label">{copy.activeJobsIncluded}</label>
-                  <input className="input" value={form.activeJobsIncluded} onChange={(e) => setForm({ ...form, activeJobsIncluded: e.target.value })} />
+                  <input className="input" type="number" min={1} step={1} required value={form.activeJobsIncluded} onChange={(e) => setForm({ ...form, activeJobsIncluded: e.target.value })} />
                 </div>
                 <div className="field">
                   <label className="field-label">{copy.candidateProcessingIncluded}</label>
-                  <input className="input" value={form.candidateProcessingIncluded} onChange={(e) => setForm({ ...form, candidateProcessingIncluded: e.target.value })} />
+                  <input className="input" type="number" min={1} step={1} required value={form.candidateProcessingIncluded} onChange={(e) => setForm({ ...form, candidateProcessingIncluded: e.target.value })} />
                 </div>
                 <div className="field">
                   <label className="field-label">{copy.aiInterviewsIncluded}</label>
-                  <input className="input" value={form.aiInterviewsIncluded} onChange={(e) => setForm({ ...form, aiInterviewsIncluded: e.target.value })} />
+                  <input className="input" type="number" min={1} step={1} required value={form.aiInterviewsIncluded} onChange={(e) => setForm({ ...form, aiInterviewsIncluded: e.target.value })} />
                 </div>
               </div>
 
@@ -490,7 +557,7 @@ export default function InternalAdminEnterprisePage() {
               <button type="button" className="ghost-button" onClick={() => setShowModal(false)}>
                 {locale === "en" ? "Cancel" : "Iptal"}
               </button>
-              <button type="button" className="btn-primary-sm" onClick={() => void handleCreateEnterpriseCustomer()} disabled={busy !== ""}>
+              <button type="button" className="btn-primary-sm" onClick={() => void handleCreateEnterpriseCustomer()} disabled={busy !== "" || Boolean(enterpriseFormError)}>
                 {busy === "create" ? copy.creating : copy.create}
               </button>
             </div>

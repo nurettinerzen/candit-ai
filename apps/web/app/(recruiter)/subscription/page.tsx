@@ -249,10 +249,23 @@ export default function SubscriptionPage() {
       ) : (
         <>
           {!billing.stripeReady ? (
-            <NoticeBox
-              tone="danger"
-              message={t("Stripe kurulumu tamamlanmadığı için self servis satın alma işlemleri şu an pasif durumda.")}
-            />
+            <section className="panel" style={{ display: "grid", gap: 10 }}>
+              <NoticeBox
+                tone="danger"
+                message={t("Stripe kurulumu tamamlanmadığı için self servis satın alma işlemleri şu an pasif durumda.")}
+              />
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {billing.viewer.isInternalBillingAdmin ? (
+                  <Link href={"/admin#kurumsal" as Route} className="ghost-button">
+                    {t("İç teklif akışını aç")}
+                  </Link>
+                ) : (
+                  <Link href={"/contact" as Route} className="ghost-button">
+                    {t("Bize Ulaşın")}
+                  </Link>
+                )}
+              </div>
+            </section>
           ) : null}
 
           {/* ── Plan info strip ── */}

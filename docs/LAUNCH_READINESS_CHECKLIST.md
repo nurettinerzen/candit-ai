@@ -423,6 +423,8 @@ Ilgili arka plan notlari icin:
 - [ ] Red alert / internal admin ekranlari beklenen veriyi gosteriyor.
 - [ ] Password reset / owner reset gibi kritik akislarda audit ve guardrail var.
 - [ ] Tenant isolation manuel olarak test edildi.
+- [x] Internal admin public lead status degisikligi sonrasinda liste ve KPI kartlari stale kalmiyor; sayfa aktif filtrelerle yeniden yukleniyor.
+- [x] Internal admin enterprise modal'i gecersiz e-posta veya sayisal limitlerle broken teklif olusturmuyor.
 
 ### P9 - Launch oncesi acilmamasi gereken entegrasyonlar
 
@@ -431,6 +433,7 @@ Ilgili arka plan notlari icin:
 - [ ] Google / Calendly / Stripe / Resend / ElevenLabs icin hangi provider'lar launch'a dahil net.
 - [ ] Launch disi entegrasyonlar UI'dan gizlendi, etiketlendi ya da disabled hale getirildi.
 - [ ] Test credential ile prod credential karismiyor.
+- [x] Subscription yuzeyinde Stripe kapaliyken kullanici sadece disabled buton gormuyor; bir sonraki mantikli aksiyona yonlendiriliyor.
 
 ### P10 - Security, privacy ve operasyon hazirligi
 

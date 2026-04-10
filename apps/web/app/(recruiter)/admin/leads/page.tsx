@@ -156,31 +156,16 @@ export default function InternalAdminLeadsPage() {
     setSuccess("");
 
     try {
-      const updated = await apiClient.internalAdminUpdatePublicLeadStatus(leadId, {
+      await apiClient.internalAdminUpdatePublicLeadStatus(leadId, {
         status: nextStatus
       });
-
-      setData((current) =>
-        current
-          ? {
-              ...current,
-              rows: current.rows.map((row) =>
-                row.id === leadId
-                  ? {
-                      ...row,
-                      status: updated.status
-                    }
-                  : row
-              )
-            }
-          : current
-      );
-      setSuccess(copy.leadStatusSaved);
       setStatusDrafts((current) => {
         const next = { ...current };
         delete next[leadId];
         return next;
       });
+      setSuccess(copy.leadStatusSaved);
+      await loadPage();
     } catch (actionError) {
       setError(translateInternalAdminMessage(toErrorMessage(actionError, copy.internalOnly), locale));
     } finally {
