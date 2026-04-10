@@ -66,6 +66,14 @@ function createEmptyGrantForm(): GrantFormState {
   };
 }
 
+function confirmAdminAction(message: string) {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  return window.confirm(message);
+}
+
 function buildPlanFormState(detail: InternalAdminAccountDetailReadModel): PlanFormState {
   const currentPlan = detail.billing.currentPlan;
   const account = detail.billing.account;
@@ -154,6 +162,24 @@ export default function InternalAdminAccountDetailPage() {
   async function handleStatusUpdate(status: "ACTIVE" | "SUSPENDED" | "DELETED") {
     if (!tenantId) return;
 
+    if (status === "SUSPENDED") {
+      const approved = confirmAdminAction(
+        locale === "en"
+          ? "Suspend this workspace? Recruiter access will be blocked until re-activated."
+          : "Bu workspace askıya alınsın mı? Recruiter erişimi tekrar aktive edilene kadar kapanacak."
+      );
+      if (!approved) return;
+    }
+
+    if (status === "DELETED") {
+      const approved = confirmAdminAction(
+        locale === "en"
+          ? "Delete this workspace? This is a destructive admin action."
+          : "Bu workspace silinsin mi? Bu işlem yıkıcı bir yönetim aksiyonudur."
+      );
+      if (!approved) return;
+    }
+
     setBusyAction(`status:${status}`);
     setNotice("");
     setError("");
@@ -171,6 +197,13 @@ export default function InternalAdminAccountDetailPage() {
 
   async function handleOwnerReset() {
     if (!tenantId) return;
+
+    const approved = confirmAdminAction(
+      locale === "en"
+        ? "Send a password reset invite to the workspace owner?"
+        : "Workspace sahibine şifre sıfırlama daveti gönderilsin mi?"
+    );
+    if (!approved) return;
 
     setBusyAction("owner-reset");
     setNotice("");

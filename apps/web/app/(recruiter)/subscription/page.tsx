@@ -385,9 +385,9 @@ export default function SubscriptionPage() {
                             {t("İç teklif akışını aç")}
                           </Link>
                         ) : (
-                          <button type="button" className="tlx-plan-btn" disabled>
+                          <Link href={"/contact" as Route} className="tlx-plan-btn">
                             {t("Bize Ulaşın")}
-                          </button>
+                          </Link>
                         )
                       ) : (
                         <button

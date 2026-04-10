@@ -219,6 +219,14 @@ Ilgili arka plan notlari icin:
   - Teknik kanit:
     - `corepack pnpm --filter @ai-interviewer/web lint`
     - `corepack pnpm --filter @ai-interviewer/web build`
+- [x] P8 owner/admin-adjacent UX icin dusuk riskli sertlestirmeler yapildi.
+  - Iyilestirmeler:
+    - recruiter `applications` ve `interviews` listelerinde satir tiklamalari full reload yerine client-side navigation kullaniyor
+    - subscription ekraninda enterprise ilgisi icin olu buton yerine gercek contact CTA veriliyor
+    - internal admin account detail icinde `SUSPENDED`, `DELETED` ve owner reset aksiyonlari artik acik onay istiyor
+  - Teknik kanit:
+    - `corepack pnpm --filter @ai-interviewer/web lint`
+    - `corepack pnpm --filter @ai-interviewer/web build`
 - [x] Sertlestirme sonrasi canli pilot smoke tekrar basarili.
   - Son tekrar:
     - signup

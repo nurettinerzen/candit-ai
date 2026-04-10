@@ -348,7 +348,7 @@ export default function ApplicationsPage() {
                   return (
                     <tr
                       key={application.id}
-                      onClick={() => { window.location.href = applicationDetailHref(application.id); }}
+                      onClick={() => { router.push(applicationDetailHref(application.id)); }}
                       style={{ cursor: "pointer" }}
                     >
                       <td>

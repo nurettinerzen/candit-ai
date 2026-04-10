@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useUiText } from "../../../components/site-language-provider";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
@@ -71,6 +72,7 @@ function statusBadgeClass(status: InterviewSessionStatus): string {
 
 export default function InterviewsPage() {
   const { t } = useUiText();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("TUMU");
   const [allSessions, setAllSessions] = useState<InterviewSessionView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -203,7 +205,7 @@ export default function InterviewsPage() {
                   return (
                     <tr
                       key={session.id}
-                      onClick={() => window.location.href = applicationDetailHref(session.applicationId)}
+                      onClick={() => router.push(applicationDetailHref(session.applicationId))}
                       style={{ cursor: "pointer" }}
                     >
                       <td style={{ fontWeight: 500 }}>
