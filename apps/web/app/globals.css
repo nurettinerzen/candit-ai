@@ -5153,6 +5153,18 @@ a.admin-metric-card:hover {
   text-align: center;
 }
 
+a.admin-distribution-card {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.18s var(--ease), border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+
+a.admin-distribution-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary-border);
+  box-shadow: var(--shadow-sm);
+}
+
 .admin-distribution-card strong {
   font-size: 28px;
   line-height: 1;

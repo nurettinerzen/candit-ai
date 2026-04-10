@@ -3958,3 +3958,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Etiketleme ve filtreleme": "Tagging and filtering",
   "Pozisyonlar arası aday paylaşımı": "Cross-position candidate sharing",
 });
+
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  "14 gün ücretsiz deneyin": "Try free for 14 days",
+  "Kredi kartı gerekmez. Hemen hesap oluşturun ve tüm özellikleri keşfedin.": "No credit card required. Create your account and explore all features.",
+});

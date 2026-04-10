@@ -1079,33 +1079,6 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
 
 export function PublicPricingPage() {
   const { t } = useUiText();
-  const OVERAGE_ROWS = [
-    {
-      channel: "Ek aday işleme",
-      unit: "50 aday",
-      rate: "1.099₺/paket",
-      note: "Düşük hacimli ek ihtiyaçlarda hızlı kapasite artışı için kullanılır."
-    },
-    {
-      channel: "Ek aday işleme",
-      unit: "100 aday",
-      rate: "1.999₺/paket",
-      note: "Aday ön eleme kotası dolduğunda daha avantajlı geniş paket seçeneğidir."
-    },
-    {
-      channel: "Ek AI mülakat",
-      unit: "10 mülakat",
-      rate: "1.199₺/paket",
-      note: "Kısa süreli ek görüşme ihtiyacı için küçük mülakat paketi."
-    },
-    {
-      channel: "Ek AI mülakat",
-      unit: "25 mülakat",
-      rate: "2.499₺/paket",
-      note: "Dönem içinde daha yoğun AI mülakat kullanımı için daha avantajlı büyük paket seçeneğidir."
-    }
-  ];
-
   return (
     <PublicSiteFrame activeHref="/pricing">
       {/* ══ Hero ══ */}
@@ -1220,81 +1193,16 @@ export function PublicPricingPage() {
         </div>
       </section>
 
-      {/* ══ Pay As You Go ══ */}
-      <section className={styles.section}>
-        <div className={styles.shell}>
-          <div className={styles.prPaygHeader}>
-            <span className={styles.prPaygBadge}>
-              <span className={styles.prBadgeDot} />
-              {t(PUBLIC_PAY_AS_YOU_GO.eyebrow ?? "")}
-            </span>
-            <h3 className={styles.prPaygHeading}>{t("Ek Paketler")}</h3>
-            <p className={styles.prSectionSubtitle}>
-              {t("Planınızı yükseltmeden, sadece ihtiyacınız olan ek kotayı satın alın.")}
-            </p>
-          </div>
-
-          <div className={styles.prAddonGrid}>
-            {OVERAGE_ROWS.map((row) => (
-              <article key={`${row.channel}-${row.unit}`} className={styles.prAddonCard}>
-                <div className={styles.prAddonCardTop} />
-                <h4 className={styles.prAddonName}>{t(row.channel)}</h4>
-                <p className={styles.prAddonQty}>{t(row.unit)}</p>
-                <div className={styles.prAddonPrice}>{row.rate}</div>
-                <a href="/subscription" className={styles.prAddonBtn}>
-                  <span>{t("Plana Ekle")}</span>
-                </a>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══ Overage Details ══ */}
-      <section className={styles.section}>
-        <div className={styles.shell}>
-          <div className={styles.prOverageHeader}>
-            <h2 className={styles.prSectionTitle}>{t("Ek paket detayları")}</h2>
-            <p className={styles.prSectionSubtitle}>
-              {t("Bu paketler mevcut plan kotanız yetmediğinde dönem içinde tek seferlik kapasite artışı sağlar.")}
-            </p>
-          </div>
-
-          <div className={styles.prTableWrap}>
-            <table className={styles.prTable}>
-              <thead>
-                <tr>
-                  <th>{t("Kanal")}</th>
-                  <th>{t("Birim")}</th>
-                  <th>{t("Paket fiyatı")}</th>
-                  <th>{t("Not")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {OVERAGE_ROWS.map((row, idx) => (
-                  <tr key={`${row.channel}-${idx}`}>
-                    <td className={styles.prTableBold}>{t(row.channel)}</td>
-                    <td>{t(row.unit)}</td>
-                    <td>{row.rate}</td>
-                    <td className={styles.prTableMuted}>{t(row.note)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
       {/* ══ CTA Section ══ */}
       <section className={styles.section}>
         <div className={styles.shell}>
           <div className={styles.prCtaSection}>
-            <h2 className={styles.prCtaTitle}>{t("Hala kararsız mısınız?")}</h2>
+            <h2 className={styles.prCtaTitle}>{t("14 gün ücretsiz deneyin")}</h2>
             <p className={styles.prCtaBody}>
-              {t("İhtiyacınıza göre doğru paketi birlikte seçelim.")}
+              {t("Kredi kartı gerekmez. Hemen hesap oluşturun ve tüm özellikleri keşfedin.")}
             </p>
             <a href="/auth/signup" className={styles.prGlowBtn}>
-              <span>{t("Hesap Oluştur")}</span>
+              <span>{t("Ücretsiz Deneyin")}</span>
             </a>
           </div>
         </div>
