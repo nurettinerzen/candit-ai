@@ -22,6 +22,11 @@ import {
   type StructuredTaskSections
 } from "./task-output.utils.js";
 import {
+  mergeJsonUserPrompt,
+  mergeSystemPrompt,
+  type LoadedPromptTemplate
+} from "./prompt-template.utils.js";
+import {
   analyzeInterviewTranscript,
   type InterviewTranscriptSignals
 } from "./interview-signal.utils.js";
@@ -88,31 +93,54 @@ export class ReportGenerationTaskService {
 
     const transcriptSegments = session.transcript?.segments ?? [];
     const transcriptSignals = analyzeInterviewTranscript(transcriptSegments);
-    const latestScreeningTask = await this.prisma.aiTaskRun.findFirst({
-      where: {
-        tenantId: context.tenantId,
-        taskType: AiTaskType.SCREENING_SUPPORT,
-        applicationId,
-        status: "SUCCEEDED"
-      },
-      orderBy: {
-        createdAt: "desc"
-      }
-    });
+    const [latestScreeningTask, latestFitScore, latestCvProfile] = await Promise.all([
+      this.prisma.aiTaskRun.findFirst({
+        where: {
+          tenantId: context.tenantId,
+          taskType: AiTaskType.SCREENING_SUPPORT,
+          applicationId,
+          status: "SUCCEEDED"
+        },
+        orderBy: {
+          createdAt: "desc"
+        }
+      }),
+      this.prisma.applicantFitScore.findFirst({
+        where: {
+          tenantId: context.tenantId,
+          applicationId
+        },
+        orderBy: {
+          createdAt: "desc"
+        }
+      }),
+      this.prisma.cVParsedProfile.findFirst({
+        where: {
+          tenantId: context.tenantId,
+          cvFile: {
+            candidateId: application.candidateId
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        }
+      })
+    ]);
 
     const promptTemplate = await this.loadPromptTemplate(context.tenantId, context.taskRun.id);
     const promptVersion = promptTemplate
       ? `${promptTemplate.key}:v${promptTemplate.version}`
       : "report_generation.v1.tr";
+    const fitScoreContext = this.buildFitScoreContext(latestFitScore);
+    const cvContext = this.buildCvContext(latestCvProfile?.profileJson ?? null);
 
     const fallbackSections = this.buildFallbackSections({
-      candidateName: application.candidate.fullName,
-      jobTitle: application.job.title,
       applicationId,
       sessionId: session.id,
       transcriptSegments,
       transcriptSignals,
-      latestScreeningOutput: latestScreeningTask?.outputJson ?? null
+      latestScreeningOutput: latestScreeningTask?.outputJson ?? null,
+      fitScoreContext
     });
 
     const generation = await this.provider.generate({
@@ -123,9 +151,22 @@ export class ReportGenerationTaskService {
       }),
       promptVersion,
       preferProviderKey: context.taskRun.providerKey,
-      systemPrompt:
-        "Türkçe recruiter odaklı AI mülakat raporu üret. Yalnızca mevcut interview session transcriptine dayan; CV ve screening verilerini sadece ikincil bağlam olarak kullan. Çıktı dili doğal, sade ve recruiter'ın doğrudan kullanabileceği yorum tonunda olsun; teknik kural, sinyal, heuristic ya da model içi değerlendirme dili kullanma. interviewSummary, strengths, weaknesses ve missingInformation alanları yalnızca bu mülakattan türemeli. Aday yanıtları yüzeysel, kaçamak, şaka yollu veya rol sahipliğini göstermiyorsa bunu net ama doğal bir risk yorumu olarak ifade et. Zayıf mülakatta ADVANCE önerme. Facts/interpretation/recommendation net ayrışsın ve denetlenebilir kalsın.",
-      userPrompt: JSON.stringify({
+      systemPrompt: mergeSystemPrompt(
+        [
+          "Turkce recruiter odakli AI mulakat raporu uret.",
+          "Ana kaynak yalnizca mevcut interview session transcriptidir.",
+          "CV parse, fit score ve screening verileri sadece ikincil baglamdir; transcriptte gecmeyen bir niteliği guclu yon veya fact olarak yazma.",
+          "Cikti dili dogal, sade ve recruiter'in dogrudan kullanabilecegi yorum tonunda olsun.",
+          "Teknik kural, sinyal, heuristic ya da model ici degerlendirme dili kullanma.",
+          "interviewSummary, strengths, weaknesses ve missingInformation alanlari yalnizca bu mulakattan turemeli.",
+          "Interpretation alaninda mulakat ile CV/fit score arasindaki tutarlilik veya dogrulanamayan noktalar kisaca belirtilebilir.",
+          "Aday yanitlari yuzeysel, kacamak, saka yollu veya rol sahipligini gostermiyorsa bunu net ama dogal bir risk yorumu olarak ifade et.",
+          "Zayif mulakatta ADVANCE onerme.",
+          "Facts/interpretation/recommendation net ayrissin ve denetlenebilir kalsin."
+        ].join(" "),
+        promptTemplate
+      ),
+      userPrompt: mergeJsonUserPrompt({
         task: "REPORT_GENERATION",
         locale: "tr-TR",
         application: {
@@ -175,6 +216,8 @@ export class ReportGenerationTaskService {
           weaknesses: transcriptSignals.weaknesses
         },
         latestScreeningOutput: latestScreeningTask?.outputJson ?? null,
+        fitScore: fitScoreContext,
+        cvProfileSummary: cvContext,
         instructions: [
           "recruiter'in okuyabilecegi net ve doğal bir rapor tonu kullan",
           "evidenceLinks alaninda transcript segment id'si varsa kullan",
@@ -186,14 +229,17 @@ export class ReportGenerationTaskService {
           "facts alanina aday adi gibi zaten bilinen kimlik bilgilerini yazma",
           "missingInformation alanina risklerin aynisini tekrar etme; yalnizca recruiter'in ayrıca teyit etmesi gereken acik sorulari yaz",
           "facts, strengths ve interpretation alanlarina CV veya profil özeti koyma; yalnızca görüşmede gerçekten söylenen ya da söylenemeyen şeyleri yaz",
-          "yıl deneyim, genel profil gücü, liderlik geçmişi gibi resume özetlerini bu alanlara taşıma"
+          "yıl deneyim, genel profil gücü, liderlik geçmişi gibi resume özetlerini bu alanlara taşıma",
+          "CV veya fit score baglamini kullaniyorsan bunu sadece 'mulakatta dogrulandi / dogrulanmadi / soru olarak acik kaldı' seviyesinde yorumla"
         ]
-      })
+      }, promptTemplate)
     });
 
-    const sections = this.applyInterviewSignals(
-      normalizeStructuredSections(generation.output, fallbackSections),
-      transcriptSignals
+    const sections = this.sanitizeReportSections(
+      this.applyInterviewSignals(
+        normalizeStructuredSections(generation.output, fallbackSections),
+        transcriptSignals
+      )
     );
     const confidence = Math.min(
       this.policy.normalizeConfidence(sections.confidence, fallbackSections.confidence),
@@ -358,7 +404,7 @@ export class ReportGenerationTaskService {
                 orderBy: {
                   startMs: "asc"
                 },
-                take: 20
+                take: 60
               }
             }
           }
@@ -379,7 +425,7 @@ export class ReportGenerationTaskService {
               orderBy: {
                 startMs: "asc"
               },
-              take: 20
+              take: 60
             }
           }
         }
@@ -390,7 +436,10 @@ export class ReportGenerationTaskService {
     });
   }
 
-  private async loadPromptTemplate(tenantId: string, taskRunId: string) {
+  private async loadPromptTemplate(
+    tenantId: string,
+    taskRunId: string
+  ): Promise<LoadedPromptTemplate | null> {
     const run = await this.prisma.aiTaskRun.findUnique({
       where: {
         id: taskRunId
@@ -409,7 +458,9 @@ export class ReportGenerationTaskService {
         },
         select: {
           key: true,
-          version: true
+          version: true,
+          systemPrompt: true,
+          userPrompt: true
         }
       });
 
@@ -429,19 +480,27 @@ export class ReportGenerationTaskService {
       },
       select: {
         key: true,
-        version: true
+        version: true,
+        systemPrompt: true,
+        userPrompt: true
       }
     });
   }
 
   private buildFallbackSections(input: {
-    candidateName: string;
-    jobTitle: string;
     applicationId: string;
     sessionId: string;
     transcriptSegments: TranscriptSegment[];
     transcriptSignals: InterviewTranscriptSignals;
     latestScreeningOutput: Prisma.JsonValue | null;
+    fitScoreContext: {
+      overallScore: number;
+      confidence: number;
+      strengths: string[];
+      risks: string[];
+      missingInformation: string[];
+      overallAssessment: string | null;
+    } | null;
   }): StructuredTaskSections {
     const segment = input.transcriptSegments.find((item) => item.speaker === "CANDIDATE");
     const screening = toRecord(input.latestScreeningOutput);
@@ -449,10 +508,10 @@ export class ReportGenerationTaskService {
 
     return {
       facts: [
-        `Aday: ${input.candidateName}`,
-        `Pozisyon: ${input.jobTitle}`,
-        `Session: ${input.sessionId}`,
-        `Transcript segment sayisi: ${input.transcriptSegments.length}`
+        `Aday cevap sayisi: ${input.transcriptSignals.candidateSegmentCount}`,
+        `Ortalama cevap uzunlugu: ${Math.round(input.transcriptSignals.averageWordsPerAnswer)} kelime`,
+        ...(segment ? [`Mulakatta dogrudan ifade edilen ornek konu: ${segment.text.slice(0, 110)}`] : []),
+        ...(input.fitScoreContext ? [`Mevcut fit score baglami: ${input.fitScoreContext.overallScore}/100`] : [])
       ],
       interpretation: [
         segment
@@ -460,7 +519,8 @@ export class ReportGenerationTaskService {
           : "Transcript segmenti olmadigi icin yorum sinirlidir.",
         typeof screeningRecommendation === "object"
           ? "Screening support ciktilari rapor olustururken referans alindi."
-          : "Screening support ciktilari bulunamadi; rapor temel sinyal setiyle hazirlandi."
+          : "Screening support ciktilari bulunamadi; rapor temel sinyal setiyle hazirlandi.",
+        ...(input.fitScoreContext?.overallAssessment ? [input.fitScoreContext.overallAssessment] : [])
       ],
       interviewSummary: input.transcriptSignals.interviewSummary,
       strengths: input.transcriptSignals.strengths,
@@ -493,6 +553,11 @@ export class ReportGenerationTaskService {
           sourceRef: input.applicationId,
           claim: "Rapor application baglaminda olusturuldu."
         },
+        {
+          sourceType: "interview_session",
+          sourceRef: input.sessionId,
+          claim: "Rapor bu interview session transcriptine dayandirildi."
+        },
         ...(segment
           ? [
               {
@@ -508,6 +573,22 @@ export class ReportGenerationTaskService {
         input.transcriptSegments.length > 0
           ? ["Transcript parcali oldugu icin baglamin tamami teyit edilmedi."]
           : ["Transcript olmadan rapor cogu alanda varsayimsaldir."]
+    };
+  }
+
+  private sanitizeReportSections(sections: StructuredTaskSections): StructuredTaskSections {
+    return {
+      ...sections,
+      facts: this.uniqueStrings(
+        sections.facts.filter((line) => !/^Aday:|^Pozisyon:|^Session:/i.test(line))
+      ).slice(0, 8),
+      interpretation: this.uniqueStrings(sections.interpretation).slice(0, 6),
+      strengths: this.uniqueStrings(sections.strengths ?? []).slice(0, 6),
+      weaknesses: this.uniqueStrings(sections.weaknesses ?? []).slice(0, 6),
+      missingInformation: this.uniqueStrings(sections.missingInformation).slice(0, 8),
+      uncertaintyReasons: this.uniqueStrings(sections.uncertaintyReasons).slice(0, 6),
+      flags: this.uniqueFlags(sections.flags).slice(0, 8),
+      evidenceLinks: this.uniqueEvidenceLinks(sections.evidenceLinks).slice(0, 12)
     };
   }
 
@@ -533,7 +614,9 @@ export class ReportGenerationTaskService {
         this.policy.normalizeRecommendation(sections.recommendedOutcome),
         signals.maxRecommendation
       ),
-      confidence: Math.min(sections.confidence, signals.maxConfidence)
+      confidence: Math.min(sections.confidence, signals.maxConfidence),
+      facts: this.uniqueStrings(sections.facts),
+      interpretation: this.uniqueStrings(sections.interpretation)
     };
   }
 
@@ -591,6 +674,71 @@ export class ReportGenerationTaskService {
       seen.add(key);
       return true;
     });
+  }
+
+  private uniqueEvidenceLinks(values: EvidenceLink[]) {
+    const seen = new Set<string>();
+    return values.filter((value) => {
+      const key = `${value.sourceType}:${value.sourceRef}:${value.claim.trim().toLocaleLowerCase("tr-TR")}`;
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
+  }
+
+  private buildFitScoreContext(
+    fitScore: {
+      overallScore: Prisma.Decimal;
+      confidence: Prisma.Decimal;
+      strengthsJson: Prisma.JsonValue | null;
+      risksJson: Prisma.JsonValue | null;
+      missingInfoJson: Prisma.JsonValue | null;
+      reasoningJson: Prisma.JsonValue | null;
+    } | null
+  ) {
+    if (!fitScore) {
+      return null;
+    }
+
+    const reasoning = toRecord(fitScore.reasoningJson);
+
+    return {
+      overallScore: Number(fitScore.overallScore),
+      confidence: Number(fitScore.confidence),
+      strengths: this.toStringList(fitScore.strengthsJson),
+      risks: this.toStringList(fitScore.risksJson),
+      missingInformation: this.toStringList(fitScore.missingInfoJson),
+      overallAssessment:
+        typeof reasoning.overallAssessment === "string" ? reasoning.overallAssessment : null
+    };
+  }
+
+  private buildCvContext(profileJson: Prisma.JsonValue | null) {
+    const profile = toRecord(profileJson);
+    const extractedFacts = toRecord(profile.extractedFacts);
+    const normalizedSummary = toRecord(profile.normalizedSummary);
+
+    return {
+      recentRoles: this.toStringList(extractedFacts.recentRoles).slice(0, 4),
+      skills: this.toStringList(extractedFacts.skills).slice(0, 6),
+      sectorSignals: this.toStringList(extractedFacts.sectorSignals).slice(0, 4),
+      likelyFitSignals: this.toStringList(normalizedSummary.likelyFitSignals).slice(0, 4),
+      missingCriticalInformation: this.toStringList(profile.missingCriticalInformation).slice(0, 6)
+    };
+  }
+
+  private toStringList(value: unknown) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 
   private async persistEvidenceLinks(input: {

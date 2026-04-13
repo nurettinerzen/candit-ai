@@ -7,7 +7,6 @@ import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-sta
 import { useUiText } from "../../../components/site-language-provider";
 import { apiClient } from "../../../lib/api-client";
 import {
-  formatInternalPlan,
   getInternalAdminCopy,
   translateInternalAdminMessage
 } from "../../../lib/internal-admin-copy";
@@ -20,11 +19,6 @@ function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-function dashboardBadgeVariant(key: string) {
-  if (key === "ENTERPRISE") return "info";
-  if (key === "GROWTH") return "success";
-  return "warn";
-}
 
 function isTrialAccount(account: InternalAdminAccountListReadModel["rows"][number]) {
   return account.billing.trial.isActive || account.billing.trial.isExpired;
@@ -130,20 +124,8 @@ export default function InternalAdminDashboardPage() {
       href: "/admin/users",
       detail:
         locale === "en"
-          ? `${starterCount} Starter, ${growthCount} Growth, ${enterpriseCount} Enterprise`
-          : `${starterCount} Starter, ${growthCount} Growth, ${enterpriseCount} Kurumsal`
-    },
-    {
-      label: copy.activeCustomers,
-      value: data.summary.activeCustomers,
-      tone: "success",
-      icon: "\u2713",
-      iconTone: "success",
-      href: "/admin/users?status=ACTIVE",
-      detail:
-        locale === "en"
-          ? `${accounts.summary.suspended} suspended workspace`
-          : `${accounts.summary.suspended} askıdaki hesap`
+          ? `${data.summary.activeCustomers} active · ${accounts.summary.suspended} suspended · ${trialTotal} trial`
+          : `${data.summary.activeCustomers} aktif · ${accounts.summary.suspended} askıda · ${trialTotal} deneme`
     },
     {
       label: copy.openAlerts,
@@ -154,90 +136,32 @@ export default function InternalAdminDashboardPage() {
       href: "/admin/red-alert",
       detail:
         locale === "en"
-          ? `${data.quickLinks.leads} open inbound lead`
-          : `${data.quickLinks.leads} açık inbound lead`
+          ? "Platform failures, delivery issues and risk signals"
+          : "Platform hataları, teslimat sorunları ve risk sinyalleri"
     },
     {
-      label: copy.trialAccounts,
-      value: trialTotal,
+      label: copy.leads,
+      value: data.quickLinks.leads,
       tone: "warning",
-      icon: "\u23F3",
+      icon: "\u2709",
       iconTone: "warning",
-      href: "/admin/users?segment=TRIAL",
+      href: "/admin/leads",
       detail:
         locale === "en"
-          ? `${accounts.summary.trialActive} active · ${accounts.summary.trialExpired} ended`
-          : `${accounts.summary.trialActive} aktif · ${accounts.summary.trialExpired} biten`
-    }
-  ];
-
-  const segmentCards = [
-    {
-      key: "TRIAL",
-      label: copy.segmentTrial,
-      count: trialTotal,
-      tone: "warning",
-      href: "/admin/users?segment=TRIAL" as Route
+          ? "Open inbound demo and pilot requests"
+          : "Açık demo ve pilot talepleri"
     },
     {
-      key: "STARTER",
-      label: formatInternalPlan("STARTER", locale),
-      count: starterCount,
-      tone: dashboardBadgeVariant("STARTER"),
-      href: "/admin/users?planKey=STARTER" as Route
-    },
-    {
-      key: "GROWTH",
-      label: formatInternalPlan("GROWTH", locale),
-      count: growthCount,
-      tone: dashboardBadgeVariant("GROWTH"),
-      href: "/admin/users?planKey=GROWTH" as Route
-    },
-    {
-      key: "ENTERPRISE",
-      label: formatInternalPlan("ENTERPRISE", locale),
-      count: enterpriseCount,
-      tone: dashboardBadgeVariant("ENTERPRISE"),
-      href: "/admin/users?planKey=ENTERPRISE" as Route
-    }
-  ];
-
-  const quickLinks = [
-    {
-      href: "/admin/users" as Route,
-      title: copy.customers,
+      label: copy.enterprise,
+      value: enterpriseCount,
+      tone: "info",
+      icon: "\u{1F3E2}",
+      iconTone: "info",
+      href: "/admin/enterprise",
       detail:
         locale === "en"
-          ? "Open customer list, filter plans, and inspect account details."
-          : "Müşteri listesini açın, planları filtreleyin ve hesap detaylarını inceleyin.",
-      icon: "\u{1F465}"
-    },
-    {
-      href: "/admin/red-alert" as Route,
-      title: copy.redAlerts,
-      detail:
-        locale === "en"
-          ? "Review platform failures, delivery issues, and commercial risk signals."
-          : "Platform hatalarını, teslimat sorunlarını ve ticari risk sinyallerini inceleyin.",
-      icon: "\u26A0"
-    },
-    {
-      href: "/admin/leads" as Route,
-      title: copy.leads,
-      detail:
-        locale === "en"
-          ? "Review inbound demo and pilot demand from the public site."
-          : "Public siteden gelen demo ve pilot taleplerini inceleyin.",
-      icon: "\u2709"
-    },
-    {
-      href: "/admin/enterprise" as Route,
-      title: copy.enterprise,
-      detail:
-        locale === "en"
-          ? "Manage contract customers, custom offers, and payment link flows."
-          : "Sözleşmeli müşterileri, özel teklifleri ve ödeme linki akışlarını yönetin.",
-      icon: "\u{1F3E2}"
+          ? `${starterCount} Starter · ${growthCount} Growth`
+          : `${starterCount} Starter · ${growthCount} Growth`
     }
   ];
 
@@ -261,33 +185,6 @@ export default function InternalAdminDashboardPage() {
             <div className={`admin-metric-icon icon-${metric.iconTone}`} aria-hidden="true">
               {metric.icon}
             </div>
-          </Link>
-        ))}
-      </section>
-
-      <section className="panel">
-        <div className="tlx-section-header">
-          <h2 className="tlx-section-title">{copy.planSegments}</h2>
-        </div>
-        <div className="admin-distribution-grid">
-          {segmentCards.map((item) => (
-            <Link key={item.key} href={item.href} className="admin-distribution-card admin-distribution-link">
-              <span className={`badge ${item.tone}`}>{item.label}</span>
-              <strong>{item.count}</strong>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="admin-quick-grid">
-        {quickLinks.map((link) => (
-          <Link key={link.href} href={link.href} className="admin-quick-card">
-            <div>
-              <span aria-hidden="true" style={{ fontSize: 18, marginRight: 6 }}>{link.icon}</span>
-              <h3 style={{ display: "inline" }}>{link.title}</h3>
-              <p>{link.detail}</p>
-            </div>
-            <span aria-hidden="true">{"\u2192"}</span>
           </Link>
         ))}
       </section>
