@@ -4933,6 +4933,60 @@ main {
   white-space: nowrap;
 }
 
+.subscription-summary-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.subscription-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.subscription-section-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.subscription-summary-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.subscription-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.subscription-summary-item {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+}
+
+.subscription-summary-item span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.subscription-summary-item strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
 .tlx-plan-card-head {
   padding: 28px 20px 16px;
   text-align: center;
@@ -5017,6 +5071,10 @@ main {
 
 @media (max-width: 980px) {
   .tlx-plan-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .subscription-summary-grid {
     grid-template-columns: 1fr;
   }
 
@@ -5481,6 +5539,14 @@ a.admin-distribution-card:hover {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.admin-readonly-field {
+  display: flex;
+  align-items: center;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-muted) 88%, var(--surface) 12%);
+  border-color: var(--border-subtle);
 }
 
 .admin-users-table {

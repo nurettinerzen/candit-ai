@@ -2,24 +2,30 @@
 
 ## Working behavior
 
-- Job list/create flow works end-to-end.
-- Candidate list/create/detail flow works end-to-end.
+- Job list/create/detail/update flow works end-to-end.
+- Published job limit enforcement works on publish, not draft creation.
+- Candidate list/create/detail and CV upload flows work end-to-end.
+- CV parsing runs through the async worker pipeline and produces parsed profile output.
 - Application create/list/detail flow works end-to-end.
-- Stage transition works and writes stage history + audit.
-- Decision submit works with mandatory human approval match.
-- Audit log list/filter works.
+- Fit score and screening flows run through worker execution and surface artifacts back to recruiter views.
+- Interview invite flow works end-to-end, including public candidate session start, answer, completion and review pack generation.
+- Audit log and internal admin account visibility are backed by persisted data.
 
-## Architecture scaffolding now present
+## Architecture now proven in runtime
 
-- AI task run request/list/get APIs (`/v1/ai/task-runs`).
-- AI provider registry abstraction (noop provider only).
-- Domain events persisted for application and AI task actions.
-- Human approval records persisted in dedicated table.
-- Extended feature flags for AI stage gates.
+- Tenant-aware auth and session loading work in the pilot smoke path.
+- AI task orchestration, workflow retries and worker execution are active in real flows.
+- Domain events and audit writes are active for recruiter-side mutations.
+- Billing guardrails are enforced in backend services for:
+  - active published jobs
+  - member seats
+  - candidate processing
+  - AI interviews
+- `VOICE` interview scheduling now uses the same AI interview quota enforcement as invite flows.
 
-## Deferred behavior
+## Current boundaries
 
-- AI-generated interview runtime
-- Transcript generation/summarization pipeline execution
-- Report/recommendation generation execution
-- Integration-driven scheduling/notifications
+- Real email delivery is not yet a proven launch capability in default environments.
+- Stripe self-serve billing is not yet a proven launch capability in default environments.
+- Unsupported integrations must remain clearly labeled and non-marketed.
+- Admin and recruiter UX still need polish, but core runtime behavior is functioning.

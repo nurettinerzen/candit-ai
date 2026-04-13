@@ -298,7 +298,7 @@ export class InternalAdminController {
       actorEmail: user.email,
       billingEmail: body.billingEmail,
       planKey: body.planKey,
-      status: body.status ?? BillingAccountStatus.ACTIVE,
+      status: body.status,
       monthlyAmountCents: body.planKey === BillingPlanKey.ENTERPRISE ? body.monthlyAmountCents ?? null : defaults?.monthlyAmountCents ?? null,
       seatsIncluded: body.seatsIncluded ?? defaults?.seatsIncluded ?? 1,
       activeJobsIncluded: body.activeJobsIncluded ?? defaults?.activeJobsIncluded ?? 1,

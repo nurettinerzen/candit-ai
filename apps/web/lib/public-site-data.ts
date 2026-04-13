@@ -406,7 +406,7 @@ export const PUBLIC_FAQ: PublicFaq[] = [
   {
     question: "Deneme sürümünde neler var?",
     answer:
-      "7 gün boyunca 1 kullanıcı, 1 aktif ilan, 25 aday ön eleme ve 3 AI mülakat hakkı ile platformu ücretsiz deneyebilirsiniz. Kredi kartı gerekmez."
+      "14 gün boyunca 1 kullanıcı, 1 aktif ilan, 25 aday ön eleme ve 3 AI mülakat hakkı ile platformu ücretsiz deneyebilirsiniz. Kredi kartı gerekmez."
   },
   {
     question: "KVKK ve veri güvenliği nasıl sağlanıyor?",
@@ -422,9 +422,9 @@ export const PUBLIC_FAQ: PublicFaq[] = [
 
 export const PUBLIC_PRICING_PLANS: PublicCard[] = [
   {
-    badge: "7 gün ücretsiz — Kredi kartı gerekmez",
+    badge: "14 gün ücretsiz — Kredi kartı gerekmez",
     title: "Deneme",
-    body: "Platformu keşfedin. 7 gün boyunca temel özellikleri deneyin.",
+    body: "Platformu keşfedin. 14 gün boyunca temel özellikleri deneyin.",
     meta: "Ücretsiz",
     bullets: [
       "1 kullanıcı",

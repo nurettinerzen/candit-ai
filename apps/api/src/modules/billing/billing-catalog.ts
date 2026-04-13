@@ -156,8 +156,8 @@ export const BILLING_ADDON_CATALOG: Record<
 export const FREE_TRIAL_DEFINITION: BillingTrialDefinition = {
   label: "Ücretsiz Deneme",
   description:
-    "7 gün boyunca tek ilan üzerinde screening ve AI mülakat akışını deneyin. Kredi kartı gerekmez.",
-  durationDays: 7,
+    "14 gün boyunca tek ilan üzerinde screening ve AI mülakat akışını deneyin. Kredi kartı gerekmez.",
+  durationDays: 14,
   monthlyAmountCents: 0,
   currency: "try",
   seatsIncluded: 1,

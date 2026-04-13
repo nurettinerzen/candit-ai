@@ -3,7 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { EmptyState, ErrorState, LoadingState } from "../../../../../components/ui-states";
 import { useUiText } from "../../../../../components/site-language-provider";
 import { apiClient } from "../../../../../lib/api-client";
@@ -16,26 +16,17 @@ import {
   getInternalAdminCopy,
   translateInternalAdminMessage
 } from "../../../../../lib/internal-admin-copy";
-import type { SiteLocale } from "../../../../../lib/i18n";
 import type { BillingPlanKey, InternalAdminAccountDetailReadModel } from "../../../../../lib/types";
 
 type PlanFormState = {
   planKey: BillingPlanKey;
-  status: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED" | "INCOMPLETE";
-  monthlyAmountCents: string;
   seatsIncluded: string;
   activeJobsIncluded: string;
   candidateProcessingIncluded: string;
   aiInterviewsIncluded: string;
-  advancedReporting: boolean;
-  calendarIntegrations: boolean;
-  brandedCandidateExperience: boolean;
-  customIntegrations: boolean;
-  note: string;
 };
 
 type GrantFormState = {
-  label: string;
   seats: string;
   activeJobs: string;
   candidateProcessing: string;
@@ -55,7 +46,6 @@ function statusVariant(status: string) {
 
 function createEmptyGrantForm(): GrantFormState {
   return {
-    label: "",
     seats: "",
     activeJobs: "",
     candidateProcessing: "",
@@ -73,21 +63,13 @@ function confirmAdminAction(message: string) {
 
 function buildPlanFormState(detail: InternalAdminAccountDetailReadModel): PlanFormState {
   const currentPlan = detail.billing.currentPlan;
-  const account = detail.billing.account;
 
   return {
     planKey: detail.billing.account.currentPlanKey,
-    status: (account.status as PlanFormState["status"]) ?? "ACTIVE",
-    monthlyAmountCents: String(currentPlan.monthlyAmountCents ?? ""),
     seatsIncluded: String(currentPlan.seatsIncluded),
     activeJobsIncluded: String(currentPlan.activeJobsIncluded),
     candidateProcessingIncluded: String(currentPlan.candidateProcessingIncluded),
-    aiInterviewsIncluded: String(currentPlan.aiInterviewsIncluded),
-    advancedReporting: account.features.advancedReporting,
-    calendarIntegrations: account.features.calendarIntegrations,
-    brandedCandidateExperience: account.features.brandedCandidateExperience,
-    customIntegrations: account.features.customIntegrations,
-    note: ""
+    aiInterviewsIncluded: String(currentPlan.aiInterviewsIncluded)
   };
 }
 
@@ -95,12 +77,16 @@ function isTrialAccount(detail: InternalAdminAccountDetailReadModel) {
   return detail.billing.trial.isActive || detail.billing.trial.isExpired;
 }
 
-function getDisplayedPlanLabel(
-  detail: InternalAdminAccountDetailReadModel,
-  locale: SiteLocale,
-  copy: ReturnType<typeof getInternalAdminCopy>
-) {
-  return isTrialAccount(detail) ? copy.segmentTrial : formatInternalPlan(detail.billing.account.currentPlanKey, locale);
+function getLifecycleLabel(detail: InternalAdminAccountDetailReadModel, locale: "tr" | "en") {
+  if (detail.billing.trial.isActive) {
+    return locale === "en" ? "Trial Active" : "Aktif Deneme";
+  }
+
+  if (detail.billing.trial.isExpired) {
+    return locale === "en" ? "Trial Expired" : "Deneme Süresi Bitti";
+  }
+
+  return formatBillingStatus(detail.billing.account.status, locale);
 }
 
 function normalizeAccountDetail(detail: InternalAdminAccountDetailReadModel): InternalAdminAccountDetailReadModel {
@@ -147,11 +133,6 @@ export default function InternalAdminAccountDetailPage() {
     void loadPage();
   }, [loadPage]);
 
-  const selectedPlanDefaults = useMemo(() => {
-    if (!detail || !planForm) return null;
-    return detail.billing.planCatalog.find((plan) => plan.key === planForm.planKey) ?? null;
-  }, [detail, planForm]);
-
   function handlePlanKeyChange(nextPlanKey: BillingPlanKey) {
     if (!detail || !planForm) return;
 
@@ -164,15 +145,10 @@ export default function InternalAdminAccountDetailPage() {
     setPlanForm({
       ...planForm,
       planKey: nextPlanKey,
-      monthlyAmountCents: nextPlanKey === "ENTERPRISE" ? planForm.monthlyAmountCents : String(planDefaults.monthlyAmountCents ?? ""),
       seatsIncluded: String(planDefaults.seatsIncluded),
       activeJobsIncluded: String(planDefaults.activeJobsIncluded),
       candidateProcessingIncluded: String(planDefaults.candidateProcessingIncluded),
-      aiInterviewsIncluded: String(planDefaults.aiInterviewsIncluded),
-      advancedReporting: planDefaults.features.advancedReporting,
-      calendarIntegrations: planDefaults.features.calendarIntegrations,
-      brandedCandidateExperience: planDefaults.features.brandedCandidateExperience,
-      customIntegrations: planDefaults.features.customIntegrations
+      aiInterviewsIncluded: String(planDefaults.aiInterviewsIncluded)
     });
   }
 
@@ -242,20 +218,13 @@ export default function InternalAdminAccountDetailPage() {
     setError("");
 
     try {
-      const result = await apiClient.internalAdminUpdateAccountPlan(tenantId, {
+      const result = normalizeAccountDetail(await apiClient.internalAdminUpdateAccountPlan(tenantId, {
         planKey: planForm.planKey,
-        status: planForm.status,
-        monthlyAmountCents: planForm.monthlyAmountCents ? Number(planForm.monthlyAmountCents) : undefined,
         seatsIncluded: Number(planForm.seatsIncluded),
         activeJobsIncluded: Number(planForm.activeJobsIncluded),
         candidateProcessingIncluded: Number(planForm.candidateProcessingIncluded),
-        aiInterviewsIncluded: Number(planForm.aiInterviewsIncluded),
-        advancedReporting: planForm.advancedReporting,
-        calendarIntegrations: planForm.calendarIntegrations,
-        brandedCandidateExperience: planForm.brandedCandidateExperience,
-        customIntegrations: planForm.customIntegrations,
-        note: planForm.note || undefined
-      });
+        aiInterviewsIncluded: Number(planForm.aiInterviewsIncluded)
+      }));
       setDetail(result);
       setPlanForm(buildPlanFormState(result));
       setNotice(copy.planSaved);
@@ -274,13 +243,12 @@ export default function InternalAdminAccountDetailPage() {
     setError("");
 
     try {
-      const result = await apiClient.internalAdminCreateQuotaGrant(tenantId, {
-        label: grantForm.label || undefined,
+      const result = normalizeAccountDetail(await apiClient.internalAdminCreateQuotaGrant(tenantId, {
         seats: grantForm.seats ? Number(grantForm.seats) : undefined,
         activeJobs: grantForm.activeJobs ? Number(grantForm.activeJobs) : undefined,
         candidateProcessing: grantForm.candidateProcessing ? Number(grantForm.candidateProcessing) : undefined,
         aiInterviews: grantForm.aiInterviews ? Number(grantForm.aiInterviews) : undefined
-      });
+      }));
       setDetail(result);
       setPlanForm(buildPlanFormState(result));
       setGrantForm(createEmptyGrantForm());
@@ -329,40 +297,57 @@ export default function InternalAdminAccountDetailPage() {
     );
   }
 
-  const displayedPlanLabel = getDisplayedPlanLabel(detail, locale, copy);
+  const displayedPlanLabel = formatInternalPlan(detail.billing.account.currentPlanKey, locale);
+  const displayedLifecycleLabel = getLifecycleLabel(detail, locale);
   const isTrial = isTrialAccount(detail);
-  const planFieldHint = isTrial
+  const trialNote = isTrial
     ? locale === "en"
-      ? "Trial status is tracked separately from the base catalog plan."
-      : "Deneme durumu, temel katalog plandan ayrı takip edilir."
+      ? "This customer is using the trial lifecycle on top of Starter limits."
+      : "Bu müşteri, Starter limitleri üzerinde deneme yaşam döngüsünü kullanıyor."
     : "";
   const accountCardTitle = locale === "en" ? "Account" : "Hesap";
   const accountCardSubtitle = locale === "en" ? "Customer workspace and owner details." : "Müşteri hesabı ve sahip bilgileri.";
   const billingSummaryTitle = locale === "en" ? "Subscription Summary" : "Abonelik Özeti";
   const billingSummarySubtitle = isTrial
     ? locale === "en"
-      ? "Trial lifecycle is shown separately from the base catalog plan."
-      : "Deneme yaşam döngüsü, temel katalog plandan ayrı gösterilir."
+      ? "Plan and lifecycle are shown separately for trial accounts."
+      : "Deneme hesaplarında plan ve yaşam döngüsü ayrı gösterilir."
     : locale === "en"
       ? "Current billing state and renewal window."
       : "Güncel abonelik durumu ve yenileme dönemi.";
-  const adminActionsTitle = locale === "en" ? "Admin Actions" : "Yönetim İşlemleri";
+  const adminActionsTitle = locale === "en" ? "Account Actions" : "Hesap İşlemleri";
   const adminActionsSubtitle = locale === "en"
-    ? "Use only when you need to change customer access."
-    : "Sadece müşteri erişimini değiştirmek gerektiğinde kullanın.";
-  const billingSettingsTitle = locale === "en" ? "Plan Settings" : "Plan Ayarları";
+    ? "Use only for access and owner login operations."
+    : "Sadece erişim ve sahip giriş işlemleri için kullanın.";
+  const billingSettingsTitle = locale === "en" ? "Plan and Limits" : "Plan ve Limitler";
   const billingSettingsSubtitle = locale === "en"
-    ? "Adjust the base plan, billing status, limits, and enabled capabilities."
-    : "Temel planı, abonelik durumunu, limitleri ve açık özellikleri yönetin.";
-  const quotaTitle = locale === "en" ? "Manual Quota" : "Manuel Kota";
+    ? "Change the package or adjust included limits for this customer."
+    : "Bu müşteri için paketi değiştirin veya dahil limitleri düzenleyin.";
+  const quotaTitle = locale === "en" ? "Extra Limits" : "Ek Limitler";
   const quotaSubtitle = locale === "en"
-    ? "Add temporary quota on top of the current plan when needed."
-    : "Gerektiğinde mevcut planın üzerine geçici kota tanımlayın.";
+    ? "Adds extra usage rights on top of the current package."
+    : "Mevcut paketin üzerine ek kullanım hakkı tanımlar.";
   const paymentLinksTitle = locale === "en" ? "Payment Links" : "Ödeme Linkleri";
   const paymentLinksSubtitle = locale === "en"
     ? "Recent checkout links created for this customer."
     : "Bu müşteri için oluşturulan son ödeme linkleri.";
   const recentCheckouts = detail.activity?.recentCheckouts ?? [];
+  const packageLabel = locale === "en" ? "Package" : "Paket";
+  const lifecycleLabel = locale === "en" ? "Lifecycle" : "Yaşam Döngüsü";
+  const planSaveHint = isTrial
+    ? locale === "en"
+      ? "If you move this customer to Growth or Enterprise, the trial lifecycle ends and the account becomes active on that package."
+      : "Bu müşteri Growth veya Enterprise pakete alınırsa deneme yaşam döngüsü biter ve hesap seçilen pakette aktif hale gelir."
+    : locale === "en"
+      ? "Use this area only to change package limits for the customer."
+      : "Bu alanı sadece müşteri paketini veya dahil limitleri değiştirmek için kullanın.";
+  const quotaInputHint = locale === "en"
+    ? "Enter only the extra amount you want to add."
+    : "Sadece eklemek istediğiniz ilave adedi girin.";
+  const activateLabel = locale === "en" ? "Activate Account" : "Hesabı Aktifleştir";
+  const suspendLabel = locale === "en" ? "Suspend Account" : "Hesabı Askıya Al";
+  const deleteLabel = locale === "en" ? "Mark as Deleted" : "Silinmiş Olarak İşaretle";
+  const ownerResetLabel = locale === "en" ? "Send Owner Login Link" : "Sahibe Giriş Linki Gönder";
 
   return (
     <section className="page-grid admin-detail-page">
@@ -380,7 +365,7 @@ export default function InternalAdminAccountDetailPage() {
             {formatTenantStatus(detail.tenant.status, locale)}
           </span>
           <span className={`status-badge status-${statusVariant(detail.billing.account.status)}`}>
-            {formatBillingStatus(detail.billing.account.status, locale)}
+            {displayedLifecycleLabel}
           </span>
         </div>
       </div>
@@ -409,8 +394,8 @@ export default function InternalAdminAccountDetailPage() {
             <p>{billingSummarySubtitle}</p>
           </div>
           <ul className="admin-detail-list admin-kv-list">
-            <li><span>{copy.currentPlan}</span><strong>{displayedPlanLabel}</strong></li>
-            <li><span>{copy.billingStatus}</span><strong>{formatBillingStatus(detail.billing.account.status, locale)}</strong></li>
+            <li><span>{packageLabel}</span><strong>{displayedPlanLabel}</strong></li>
+            <li><span>{lifecycleLabel}</span><strong>{displayedLifecycleLabel}</strong></li>
             <li><span>{copy.billingEmail}</span><strong>{detail.billing.account.billingEmail ?? "—"}</strong></li>
             <li>
               <span>{detail.billing.trial.isActive || detail.billing.trial.isExpired ? copy.trialStartedAt : copy.createdAt}</span>
@@ -438,7 +423,7 @@ export default function InternalAdminAccountDetailPage() {
             <div className="form-grid admin-compact-form">
               <div className="admin-detail-grid">
                 <div className="field">
-                  <label className="field-label">{isTrial ? copy.basePlan : copy.planKey}</label>
+                  <label className="field-label">{copy.planKey}</label>
                   <select className="select" value={planForm.planKey} onChange={(event) => handlePlanKeyChange(event.target.value as BillingPlanKey)}>
                     <option value="STARTER">{formatInternalPlan("STARTER", locale)}</option>
                     <option value="GROWTH">{formatInternalPlan("GROWTH", locale)}</option>
@@ -447,89 +432,35 @@ export default function InternalAdminAccountDetailPage() {
                 </div>
                 <div className="field">
                   <label className="field-label">{copy.billingStatus}</label>
-                  <select
-                    className="select"
-                    value={planForm.status}
-                    onChange={(event) => setPlanForm({ ...planForm, status: event.target.value as PlanFormState["status"] })}
-                  >
-                    {(["TRIALING", "ACTIVE", "PAST_DUE", "INCOMPLETE", "CANCELED"] as const).map((status) => (
-                      <option key={status} value={status}>
-                        {formatBillingStatus(status, locale)}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="input admin-readonly-field">{displayedLifecycleLabel}</div>
                 </div>
               </div>
 
-              {planFieldHint ? <p className="admin-form-note">{planFieldHint}</p> : null}
-
-              <div className="field">
-                <label className="field-label">{copy.monthlyAmount}</label>
-                <input
-                  className="input"
-                  value={planForm.monthlyAmountCents}
-                  onChange={(event) => setPlanForm({ ...planForm, monthlyAmountCents: event.target.value })}
-                />
-              </div>
+              <p className="admin-form-note">{isTrial ? trialNote : planSaveHint}</p>
 
               <div className="admin-detail-grid">
                 <div className="field">
                   <label className="field-label">{copy.seatsIncluded}</label>
-                  <input className="input" value={planForm.seatsIncluded} onChange={(event) => setPlanForm({ ...planForm, seatsIncluded: event.target.value })} />
+                  <input type="number" min="0" step="1" className="input" value={planForm.seatsIncluded} onChange={(event) => setPlanForm({ ...planForm, seatsIncluded: event.target.value })} />
                 </div>
                 <div className="field">
                   <label className="field-label">{copy.activeJobsIncluded}</label>
-                  <input className="input" value={planForm.activeJobsIncluded} onChange={(event) => setPlanForm({ ...planForm, activeJobsIncluded: event.target.value })} />
+                  <input type="number" min="0" step="1" className="input" value={planForm.activeJobsIncluded} onChange={(event) => setPlanForm({ ...planForm, activeJobsIncluded: event.target.value })} />
                 </div>
                 <div className="field">
                   <label className="field-label">{copy.candidateProcessingIncluded}</label>
-                  <input className="input" value={planForm.candidateProcessingIncluded} onChange={(event) => setPlanForm({ ...planForm, candidateProcessingIncluded: event.target.value })} />
+                  <input type="number" min="0" step="1" className="input" value={planForm.candidateProcessingIncluded} onChange={(event) => setPlanForm({ ...planForm, candidateProcessingIncluded: event.target.value })} />
                 </div>
                 <div className="field">
                   <label className="field-label">{copy.aiInterviewsIncluded}</label>
-                  <input className="input" value={planForm.aiInterviewsIncluded} onChange={(event) => setPlanForm({ ...planForm, aiInterviewsIncluded: event.target.value })} />
+                  <input type="number" min="0" step="1" className="input" value={planForm.aiInterviewsIncluded} onChange={(event) => setPlanForm({ ...planForm, aiInterviewsIncluded: event.target.value })} />
                 </div>
-              </div>
-
-              <div className="admin-feature-grid">
-                {(
-                  [
-                    { key: "advancedReporting", label: copy.advancedReporting },
-                    { key: "calendarIntegrations", label: copy.calendarIntegrations },
-                    { key: "brandedCandidateExperience", label: copy.brandedCandidateExperience },
-                    { key: "customIntegrations", label: copy.customIntegrations }
-                  ] as const
-                ).map(({ key, label }) => (
-                  <label key={key} className="admin-check-row">
-                    <input
-                      type="checkbox"
-                      checked={planForm[key]}
-                      onChange={(event) =>
-                        setPlanForm({
-                          ...planForm,
-                          [key]: event.target.checked
-                        })
-                      }
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-
-              <div className="field">
-                <label className="field-label">{copy.note}</label>
-                <textarea className="textarea" value={planForm.note} onChange={(event) => setPlanForm({ ...planForm, note: event.target.value })} />
               </div>
 
               <div className="admin-inline-actions">
                 <button type="button" className="btn-primary-sm" onClick={() => void handlePlanSave()} disabled={busyAction !== ""}>
                   {busyAction === "plan" ? copy.saving : copy.saveChanges}
                 </button>
-                {selectedPlanDefaults ? (
-                  <span className="small">
-                    {locale === "en" ? "Base catalog" : "Temel katalog"}: {formatInternalPlan(selectedPlanDefaults.key, locale)}
-                  </span>
-                ) : null}
               </div>
             </div>
           </section>
@@ -540,33 +471,30 @@ export default function InternalAdminAccountDetailPage() {
               <p>{quotaSubtitle}</p>
             </div>
             <div className="form-grid admin-compact-form">
-              <div className="field">
-                <label className="field-label">{copy.grantLabel}</label>
-                <input className="input" value={grantForm.label} onChange={(event) => setGrantForm({ ...grantForm, label: event.target.value })} />
-              </div>
+              <p className="admin-form-note">{quotaInputHint}</p>
 
               <div className="admin-detail-grid">
                 <div className="field">
-                  <label className="field-label">{copy.grantSeats}</label>
-                  <input className="input" value={grantForm.seats} onChange={(event) => setGrantForm({ ...grantForm, seats: event.target.value })} />
+                  <label className="field-label">{locale === "en" ? "Extra Seats" : "Ek Kullanıcı"}</label>
+                  <input type="number" min="0" step="1" className="input" value={grantForm.seats} onChange={(event) => setGrantForm({ ...grantForm, seats: event.target.value })} />
                 </div>
                 <div className="field">
-                  <label className="field-label">{copy.grantActiveJobs}</label>
-                  <input className="input" value={grantForm.activeJobs} onChange={(event) => setGrantForm({ ...grantForm, activeJobs: event.target.value })} />
+                  <label className="field-label">{locale === "en" ? "Extra Active Jobs" : "Ek Aktif İlan"}</label>
+                  <input type="number" min="0" step="1" className="input" value={grantForm.activeJobs} onChange={(event) => setGrantForm({ ...grantForm, activeJobs: event.target.value })} />
                 </div>
                 <div className="field">
-                  <label className="field-label">{copy.grantCandidateProcessing}</label>
-                  <input className="input" value={grantForm.candidateProcessing} onChange={(event) => setGrantForm({ ...grantForm, candidateProcessing: event.target.value })} />
+                  <label className="field-label">{locale === "en" ? "Extra Candidate Processing" : "Ek Aday İşleme"}</label>
+                  <input type="number" min="0" step="1" className="input" value={grantForm.candidateProcessing} onChange={(event) => setGrantForm({ ...grantForm, candidateProcessing: event.target.value })} />
                 </div>
                 <div className="field">
-                  <label className="field-label">{copy.grantAiInterviews}</label>
-                  <input className="input" value={grantForm.aiInterviews} onChange={(event) => setGrantForm({ ...grantForm, aiInterviews: event.target.value })} />
+                  <label className="field-label">{locale === "en" ? "Extra AI Interviews" : "Ek AI Mülakat"}</label>
+                  <input type="number" min="0" step="1" className="input" value={grantForm.aiInterviews} onChange={(event) => setGrantForm({ ...grantForm, aiInterviews: event.target.value })} />
                 </div>
               </div>
 
               <div className="admin-inline-actions">
                 <button type="button" className="btn-primary-sm" onClick={() => void handleGrantSubmit()} disabled={busyAction !== ""}>
-                  {busyAction === "grant" ? copy.processing : copy.addQuota}
+                  {busyAction === "grant" ? copy.processing : locale === "en" ? "Save Extra Limits" : "Ek Limitleri Kaydet"}
                 </button>
               </div>
             </div>
@@ -586,7 +514,7 @@ export default function InternalAdminAccountDetailPage() {
                 onClick={() => void handleStatusUpdate("ACTIVE")}
                 disabled={busyAction !== "" || detail.tenant.status === "ACTIVE"}
               >
-                {busyAction === "status:ACTIVE" ? copy.processing : copy.activateWorkspaceConfirm}
+                {busyAction === "status:ACTIVE" ? copy.processing : activateLabel}
               </button>
               <button
                 type="button"
@@ -594,7 +522,7 @@ export default function InternalAdminAccountDetailPage() {
                 onClick={() => void handleStatusUpdate("SUSPENDED")}
                 disabled={busyAction !== "" || detail.tenant.status === "SUSPENDED"}
               >
-                {busyAction === "status:SUSPENDED" ? copy.processing : copy.suspendWorkspaceConfirm}
+                {busyAction === "status:SUSPENDED" ? copy.processing : suspendLabel}
               </button>
               <button
                 type="button"
@@ -602,10 +530,10 @@ export default function InternalAdminAccountDetailPage() {
                 onClick={() => void handleStatusUpdate("DELETED")}
                 disabled={busyAction !== "" || detail.tenant.status === "DELETED"}
               >
-                {busyAction === "status:DELETED" ? copy.processing : copy.deleteWorkspaceConfirm}
+                {busyAction === "status:DELETED" ? copy.processing : deleteLabel}
               </button>
               <button type="button" className="btn-primary-sm" onClick={() => void handleOwnerReset()} disabled={busyAction !== "" || !detail.owner}>
-                {busyAction === "owner-reset" ? copy.processing : copy.sendResetLink}
+                {busyAction === "owner-reset" ? copy.processing : ownerResetLabel}
               </button>
             </div>
           </section>

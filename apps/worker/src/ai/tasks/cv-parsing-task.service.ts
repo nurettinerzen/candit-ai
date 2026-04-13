@@ -109,6 +109,19 @@ const TURKISH_CITIES = [
   "tunceli", "usak", "van", "yalova", "yozgat", "zonguldak"
 ] as const;
 
+function isMissingCvFileBlobTableError(error: unknown) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return false;
+  }
+
+  if (error.code !== "P2021" && error.code !== "P2022") {
+    return false;
+  }
+
+  const meta = JSON.stringify(error.meta ?? {});
+  return meta.includes("CVFileBlob") || error.message.includes("CVFileBlob");
+}
+
 function normalizeTurkishText(value: string) {
   return value
     .toLocaleLowerCase("tr-TR")
@@ -971,18 +984,11 @@ export class CvParsingTaskService {
         : null;
 
     if (requestedCvFileId) {
-      const explicitCvFile = await this.prisma.cVFile.findFirst({
+      const explicitCvFile = await this.findCvFileWithOptionalBlob({
         where: {
           id: requestedCvFileId,
           tenantId: context.tenantId,
           candidateId
-        },
-        include: {
-          blob: {
-            select: {
-              contentBytes: true
-            }
-          }
         }
       });
 
@@ -1001,19 +1007,12 @@ export class CvParsingTaskService {
       return explicitCvFile;
     }
 
-    const latestCvFile = await this.prisma.cVFile.findFirst({
+    const latestCvFile = await this.findCvFileWithOptionalBlob({
       where: {
         tenantId: context.tenantId,
         candidateId
       },
-      orderBy: [{ isPrimary: "desc" }, { uploadedAt: "desc" }],
-      include: {
-        blob: {
-          select: {
-            contentBytes: true
-          }
-        }
-      }
+      orderBy: [{ isPrimary: "desc" }, { uploadedAt: "desc" }]
     });
 
     if (!latestCvFile) {
@@ -1028,6 +1027,36 @@ export class CvParsingTaskService {
     }
 
     return latestCvFile;
+  }
+
+  private async findCvFileWithOptionalBlob(args: {
+    where: Prisma.CVFileWhereInput;
+    orderBy?: Prisma.CVFileOrderByWithRelationInput[];
+  }) {
+    try {
+      return await this.prisma.cVFile.findFirst({
+        where: args.where,
+        orderBy: args.orderBy,
+        include: {
+          blob: {
+            select: {
+              contentBytes: true
+            }
+          }
+        }
+      });
+    } catch (error) {
+      if (!isMissingCvFileBlobTableError(error)) {
+        throw error;
+      }
+
+      const cvFile = await this.prisma.cVFile.findFirst({
+        where: args.where,
+        orderBy: args.orderBy
+      });
+
+      return cvFile ? { ...cvFile, blob: null } : null;
+    }
   }
 
   private buildDeterministicProfile(input: {

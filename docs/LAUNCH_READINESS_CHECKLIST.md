@@ -23,7 +23,7 @@ Ilgili arka plan notlari icin:
 - Bir alan launch'a dahil edilmeyecekse, "Done" yerine "Deferred from launch" olarak not dusulur.
 - Domain baglamadan, Stripe/real mail/real traffic acilmadan once bu checklist en az bir tur tam gecilmelidir.
 
-## Verification Snapshot - 2026-04-09
+## Verification Snapshot - 2026-04-13
 
 ### Guncel local pilot verification
 
@@ -53,8 +53,29 @@ Ilgili arka plan notlari icin:
     - readiness + ilk cevap gonder
     - public interview tamamla
     - report + recommendation olusumunu dogrula
+  - Son tekrar:
+    - `corepack pnpm smoke:pilot`
+    - sonuc: `PASS`
+    - kalan warning'ler: `console` email provider ve `stripeReady=false`
   - Sertlestirme:
     - smoke signup/candidate e-postalari `+alias` yerine benzersiz local-part ile uretiliyor; trial email normalizasyonuna carpmiyor
+- [x] Smoke auth zinciri tenant header gereksinimi ile hizalandi.
+  - Yeni durum:
+    - signup sonrasi gelen `tenantId`, tum authli smoke isteklerinde `x-tenant-id` olarak kullaniliyor
+  - Etki:
+    - `/auth/session` ve read-model/billing istekleri local runtime config ile uyumlu tekrar kosulabiliyor
+- [x] CV upload akisi `CVFileBlob` schema drift durumuna karsi sertlestirildi.
+  - Onceki sorun:
+    - `CVFileBlob` tablosu eksik local/staging veritabaninda upload `500` ile dusuyordu
+  - Yeni durum:
+    - dosya filesystem'e yaziliyor
+    - blob tablosu yoksa nested create fallback devreye giriyor
+    - worker parse akisi blob relation'ini opsiyonel okuyup storage fallback ile devam ediyor
+- [x] Planli `VOICE` interview olusturma da AI interview quota enforcement ile hizalandi.
+  - Onceki sorun:
+    - invite akisi quota kontrolluydu, `schedule()` degildi
+  - Yeni durum:
+    - `VOICE` modundaki planli AI mulakat da assert + usage kaydi yapiyor
 - [x] Recruiter drawer icindeki sessiz UX kirigi kapatildi.
   - Onceki sorun:
     - mulakat daveti backend'de olusuyor ama drawer sonucu gostermiyordu

@@ -7,13 +7,9 @@ import { useSearchParams } from "next/navigation";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { useUiText } from "../../../components/site-language-provider";
 import { apiClient } from "../../../lib/api-client";
-import { formatDate } from "../../../lib/format";
+import { formatDateOnly } from "../../../lib/format";
 import { getLocaleTag } from "../../../lib/i18n";
-import type {
-  BillingAddonKey,
-  BillingOverviewReadModel,
-  BillingPlanKey
-} from "../../../lib/types";
+import type { BillingOverviewReadModel, BillingPlanKey } from "../../../lib/types";
 
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -48,22 +44,63 @@ function formatBillingStatus(status: string) {
   }
 }
 
+function formatPackageLabel(planKey: BillingPlanKey, locale: "tr" | "en") {
+  if (locale === "en") {
+    return planKey === "STARTER" ? "Starter" : planKey === "GROWTH" ? "Growth" : "Enterprise";
+  }
+
+  return planKey === "STARTER" ? "Starter" : planKey === "GROWTH" ? "Growth" : "Kurumsal";
+}
+
+function formatLifecycleLabel(
+  billing: BillingOverviewReadModel,
+  t: (value: string) => string,
+  locale: "tr" | "en"
+) {
+  if (billing.trial.isActive) {
+    return locale === "en" ? "Active Trial" : "Aktif Deneme";
+  }
+
+  if (billing.trial.isExpired) {
+    return locale === "en" ? "Trial Ended" : "Deneme Süresi Bitti";
+  }
+
+  if (!billing.trial.isEligible) {
+    return locale === "en" ? "Upgrade Required" : "Yükseltme Gerekli";
+  }
+
+  return t(formatBillingStatus(billing.account.status));
+}
+
 function planActionLabel(
   currentPlanKey: BillingPlanKey,
   nextPlanKey: Exclude<BillingPlanKey, "ENTERPRISE">,
+  locale: "tr" | "en",
   options?: {
     trialContext?: boolean;
   }
 ) {
   if (options?.trialContext) {
-    return nextPlanKey === "GROWTH" ? "Growth'a geç" : "Starter'a geç";
+    return locale === "en"
+      ? nextPlanKey === "GROWTH"
+        ? "Switch to Growth"
+        : "Switch to Starter"
+      : nextPlanKey === "GROWTH"
+        ? "Growth Pakete Geç"
+        : "Starter Pakete Geç";
   }
 
   if (currentPlanKey === nextPlanKey) {
-    return "Mevcut Plan";
+    return locale === "en" ? "Current Plan" : "Mevcut Plan";
   }
 
-  return nextPlanKey === "GROWTH" ? "Growth'a geç" : "Starter'a dön";
+  return locale === "en"
+    ? nextPlanKey === "GROWTH"
+      ? "Switch to Growth"
+      : "Switch to Starter"
+    : nextPlanKey === "GROWTH"
+      ? "Growth'a Geç"
+      : "Starter'a Dön";
 }
 
 export default function SubscriptionPage() {
@@ -122,47 +159,6 @@ export default function SubscriptionPage() {
     }
   }
 
-  async function handleAddOnCheckout(addOnKey: BillingAddonKey) {
-    setBusyKey(`addon:${addOnKey}`);
-    setError("");
-    setActionNotice("");
-
-    try {
-      const result = await apiClient.createAddOnCheckout({
-        addOnKey,
-        billingEmail: billing?.account.billingEmail ?? undefined
-      });
-
-      await loadBilling();
-
-      if (result.checkoutUrl) {
-        window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
-      }
-
-      setActionNotice(t("Ek paket ödeme sayfası yeni sekmede açıldı."));
-    } catch (checkoutError) {
-      setError(toErrorMessage(checkoutError, t("Ek paket satın alma akışı başlatılamadı.")));
-    } finally {
-      setBusyKey("");
-    }
-  }
-
-  async function handleCustomerPortal() {
-    setBusyKey("portal");
-    setError("");
-    setActionNotice("");
-
-    try {
-      const result = await apiClient.createBillingCustomerPortal();
-      window.open(result.portalUrl, "_blank", "noopener,noreferrer");
-      setActionNotice(t("Fatura ve ödeme yönetimi yeni sekmede açıldı."));
-    } catch (portalError) {
-      setError(toErrorMessage(portalError, t("Müşteri portalı açılamadı.")));
-    } finally {
-      setBusyKey("");
-    }
-  }
-
   if (loading) {
     return (
       <section className="page-grid">
@@ -193,43 +189,34 @@ export default function SubscriptionPage() {
   const hasTrialContext = billing
     ? billing.trial.isActive || billing.trial.isExpired || !billing.trial.isEligible
     : false;
-  const planCycleLabel = billing?.trial.isActive
-    ? t("Deneme")
-    : billing?.trial.isExpired
-      ? t("Süresi doldu")
-      : billing && !billing.trial.isEligible
-        ? t("Yükseltme gerekli")
-        : t("Aylık");
-  const periodLabel = billing?.trial.isActive
-    ? t("Deneme Bitişi")
-    : billing?.trial.isExpired
-      ? t("Deneme Durumu")
-      : billing && !billing.trial.isEligible
-        ? t("Hesap Durumu")
-        : t("Sonraki Fatura");
-  const periodValue = billing?.trial.isActive
-    ? formatDate(billing.trial.endsAt ?? billing.account.currentPeriodEnd)
-    : billing?.trial.isExpired
-      ? t("Deneme süresi doldu")
-      : billing && !billing.trial.isEligible
-        ? t("Ücretli plan seçin")
-        : billing
-          ? formatDate(billing.account.currentPeriodEnd)
-          : "";
+  const packageLabel = billing ? formatPackageLabel(billing.account.currentPlanKey, locale) : "";
+  const lifecycleLabel = billing ? formatLifecycleLabel(billing, t, locale) : "";
+  const summaryDateLabel = billing?.trial.isActive || billing?.trial.isExpired ? t("Deneme Bitişi") : t("Sonraki Fatura");
+  const summaryDateValue = billing
+    ? formatDateOnly(billing.trial.endsAt ?? billing.account.currentPeriodEnd)
+    : "";
+  const pageSubtitle =
+    locale === "en"
+      ? "Track your package and usage from one place."
+      : "Paketinizi ve kullanım durumunuzu tek yerden takip edin.";
+  const packageHeading = locale === "en" ? "Package" : "Paket";
+  const lifecycleHeading = locale === "en" ? "Lifecycle" : "Yaşam Döngüsü";
+  const plansHeading = locale === "en" ? "Packages" : "Paketler";
+  const planSectionHint = hasTrialContext
+    ? locale === "en"
+      ? "You can switch directly to a paid package during the trial."
+      : "Deneme sırasında isterseniz doğrudan ücretli pakete geçebilirsiniz."
+    : locale === "en"
+      ? "You can upgrade or downgrade your package based on your needs."
+      : "İhtiyacınıza göre paketinizi yükseltebilir veya düşürebilirsiniz.";
+  const enterpriseCta = locale === "en" ? "Request Enterprise Quote" : "Kurumsal Teklif İste";
 
   return (
     <section className="page-grid">
-      <div className="page-header">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <h1>{t("Abonelik")}</h1>
-            <p>
-              {t("Mevcut planınızı, kullanım durumunuzu ve ek paket satın alma akışlarını tek merkezden yönetin.")}
-            </p>
-          </div>
-          <button type="button" className="btn-primary-sm" onClick={() => void loadBilling()}>
-            {t("Yenile")}
-          </button>
+      <div className="page-header page-header-plain">
+        <div className="page-header-copy">
+          <h1>{t("Abonelik")}</h1>
+          <p>{pageSubtitle}</p>
         </div>
       </div>
 
@@ -248,68 +235,32 @@ export default function SubscriptionPage() {
         </section>
       ) : (
         <>
-          {!billing.stripeReady ? (
-            <section className="panel" style={{ display: "grid", gap: 10 }}>
-              <NoticeBox
-                tone="danger"
-                message={t("Stripe kurulumu tamamlanmadığı için self servis satın alma işlemleri şu an pasif durumda.")}
-              />
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {billing.viewer.isInternalBillingAdmin ? (
-                  <Link href={"/admin#kurumsal" as Route} className="ghost-button">
-                    {t("İç teklif akışını aç")}
-                  </Link>
-                ) : (
-                  <Link href={"/contact" as Route} className="ghost-button">
-                    {t("Bize Ulaşın")}
-                  </Link>
-                )}
+          <section className="panel subscription-summary-panel">
+            <div className="subscription-section-head">
+              <h2>{t("Abonelik Özeti")}</h2>
+              {hasTrialContext ? <span className="subscription-summary-badge">{lifecycleLabel}</span> : null}
+            </div>
+            <div className="subscription-summary-grid">
+              <div className="subscription-summary-item">
+                <span>{packageHeading}</span>
+                <strong>{packageLabel}</strong>
               </div>
-            </section>
-          ) : null}
-
-          {/* ── Plan info strip ── */}
-          <div className="tlx-plan-strip">
-            <span className="tlx-plan-strip-name">{t(billing.currentPlan.label)}</span>
-            <span className="tlx-plan-strip-sep">{"\u00B7"}</span>
-            <span>{t("Aylık Maliyet")}: <strong>{formatPlanPrice(billing.currentPlan.monthlyAmountCents, billing.currentPlan.currency, localeTag)}</strong></span>
-            <span className="tlx-plan-strip-sep">{"\u00B7"}</span>
-            <span>{t("Faturalandırma")}: <strong>{planCycleLabel}</strong></span>
-            <span className="tlx-plan-strip-sep">{"\u00B7"}</span>
-            <span>{periodLabel}: <strong>{periodValue}</strong></span>
-            <div className="tlx-plan-strip-actions">
-              <button
-                type="button"
-                className="ghost-button"
-                disabled={!billing.account.stripeCustomerId || busyKey === "portal"}
-                onClick={() => void handleCustomerPortal()}
-              >
-                {busyKey === "portal" ? t("Açılıyor...") : t("Faturaları yönet")}
-              </button>
-              {billing.viewer.isInternalBillingAdmin ? (
-                <Link href={"/admin" as Route} className="ghost-button">
-                  {t("Admin")}
-                </Link>
-              ) : null}
+              <div className="subscription-summary-item">
+                <span>{lifecycleHeading}</span>
+                <strong>{lifecycleLabel}</strong>
+              </div>
+              <div className="subscription-summary-item">
+                <span>{summaryDateLabel}</span>
+                <strong>{summaryDateValue}</strong>
+              </div>
             </div>
-          </div>
+          </section>
 
-          {billing.warnings.length > 0 ? (
-            <div style={{ display: "grid", gap: 8 }}>
-              {billing.warnings.map((warning) => (
-                <div key={warning} className="billing-warning-row">
-                  {t(warning)}
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          {/* ── Candit-style usage section ── */}
           <section className="panel">
             <div className="tlx-section-header">
-              <h3 className="tlx-section-title">{t("Kullanım Durumu")}</h3>
-              <span className="tlx-plan-strip-name">{t(billing.currentPlan.label)}</span>
-            </div>
+                <h3 className="tlx-section-title">{t("Kullanım Durumu")}</h3>
+                <span className="tlx-plan-strip-name">{packageLabel}</span>
+              </div>
 
             <div className="tlx-usage-list">
               {billing.usage.quotas.map((quota) => (
@@ -317,59 +268,28 @@ export default function SubscriptionPage() {
               ))}
               <div className="tlx-usage-period">
                 <span>{billing.trial.isActive ? t("Deneme sonu") : t("Dönem sonu")}:</span>
-                <strong>
-                  {billing.trial.isActive
-                    ? formatDate(billing.trial.endsAt ?? billing.account.currentPeriodEnd)
-                    : formatDate(billing.account.currentPeriodEnd)}
-                </strong>
+                <strong>{formatDateOnly(billing.trial.endsAt ?? billing.account.currentPeriodEnd)}</strong>
               </div>
             </div>
           </section>
 
-          {/* ── Candit-style addon section ── */}
-          <section className="panel">
-            <h3 className="tlx-section-title">{t("Ek Paket Satın Al")}</h3>
-            <p className="small text-muted" style={{ margin: "-4px 0 16px" }}>
-              {hasTrialContext
-                ? t("Ek paketler ücretli abonelik başladıktan sonra açılır.")
-                : t("Dahil kullanımınız bittiğinde ek paketler devreye girer.")}
-            </p>
-
-            <div className="tlx-addon-grid">
-              {billing.addOnCatalog.map((addon) => (
-                <div key={addon.key} className="tlx-addon-item">
-                  <div className="tlx-addon-item-info">
-                    <strong>{t(addon.label)}</strong>
-                    <span className="text-muted">{formatPlanPrice(addon.amountCents, addon.currency, localeTag)}</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    disabled={hasTrialContext || !billing.stripeReady || busyKey === `addon:${addon.key}`}
-                    onClick={() => void handleAddOnCheckout(addon.key)}
-                  >
-                    {busyKey === `addon:${addon.key}` ? t("...") : t("Satın Al")}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* ── Candit-style plan cards ── */}
           <section>
-            <h3 className="tlx-section-title" style={{ marginBottom: 16 }}>{t("Planlar")}</h3>
+            <div className="subscription-section-head" style={{ marginBottom: 16 }}>
+              <div>
+                <h3 className="tlx-section-title">{plansHeading}</h3>
+                <p className="small text-muted" style={{ margin: "6px 0 0" }}>{planSectionHint}</p>
+              </div>
+            </div>
 
             <div className="tlx-plan-grid">
               {billing.planCatalog.map((plan) => {
                 const isCurrent = !hasTrialContext && plan.key === billing.account.currentPlanKey;
-                const isTrialStarter = hasTrialContext && plan.key === "STARTER";
                 return (
                   <article
                     key={plan.key}
                     className={`tlx-plan-card${isCurrent ? " tlx-plan-current" : ""}`}
                   >
                     {isCurrent ? <div className="tlx-plan-current-label">{t("Mevcut Plan")}</div> : null}
-                    {isTrialStarter ? <div className="tlx-plan-current-label">{t("Deneme Planı")}</div> : null}
                     <div className="tlx-plan-card-head">
                       <div className="tlx-plan-card-name">{t(plan.label)}</div>
                       <div className="tlx-plan-card-price">
@@ -393,15 +313,9 @@ export default function SubscriptionPage() {
 
                     <div className="tlx-plan-card-action">
                       {plan.key === "ENTERPRISE" ? (
-                        billing.viewer.isInternalBillingAdmin ? (
-                          <Link href={"/admin#kurumsal" as Route} className="tlx-plan-btn">
-                            {t("İç teklif akışını aç")}
-                          </Link>
-                        ) : (
-                          <Link href={"/contact" as Route} className="tlx-plan-btn">
-                            {t("Bize Ulaşın")}
-                          </Link>
-                        )
+                        <Link href={"/contact" as Route} className="tlx-plan-btn">
+                          {enterpriseCta}
+                        </Link>
                       ) : (
                         <button
                           type="button"
@@ -413,12 +327,11 @@ export default function SubscriptionPage() {
                             ? t("Hazırlanıyor...")
                             : isCurrent
                               ? t("Mevcut Plan")
-                              : t(
-                                  planActionLabel(
-                                    billing.account.currentPlanKey,
-                                    plan.key as Exclude<BillingPlanKey, "ENTERPRISE">,
-                                    { trialContext: hasTrialContext }
-                                  )
+                              : planActionLabel(
+                                  billing.account.currentPlanKey,
+                                  plan.key as Exclude<BillingPlanKey, "ENTERPRISE">,
+                                  locale,
+                                  { trialContext: hasTrialContext }
                                 )}
                         </button>
                       )}

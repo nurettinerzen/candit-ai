@@ -964,9 +964,14 @@ export class InterviewsService {
     traceId?: string;
   }) {
     const scheduledAt = parseOptionalDate(input.scheduledAt);
+    const requiresAiInterviewQuota = input.mode === "VOICE";
 
     if (!scheduledAt) {
       throw new BadRequestException("Interview planlama icin scheduledAt zorunludur.");
+    }
+
+    if (requiresAiInterviewQuota) {
+      await this.billingService.assertCanCreateAiInterview(input.tenantId);
     }
 
     const [application, existingActiveSession] = await Promise.all([
@@ -1163,6 +1168,10 @@ export class InterviewsService {
         }
       })
     ]);
+
+    if (requiresAiInterviewQuota) {
+      await this.billingService.recordAiInterviewUsage(input.tenantId, updatedSession.id);
+    }
 
     return this.getById(input.tenantId, updatedSession.id);
   }

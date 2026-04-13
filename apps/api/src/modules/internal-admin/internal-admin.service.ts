@@ -53,7 +53,7 @@ type PlanOverrideInput = {
   actorEmail?: string;
   billingEmail?: string;
   planKey: BillingPlanKey;
-  status: BillingAccountStatus;
+  status?: BillingAccountStatus;
   monthlyAmountCents?: number | null;
   seatsIncluded: number;
   activeJobsIncluded: number;
@@ -1010,13 +1010,23 @@ export class InternalAdminService {
       }
     });
 
-    await this.billingService.getOverview(input.tenantId, input.actorEmail);
-    await this.applyPlanOverride(input);
+    const billingOverview = await this.billingService.getOverview(input.tenantId, input.actorEmail);
+    const nextStatus =
+      input.status ??
+      (billingOverview.account.status === BillingAccountStatus.TRIALING &&
+      input.planKey !== billingOverview.account.currentPlanKey
+        ? BillingAccountStatus.ACTIVE
+        : billingOverview.account.status);
+
+    await this.applyPlanOverride({
+      ...input,
+      status: nextStatus
+    });
 
     return this.getAccountDetail(input.tenantId, input.actorEmail);
   }
 
-  private async applyPlanOverride(input: PlanOverrideInput) {
+  private async applyPlanOverride(input: PlanOverrideInput & { status: BillingAccountStatus }) {
     const now = new Date();
     const periodStart = startOfCurrentMonth(now);
     const periodEnd = startOfNextMonth(now);

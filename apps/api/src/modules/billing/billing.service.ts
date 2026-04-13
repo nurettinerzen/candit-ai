@@ -1219,19 +1219,28 @@ export class BillingService {
     const features = buildFeatureSnapshot(account.featuresJson, fallbackPlan.features);
     const snapshot = asRecord(account.planSnapshotJson);
     const subscriptionMetadata = asRecord(subscription.metadataJson);
-    const currentPeriodStart = account.currentPeriodStart ?? subscription.periodStart;
-    const currentPeriodEnd = account.currentPeriodEnd ?? subscription.periodEnd;
+    const rawCurrentPeriodStart = account.currentPeriodStart ?? subscription.periodStart;
+    const rawCurrentPeriodEnd = account.currentPeriodEnd ?? subscription.periodEnd;
     const now = new Date();
-    const trialStartedAt =
+    const trialStartedAtBase =
       account.status === BillingAccountStatus.TRIALING
-        ? currentPeriodStart
+        ? rawCurrentPeriodStart
         : parseOptionalDate(snapshot.trialStartedAt) ??
           parseOptionalDate(subscriptionMetadata.trialStartedAt);
+    const configuredTrialEndsAt = trialStartedAtBase
+      ? addDaysUtc(trialStartedAtBase, FREE_TRIAL_DEFINITION.durationDays)
+      : null;
     const trialEndsAt =
       account.status === BillingAccountStatus.TRIALING
-        ? currentPeriodEnd
+        ? configuredTrialEndsAt ?? rawCurrentPeriodEnd
         : parseOptionalDate(snapshot.trialEndsAt) ??
           parseOptionalDate(subscriptionMetadata.trialEndsAt);
+    const currentPeriodStart = rawCurrentPeriodStart;
+    const currentPeriodEnd =
+      account.status === BillingAccountStatus.TRIALING && trialEndsAt
+        ? trialEndsAt
+        : rawCurrentPeriodEnd;
+    const trialStartedAt = trialStartedAtBase;
     const trialBlockReason =
       asString(snapshot.trialBlockedReason) ??
       asString(subscriptionMetadata.trialBlockedReason);

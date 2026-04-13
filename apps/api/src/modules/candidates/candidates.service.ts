@@ -1,7 +1,9 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException, Inject} from "@nestjs/common";
+  Inject,
+  NotFoundException
+} from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { AiTaskStatus, AiTaskType, Prisma } from "@prisma/client";
 import { AiOrchestrationService } from "../ai-orchestration/ai-orchestration.service";
@@ -100,6 +102,19 @@ function readHumanDecision(metadata: Prisma.JsonValue | null | undefined) {
   return decision === "advance" || decision === "hold" || decision === "reject"
     ? decision
     : null;
+}
+
+function isMissingCvFileBlobTableError(error: unknown) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return false;
+  }
+
+  if (error.code !== "P2021" && error.code !== "P2022") {
+    return false;
+  }
+
+  const meta = JSON.stringify(error.meta ?? {});
+  return meta.includes("CVFileBlob") || error.message.includes("CVFileBlob");
 }
 
 @Injectable()
@@ -329,39 +344,17 @@ export class CandidatesService {
     });
 
     try {
-      const document = await this.prisma.$transaction(async (tx) => {
-        await tx.cVFile.updateMany({
-          where: {
-            tenantId: input.tenantId,
-            candidateId: input.candidateId,
-            isPrimary: true
-          },
-          data: {
-            isPrimary: false
-          }
-        });
-
-        return tx.cVFile.create({
-          data: {
-            id: documentId,
-            tenantId: input.tenantId,
-            candidateId: input.candidateId,
-            storageKey: storageResult.storageKey,
-            storageProvider: "local_fs",
-            checksumSha256: storageResult.checksumSha256,
-            originalName: input.file.originalName,
-            mimeType: validated.mimeType,
-            sizeBytes: storageResult.sizeBytes,
-            uploadedBy: input.uploadedBy,
-            isPrimary: true,
-            blob: {
-              create: {
-                tenantId: input.tenantId,
-                contentBytes: new Uint8Array(input.file.content)
-              }
-            }
-          }
-        });
+      const document = await this.persistCvFileRecord({
+        tenantId: input.tenantId,
+        candidateId: input.candidateId,
+        documentId,
+        storageKey: storageResult.storageKey,
+        checksumSha256: storageResult.checksumSha256,
+        originalName: input.file.originalName,
+        mimeType: validated.mimeType,
+        sizeBytes: storageResult.sizeBytes,
+        uploadedBy: input.uploadedBy,
+        content: input.file.content
       });
 
       await Promise.all([
@@ -401,6 +394,71 @@ export class CandidatesService {
     } catch (error) {
       await this.fileStorageService.remove(storageResult.storageKey);
       throw error;
+    }
+  }
+
+  private async persistCvFileRecord(input: {
+    tenantId: string;
+    candidateId: string;
+    documentId: string;
+    storageKey: string;
+    checksumSha256: string;
+    originalName: string;
+    mimeType: string;
+    sizeBytes: number;
+    uploadedBy: string;
+    content: Buffer;
+  }) {
+    const baseData = {
+      id: input.documentId,
+      tenantId: input.tenantId,
+      candidateId: input.candidateId,
+      storageKey: input.storageKey,
+      storageProvider: "local_fs" as const,
+      checksumSha256: input.checksumSha256,
+      originalName: input.originalName,
+      mimeType: input.mimeType,
+      sizeBytes: input.sizeBytes,
+      uploadedBy: input.uploadedBy,
+      isPrimary: true
+    };
+
+    const runTransaction = async (withBlob: boolean) =>
+      this.prisma.$transaction(async (tx) => {
+        await tx.cVFile.updateMany({
+          where: {
+            tenantId: input.tenantId,
+            candidateId: input.candidateId,
+            isPrimary: true
+          },
+          data: {
+            isPrimary: false
+          }
+        });
+
+        return tx.cVFile.create({
+          data: withBlob
+            ? {
+                ...baseData,
+                blob: {
+                  create: {
+                    tenantId: input.tenantId,
+                    contentBytes: new Uint8Array(input.content)
+                  }
+                }
+              }
+            : baseData
+        });
+      });
+
+    try {
+      return await runTransaction(true);
+    } catch (error) {
+      if (!isMissingCvFileBlobTableError(error)) {
+        throw error;
+      }
+
+      return runTransaction(false);
     }
   }
 

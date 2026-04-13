@@ -88,11 +88,21 @@ function formatWarnings(items) {
     .join(" | ");
 }
 
-function jsonHeaders(token) {
-  return {
-    "content-type": "application/json",
-    authorization: `Bearer ${token}`
+function authHeaders(token, tenantId, contentType = null) {
+  const headers = {
+    authorization: `Bearer ${token}`,
+    "x-tenant-id": tenantId
   };
+
+  if (contentType) {
+    headers["content-type"] = contentType;
+  }
+
+  return headers;
+}
+
+function jsonHeaders(token, tenantId) {
+  return authHeaders(token, tenantId, "application/json");
 }
 
 function buildPilotCv(stamp) {
@@ -130,6 +140,7 @@ async function signupPilotUser() {
   });
 
   ensure(signup?.accessToken, "Signup access token missing");
+  ensure(signup?.user?.tenantId, "Signup tenant id missing");
 
   logStatus("PASS", "Pilot tenant created", signup.user?.tenantId ?? email);
 
@@ -140,11 +151,9 @@ async function signupPilotUser() {
   };
 }
 
-async function ensurePublishedJob(token) {
+async function ensurePublishedJob(token, tenantId) {
   const jobs = await requestJson("Jobs list", "/jobs", {
-    headers: {
-      authorization: `Bearer ${token}`
-    }
+    headers: authHeaders(token, tenantId)
   });
 
   const existing = Array.isArray(jobs)
@@ -172,7 +181,7 @@ async function ensurePublishedJob(token) {
   try {
     const created = await requestJson("Create job", "/jobs", {
       method: "POST",
-      headers: jsonHeaders(token),
+      headers: jsonHeaders(token, tenantId),
       body: JSON.stringify({
         ...baseJobPayload,
         status: "PUBLISHED"
@@ -195,7 +204,7 @@ async function ensurePublishedJob(token) {
 
     const fallback = await requestJson("Create draft job", "/jobs", {
       method: "POST",
-      headers: jsonHeaders(token),
+      headers: jsonHeaders(token, tenantId),
       body: JSON.stringify({
         ...baseJobPayload,
         status: "DRAFT"
@@ -207,7 +216,7 @@ async function ensurePublishedJob(token) {
   }
 }
 
-async function uploadPilotCv(token, candidateId, stamp) {
+async function uploadPilotCv(token, tenantId, candidateId, stamp) {
   const formData = new FormData();
   formData.set(
     "file",
@@ -218,9 +227,7 @@ async function uploadPilotCv(token, candidateId, stamp) {
 
   const upload = await requestJson("Upload CV", `/candidates/${candidateId}/cv-files`, {
     method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`
-    },
+    headers: authHeaders(token, tenantId),
     body: formData
   });
 
@@ -241,7 +248,7 @@ async function main() {
   logStatus("PASS", "Web reachable", `status=${webRoot.status}`);
 
   const pilot = await signupPilotUser();
-  const auth = { authorization: `Bearer ${pilot.token}` };
+  const auth = authHeaders(pilot.token, pilot.tenantId);
 
   const session = await requestJson("Auth session", "/auth/session", {
     headers: auth
@@ -288,7 +295,7 @@ async function main() {
     logStatus("PASS", "Stripe billing configured");
   }
 
-  const job = await ensurePublishedJob(pilot.token);
+  const job = await ensurePublishedJob(pilot.token, pilot.tenantId);
   const candidatePayload = {
     fullName: `Pilot Smoke ${pilot.stamp.slice(-6)}`,
     email: `pilot-candidate-${pilot.stamp}@example.com`,
@@ -298,18 +305,18 @@ async function main() {
 
   const candidateResult = await requestJson("Create candidate", "/candidates", {
     method: "POST",
-    headers: jsonHeaders(pilot.token),
+    headers: jsonHeaders(pilot.token, pilot.tenantId),
     body: JSON.stringify(candidatePayload)
   });
   const candidateId = candidateResult?.candidate?.id ?? candidateResult?.id ?? null;
   ensure(candidateId, "Candidate creation returned no id");
   logStatus("PASS", "Candidate created", candidateId);
 
-  const cvUpload = await uploadPilotCv(pilot.token, candidateId, pilot.stamp);
+  const cvUpload = await uploadPilotCv(pilot.token, pilot.tenantId, candidateId, pilot.stamp);
 
   const cvParseTrigger = await requestJson("Trigger CV parsing", `/candidates/${candidateId}/cv-parsing/trigger`, {
     method: "POST",
-    headers: jsonHeaders(pilot.token),
+    headers: jsonHeaders(pilot.token, pilot.tenantId),
     body: JSON.stringify({
       cvFileId: cvUpload.id
     })
@@ -339,7 +346,7 @@ async function main() {
 
   const applicationResult = await requestJson("Create application", "/applications", {
     method: "POST",
-    headers: jsonHeaders(pilot.token),
+    headers: jsonHeaders(pilot.token, pilot.tenantId),
     body: JSON.stringify({
       candidateId,
       jobId: process.env.CANDIT_JOB_ID ?? job.id
@@ -356,7 +363,7 @@ async function main() {
 
   await requestJson("Trigger fit score", `/applications/${applicationId}/quick-action`, {
     method: "POST",
-    headers: jsonHeaders(pilot.token),
+    headers: jsonHeaders(pilot.token, pilot.tenantId),
     body: JSON.stringify({ action: "trigger_fit_score" })
   });
   logStatus("PASS", "Fit score queued");
@@ -420,7 +427,7 @@ async function main() {
 
   const inviteResult = await requestJson("Invite interview", `/applications/${applicationId}/quick-action`, {
     method: "POST",
-    headers: jsonHeaders(pilot.token),
+    headers: jsonHeaders(pilot.token, pilot.tenantId),
     body: JSON.stringify({ action: "invite_interview" })
   });
   const sessionId = inviteResult?.sessionId ?? null;

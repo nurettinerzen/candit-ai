@@ -2820,8 +2820,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "/ay": "/mo",
   "Özel fiyatlandırma": "Custom pricing",
   "Aşım": "Overage",
-  "Platformu keşfedin. 7 gün boyunca temel özellikleri deneyin.": "Explore the platform. Try core features for 7 days.",
-  "7 gün ücretsiz — Kredi kartı gerekmez": "7 days free — No credit card required",
+  "Platformu keşfedin. 14 gün boyunca temel özellikleri deneyin.": "Explore the platform. Try core features for 14 days.",
+  "14 gün ücretsiz — Kredi kartı gerekmez": "14 days free — No credit card required",
   "Deneme": "Trial",
   "Starter": "Starter",
   "Tek işe alım uzmanı ile düzenli işe alım yapan ekipler için.": "For teams with a single recruiter doing regular hiring.",
@@ -2906,8 +2906,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Adayların CV ve başvuru bilgileri AI tarafından analiz edilir, pozisyon gereksinimleriyle eşleştirilir ve uygunluk skoru hesaplanır. Belirlediğiniz kriterlere göre otomatik kısa liste oluşturulur.":
     "Candidates' CVs and application data are analyzed by AI, matched with position requirements, and a fit score is calculated. An automatic shortlist is created based on your criteria.",
   "Deneme sürümünde neler var?": "What's included in the trial?",
-  "7 gün boyunca 1 kullanıcı, 1 aktif ilan, 25 aday ön eleme ve 3 AI mülakat hakkı ile platformu ücretsiz deneyebilirsiniz. Kredi kartı gerekmez.":
-    "You can try the platform free for 7 days with 1 user, 1 active job, 25 candidate screenings, and 3 AI interviews. No credit card required.",
+  "14 gün boyunca 1 kullanıcı, 1 aktif ilan, 25 aday ön eleme ve 3 AI mülakat hakkı ile platformu ücretsiz deneyebilirsiniz. Kredi kartı gerekmez.":
+    "You can try the platform free for 14 days with 1 user, 1 active job, 25 candidate screenings, and 3 AI interviews. No credit card required.",
   "KVKK ve veri güvenliği nasıl sağlanıyor?": "How is KVKK and data security ensured?",
   "Platform; rol bazlı erişim, veri maskeleme, audit log ve yaşam döngüsü kontrolleriyle güvenli kullanım için tasarlanmıştır. KVKK ve GDPR süreçleri için gerekli operasyonel kontroller ekip bazında yapılandırılmalıdır.":
     "The platform is designed for secure use with role-based access, data masking, audit logs, and lifecycle controls. Operational controls required for KVKK and GDPR processes must be configured on a team basis.",
