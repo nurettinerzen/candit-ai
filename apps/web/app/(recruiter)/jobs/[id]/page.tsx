@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { PageTitleWithGuide } from "../../../../components/page-guide";
 import { apiClient } from "../../../../lib/api-client";
 import { isInternalAdminSession } from "../../../../lib/auth/policy";
 import { resolveActiveSession } from "../../../../lib/auth/session";
@@ -710,7 +711,12 @@ export default function JobDetailPage() {
             </Link>
             {job && (
               <>
-                <h2 className="job-detail-title">{job.title}</h2>
+                <PageTitleWithGuide
+                  as="h2"
+                  guideKey="jobDetail"
+                  title={job.title}
+                  className="job-detail-title"
+                />
                 <div className="drawer-meta job-detail-meta-row" style={{ gap: 8 }}>
                   <JobStatusChip status={job.status} />
                   {job.locationText && <span className="text-sm">{job.locationText}</span>}

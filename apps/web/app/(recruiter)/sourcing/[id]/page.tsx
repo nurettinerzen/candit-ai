@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OutreachComposerModal } from "../../../../components/outreach-composer-modal";
+import { PageTitleWithGuide } from "../../../../components/page-guide";
 import { ProspectDrawer } from "../../../../components/prospect-drawer";
 import { SourcingIngestionPanel } from "../../../../components/sourcing-ingestion-panel";
 import { useUiText } from "../../../../components/site-language-provider";
@@ -837,7 +838,11 @@ export default function SourcingProjectDetailPage() {
                 <div className="small" style={{ marginBottom: 4 }}>
                   {data.project.job?.title ?? "Bağlı requisition yok"} · {formatDepartment(data.project.job?.roleFamily)}
                 </div>
-                <h1 style={{ margin: 0, fontSize: 22 }}>{data.project.name}</h1>
+                <PageTitleWithGuide
+                  guideKey="sourcingProject"
+                  title={data.project.name}
+                  style={{ margin: 0, fontSize: 22 }}
+                />
                 {data.project.job ? (
                   <div className="sourcing-role-banner">
                     <span className="sourcing-role-pill">

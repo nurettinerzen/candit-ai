@@ -1,107 +1,120 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { InfoHint, PageTitleWithGuide } from "../../../components/page-guide";
 import { useUiText } from "../../../components/site-language-provider";
 import { StageChip } from "../../../components/stage-chip";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { apiClient } from "../../../lib/api-client";
 import { formatPercent } from "../../../lib/format";
-import type {
-  AnalyticsFunnelRow,
-  AnalyticsInterviewQuality,
-  AnalyticsTimeToHire,
-  RecruiterOverviewReadModel
-} from "../../../lib/types";
+import type { AnalyticsSummary } from "../../../lib/types";
 
-type ReportData = {
-  overview: RecruiterOverviewReadModel | null;
-  funnel: AnalyticsFunnelRow[];
-  timeToHire: AnalyticsTimeToHire | null;
-  interviewQuality: AnalyticsInterviewQuality | null;
-};
-
-function toErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
+function resolveLocaleTag(locale: string) {
+  return locale === "en" ? "en-US" : "tr-TR";
 }
 
-function resolveAnalyticsGateNotice(error: unknown) {
-  const message = toErrorMessage(error, "");
-  if (message.includes("Gelişmiş raporlama") && message.includes("Growth")) {
-    return "Gelişmiş raporlama metrikleri mevcut planınızda kapalı. Growth planına geçtiğinizde burada görünecek.";
+function formatMetricNumber(
+  locale: string,
+  value: number | null | undefined,
+  maxFractionDigits = 1
+) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "-";
   }
 
-  return null;
+  const fractionDigits = Number.isInteger(value) ? 0 : maxFractionDigits;
+
+  return new Intl.NumberFormat(resolveLocaleTag(locale), {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: fractionDigits
+  }).format(value);
+}
+
+function formatPercentLabel(
+  locale: string,
+  value: number | null | undefined,
+  fractionDigits = 0
+) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "-";
+  }
+
+  return `${formatMetricNumber(locale, value, fractionDigits)}%`;
+}
+
+function formatDurationLabel(
+  locale: string,
+  value: number | null | undefined,
+  unit: { tr: string; en: string },
+  maxFractionDigits = 1
+) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "-";
+  }
+
+  return `${formatMetricNumber(locale, value, maxFractionDigits)} ${locale === "en" ? unit.en : unit.tr}`;
+}
+
+function formatHourLabel(locale: string, value: number | null | undefined) {
+  return formatDurationLabel(locale, value, { tr: "saat", en: "hr" });
+}
+
+function formatMinuteLabel(locale: string, value: number | null | undefined) {
+  return formatDurationLabel(locale, value, { tr: "dk", en: "min" });
+}
+
+function formatDayLabel(locale: string, value: number | null | undefined) {
+  return formatDurationLabel(locale, value, { tr: "gün", en: "days" });
+}
+
+function MetricTile(props: {
+  label: string;
+  value: string;
+  info?: string;
+}) {
+  return (
+    <div className="reports-metric-tile">
+      <div className="reports-metric-header">
+        <span className="reports-metric-label">{props.label}</span>
+        {props.info ? <InfoHint label={props.label} content={props.info} /> : null}
+      </div>
+      <strong className="reports-metric-value">{props.value}</strong>
+    </div>
+  );
+}
+
+function DetailRow(props: {
+  label: string;
+  value: string;
+  info?: string;
+}) {
+  return (
+    <li className="list-row reports-detail-row">
+      <div className="reports-detail-label">
+        <span>{props.label}</span>
+        {props.info ? <InfoHint label={props.label} content={props.info} /> : null}
+      </div>
+      <strong>{props.value}</strong>
+    </li>
+  );
 }
 
 export default function RaporlarPage() {
-  const { t } = useUiText();
-  const [data, setData] = useState<ReportData>({
-    overview: null,
-    funnel: [],
-    timeToHire: null,
-    interviewQuality: null
-  });
+  const { t, locale } = useUiText();
+  const [data, setData] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [analyticsNotices, setAnalyticsNotices] = useState<string[]>([]);
 
   const loadReports = useCallback(async () => {
     setLoading(true);
     setError("");
-    setAnalyticsNotices([]);
 
     try {
-      const [overviewResult, funnelResult, timeToHireResult, interviewQualityResult] =
-        await Promise.allSettled([
-          apiClient.recruiterOverviewReadModel(),
-          apiClient.analyticsFunnel(),
-          apiClient.analyticsTimeToHire(),
-          apiClient.analyticsInterviewQuality()
-        ]);
-
-      const nextData: ReportData = {
-        overview: overviewResult.status === "fulfilled" ? overviewResult.value : null,
-        funnel: funnelResult.status === "fulfilled" ? funnelResult.value : [],
-        timeToHire: timeToHireResult.status === "fulfilled" ? timeToHireResult.value : null,
-        interviewQuality:
-          interviewQualityResult.status === "fulfilled" ? interviewQualityResult.value : null
-      };
-      const notices = new Set<string>();
-
-      if (timeToHireResult.status === "rejected") {
-        const notice = resolveAnalyticsGateNotice(timeToHireResult.reason);
-        if (notice) {
-          notices.add(notice);
-        }
-      }
-
-      if (interviewQualityResult.status === "rejected") {
-        const notice = resolveAnalyticsGateNotice(interviewQualityResult.reason);
-        if (notice) {
-          notices.add(notice);
-        }
-      }
-
-      setData(nextData);
-      setAnalyticsNotices(Array.from(notices));
-
-      if (
-        !nextData.overview &&
-        nextData.funnel.length === 0 &&
-        (overviewResult.status === "rejected" || funnelResult.status === "rejected")
-      ) {
-        const blockingReason =
-          overviewResult.status === "rejected"
-            ? overviewResult.reason
-            : funnelResult.status === "rejected"
-              ? funnelResult.reason
-              : null;
-        setError(
-          toErrorMessage(blockingReason, t("Rapor verileri yüklenemedi."))
-        );
-      }
+      const summary = await apiClient.analyticsSummary();
+      setData(summary);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("Rapor verileri yüklenemedi."));
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -111,39 +124,78 @@ export default function RaporlarPage() {
     void loadReports();
   }, [loadReports]);
 
-  const conversionStats = useMemo(() => {
-    if (data.funnel.length === 0) return null;
-    const applied = data.funnel.find((r) => r.stage === "APPLIED")?.count ?? 0;
-    const screening = data.funnel.find((r) => r.stage === "SCREENING")?.count ?? 0;
-    const interview = data.funnel.find((r) => r.stage === "INTERVIEW_SCHEDULED")?.count ?? 0;
-    const review = data.funnel.find((r) => r.stage === "RECRUITER_REVIEW")?.count ?? 0;
-    const offer = data.funnel.find((r) => r.stage === "OFFER")?.count ?? 0;
-    const hired = data.funnel.find((r) => r.stage === "HIRED")?.count ?? 0;
-    const rejected = data.funnel.find((r) => r.stage === "REJECTED")?.count ?? 0;
-    const total = data.funnel.reduce((sum, r) => sum + r.count, 0);
+  const executiveHighlights = useMemo(() => {
+    if (!data) {
+      return [];
+    }
 
-    return {
-      total,
-      applied,
-      screening,
-      interview,
-      review,
-      offer,
-      hired,
-      rejected,
-      shortlistRate: total > 0 ? ((screening + interview + review + offer + hired) / total * 100) : 0,
-      interviewRate: total > 0 ? ((interview + review + offer + hired) / total * 100) : 0,
-      hireRate: total > 0 ? (hired / total * 100) : 0
-    };
-  }, [data.funnel]);
+    return [
+      {
+        title: t("Ön değerlendirme hazır"),
+        value: formatPercentLabel(locale, data.ai.screeningCoverageRate, 0),
+        info: t("Screening veya fit score üretilen başvuruların oranı.")
+      },
+      {
+        title: t("İlk mülakata geçiş"),
+        value: formatDayLabel(locale, data.pipeline.velocity.averageTimeToInterviewDays),
+        info: t("Başvuru ile ilk mülakat planı arasındaki ortalama süre.")
+      },
+      {
+        title: t("Mülakat tamamlanma oranı"),
+        value: formatPercentLabel(locale, data.interviews.completionRate, 0),
+        info: t("Planlanan oturumların ne kadarının tamamlandığını gösterir.")
+      },
+      {
+        title: t("AI görev başarı oranı"),
+        value:
+          data.ai.aiTaskSuccessRate === null
+            ? "-"
+            : formatPercentLabel(locale, data.ai.aiTaskSuccessRate, 0),
+        info: t("Terminal AI görevlerinde başarı oranı.")
+      }
+    ];
+  }, [data, locale, t]);
+
+  const aiImpactHighlights = useMemo(() => {
+    if (!data) {
+      return [];
+    }
+
+    return [
+      {
+        title: t("Screening kazanımı"),
+        value: formatHourLabel(locale, data.ai.estimatedTimeSavedHours.screening),
+        info: `${formatMetricNumber(locale, data.ai.screeningCoverageCount, 0)} ${t("başvuruda AI ön değerlendirme üretildi.")}`
+      },
+      {
+        title: t("Mülakat analizi kazanımı"),
+        value: formatHourLabel(locale, data.ai.estimatedTimeSavedHours.interviewAnalysis),
+        info: `${formatMetricNumber(locale, data.ai.reportCount, 0)} ${t("oturum için rapor veya analiz çıkışı mevcut.")}`
+      },
+      {
+        title: t("Planlama kazanımı"),
+        value: formatHourLabel(locale, data.ai.estimatedTimeSavedHours.scheduling),
+        info: `${formatMetricNumber(locale, data.interviews.aiScheduled, 0)} ${t("oturum AI destekli veya otomasyonla planlanmış.")}`
+      },
+      {
+        title: t("Toplam tahmini kazanç"),
+        value: formatHourLabel(locale, data.ai.estimatedTimeSavedHours.total),
+        info: t(data.definitions.timeSaved)
+      }
+    ];
+  }, [data, locale, t]);
 
   return (
     <section className="page-grid">
       <div className="section-head" style={{ marginBottom: 0 }}>
         <div>
-          <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}>{t("Raporlar")}</h1>
+          <PageTitleWithGuide
+            guideKey="reports"
+            title={t("Raporlar")}
+            style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}
+          />
           <p className="small" style={{ margin: 0 }}>
-            {t("İşe alım süreçlerinizin performansını ve dönüşüm oranlarını takip edin.")}
+            {t("İK ekibinin günlük operasyonu ve üst yönetim raporlaması için kritik KPI'ları tek ekranda izleyin.")}
           </p>
         </div>
         <button type="button" className="ghost-button" onClick={() => void loadReports()}>
@@ -170,66 +222,159 @@ export default function RaporlarPage() {
         </section>
       ) : null}
 
-      {!loading && !error && (
+      {!loading && !error && data ? (
         <>
-          {analyticsNotices.length > 0 ? (
-            <section className="panel" style={{ display: "grid", gap: 10 }}>
-              {analyticsNotices.map((message) => (
-                <div
-                  key={message}
-                  style={{
-                    padding: "12px 16px",
-                    background: "rgba(245,158,11,0.08)",
-                    border: "1px solid rgba(245,158,11,0.2)",
-                    borderRadius: 10,
-                    color: "var(--warn, #f59e0b)",
-                    fontSize: 14
-                  }}
-                >
-                  {t(message)}
+          <div className="kpi-grid">
+            <article className="kpi-card">
+              <p className="reports-kpi-label">{t("Aktif ilanlar")}</p>
+              <p className="kpi-value">{formatMetricNumber(locale, data.overview.publishedJobs, 0)}</p>
+            </article>
+            <article className="kpi-card">
+              <p className="reports-kpi-label">{t("Toplam başvuru")}</p>
+              <p className="kpi-value">{formatMetricNumber(locale, data.overview.totalApplications, 0)}</p>
+            </article>
+            <article className="kpi-card">
+              <p className="reports-kpi-label">{t("Mülakat yapılan aday")}</p>
+              <p className="kpi-value">{formatMetricNumber(locale, data.overview.interviewedApplications, 0)}</p>
+            </article>
+            <article className="kpi-card">
+              <p className="reports-kpi-label">{t("Tahmini zaman kazancı")}</p>
+              <p className="kpi-value">{formatHourLabel(locale, data.ai.estimatedTimeSavedHours.total)}</p>
+            </article>
+          </div>
+
+          <div className="reports-panel-grid">
+            <section className="panel reports-panel">
+              <div className="section-head" style={{ marginBottom: 0 }}>
+                <div>
+                  <h3 style={{ marginTop: 0, fontSize: 15 }}>{t("Yönetici özeti")}</h3>
+                  <p className="small" style={{ margin: 0 }}>
+                    {t("Yönetime sunulacak temel sinyalleri özetler.")}
+                  </p>
                 </div>
-              ))}
+              </div>
+
+              <div className="reports-metric-grid">
+                {executiveHighlights.map((item) => (
+                  <MetricTile key={item.title} label={item.title} value={item.value} info={item.info} />
+                ))}
+              </div>
             </section>
-          ) : null}
 
-          {/* Genel Göstergeler */}
-          {data.overview && (
-            <div className="kpi-grid">
-              <article className="kpi-card">
-                <p className="small">{t("Aktif İlanlar")}</p>
-                <p className="kpi-value">{data.overview.kpis.publishedJobs}</p>
-              </article>
-              <article className="kpi-card">
-                <p className="small">{t("Toplam Başvuru")}</p>
-                <p className="kpi-value">{data.overview.kpis.activeApplications}</p>
-              </article>
-              <article className="kpi-card">
-                <p className="small">{t("İşe Alım Süresi (Ort.)")}</p>
-                <p className="kpi-value">
-                  {data.timeToHire?.avgDays != null ? t(`${data.timeToHire.avgDays} gün`) : "-"}
-                </p>
-              </article>
-              <article className="kpi-card">
-                <p className="small">{t("Değerlendirme Güveni")}</p>
-                <p className="kpi-value">
-                  {formatPercent(data.overview.kpis.avgReportConfidence, 0)}
-                </p>
-              </article>
-            </div>
-          )}
+            <section className="panel reports-panel">
+              <div className="section-head" style={{ marginBottom: 0 }}>
+                <div>
+                  <h3 style={{ marginTop: 0, fontSize: 15 }}>{t("AI katkısı ve karşılaştırma")}</h3>
+                  <p className="small" style={{ margin: 0 }}>
+                    {t("Sistemin manuel iş yüküne göre yarattığı tahmini kazanımı gösterir.")}
+                  </p>
+                </div>
+              </div>
 
-          {/* Dönüşüm Oranları */}
+              <div className="reports-metric-grid">
+                {aiImpactHighlights.map((item) => (
+                  <MetricTile key={item.title} label={item.title} value={item.value} info={item.info} />
+                ))}
+              </div>
+            </section>
+
+            <section className="panel reports-panel">
+              <div className="section-head" style={{ marginBottom: 12 }}>
+                <div>
+                  <h3 style={{ marginTop: 0, fontSize: 15 }}>{t("Mülakat operasyonu")}</h3>
+                  <p className="small" style={{ margin: 0 }}>
+                    {t("Mülakat akışının hacmini ve verimini izleyin.")}
+                  </p>
+                </div>
+              </div>
+
+              {data.interviews.total === 0 ? (
+                <EmptyState message={t("Henüz mülakat verisi bulunmuyor.")} />
+              ) : (
+                <ul className="plain-list">
+                  <DetailRow
+                    label={t("Toplam oturum")}
+                    value={formatMetricNumber(locale, data.interviews.total, 0)}
+                    info={t("Planlanan, devam eden, tamamlanan veya sonuçlanmayan tüm mülakat oturumları.")}
+                  />
+                  <DetailRow
+                    label={t("Tamamlanan oturum")}
+                    value={formatMetricNumber(locale, data.interviews.completed, 0)}
+                    info={t("Adayın görüşmeyi başarıyla tamamladığı oturum sayısı.")}
+                  />
+                  <DetailRow
+                    label={t("Tamamlanma oranı")}
+                    value={formatPercentLabel(locale, data.interviews.completionRate, 0)}
+                    info={t("Tamamlanan oturumların tüm mülakat oturumlarına oranı.")}
+                  />
+                  <DetailRow
+                    label={t("Ortalama görüşme süresi")}
+                    value={formatMinuteLabel(locale, data.interviews.avgDurationMinutes)}
+                    info={t("Tamamlanan oturumların ortalama süresi.")}
+                  />
+                  <DetailRow
+                    label={t("Medyan görüşme süresi")}
+                    value={formatMinuteLabel(locale, data.interviews.medianDurationMinutes)}
+                    info={t("Tamamlanan oturumlarda ortadaki süreyi gösterir; uç değerlerden daha az etkilenir.")}
+                  />
+                  <DetailRow
+                    label={t("No-show oranı")}
+                    value={formatPercentLabel(locale, data.interviews.noShowRate, 0)}
+                    info={t("Adayın katılmadığı oturumların toplam oturumlara oranı.")}
+                  />
+                  <DetailRow
+                    label={t("AI ile planlanan oturum oranı")}
+                    value={formatPercentLabel(locale, data.interviews.aiSchedulingRate, 0)}
+                    info={t("Sistem veya otomasyon desteğiyle planlanan oturumların oranı.")}
+                  />
+                </ul>
+              )}
+            </section>
+
+            <section className="panel reports-panel">
+              <div className="section-head" style={{ marginBottom: 0 }}>
+                <div>
+                  <h3 style={{ marginTop: 0, fontSize: 15 }}>{t("Süreç hızı")}</h3>
+                  <p className="small" style={{ margin: 0 }}>
+                    {t("Sistemin doğrudan etkilediği hız metriklerini görün.")}
+                  </p>
+                </div>
+              </div>
+
+              <ul className="plain-list">
+                <DetailRow
+                  label={t("Ön değerlendirme dönüş süresi")}
+                  value={formatMinuteLabel(locale, data.pipeline.velocity.averageScreeningTurnaroundMinutes)}
+                  info={t("Başvuru tarihi ile ilk AI screening veya fit score çıkışı arasındaki ortalama süre.")}
+                />
+                <DetailRow
+                  label={t("İlk mülakata geçiş süresi")}
+                  value={formatDayLabel(locale, data.pipeline.velocity.averageTimeToInterviewDays)}
+                  info={t("Başvuru tarihi ile ilk mülakat planlama tarihi arasındaki ortalama fark.")}
+                />
+              </ul>
+            </section>
+          </div>
+
           <div className="mini-grid">
             <section className="panel">
-              <h3 style={{ marginTop: 0, fontSize: 15 }}>{t("Aşama Dağılımı")}</h3>
-              {data.funnel.length === 0 ? (
+              <div className="section-head" style={{ marginBottom: 12 }}>
+                <div>
+                  <h3 style={{ marginTop: 0, fontSize: 15 }}>{t("Aşama dağılımı")}</h3>
+                  <p className="small" style={{ margin: 0 }}>
+                    {t("Pipeline'da hangi aşamada ne kadar aday olduğunu gösterir.")}
+                  </p>
+                </div>
+              </div>
+
+              {data.pipeline.funnel.length === 0 ? (
                 <EmptyState message={t("Henüz yeterli veri bulunmuyor.")} />
               ) : (
                 <ul className="plain-list">
-                  {data.funnel.map((item) => (
+                  {data.pipeline.funnel.map((item) => (
                     <li key={item.stage} className="list-row">
                       <StageChip stage={item.stage} />
-                      <strong>{item.count}</strong>
+                      <strong>{formatMetricNumber(locale, item.count, 0)}</strong>
                     </li>
                   ))}
                 </ul>
@@ -237,96 +382,59 @@ export default function RaporlarPage() {
             </section>
 
             <section className="panel">
-              <h3 style={{ marginTop: 0, fontSize: 15 }}>{t("Dönüşüm Oranları")}</h3>
-              {conversionStats ? (
-                <ul className="plain-list">
-                  <li className="list-row">
-                    <span>{t("Ön eleme oranı")}</span>
-                    <strong>{conversionStats.shortlistRate.toFixed(0)}%</strong>
-                  </li>
-                  <li className="list-row">
-                    <span>{t("Mülakata geçiş oranı")}</span>
-                    <strong>{conversionStats.interviewRate.toFixed(0)}%</strong>
-                  </li>
-                  <li className="list-row">
-                    <span>{t("İşe alım oranı")}</span>
-                    <strong>{conversionStats.hireRate.toFixed(0)}%</strong>
-                  </li>
-                  <li className="list-row">
-                    <span>{t("Reddedilen")}</span>
-                    <strong>{conversionStats.rejected}</strong>
-                  </li>
-                </ul>
-              ) : (
-                <EmptyState message={t("Henüz yeterli veri bulunmuyor.")} />
-              )}
-            </section>
-          </div>
+              <div className="section-head" style={{ marginBottom: 12 }}>
+                <div>
+                  <h3 style={{ marginTop: 0, fontSize: 15 }}>{t("Dönüşüm ve AI kapsamı")}</h3>
+                  <p className="small" style={{ margin: 0 }}>
+                    {t("Operasyonel dönüşüm oranlarını ve AI çıktı kalitesini birlikte izleyin.")}
+                  </p>
+                </div>
+              </div>
 
-          {/* Süreç Metrikleri */}
-          <div className="mini-grid">
-            <section className="panel">
-              <h3 style={{ marginTop: 0, fontSize: 15 }}>{t("İşe Alım Süresi")}</h3>
-              {data.timeToHire ? (
-                <ul className="plain-list">
-                  <li className="list-row">
-                    <span>{t("İşe alınan aday sayısı")}</span>
-                    <strong>{data.timeToHire.hires}</strong>
-                  </li>
-                  <li className="list-row">
-                    <span>{t("Ortalama süre")}</span>
-                    <strong>{data.timeToHire.avgDays != null ? t(`${data.timeToHire.avgDays} gün`) : "-"}</strong>
-                  </li>
-                  <li className="list-row">
-                    <span>{t("Medyan süre")}</span>
-                    <strong>{data.timeToHire.medianDays != null ? t(`${data.timeToHire.medianDays} gün`) : "-"}</strong>
-                  </li>
-                </ul>
-              ) : (
-                <EmptyState
-                  message={
-                    analyticsNotices.length > 0
-                      ? t("Bu metrik mevcut planınızda kapalı.")
-                      : t("İşe alım süresi verisi henüz oluşmadı.")
+              <ul className="plain-list">
+                <DetailRow
+                  label={t("Ön eleme oranı")}
+                  value={formatPercentLabel(locale, data.pipeline.conversion.shortlistRate, 0)}
+                  info={t("Başvuruların kısa liste veya ön eleme aşamasına taşınma oranı.")}
+                />
+                <DetailRow
+                  label={t("Mülakata geçiş oranı")}
+                  value={formatPercentLabel(locale, data.pipeline.conversion.interviewRate, 0)}
+                  info={t("Başvuruların mülakat aşamasına taşınma oranı.")}
+                />
+                <DetailRow
+                  label={t("Teklif / ileri aşama oranı")}
+                  value={formatPercentLabel(locale, data.pipeline.conversion.offerRate, 0)}
+                  info={t("Başvuruların teklif veya daha ileri aşamalara taşınma oranı.")}
+                />
+                <DetailRow
+                  label={t("AI ön değerlendirme kapsaması")}
+                  value={formatPercentLabel(locale, data.ai.screeningCoverageRate, 0)}
+                  info={`${formatMetricNumber(locale, data.ai.screeningCoverageCount, 0)} ${t("başvuruda AI sinyali var.")}`}
+                />
+                <DetailRow
+                  label={t("Fit score ortalaması")}
+                  value={
+                    data.ai.fitScoreAverage === null
+                      ? "-"
+                      : `${formatMetricNumber(locale, data.ai.fitScoreAverage, 1)} / 100`
+                  }
+                  info={
+                    data.ai.fitScoreConfidenceAverage === null
+                      ? t("Güven verisi henüz oluşmadı.")
+                      : `${t("Güven ortalaması")} ${formatPercent(data.ai.fitScoreConfidenceAverage, 0)}`
                   }
                 />
-              )}
-            </section>
-
-            <section className="panel">
-              <h3 style={{ marginTop: 0, fontSize: 15 }}>{t("Görüşme Kalitesi")}</h3>
-              {data.interviewQuality ? (
-                <ul className="plain-list">
-                  <li className="list-row">
-                    <span>{t("Transkript kalitesi (ort.)")}</span>
-                    <strong>{formatPercent(data.interviewQuality.transcriptQualityAvg, 0)}</strong>
-                  </li>
-                  <li className="list-row">
-                    <span>{t("Rapor güveni (ort.)")}</span>
-                    <strong>{formatPercent(data.interviewQuality.reportConfidenceAvg, 0)}</strong>
-                  </li>
-                  <li className="list-row">
-                    <span>{t("Transkript örneklemi")}</span>
-                    <strong>{data.interviewQuality.transcriptSamples}</strong>
-                  </li>
-                  <li className="list-row">
-                    <span>{t("Rapor örneklemi")}</span>
-                    <strong>{data.interviewQuality.reportSamples}</strong>
-                  </li>
-                </ul>
-              ) : (
-                <EmptyState
-                  message={
-                    analyticsNotices.length > 0
-                      ? t("Bu metrik mevcut planınızda kapalı.")
-                      : t("Görüşme kalitesi verisi henüz oluşmadı.")
-                  }
+                <DetailRow
+                  label={t("AI rapor güveni")}
+                  value={formatPercent(data.ai.reportConfidenceAverage, 0)}
+                  info={t(data.definitions.reportConfidence)}
                 />
-              )}
+              </ul>
             </section>
           </div>
         </>
-      )}
+      ) : null}
     </section>
   );
 }

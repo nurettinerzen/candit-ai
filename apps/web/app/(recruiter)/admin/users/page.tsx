@@ -4,6 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageTitleWithGuide } from "../../../../components/page-guide";
 import { EmptyState, ErrorState, LoadingState } from "../../../../components/ui-states";
 import { useUiText } from "../../../../components/site-language-provider";
 import { apiClient } from "../../../../lib/api-client";
@@ -295,7 +296,7 @@ export default function InternalAdminUsersPage() {
     <section className="page-grid">
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <h1>{copy.usersTitle}</h1>
+          <PageTitleWithGuide guideKey="adminUsers" title={copy.usersTitle} />
           <p>{copy.usersSubtitle}</p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { Controller, Get , Inject} from "@nestjs/common";
+import { Controller, Get, Inject } from "@nestjs/common";
 import { CurrentTenant } from "../../common/decorators/current-tenant.decorator";
 import { Permissions } from "../../common/decorators/permissions.decorator";
 import { BillingService } from "../billing/billing.service";
@@ -15,6 +15,12 @@ export class AnalyticsController {
   @Permissions("job.read")
   funnel(@CurrentTenant() tenantId: string) {
     return this.analyticsService.funnel(tenantId);
+  }
+
+  @Get("summary")
+  @Permissions("job.read")
+  summary(@CurrentTenant() tenantId: string) {
+    return this.analyticsService.summary(tenantId);
   }
 
   @Get("time-to-hire")

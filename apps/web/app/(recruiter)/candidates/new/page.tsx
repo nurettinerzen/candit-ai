@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { PageTitleWithGuide } from "../../../../components/page-guide";
 import { useUiText } from "../../../../components/site-language-provider";
 import { Field, TextInput } from "../../../../components/form-controls";
 import { ErrorState } from "../../../../components/ui-states";
@@ -52,7 +53,12 @@ export default function NewCandidatePage() {
     <section className="panel form-panel">
       <div className="section-head">
         <div>
-          <h2 style={{ marginBottom: 4 }}>{t("Yeni Aday Kaydı")}</h2>
+          <PageTitleWithGuide
+            as="h2"
+            guideKey="candidateCreate"
+            title={t("Yeni Aday Kaydı")}
+            style={{ marginBottom: 4 }}
+          />
           <p className="small" style={{ marginTop: 0 }}>
             {t("Aday kaydı oluşturulduğunda duplicate kontrolü otomatik uygulanır.")}
           </p>

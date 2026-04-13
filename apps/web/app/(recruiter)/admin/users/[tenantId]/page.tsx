@@ -4,6 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { PageTitleWithGuide } from "../../../../../components/page-guide";
 import { EmptyState, ErrorState, LoadingState } from "../../../../../components/ui-states";
 import { useUiText } from "../../../../../components/site-language-provider";
 import { apiClient } from "../../../../../lib/api-client";
@@ -357,7 +358,7 @@ export default function InternalAdminAccountDetailPage() {
 
       <div className="page-header">
         <div className="page-header-copy">
-          <h1>{detail.tenant.name}</h1>
+          <PageTitleWithGuide guideKey="tenantDetail" title={detail.tenant.name} />
           <p>{copy.accountDetailSubtitle}</p>
         </div>
         <div className="page-header-actions">

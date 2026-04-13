@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { RecruiterNotesPanel } from "../../../../components/recruiter-notes-panel";
 import { InterviewInviteModal } from "../../../../components/interview-invite-modal";
 import { MatchIndicator } from "../../../../components/match-indicator";
+import { PageTitleWithGuide } from "../../../../components/page-guide";
 import { useUiText } from "../../../../components/site-language-provider";
 import { ErrorState, LoadingState } from "../../../../components/ui-states";
 import { FitScoreBreakdown } from "../../../../components/fit-score-breakdown";
@@ -586,7 +587,11 @@ export default function ApplicationDetailPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 22, fontWeight: 700, color: "inherit" }}>{candidate.fullName}</span>
+              <PageTitleWithGuide
+                guideKey="applicationDetail"
+                title={candidate.fullName}
+                style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "inherit" }}
+              />
               <span style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
                 fontSize: 12, fontWeight: 600, color: stageMeta.color,

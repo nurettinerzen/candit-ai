@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageTitleWithGuide } from "../../../components/page-guide";
 import { useUiText } from "../../../components/site-language-provider";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { apiClient } from "../../../lib/api-client";
@@ -118,7 +119,11 @@ export default function InterviewsPage() {
     <section className="page-grid">
       <div className="section-head" style={{ marginBottom: 0 }}>
         <div>
-          <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}>{t("Mülakatlar")}</h1>
+          <PageTitleWithGuide
+            guideKey="interviews"
+            title={t("Mülakatlar")}
+            style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}
+          />
           <p className="small" style={{ margin: 0 }}>
             {t("Tek linkli AI görüşme davetlerini, devam eden oturumları ve tamamlanan görüşmeleri takip edin.")}
           </p>

@@ -3,6 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageTitleWithGuide } from "../../../../components/page-guide";
 import { EmptyState, ErrorState, LoadingState } from "../../../../components/ui-states";
 import { useUiText } from "../../../../components/site-language-provider";
 import { apiClient } from "../../../../lib/api-client";
@@ -290,7 +291,7 @@ export default function InternalAdminEnterprisePage() {
       {/* ── Header ── */}
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <h1>{copy.enterpriseTitle}</h1>
+          <PageTitleWithGuide guideKey="adminEnterprise" title={copy.enterpriseTitle} />
           <p>{copy.enterpriseSubtitle}</p>
         </div>
       </div>

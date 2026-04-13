@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { ChangeEvent, FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageTitleWithGuide } from "../../../../components/page-guide";
 import { useUiText } from "../../../../components/site-language-provider";
 import { ErrorState, LoadingState } from "../../../../components/ui-states";
 import { apiClient } from "../../../../lib/api-client";
@@ -271,7 +272,12 @@ export default function CandidateDetailPage() {
           <section className="panel" style={{ marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <div>
-                <h2 style={{ fontSize: 22, fontWeight: 700 }}>{candidate.fullName}</h2>
+                <PageTitleWithGuide
+                  as="h2"
+                  guideKey="candidateDetail"
+                  title={candidate.fullName}
+                  style={{ fontSize: 22, fontWeight: 700 }}
+                />
                 <p className="text-sm text-muted" style={{ marginTop: 4 }}>
                   {candidate.source ? `Kaynak: ${candidate.source}` : ""}
                   {candidate.source ? " · " : ""}

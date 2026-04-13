@@ -1,6 +1,65 @@
-import { Injectable, Inject} from "@nestjs/common";
-import { ApplicationStage } from "@prisma/client";
+import { Injectable, Inject } from "@nestjs/common";
+import {
+  AiTaskStatus,
+  AiTaskType,
+  ApplicationStage,
+  InterviewSessionStatus,
+  JobStatus
+} from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+
+const SCREENING_TASK_TYPES: AiTaskType[] = [
+  AiTaskType.APPLICANT_FIT_SCORING,
+  AiTaskType.SCREENING_SUPPORT
+];
+const TERMINAL_AI_TASK_STATUSES: AiTaskStatus[] = [
+  AiTaskStatus.SUCCEEDED,
+  AiTaskStatus.FAILED,
+  AiTaskStatus.CANCELLED,
+  AiTaskStatus.NEEDS_REVIEW
+];
+
+const ESTIMATED_MANUAL_MINUTES = {
+  screeningPerApplication: 8,
+  interviewAnalysisPerSession: 18,
+  schedulingPerSession: 10
+};
+
+function average(values: number[], fractionDigits = 2) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const sum = values.reduce((total, value) => total + value, 0);
+  return Number((sum / values.length).toFixed(fractionDigits));
+}
+
+function median(values: number[], fractionDigits = 2) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const sorted = [...values].sort((left, right) => left - right);
+  const lowerMedian = sorted[Math.floor((sorted.length - 1) / 2)] ?? 0;
+  const upperMedian = sorted[Math.floor(sorted.length / 2)] ?? lowerMedian;
+  return Number((((lowerMedian + upperMedian) / 2)).toFixed(fractionDigits));
+}
+
+function percentage(part: number, total: number, fractionDigits = 1) {
+  if (total <= 0) {
+    return 0;
+  }
+
+  return Number(((part / total) * 100).toFixed(fractionDigits));
+}
+
+function diffInMinutes(start: Date, end: Date) {
+  return Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60));
+}
+
+function diffInDays(start: Date, end: Date) {
+  return Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+}
 
 @Injectable()
 export class AnalyticsService {
@@ -107,6 +166,404 @@ export class AnalyticsService {
       reportSamples: reportConfidences.length,
       transcriptQualityAvg: transcriptAvg === null ? null : Number(transcriptAvg.toFixed(3)),
       reportConfidenceAvg: reportAvg === null ? null : Number(reportAvg.toFixed(3))
+    };
+  }
+
+  async summary(tenantId: string) {
+    const [
+      publishedJobs,
+      totalCandidates,
+      applications,
+      interviews,
+      fitScores,
+      reports,
+      transcripts,
+      aiTaskRuns,
+      funnel,
+      timeToHire
+    ] = await Promise.all([
+      this.prisma.job.count({
+        where: {
+          tenantId,
+          status: JobStatus.PUBLISHED
+        }
+      }),
+      this.prisma.candidate.count({
+        where: {
+          tenantId
+        }
+      }),
+      this.prisma.candidateApplication.findMany({
+        where: {
+          tenantId
+        },
+        select: {
+          id: true,
+          createdAt: true,
+          currentStage: true
+        }
+      }),
+      this.prisma.interviewSession.findMany({
+        where: {
+          tenantId
+        },
+        select: {
+          id: true,
+          applicationId: true,
+          status: true,
+          schedulingSource: true,
+          scheduledAt: true,
+          startedAt: true,
+          endedAt: true,
+          createdAt: true
+        }
+      }),
+      this.prisma.applicantFitScore.findMany({
+        where: {
+          tenantId
+        },
+        select: {
+          applicationId: true,
+          overallScore: true,
+          confidence: true,
+          createdAt: true
+        }
+      }),
+      this.prisma.aiReport.findMany({
+        where: {
+          tenantId
+        },
+        select: {
+          applicationId: true,
+          sessionId: true,
+          confidence: true,
+          createdAt: true
+        }
+      }),
+      this.prisma.transcript.findMany({
+        where: {
+          tenantId,
+          qualityScore: {
+            not: null
+          }
+        },
+        select: {
+          qualityScore: true
+        }
+      }),
+      this.prisma.aiTaskRun.findMany({
+        where: {
+          tenantId
+        },
+        select: {
+          applicationId: true,
+          sessionId: true,
+          taskType: true,
+          status: true,
+          startedAt: true,
+          completedAt: true,
+          createdAt: true
+        }
+      }),
+      this.funnel(tenantId),
+      this.timeToHire(tenantId)
+    ]);
+
+    const applicationsById = new Map(
+      applications.map((application) => [application.id, application])
+    );
+
+    const totalApplications = applications.length;
+    const activePipelineApplications = applications.filter(
+      (application) =>
+        application.currentStage !== ApplicationStage.REJECTED &&
+        application.currentStage !== ApplicationStage.HIRED
+    ).length;
+    const hiredApplications = applications.filter(
+      (application) => application.currentStage === ApplicationStage.HIRED
+    ).length;
+
+    const interviewApplicationIds = new Set(interviews.map((session) => session.applicationId));
+    const completedInterviews = interviews.filter(
+      (session) => session.status === InterviewSessionStatus.COMPLETED
+    );
+    const noShowInterviews = interviews.filter(
+      (session) => session.status === InterviewSessionStatus.NO_SHOW
+    );
+    const cancelledInterviews = interviews.filter(
+      (session) => session.status === InterviewSessionStatus.CANCELLED
+    );
+    const failedInterviews = interviews.filter(
+      (session) => session.status === InterviewSessionStatus.FAILED
+    );
+    const runningInterviews = interviews.filter(
+      (session) => session.status === InterviewSessionStatus.RUNNING
+    );
+    const aiScheduledInterviews = interviews.filter(
+      (session) =>
+        Boolean(session.schedulingSource) && session.schedulingSource !== "manual_recruiter"
+    );
+
+    const interviewDurations = completedInterviews
+      .map((session) => {
+        if (!session.startedAt || !session.endedAt) {
+          return null;
+        }
+
+        return diffInMinutes(session.startedAt, session.endedAt);
+      })
+      .filter((value): value is number => value !== null && value > 0);
+
+    const fitScoresByApplication = new Map<
+      string,
+      {
+        overallScore: number;
+        confidence: number;
+        createdAt: Date;
+      }
+    >();
+
+    for (const fitScore of fitScores) {
+      const existing = fitScoresByApplication.get(fitScore.applicationId);
+      if (existing && existing.createdAt >= fitScore.createdAt) {
+        continue;
+      }
+
+      fitScoresByApplication.set(fitScore.applicationId, {
+        overallScore: Number(fitScore.overallScore),
+        confidence: Number(fitScore.confidence),
+        createdAt: fitScore.createdAt
+      });
+    }
+
+    const latestFitScores = Array.from(fitScoresByApplication.values());
+    const successfulScreeningTasks = aiTaskRuns.filter(
+      (taskRun) =>
+        taskRun.applicationId &&
+        SCREENING_TASK_TYPES.includes(taskRun.taskType) &&
+        taskRun.status === AiTaskStatus.SUCCEEDED
+    );
+
+    const screenedApplicationIds = new Set<string>([
+      ...Array.from(fitScoresByApplication.keys()),
+      ...successfulScreeningTasks
+        .map((taskRun) => taskRun.applicationId)
+        .filter((applicationId): applicationId is string => Boolean(applicationId))
+    ]);
+
+    const screeningTurnaroundMinutes = Array.from(screenedApplicationIds)
+      .map((applicationId) => {
+        const application = applicationsById.get(applicationId);
+        if (!application) {
+          return null;
+        }
+
+        const candidateMoments = [
+          fitScoresByApplication.get(applicationId)?.createdAt ?? null,
+          ...successfulScreeningTasks
+            .filter((taskRun) => taskRun.applicationId === applicationId)
+            .map((taskRun) => taskRun.completedAt ?? taskRun.createdAt)
+        ].filter((value): value is Date => value instanceof Date);
+
+        if (candidateMoments.length === 0) {
+          return null;
+        }
+
+        const earliest = candidateMoments.sort((left, right) => left.getTime() - right.getTime())[0];
+        if (!earliest) {
+          return null;
+        }
+
+        return diffInMinutes(application.createdAt, earliest);
+      })
+      .filter((value): value is number => value !== null);
+
+    const timeToInterviewDays = Array.from(interviewApplicationIds)
+      .map((applicationId) => {
+        const application = applicationsById.get(applicationId);
+        if (!application) {
+          return null;
+        }
+
+        const firstInterviewMoment = interviews
+          .filter((session) => session.applicationId === applicationId)
+          .map((session) => session.scheduledAt ?? session.createdAt)
+          .sort((left, right) => left.getTime() - right.getTime())[0];
+
+        if (!firstInterviewMoment) {
+          return null;
+        }
+
+        return diffInDays(application.createdAt, firstInterviewMoment);
+      })
+      .filter((value): value is number => value !== null);
+
+    const reportsBySession = new Map<
+      string,
+      {
+        applicationId: string;
+        sessionId: string;
+        confidence: number;
+        createdAt: Date;
+      }
+    >();
+
+    for (const report of reports) {
+      const existing = reportsBySession.get(report.sessionId);
+      if (existing && existing.createdAt >= report.createdAt) {
+        continue;
+      }
+
+      reportsBySession.set(report.sessionId, {
+        applicationId: report.applicationId,
+        sessionId: report.sessionId,
+        confidence: Number(report.confidence),
+        createdAt: report.createdAt
+      });
+    }
+
+    const latestReports = Array.from(reportsBySession.values());
+
+    const transcriptQualityAverage = average(
+      transcripts
+        .map((transcript) =>
+          transcript.qualityScore === null ? null : Number(transcript.qualityScore)
+        )
+        .filter((value): value is number => value !== null),
+      3
+    );
+
+    const reportConfidenceAverage = average(
+      latestReports.map((report) => report.confidence),
+      3
+    );
+
+    const terminalAiTasks = aiTaskRuns.filter((taskRun) =>
+      TERMINAL_AI_TASK_STATUSES.includes(taskRun.status)
+    );
+    const successfulAiTaskCount = terminalAiTasks.filter(
+      (taskRun) => taskRun.status === AiTaskStatus.SUCCEEDED
+    ).length;
+
+    const reportSessionIds = new Set(latestReports.map((report) => report.sessionId));
+
+    const applied = funnel.find((item) => item.stage === ApplicationStage.APPLIED)?.count ?? 0;
+    const screening = funnel.find((item) => item.stage === ApplicationStage.SCREENING)?.count ?? 0;
+    const interview = funnel.find((item) => item.stage === ApplicationStage.INTERVIEW_SCHEDULED)?.count ?? 0;
+    const review =
+      (funnel.find((item) => item.stage === ApplicationStage.RECRUITER_REVIEW)?.count ?? 0) +
+      (funnel.find((item) => item.stage === ApplicationStage.HIRING_MANAGER_REVIEW)?.count ?? 0);
+    const offer = funnel.find((item) => item.stage === ApplicationStage.OFFER)?.count ?? 0;
+    const rejected = funnel.find((item) => item.stage === ApplicationStage.REJECTED)?.count ?? 0;
+    const hired = funnel.find((item) => item.stage === ApplicationStage.HIRED)?.count ?? 0;
+
+    const estimatedScreeningHoursSaved = Number(
+      (
+        (screenedApplicationIds.size * ESTIMATED_MANUAL_MINUTES.screeningPerApplication) /
+        60
+      ).toFixed(1)
+    );
+    const estimatedInterviewHoursSaved = Number(
+      (
+        (latestReports.length * ESTIMATED_MANUAL_MINUTES.interviewAnalysisPerSession) /
+        60
+      ).toFixed(1)
+    );
+    const estimatedSchedulingHoursSaved = Number(
+      (
+        (aiScheduledInterviews.length * ESTIMATED_MANUAL_MINUTES.schedulingPerSession) /
+        60
+      ).toFixed(1)
+    );
+
+    return {
+      generatedAt: new Date().toISOString(),
+      overview: {
+        publishedJobs,
+        totalCandidates,
+        totalApplications,
+        activePipelineApplications,
+        interviewedApplications: interviewApplicationIds.size,
+        hiredApplications
+      },
+      pipeline: {
+        funnel,
+        conversion: {
+          shortlistRate: percentage(screening + interview + review + offer + hired, totalApplications),
+          interviewRate: percentage(interview + review + offer + hired, totalApplications),
+          offerRate: percentage(offer + hired, totalApplications),
+          hireRate: percentage(hired, totalApplications),
+          rejectionRate: percentage(rejected, totalApplications)
+        },
+        velocity: {
+          averageScreeningTurnaroundMinutes: average(screeningTurnaroundMinutes, 1),
+          averageTimeToInterviewDays: average(timeToInterviewDays, 2),
+          timeToHire
+        }
+      },
+      interviews: {
+        total: interviews.length,
+        completed: completedInterviews.length,
+        running: runningInterviews.length,
+        cancelled: cancelledInterviews.length,
+        noShow: noShowInterviews.length,
+        failed: failedInterviews.length,
+        aiScheduled: aiScheduledInterviews.length,
+        completionRate: percentage(completedInterviews.length, interviews.length),
+        noShowRate: percentage(noShowInterviews.length, interviews.length),
+        aiSchedulingRate: percentage(aiScheduledInterviews.length, interviews.length),
+        avgDurationMinutes: average(interviewDurations, 1),
+        medianDurationMinutes: median(interviewDurations, 1)
+      },
+      ai: {
+        screeningCoverageCount: screenedApplicationIds.size,
+        screeningCoverageRate: percentage(screenedApplicationIds.size, totalApplications),
+        fitScoreAverage: average(
+          latestFitScores.map((fitScore) => fitScore.overallScore),
+          1
+        ),
+        fitScoreConfidenceAverage: average(
+          latestFitScores.map((fitScore) => fitScore.confidence),
+          3
+        ),
+        reportCount: latestReports.length,
+        reportCoverageRate: percentage(reportSessionIds.size, completedInterviews.length),
+        reportConfidenceAverage,
+        transcriptQualityAverage,
+        aiTaskSuccessRate:
+          terminalAiTasks.length > 0
+            ? percentage(successfulAiTaskCount, terminalAiTasks.length)
+            : null,
+        estimatedTimeSavedHours: {
+          screening: estimatedScreeningHoursSaved,
+          interviewAnalysis: estimatedInterviewHoursSaved,
+          scheduling: estimatedSchedulingHoursSaved,
+          total: Number(
+            (
+              estimatedScreeningHoursSaved +
+              estimatedInterviewHoursSaved +
+              estimatedSchedulingHoursSaved
+            ).toFixed(1)
+          )
+        }
+      },
+      definitions: {
+        timeToHire:
+          "Başvuru oluşturulma tarihi ile adayın HIRED aşamasına geçtiği tarih arasındaki fark.",
+        reportConfidence:
+          "AI raporu üretildiğinde modelin kanıt kapsamına göre oluşturduğu güven skorunun ortalaması.",
+        timeSaved:
+          "Tahmini kazanç; screening için 8 dk/başvuru, mülakat analizi için 18 dk/oturum ve planlama için 10 dk/oturum varsayımıyla hesaplanır."
+      },
+      workload: {
+        applied,
+        screening,
+        interview,
+        review,
+        offer,
+        hired,
+        rejected
+      }
     };
   }
 }

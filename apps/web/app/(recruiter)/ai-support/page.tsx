@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageTitleWithGuide } from "../../../components/page-guide";
 import { useUiText } from "../../../components/site-language-provider";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { apiClient } from "../../../lib/api-client";
@@ -110,7 +111,12 @@ export default function AiSupportCenterPage() {
     <section className="panel">
       <div className="section-head">
         <div>
-          <h2 style={{ marginBottom: 4 }}>AI Destek Merkezi</h2>
+          <PageTitleWithGuide
+            as="h2"
+            guideKey="aiSupport"
+            title="AI Destek Merkezi"
+            style={{ marginBottom: 4 }}
+          />
           <p className="small" style={{ marginTop: 0 }}>
             {t("AI destek akışının aç/kapat kontrolü, son görev durumları ve fallback görünürlüğü.")}
           </p>

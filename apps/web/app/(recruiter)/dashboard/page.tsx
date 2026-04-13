@@ -3,6 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageTitleWithGuide } from "../../../components/page-guide";
 import { useUiText } from "../../../components/site-language-provider";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { apiClient } from "../../../lib/api-client";
@@ -273,7 +274,11 @@ export default function RecruiterOverviewPage() {
     <section className="page-grid">
       <div className="section-head" style={{ marginBottom: 0 }}>
         <div>
-          <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}>{t("Genel Bakış")}</h1>
+          <PageTitleWithGuide
+            guideKey="dashboard"
+            title={t("Genel Bakış")}
+            style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}
+          />
           <p className="small" style={{ margin: 0 }}>
             {t("İşe alım operasyonunuzun günlük özeti.")}
           </p>

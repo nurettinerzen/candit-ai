@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageTitleWithGuide } from "../../../../components/page-guide";
 import { EmptyState, ErrorState, LoadingState } from "../../../../components/ui-states";
 import { useUiText } from "../../../../components/site-language-provider";
 import { apiClient } from "../../../../lib/api-client";
@@ -177,7 +178,7 @@ export default function InternalAdminLeadsPage() {
     <section className="page-grid">
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <h1>{copy.leadsTitle}</h1>
+          <PageTitleWithGuide guideKey="adminLeads" title={copy.leadsTitle} />
           <p>{copy.leadsSubtitle}</p>
         </div>
       </div>

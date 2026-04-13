@@ -2,6 +2,7 @@ import { request } from "./http";
 import type {
   AnalyticsFunnelRow,
   AnalyticsInterviewQuality,
+  AnalyticsSummary,
   AnalyticsTimeToHire,
   AiSupportCenterReadModel,
   AiTaskRun,
@@ -387,6 +388,9 @@ export const apiClient = {
   },
   analyticsFunnel() {
     return request<AnalyticsFunnelRow[]>("analytics/funnel");
+  },
+  analyticsSummary() {
+    return request<AnalyticsSummary>("analytics/summary");
   },
   analyticsTimeToHire() {
     return request<AnalyticsTimeToHire>("analytics/time-to-hire");

@@ -4,6 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageTitleWithGuide } from "../../../components/page-guide";
 import { useUiText } from "../../../components/site-language-provider";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { apiClient } from "../../../lib/api-client";
@@ -209,7 +210,11 @@ export default function CandidatesPage() {
     <section className="page-grid">
       <div className="section-head" style={{ marginBottom: 0 }}>
         <div>
-          <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}>{t("Adaylar")}</h1>
+          <PageTitleWithGuide
+            guideKey="candidates"
+            title={t("Adaylar")}
+            style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}
+          />
           <p className="small" style={{ margin: 0 }}>
             {t("Tüm adaylar ve başvuruları tek ekranda.")}
           </p>

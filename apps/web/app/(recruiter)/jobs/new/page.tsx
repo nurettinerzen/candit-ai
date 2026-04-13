@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useMemo, useState, useEffect } from "react";
+import { PageTitleWithGuide } from "../../../../components/page-guide";
 import { useUiText } from "../../../../components/site-language-provider";
 import { Field, SelectInput, TextArea, TextInput } from "../../../../components/form-controls";
 import { ErrorState } from "../../../../components/ui-states";
@@ -362,7 +363,12 @@ export default function NewJobPage() {
             <Link href="/jobs" className="text-muted text-sm" style={{ textDecoration: "none" }}>
               ← {t("İlan Merkezi")}
             </Link>
-            <h2 style={{ marginBottom: 4, marginTop: 8 }}>{t("Yeni İlan Hazırla")}</h2>
+            <PageTitleWithGuide
+              as="h2"
+              guideKey="jobCreate"
+              title={t("Yeni İlan Hazırla")}
+              style={{ marginBottom: 4, marginTop: 8 }}
+            />
             <p className="small" style={{ marginTop: 0 }}>
               {t("Pozisyon bilgilerini girin. AI taslak oluşturup harici platformlara kopyalayabilirsiniz.")}
             </p>

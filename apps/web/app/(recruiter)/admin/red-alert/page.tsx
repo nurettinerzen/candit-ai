@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { PageTitleWithGuide } from "../../../../components/page-guide";
 import { EmptyState, ErrorState, LoadingState } from "../../../../components/ui-states";
 import { useUiText } from "../../../../components/site-language-provider";
 import { apiClient } from "../../../../lib/api-client";
@@ -96,7 +97,7 @@ export default function InternalAdminRedAlertPage() {
       {/* ===== HEADER: title + time-range select + refresh ===== */}
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <h1>{copy.redAlertTitle}</h1>
+          <PageTitleWithGuide guideKey="adminRedAlert" title={copy.redAlertTitle} />
           <p>{copy.redAlertSubtitle}</p>
         </div>
       </div>

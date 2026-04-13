@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageTitleWithGuide } from "../../../components/page-guide";
 import { useUiText } from "../../../components/site-language-provider";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { apiClient } from "../../../lib/api-client";
@@ -88,7 +89,11 @@ export default function SourcingPage() {
     <section className="page-grid">
       <div className="section-head" style={{ marginBottom: 0 }}>
         <div>
-          <h1 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}>Sourcing</h1>
+          <PageTitleWithGuide
+            guideKey="sourcing"
+            title="Sourcing"
+            style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}
+          />
           <p className="small" style={{ margin: 0 }}>
             {t("Requisition bağlantılı talent discovery, rediscovery ve outreach foundation.")}
           </p>

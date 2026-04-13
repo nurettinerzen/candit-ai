@@ -3,35 +3,38 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { PageTitleWithGuide } from "../../../components/page-guide";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { useUiText } from "../../../components/site-language-provider";
 import { apiClient } from "../../../lib/api-client";
 import {
+  formatAlertCategory,
   getInternalAdminCopy,
   translateInternalAdminMessage
 } from "../../../lib/internal-admin-copy";
 import type {
   InternalAdminAccountListReadModel,
-  InternalAdminDashboardReadModel
+  InternalAdminDashboardReadModel,
+  InternalAdminPublicLeadListReadModel,
+  InternalAdminRedAlertReadModel
 } from "../../../lib/types";
 
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-
-function isTrialAccount(account: InternalAdminAccountListReadModel["rows"][number]) {
-  return account.billing.trial.isActive || account.billing.trial.isExpired;
-}
-
-type MetricCard = {
+type SectionCard = {
   label: string;
   value: number;
   tone: "primary" | "success" | "warning" | "danger" | "info" | "muted";
-  icon: string;
-  iconTone: "primary" | "success" | "warning" | "danger" | "info" | "muted";
+  href?: Route;
+};
+
+type DashboardSection = {
+  key: string;
+  title: string;
   href: Route;
-  detail?: string;
+  cards: SectionCard[];
 };
 
 export default function InternalAdminDashboardPage() {
@@ -39,6 +42,8 @@ export default function InternalAdminDashboardPage() {
   const copy = getInternalAdminCopy(locale);
   const [data, setData] = useState<InternalAdminDashboardReadModel | null>(null);
   const [accounts, setAccounts] = useState<InternalAdminAccountListReadModel | null>(null);
+  const [alerts, setAlerts] = useState<InternalAdminRedAlertReadModel | null>(null);
+  const [leads, setLeads] = useState<InternalAdminPublicLeadListReadModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -47,15 +52,21 @@ export default function InternalAdminDashboardPage() {
     setError("");
 
     try {
-      const [dashboardResult, accountResult] = await Promise.all([
+      const [dashboardResult, accountsResult, alertsResult, leadsResult] = await Promise.all([
         apiClient.internalAdminDashboard(),
-        apiClient.internalAdminAccounts()
+        apiClient.internalAdminAccounts(),
+        apiClient.internalAdminRedAlert(),
+        apiClient.internalAdminPublicLeads()
       ]);
       setData(dashboardResult);
-      setAccounts(accountResult);
+      setAccounts(accountsResult);
+      setAlerts(alertsResult);
+      setLeads(leadsResult);
     } catch (loadError) {
       setData(null);
       setAccounts(null);
+      setAlerts(null);
+      setLeads(null);
       setError(translateInternalAdminMessage(toErrorMessage(loadError, copy.internalOnly), locale));
     } finally {
       setLoading(false);
@@ -76,7 +87,7 @@ export default function InternalAdminDashboardPage() {
     );
   }
 
-  if (error && (!data || !accounts)) {
+  if (error && (!data || !accounts || !alerts || !leads)) {
     return (
       <section className="page-grid">
         <section className="panel">
@@ -93,7 +104,7 @@ export default function InternalAdminDashboardPage() {
     );
   }
 
-  if (!data || !accounts) {
+  if (!data || !accounts || !alerts || !leads) {
     return (
       <section className="page-grid">
         <section className="panel">
@@ -103,65 +114,105 @@ export default function InternalAdminDashboardPage() {
     );
   }
 
-  const trialTotal = accounts.summary.trialActive + accounts.summary.trialExpired;
-  const starterCount = accounts.rows.filter(
-    (row) => !isTrialAccount(row) && row.billing.currentPlanKey === "STARTER"
-  ).length;
-  const growthCount = accounts.rows.filter(
-    (row) => !isTrialAccount(row) && row.billing.currentPlanKey === "GROWTH"
-  ).length;
-  const enterpriseCount = accounts.rows.filter(
-    (row) => !isTrialAccount(row) && row.billing.currentPlanKey === "ENTERPRISE"
-  ).length;
+  const trialCount = accounts.summary.trialActive + accounts.summary.trialExpired;
 
-  const metrics: MetricCard[] = [
+  const alertCount = (key: string) => alerts.summary.find((s) => s.key === key)?.count ?? 0;
+
+  const viewAllLabel = locale === "en" ? "View all" : "Tümünü gör";
+
+  const sections: DashboardSection[] = [
     {
-      label: copy.totalCustomers,
-      value: data.summary.totalCustomers,
-      tone: "primary",
-      icon: "\u{1F465}",
-      iconTone: "primary",
+      key: "customers",
+      title: copy.customers,
       href: "/admin/users",
-      detail:
-        locale === "en"
-          ? `${data.summary.activeCustomers} active · ${accounts.summary.suspended} suspended · ${trialTotal} trial`
-          : `${data.summary.activeCustomers} aktif · ${accounts.summary.suspended} askıda · ${trialTotal} deneme`
+      cards: [
+        {
+          label: copy.totalCustomers,
+          value: data.summary.totalCustomers,
+          tone: "primary",
+          href: "/admin/users"
+        },
+        {
+          label: copy.activeCustomers,
+          value: data.summary.activeCustomers,
+          tone: "success",
+          href: "/admin/users?status=ACTIVE"
+        },
+        {
+          label: copy.suspendedCustomers,
+          value: data.summary.suspendedCustomers,
+          tone: "muted",
+          href: "/admin/users?status=SUSPENDED"
+        },
+        {
+          label: copy.trialAccounts,
+          value: trialCount,
+          tone: "warning",
+          href: "/admin/users?segment=TRIAL"
+        }
+      ]
     },
     {
-      label: copy.openAlerts,
-      value: data.summary.openAlerts,
-      tone: "danger",
-      icon: "\u26A0",
-      iconTone: "danger",
+      key: "red-alert",
+      title: copy.redAlerts,
       href: "/admin/red-alert",
-      detail:
-        locale === "en"
-          ? "Platform failures, delivery issues and risk signals"
-          : "Platform hataları, teslimat sorunları ve risk sinyalleri"
+      cards: [
+        {
+          label: formatAlertCategory("APPLICATION", locale),
+          value: alertCount("APPLICATION"),
+          tone: "danger",
+          href: "/admin/red-alert?category=APPLICATION"
+        },
+        {
+          label: formatAlertCategory("SECURITY", locale),
+          value: alertCount("SECURITY"),
+          tone: "danger",
+          href: "/admin/red-alert?category=SECURITY"
+        },
+        {
+          label: formatAlertCategory("ASSISTANT", locale),
+          value: alertCount("ASSISTANT"),
+          tone: "warning",
+          href: "/admin/red-alert?category=ASSISTANT"
+        },
+        {
+          label: formatAlertCategory("OPERATIONS", locale),
+          value: alertCount("OPERATIONS"),
+          tone: "muted",
+          href: "/admin/red-alert?category=OPERATIONS"
+        }
+      ]
     },
     {
-      label: copy.leads,
-      value: data.quickLinks.leads,
-      tone: "warning",
-      icon: "\u2709",
-      iconTone: "warning",
+      key: "leads",
+      title: copy.leads,
       href: "/admin/leads",
-      detail:
-        locale === "en"
-          ? "Open inbound demo and pilot requests"
-          : "Açık demo ve pilot talepleri"
-    },
-    {
-      label: copy.enterprise,
-      value: enterpriseCount,
-      tone: "info",
-      icon: "\u{1F3E2}",
-      iconTone: "info",
-      href: "/admin/enterprise",
-      detail:
-        locale === "en"
-          ? `${starterCount} Starter · ${growthCount} Growth`
-          : `${starterCount} Starter · ${growthCount} Growth`
+      cards: [
+        {
+          label: copy.openLeadInbox,
+          value: leads.summary.total,
+          tone: "primary",
+          href: "/admin/leads"
+        },
+        {
+          label: locale === "en" ? "New" : "Yeni",
+          value: leads.summary.new,
+          tone: "warning",
+          href: "/admin/leads?status=NEW"
+        },
+        {
+          label: locale === "en" ? "Reviewing" : "İnceleniyor",
+          value: leads.summary.reviewing,
+          tone: "info",
+          href: "/admin/leads?status=REVIEWING"
+        },
+        {
+          label: locale === "en" ? "Contacted" : "İletişime Geçildi",
+          value: leads.summary.contacted,
+          tone: "success",
+          href: "/admin/leads?status=CONTACTED"
+        }
+      ]
     }
   ];
 
@@ -169,25 +220,40 @@ export default function InternalAdminDashboardPage() {
     <section className="page-grid">
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <h1>{copy.dashboardTitle}</h1>
+          <PageTitleWithGuide guideKey="adminDashboard" title={copy.dashboardTitle} />
           <p>{copy.dashboardSubtitle}</p>
         </div>
       </div>
 
-      <section className="admin-metric-grid">
-        {metrics.map((metric) => (
-          <Link key={metric.label} href={metric.href} className={`admin-metric-card tone-${metric.tone}`}>
-            <div className="admin-metric-text">
-              <span className="admin-metric-label">{metric.label}</span>
-              <strong className="admin-metric-value">{metric.value}</strong>
-              {metric.detail ? <p className="admin-metric-copy">{metric.detail}</p> : null}
-            </div>
-            <div className={`admin-metric-icon icon-${metric.iconTone}`} aria-hidden="true">
-              {metric.icon}
-            </div>
-          </Link>
-        ))}
-      </section>
+      {sections.map((section) => (
+        <section key={section.key} className="panel">
+          <div className="tlx-section-header">
+            <h2 className="tlx-section-title">{section.title}</h2>
+            <Link href={section.href} className="ghost-button">
+              {viewAllLabel}
+            </Link>
+          </div>
+          <div className="admin-distribution-grid">
+            {section.cards.map((card) =>
+              card.href ? (
+                <Link
+                  key={card.label}
+                  href={card.href}
+                  className="admin-distribution-card admin-distribution-link"
+                >
+                  <span className={`badge ${card.tone}`}>{card.label}</span>
+                  <strong>{card.value}</strong>
+                </Link>
+              ) : (
+                <div key={card.label} className="admin-distribution-card">
+                  <span className={`badge ${card.tone}`}>{card.label}</span>
+                  <strong>{card.value}</strong>
+                </div>
+              )
+            )}
+          </div>
+        </section>
+      ))}
     </section>
   );
 }

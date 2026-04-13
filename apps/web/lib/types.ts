@@ -1081,6 +1081,78 @@ export type AnalyticsInterviewQuality = {
   reportConfidenceAvg: number | null;
 };
 
+export type AnalyticsSummary = {
+  generatedAt: string;
+  overview: {
+    publishedJobs: number;
+    totalCandidates: number;
+    totalApplications: number;
+    activePipelineApplications: number;
+    interviewedApplications: number;
+    hiredApplications: number;
+  };
+  pipeline: {
+    funnel: AnalyticsFunnelRow[];
+    conversion: {
+      shortlistRate: number;
+      interviewRate: number;
+      offerRate: number;
+      hireRate: number;
+      rejectionRate: number;
+    };
+    velocity: {
+      averageScreeningTurnaroundMinutes: number | null;
+      averageTimeToInterviewDays: number | null;
+      timeToHire: AnalyticsTimeToHire;
+    };
+  };
+  interviews: {
+    total: number;
+    completed: number;
+    running: number;
+    cancelled: number;
+    noShow: number;
+    failed: number;
+    aiScheduled: number;
+    completionRate: number;
+    noShowRate: number;
+    aiSchedulingRate: number;
+    avgDurationMinutes: number | null;
+    medianDurationMinutes: number | null;
+  };
+  ai: {
+    screeningCoverageCount: number;
+    screeningCoverageRate: number;
+    fitScoreAverage: number | null;
+    fitScoreConfidenceAverage: number | null;
+    reportCount: number;
+    reportCoverageRate: number;
+    reportConfidenceAverage: number | null;
+    transcriptQualityAverage: number | null;
+    aiTaskSuccessRate: number | null;
+    estimatedTimeSavedHours: {
+      screening: number;
+      interviewAnalysis: number;
+      scheduling: number;
+      total: number;
+    };
+  };
+  definitions: {
+    timeToHire: string;
+    reportConfidence: string;
+    timeSaved: string;
+  };
+  workload: {
+    applied: number;
+    screening: number;
+    interview: number;
+    review: number;
+    offer: number;
+    hired: number;
+    rejected: number;
+  };
+};
+
 export type RecruiterOverviewReadModel = {
   kpis: {
     publishedJobs: number;

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageTitleWithGuide } from "../../../components/page-guide";
 import { useUiText } from "../../../components/site-language-provider";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { canPerformAction } from "../../../lib/auth/policy";
@@ -226,7 +227,12 @@ export default function ApplicationsPage() {
       <section className="panel">
         <div className="section-head">
           <div>
-            <h2 style={{ marginBottom: 4 }}>Başvurular</h2>
+            <PageTitleWithGuide
+              as="h2"
+              guideKey="applications"
+              title="Başvurular"
+              style={{ marginBottom: 4 }}
+            />
             <p className="small" style={{ marginTop: 0 }}>
               {t("Bu ekran iş kuyruğudur. Aday profili ayrı sayfadadır; buradan ilan bazlı karar ekranına girilir.")}
             </p>
