@@ -285,7 +285,7 @@ export class ApplicationAutomationService {
       where: { id: input.applicationId, tenantId: input.tenantId },
       include: {
         candidate: { select: { fullName: true, email: true } },
-        job: { select: { title: true } }
+        job: { select: { title: true, status: true } }
       }
     });
 
@@ -295,6 +295,10 @@ export class ApplicationAutomationService {
 
     if (!application.candidate.email?.trim()) {
       throw new BadRequestException("Aday için e-posta adresi bulunamadı.");
+    }
+
+    if (application.job.status === "ARCHIVED") {
+      throw new BadRequestException("Arşivli ilanda aşama değiştirilemez.");
     }
 
     await this.prisma.humanApproval.create({

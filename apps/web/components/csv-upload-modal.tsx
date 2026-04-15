@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { SOURCE_LABELS } from "../lib/constants";
 import type { BulkImportCandidate } from "../lib/types";
+import { useUiText } from "./site-language-provider";
 
 type CsvUploadModalProps = {
   open: boolean;
@@ -41,12 +42,59 @@ function parseCsv(text: string): BulkImportCandidate[] {
 }
 
 export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps) {
+  const { locale, t } = useUiText();
   const [candidates, setCandidates] = useState<BulkImportCandidate[]>([]);
   const [source, setSource] = useState("csv_import");
   const [fileName, setFileName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
+
+  const labels =
+    locale === "en"
+      ? {
+          title: "Upload CSV",
+          intro:
+            "Upload a CSV, TSV, or semicolon-delimited file. Expected headers: Name, Phone, Email, Location, Experience.",
+          invalidCandidates:
+            "No valid candidates were found. The header row must include a 'Name' or 'Full Name' column.",
+          genericError: "Something went wrong.",
+          selectFile: "Select File",
+          detected: `${candidates.length} candidates detected`,
+          headers: {
+            name: "Name",
+            phone: "Phone",
+            email: "Email",
+            location: "Location",
+            experience: "Exp."
+          },
+          more: `...and ${Math.max(candidates.length - 5, 0)} more`,
+          source: "Source",
+          cancel: "Cancel",
+          submitting: "Importing...",
+          submit: `${candidates.length} Candidate${candidates.length === 1 ? "" : "s"}`
+        }
+      : {
+          title: "CSV Yükle",
+          intro:
+            "CSV, TSV veya noktalı virgülle ayrılmış dosya yükleyin. Başlıklar: Ad, Telefon, E-posta, Lokasyon, Deneyim.",
+          invalidCandidates:
+            "Geçerli aday bulunamadı. Başlık satırında 'Ad' veya 'Name' kolonu olmalı.",
+          genericError: "Bir hata oluştu.",
+          selectFile: "Dosya Seç",
+          detected: `${candidates.length} aday algılandı`,
+          headers: {
+            name: "Ad",
+            phone: "Telefon",
+            email: "E-posta",
+            location: "Lokasyon",
+            experience: "Den."
+          },
+          more: `...ve ${Math.max(candidates.length - 5, 0)} daha`,
+          source: "Kaynak",
+          cancel: "İptal",
+          submitting: "İçe aktarılıyor...",
+          submit: `${candidates.length} Aday Ekle`
+        };
 
   if (!open) return null;
 
@@ -59,10 +107,11 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
       const text = ev.target?.result as string;
       const parsed = parseCsv(text);
       setCandidates(parsed);
-      if (parsed.length === 0) setError("Geçerli aday bulunamadı. Başlık satırında 'Ad' veya 'Name' kolonu olmalı.");
+      if (parsed.length === 0) setError(labels.invalidCandidates);
       else setError("");
     };
     reader.readAsText(file);
+    e.target.value = "";
   };
 
   const handleSubmit = async () => {
@@ -74,7 +123,7 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
       setFileName("");
       onClose();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Bir hata oluştu.");
+      setError(e instanceof Error ? e.message : labels.genericError);
     } finally {
       setSubmitting(false);
     }
@@ -84,27 +133,46 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>CSV Yükle</h3>
-          <button className="btn-close" onClick={onClose}>&times;</button>
+          <h3>{labels.title}</h3>
+          <button type="button" className="btn-close" onClick={onClose}>
+            &times;
+          </button>
         </div>
 
         <div className="modal-body">
-          <p className="text-muted text-sm">
-            CSV, TSV veya noktalı virgülle ayrılmış dosya yükleyin. Başlıklar: Ad, Telefon, Email, Lokasyon, Deneyim
-          </p>
+          <p className="text-muted text-sm">{labels.intro}</p>
 
-          <input type="file" ref={fileRef} accept=".csv,.tsv,.txt" onChange={handleFile} style={{ display: "none" }} />
-          <button className="btn btn-secondary" onClick={() => fileRef.current?.click()}>
-            {fileName || "Dosya Seç"}
-          </button>
+          <div style={{ position: "relative", display: "inline-flex" }}>
+            <button type="button" className="btn btn-secondary" tabIndex={-1} aria-hidden="true">
+              {fileName || labels.selectFile}
+            </button>
+            <input
+              aria-label={labels.selectFile}
+              type="file"
+              accept=".csv,.tsv,.txt"
+              onChange={handleFile}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                opacity: 0,
+                cursor: "pointer"
+              }}
+            />
+          </div>
 
           {candidates.length > 0 && (
             <div className="csv-preview">
-              <p className="text-sm">{candidates.length} aday algılandı</p>
+              <p className="text-sm">{labels.detected}</p>
               <table className="table table-sm">
                 <thead>
                   <tr>
-                    <th>Ad</th><th>Telefon</th><th>E-posta</th><th>Lokasyon</th><th>Den.</th>
+                    <th>{labels.headers.name}</th>
+                    <th>{labels.headers.phone}</th>
+                    <th>{labels.headers.email}</th>
+                    <th>{labels.headers.location}</th>
+                    <th>{labels.headers.experience}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -117,17 +185,25 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
                       <td>{c.yearsOfExperience ?? "-"}</td>
                     </tr>
                   ))}
-                  {candidates.length > 5 && <tr><td colSpan={5} className="text-muted">...ve {candidates.length - 5} daha</td></tr>}
+                  {candidates.length > 5 ? (
+                    <tr>
+                      <td colSpan={5} className="text-muted">
+                        {labels.more}
+                      </td>
+                    </tr>
+                  ) : null}
                 </tbody>
               </table>
             </div>
           )}
 
           <div className="form-row">
-            <label>Kaynak</label>
+            <label>{labels.source}</label>
             <select className="form-select" value={source} onChange={(e) => setSource(e.target.value)}>
               {["csv_import", "kariyer_net", "linkedin", "eleman_net", "agency", "other"].map((s) => (
-                <option key={s} value={s}>{SOURCE_LABELS[s] ?? s}</option>
+                <option key={s} value={s}>
+                  {t(SOURCE_LABELS[s] ?? s)}
+                </option>
               ))}
             </select>
           </div>
@@ -136,9 +212,11 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
         </div>
 
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose} disabled={submitting}>İptal</button>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || candidates.length === 0}>
-            {submitting ? "İçe aktarılıyor..." : `${candidates.length} Aday Ekle`}
+          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={submitting}>
+            {labels.cancel}
+          </button>
+          <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={submitting || candidates.length === 0}>
+            {submitting ? labels.submitting : labels.submit}
           </button>
         </div>
       </div>

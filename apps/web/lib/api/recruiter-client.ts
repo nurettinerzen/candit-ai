@@ -78,6 +78,7 @@ type CreateJobPayload = {
   salaryMin?: number;
   salaryMax?: number;
   jdText?: string;
+  aiDraftText?: string;
   requirements?: Array<Omit<JobRequirement, "id">>;
 };
 
@@ -182,6 +183,12 @@ type PublicSessionCompletePayload = {
 export const apiClient = {
   listJobs() {
     return request<Job[]>("jobs");
+  },
+  deleteJobs(jobIds: string[]) {
+    return request<{ deletedCount: number; deletedIds: string[] }>("jobs/bulk-delete", {
+      method: "POST",
+      body: { jobIds }
+    });
   },
   createJob(payload: CreateJobPayload) {
     return request<Job>("jobs", {
@@ -661,6 +668,12 @@ export const apiClient = {
   },
   bulkApproveInterview(applicationIds: string[]) {
     return request<BulkApproveResult>("applications/bulk-approve-interview", {
+      method: "POST",
+      body: { applicationIds }
+    });
+  },
+  bulkDeleteApplications(applicationIds: string[]) {
+    return request<{ deletedCount: number; deletedIds: string[] }>("applications/bulk-delete", {
       method: "POST",
       body: { applicationIds }
     });

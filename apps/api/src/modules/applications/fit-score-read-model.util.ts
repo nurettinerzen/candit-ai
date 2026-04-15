@@ -41,7 +41,7 @@ export function normalizeFitScore(value: unknown) {
     return 0;
   }
 
-  const scaled = numeric >= 0 && numeric <= 1 ? numeric * 100 : numeric;
+  const scaled = numeric > 0 && numeric < 1 ? numeric * 100 : numeric;
   return clamp(scaled, 0, 100);
 }
 
@@ -53,6 +53,20 @@ export function normalizeConfidence(value: unknown) {
 
   const scaled = numeric > 1 ? numeric / 100 : numeric;
   return clamp(scaled, 0, 1);
+}
+
+function extractUncertaintyReasons(value: unknown) {
+  const record = asRecord(value);
+  if (!record) {
+    return [];
+  }
+
+  const directReasons = uniqueStrings(record.uncertaintyReasons);
+  if (directReasons.length > 0) {
+    return directReasons;
+  }
+
+  return uniqueStrings(asRecord(record.uncertainty)?.reasons);
 }
 
 export function normalizeReasoning(value: unknown) {
@@ -146,4 +160,50 @@ export function normalizeFitScoreSubScores(value: unknown) {
 
 export function normalizeFitWarnings(value: unknown) {
   return uniqueStrings(value);
+}
+
+export function deriveFitAssessmentConfidence(input: {
+  confidence: unknown;
+  subScores: unknown;
+  missingInfo: unknown;
+  reasoning: unknown;
+}) {
+  const baseConfidence = normalizeConfidence(input.confidence);
+  const categories = normalizeFitScoreSubScores(input.subScores).categories;
+  const categoryConfidences = categories
+    .map((category) => normalizeConfidence(category.confidence))
+    .filter((value) => Number.isFinite(value));
+  const missingCount = normalizeFitWarnings(input.missingInfo).length;
+  const uncertaintyReasonCount = extractUncertaintyReasons(input.reasoning).length;
+
+  let score = baseConfidence;
+
+  if (categoryConfidences.length > 0) {
+    const averageCategoryConfidence = categoryConfidences.reduce((sum, value) => sum + value, 0) / categoryConfidences.length;
+    const lowConfidenceCategoryCount = categoryConfidences.filter((value) => value < 0.45).length;
+
+    score = baseConfidence * 0.6 + averageCategoryConfidence * 0.4;
+
+    if (lowConfidenceCategoryCount >= 3) {
+      score -= 0.08;
+    } else if (lowConfidenceCategoryCount >= 1) {
+      score -= 0.04;
+    }
+  }
+
+  if (missingCount >= 5) {
+    score -= 0.14;
+  } else if (missingCount >= 3) {
+    score -= 0.08;
+  } else if (missingCount >= 1) {
+    score -= 0.03;
+  }
+
+  if (uncertaintyReasonCount >= 4) {
+    score -= 0.1;
+  } else if (uncertaintyReasonCount >= 2) {
+    score -= 0.05;
+  }
+
+  return clamp(score, 0, 1);
 }

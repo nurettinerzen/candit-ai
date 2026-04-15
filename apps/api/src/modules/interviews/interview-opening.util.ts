@@ -1,7 +1,7 @@
 export type InterviewReadinessReply = "confirmed" | "not_ready" | "unclear";
 
 const INTERVIEW_OPENING_PROMPT =
-  "Merhaba, ben şirketimizin yapay zeka destekli mülakat asistanıyım. Tebrikler, ön elemeyi geçtiniz. Bu görüşmede CV'nizde yer alan bazı konuları biraz daha detaylandıracağız. Görüşmemiz kalite standartları gereği kayıt altına alınmaktadır ve kişisel verileriniz KVKK kapsamındaki süreçler doğrultusunda işlenmektedir. Bu görüşmenin ardından şirket yetkililerimiz değerlendirmeyi tamamlayarak size olumlu ya da olumsuz dönüş sağlayacaktır. Hazırsanız başlayabiliriz. Başlamak için lütfen 'hazırım' ya da 'devam edebiliriz' diyebilirsiniz.";
+  "Merhaba, ben şirketimizin yapay zeka destekli mülakat asistanıyım. Bu görüşmede başvurunuz ve deneyiminizle ilgili kısa sorular soracağım. Görüşmemiz kalite standartları gereği kayıt altına alınmaktadır ve kişisel verileriniz KVKK kapsamındaki süreçler doğrultusunda işlenmektedir. Görüşme tamamlandıktan sonra şirket ekibimiz değerlendirmeyi yaparak sizinle sonraki adımlar hakkında iletişime geçecektir. Hazırsanız başlayabiliriz. Başlamak için lütfen 'hazırım' ya da 'devam edebiliriz' diyebilirsiniz.";
 
 const INTERVIEW_READYNESS_CLARIFY_PROMPT =
   "Hazırsanız başlayabiliriz. Başlamak için lütfen 'hazırım' ya da 'devam edebiliriz' diyebilirsiniz.";

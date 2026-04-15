@@ -203,6 +203,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   agency_upload: "Ajans Yüklemesi",
   job_board_export: "Job Board Export",
   public_web_discovery: "Public Web Discovery",
+  kariyer_portali: "Kariyer Portalı",
   kariyer_net: "Kariyer.net",
   linkedin: "LinkedIn",
   eleman_net: "Eleman.net",

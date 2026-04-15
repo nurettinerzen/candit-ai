@@ -155,7 +155,7 @@ export class ReportGenerationTaskService {
         [
           "Turkce recruiter odakli AI mulakat raporu uret.",
           "Ana kaynak yalnizca mevcut interview session transcriptidir.",
-          "CV parse, fit score ve screening verileri sadece ikincil baglamdir; transcriptte gecmeyen bir niteliği guclu yon veya fact olarak yazma.",
+          "CV parse, fit score ve screening verileri sadece ikincil baglamdir; transcriptte gecmeyen bir niteligi guclu yon veya fact olarak yazma.",
           "Cikti dili dogal, sade ve recruiter'in dogrudan kullanabilecegi yorum tonunda olsun.",
           "Teknik kural, sinyal, heuristic ya da model ici degerlendirme dili kullanma.",
           "interviewSummary, strengths, weaknesses ve missingInformation alanlari yalnizca bu mulakattan turemeli.",
@@ -329,7 +329,9 @@ export class ReportGenerationTaskService {
           applicationId: application.id,
           sessionId: session.id,
           transcriptSegmentCount: transcriptSegments.length,
-          screeningTaskRunId: latestScreeningTask?.id ?? null
+          screeningTaskRunId: latestScreeningTask?.id ?? null,
+          fitScoreId: latestFitScore?.id ?? null,
+          cvParsedProfileId: latestCvProfile?.id ?? null
         },
         outputArtifacts: reportJson
       }
@@ -693,6 +695,7 @@ export class ReportGenerationTaskService {
     fitScore: {
       overallScore: Prisma.Decimal;
       confidence: Prisma.Decimal;
+      subScoresJson: Prisma.JsonValue | null;
       strengthsJson: Prisma.JsonValue | null;
       risksJson: Prisma.JsonValue | null;
       missingInfoJson: Prisma.JsonValue | null;
@@ -708,6 +711,7 @@ export class ReportGenerationTaskService {
     return {
       overallScore: Number(fitScore.overallScore),
       confidence: Number(fitScore.confidence),
+      categories: this.extractFitScoreCategories(fitScore.subScoresJson),
       strengths: this.toStringList(fitScore.strengthsJson),
       risks: this.toStringList(fitScore.risksJson),
       missingInformation: this.toStringList(fitScore.missingInfoJson),
@@ -739,6 +743,21 @@ export class ReportGenerationTaskService {
       .filter((item): item is string => typeof item === "string")
       .map((item) => item.trim())
       .filter(Boolean);
+  }
+
+  private extractFitScoreCategories(value: Prisma.JsonValue | null) {
+    const record = toRecord(value);
+    const categories = Array.isArray(record.categories) ? record.categories : [];
+
+    return categories
+      .map((item) => toRecord(item))
+      .map((item) => ({
+        key: typeof item.key === "string" ? item.key : "unknown",
+        label: typeof item.label === "string" ? item.label : "Kategori",
+        score: typeof item.score === "number" ? item.score : Number(item.score ?? 0)
+      }))
+      .filter((item) => Number.isFinite(item.score))
+      .slice(0, 6);
   }
 
   private async persistEvidenceLinks(input: {

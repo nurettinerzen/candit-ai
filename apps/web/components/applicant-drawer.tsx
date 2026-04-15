@@ -9,6 +9,7 @@ import type {
   ApplicantFitScoreView,
   ApplicationStage,
   JobInboxApplicant,
+  JobStatus,
   QuickActionResult,
   QuickActionType,
   RecruiterNote
@@ -24,6 +25,7 @@ import { SourceChip } from "./source-chip";
 
 type ApplicantDrawerProps = {
   applicant: JobInboxApplicant | null;
+  jobStatus?: JobStatus | null;
   onClose: () => void;
   onActionDone: () => void;
 };
@@ -69,6 +71,11 @@ function applicantNextAction(applicant: JobInboxApplicant) {
     applicant.interview?.invitation ?? null,
     applicant.interview?.status ?? null
   );
+  const hasCompletedAiScreening = Boolean(
+    applicant.fitScore
+    || applicant.aiRecommendation
+    || applicant.screening?.status === "SUCCEEDED"
+  );
 
   if (applicant.interview) {
     return {
@@ -100,6 +107,13 @@ function applicantNextAction(applicant: JobInboxApplicant) {
     };
   }
 
+  if (hasCompletedAiScreening) {
+    return {
+      label: "AI Ön Eleme Tamamlandı",
+      detail: "Fit score ve screening hazır; recruiter değerlendirmesi yapılabilir."
+    };
+  }
+
   return {
     label: "AI Ön Eleme Bekleniyor",
     detail: "Applicant akışı screening ve fit score adımlarını sürdürüyor."
@@ -124,7 +138,7 @@ function sourceLabel(source: string | null | undefined) {
   return SOURCE_LABELS[source] ?? source;
 }
 
-export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantDrawerProps) {
+export function ApplicantDrawer({ applicant, jobStatus, onClose, onActionDone }: ApplicantDrawerProps) {
   const { t } = useUiText();
   const searchParams = useSearchParams();
   const [fitScore, setFitScore] = useState<ApplicantFitScoreView | null>(null);
@@ -157,8 +171,14 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
   const stage = applicant.stage as ApplicationStage;
   const stageMeta = getStageMeta(stage);
   const actions = getStageActions(stage);
+  const isArchivedJob = jobStatus === "ARCHIVED";
 
   const handleAction = (action: QuickActionType) => {
+    if (isArchivedJob) {
+      setActionError(t("Arşivli ilanda aşama değiştirilemez."));
+      return;
+    }
+
     setActionError("");
 
     if (action === "invite_interview") {
@@ -263,27 +283,16 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
                 <span>{t(sourceLabel(applicant.source))}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
-                <span style={{ color: "var(--text-secondary)" }}>{t("Kaynak etiketi")}</span>
-                <span>{applicant.externalSource ?? applicant.sourcing?.primarySourceLabel ?? "—"}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
                 <span style={{ color: "var(--text-secondary)" }}>{t("Sourcing projesi")}</span>
                 <span>{applicant.sourcing?.projectName ?? t("Bağlı değil")}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
-                <span style={{ color: "var(--text-secondary)" }}>{t("Son outreach")}</span>
-                <span>{t(outreachOutcomeLabel(applicant.sourcing?.latestOutreach?.status ?? null))}</span>
-              </div>
+              {applicant.sourcing?.latestOutreach?.status ? (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>{t("Son outreach")}</span>
+                  <span>{t(outreachOutcomeLabel(applicant.sourcing.latestOutreach.status))}</span>
+                </div>
+              ) : null}
             </div>
-            {applicant.sourcing?.sourceLabels.length ? (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-                {applicant.sourcing.sourceLabels.map((label) => (
-                  <span key={label} className="sourcing-chip muted">
-                    {label}
-                  </span>
-                ))}
-              </div>
-            ) : null}
             {applicant.sourcing?.latestOutreach?.subject ? (
               <p className="small" style={{ margin: "10px 0 0" }}>
                 {t("Son outreach konusu:")} {applicant.sourcing.latestOutreach.subject}
@@ -425,7 +434,7 @@ export function ApplicantDrawer({ applicant, onClose, onActionDone }: ApplicantD
         </div>
 
         {/* ── Footer: Karar Butonları (stage'e göre dinamik) ── */}
-        {actions.length > 0 && (
+        {actions.length > 0 && !isArchivedJob && (
           <div className="drawer-footer">
             <div className="drawer-action-row">
               {actions.map((a) => (

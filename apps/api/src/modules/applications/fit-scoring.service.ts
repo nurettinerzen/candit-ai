@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditWriterService } from "../audit/audit-writer.service";
 import {
+  deriveFitAssessmentConfidence,
   normalizeConfidence,
   normalizeFitScore,
   normalizeFitScoreSubScores,
@@ -28,7 +29,12 @@ export class FitScoringService {
     return {
       id: row.id,
       overallScore: normalizeFitScore(row.overallScore),
-      confidence: normalizeConfidence(row.confidence),
+      confidence: deriveFitAssessmentConfidence({
+        confidence: row.confidence,
+        subScores: row.subScoresJson,
+        missingInfo: row.missingInfoJson,
+        reasoning: row.reasoningJson
+      }),
       subScores: normalizeFitScoreSubScores(row.subScoresJson),
       strengths: normalizeFitWarnings(row.strengthsJson),
       risks: normalizeFitWarnings(row.risksJson),

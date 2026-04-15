@@ -47,6 +47,12 @@ type DecisionInput = {
   traceId?: string;
 };
 
+type BulkDeleteApplicationsInput = {
+  tenantId: string;
+  applicationIds: string[];
+  deletedBy: string;
+};
+
 @Injectable()
 export class ApplicationsService {
   constructor(
@@ -66,6 +72,32 @@ export class ApplicationsService {
 
   getById(tenantId: string, id: string) {
     return this.applicationQueryService.getById(tenantId, id);
+  }
+
+  async assertJobActionable(tenantId: string, applicationId: string) {
+    const application = await this.prisma.candidateApplication.findFirst({
+      where: {
+        id: applicationId,
+        tenantId
+      },
+      include: {
+        job: {
+          select: {
+            status: true
+          }
+        }
+      }
+    });
+
+    if (!application) {
+      throw new NotFoundException("Basvuru bulunamadi.");
+    }
+
+    if (application.job.status === "ARCHIVED") {
+      throw new BadRequestException("Arşivli ilanda aşama değiştirilemez.");
+    }
+
+    return application;
   }
 
   async create(input: CreateApplicationInput) {
@@ -177,6 +209,13 @@ export class ApplicationsService {
       where: {
         id: input.applicationId,
         tenantId: input.tenantId
+      },
+      include: {
+        job: {
+          select: {
+            status: true
+          }
+        }
       }
     });
 
@@ -186,6 +225,10 @@ export class ApplicationsService {
 
     if (application.currentStage === input.toStage) {
       throw new BadRequestException("Basvuru zaten secilen stage durumunda.");
+    }
+
+    if (application.job.status === "ARCHIVED") {
+      throw new BadRequestException("Arşivli ilanda aşama değiştirilemez.");
     }
 
     if (!input.reasonCode || input.reasonCode.trim().length === 0) {
@@ -351,6 +394,85 @@ export class ApplicationsService {
       changedBy: input.changedBy,
       changedAt: new Date().toISOString(),
       auditId: audit.id
+    };
+  }
+
+  async deleteMany(input: BulkDeleteApplicationsInput) {
+    const applicationIds = [...new Set(input.applicationIds.map((item) => item.trim()).filter(Boolean))];
+    if (applicationIds.length === 0) {
+      throw new NotFoundException("Silinecek basvuru bulunamadi.");
+    }
+
+    const applications = await this.prisma.candidateApplication.findMany({
+      where: {
+        tenantId: input.tenantId,
+        id: { in: applicationIds }
+      },
+      select: {
+        id: true,
+        candidateId: true,
+        jobId: true,
+        currentStage: true,
+        candidate: {
+          select: {
+            fullName: true
+          }
+        },
+        job: {
+          select: {
+            title: true
+          }
+        }
+      }
+    });
+
+    if (applications.length !== applicationIds.length) {
+      throw new NotFoundException("Secilen basvurulardan biri bulunamadi.");
+    }
+
+    await this.prisma.candidateApplication.deleteMany({
+      where: {
+        tenantId: input.tenantId,
+        id: { in: applicationIds }
+      }
+    });
+
+    await Promise.all(
+      applications.flatMap((application) => [
+        this.auditWriterService.write({
+          tenantId: input.tenantId,
+          actorUserId: input.deletedBy,
+          action: "application.deleted",
+          entityType: "CandidateApplication",
+          entityId: application.id,
+          metadata: {
+            candidateId: application.candidateId,
+            candidateName: application.candidate.fullName,
+            jobId: application.jobId,
+            jobTitle: application.job.title,
+            stage: application.currentStage
+          }
+        }),
+        this.domainEventsService.append({
+          tenantId: input.tenantId,
+          aggregateType: "CandidateApplication",
+          aggregateId: application.id,
+          eventType: "application.deleted",
+          payload: {
+            deletedBy: input.deletedBy,
+            candidateId: application.candidateId,
+            candidateName: application.candidate.fullName,
+            jobId: application.jobId,
+            jobTitle: application.job.title,
+            stage: application.currentStage
+          }
+        })
+      ])
+    );
+
+    return {
+      deletedCount: applications.length,
+      deletedIds: applications.map((application) => application.id)
     };
   }
 

@@ -9,7 +9,7 @@ import {
 , Inject} from "@nestjs/common";
 import { ApplicationStage } from "@prisma/client";
 import { Transform, Type } from "class-transformer";
-import { IsArray, IsIn, IsOptional, IsString, MinLength, ValidateNested } from "class-validator";
+import { ArrayMinSize, IsArray, IsIn, IsOptional, IsString, MinLength, ValidateNested } from "class-validator";
 import { Permissions } from "../../common/decorators/permissions.decorator";
 import { CurrentContext } from "../../common/decorators/current-context.decorator";
 import { CurrentTenant } from "../../common/decorators/current-tenant.decorator";
@@ -76,6 +76,13 @@ class NoteBody {
 
 class BulkApproveInterviewBody {
   @IsArray()
+  @IsString({ each: true })
+  applicationIds!: string[];
+}
+
+class BulkDeleteApplicationsBody {
+  @IsArray()
+  @ArrayMinSize(1)
   @IsString({ each: true })
   applicationIds!: string[];
 }
@@ -258,6 +265,20 @@ export class ApplicationsController {
     return this.recruiterNotesService.create(tenantId, applicationId, user.userId, body.noteText);
   }
 
+  @Post("bulk-delete")
+  @Permissions("candidate.move_stage")
+  bulkDelete(
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() user: RequestUser,
+    @Body() body: BulkDeleteApplicationsBody
+  ) {
+    return this.applicationsService.deleteMany({
+      tenantId,
+      applicationIds: body.applicationIds,
+      deletedBy: user.userId
+    });
+  }
+
   @Post(":id/quick-action")
   @Permissions("candidate.move_stage")
   async quickAction(
@@ -268,6 +289,8 @@ export class ApplicationsController {
     @Body() body: QuickActionBody
   ) {
     const traceId = requestContext?.traceId;
+
+    await this.applicationsService.assertJobActionable(tenantId, applicationId);
 
     if (body.note) {
       await this.recruiterNotesService.create(tenantId, applicationId, user.userId, body.note);

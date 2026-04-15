@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useUiText } from "./site-language-provider";
 import { SOURCE_LABELS } from "../lib/constants";
 
@@ -42,7 +42,6 @@ export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModal
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const totalSizeMb = useMemo(
     () => (files.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024).toFixed(1),
@@ -132,7 +131,7 @@ export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModal
       <div className="modal-content" onClick={(event) => event.stopPropagation()}>
         <div className="modal-header">
           <h3>{labels.title}</h3>
-          <button className="btn-close" onClick={onClose}>
+          <button type="button" className="btn-close" onClick={onClose}>
             &times;
           </button>
         </div>
@@ -140,23 +139,31 @@ export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModal
         <div className="modal-body">
           <p className="text-muted text-sm">{labels.intro}</p>
 
-          <input
-            ref={inputRef}
-            type="file"
-            multiple
-            accept={ACCEPTED_EXTENSIONS.join(",")}
-            style={{ display: "none" }}
-            onChange={(event) => {
-              if (event.target.files?.length) {
-                appendFiles(event.target.files);
-              }
-              event.target.value = "";
-            }}
-          />
-
-          <button className="btn btn-secondary" onClick={() => inputRef.current?.click()}>
-            {labels.selectFile}
-          </button>
+          <div style={{ position: "relative", display: "inline-flex" }}>
+            <button type="button" className="btn btn-secondary" tabIndex={-1} aria-hidden="true">
+              {labels.selectFile}
+            </button>
+            <input
+              aria-label={labels.selectFile}
+              type="file"
+              multiple
+              accept={ACCEPTED_EXTENSIONS.join(",")}
+              onChange={(event) => {
+                if (event.target.files?.length) {
+                  appendFiles(event.target.files);
+                }
+                event.target.value = "";
+              }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                opacity: 0,
+                cursor: "pointer"
+              }}
+            />
+          </div>
 
           <div
             onDragOver={(event) => {
@@ -241,6 +248,7 @@ export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModal
                       {file.name}
                     </span>
                     <button
+                      type="button"
                       className="ghost-button"
                       style={{ fontSize: 12, padding: "4px 10px" }}
                       onClick={() =>
@@ -265,10 +273,10 @@ export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModal
         </div>
 
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose} disabled={submitting}>
+          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={submitting}>
             {labels.cancel}
           </button>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || files.length === 0}>
+          <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={submitting || files.length === 0}>
             {submitting ? labels.submitBusy : labels.submitIdle}
           </button>
         </div>

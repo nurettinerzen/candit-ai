@@ -3032,9 +3032,11 @@ export class InterviewsService {
     const categoryRelevanceKeywords: Record<string, string[]> = {
       recent_experience: ["iş", "çalıştım", "görev", "sorumluluk", "tecrübe", "deneyim", "yaptım", "pozisyon"],
       shift_availability: ["vardiya", "mesai", "saat", "gece", "hafta sonu", "müsait", "uygun", "çalışabilirim"],
+      availability: ["vardiya", "mesai", "saat", "baslayabilirim", "uygun", "calisabilirim", "lokasyon"],
       location_commute: ["ulaşım", "yol", "otobüs", "metro", "dakika", "yakın", "uzak", "araç", "servise"],
       motivation: ["istiyorum", "hedef", "gelişmek", "katkı", "seviyorum", "ilgili", "motivasyon", "kariyer"],
-      communication: ["müşteri", "iletişim", "anlattım", "çözdüm", "konuştum", "dinledim", "yardım"]
+      communication: ["müşteri", "iletişim", "anlattım", "çözdüm", "konuştum", "dinledim", "yardım"],
+      operational_fit: ["vardiya", "lokasyon", "ulaşim", "baslangic", "uygun", "calisabilirim"]
     };
 
     const categoryKeywords = block?.category
@@ -3051,9 +3053,12 @@ export class InterviewsService {
       answerText.includes(",") && wordCount > minWords               // complex sentences
     ];
     const depthScore = depthSignals.filter(Boolean).length;
+    const ownershipSignal = /yaptim|yonettim|sorumluydum|cozdum|organize ettim|takip ettim|planladim|destek verdim|yonlendirdim/i.test(
+      lowered
+    );
 
     // ── Scoring logic ──
-    if (wordCount < Math.max(2, minWords)) {
+    if (wordCount < Math.max(2, minWords - 1)) {
       return { isComplete: false, reason: "cevap_cok_kisa", quality: "low" };
     }
 
@@ -3061,27 +3066,35 @@ export class InterviewsService {
       return { isComplete: false, reason: "cevap_kacamak", quality: "low" };
     }
 
-    if (hasLowSignal && wordCount < minWords + 3) {
+    if (hasLowSignal && (wordCount < minWords + 5 || !hasRelevantContent)) {
       return { isComplete: false, reason: "cevap_belirsiz", quality: "low" };
     }
 
-    if (hasLowSignal && !hasRelevantContent) {
-      return { isComplete: true, reason: "cevap_zayif_ilgililik", quality: "low" };
+    if (!hasRelevantContent && wordCount < minWords + 4) {
+      return { isComplete: false, reason: "cevap_zayif_ilgililik", quality: "low" };
     }
 
-    if (wordCount < minWords + 2 && depthScore === 0) {
-      return { isComplete: true, reason: "cevap_temel_duzey", quality: "medium" };
+    if (!hasRelevantContent && depthScore === 0 && !ownershipSignal) {
+      return { isComplete: false, reason: "cevap_alakasiz_veya_genel", quality: "low" };
+    }
+
+    if (wordCount < minWords + 2 && depthScore === 0 && !ownershipSignal) {
+      return { isComplete: false, reason: "cevap_temel_duzey", quality: "low" };
     }
 
     if (hasRelevantContent && depthScore >= 2 && wordCount >= minWords + 5) {
       return { isComplete: true, reason: "cevap_detayli_ve_ilgili", quality: "high" };
     }
 
-    if (hasRelevantContent && wordCount >= minWords + 2) {
+    if (hasRelevantContent && (wordCount >= minWords + 2 || ownershipSignal)) {
       return { isComplete: true, reason: "cevap_yeterli", quality: "high" };
     }
 
-    return { isComplete: true, reason: "cevap_temel_duzey", quality: "medium" };
+    if (wordCount >= minWords && (depthScore > 0 || ownershipSignal)) {
+      return { isComplete: true, reason: "cevap_temel_duzey", quality: "medium" };
+    }
+
+    return { isComplete: false, reason: "cevap_takip_sorusu_gerekli", quality: "low" };
   }
 
   private async resolvePublicSession(input: {
@@ -3601,12 +3614,19 @@ export class InterviewsService {
     }
 
     switch (block.category) {
+      case "recent_experience":
+        return "Bu deneyimde sizin dogrudan sorumlulugunuz neydi, biraz daha somut anlatir misiniz?";
+      case "motivation":
+        return "Bu rolu neden istediginizi ve nasil katkı saglayacaginizi biraz daha somutlastirir misiniz?";
       case "shift_availability":
+      case "availability":
         return "Vardiya uygunluğunuzu daha net anlatabilir misiniz?";
       case "location_commute":
         return "Ulaşım tarafını biraz daha detaylandırır mısınız?";
       case "salary_expectation":
         return "Ücret beklentinizi aralık olarak paylaşabilir misiniz?";
+      case "communication":
+        return "Bu durumda sizin ne yaptiginizi ve sonucu biraz daha acabilir misiniz?";
       default:
         return "Bu yanıtı biraz daha açabilir misiniz?";
     }

@@ -12,6 +12,11 @@ import { formatDateOnly } from "../../../lib/format";
 import { getLocaleTag } from "../../../lib/i18n";
 import type { BillingOverviewReadModel, BillingPlanKey } from "../../../lib/types";
 
+type BillingQuotaKeyWithAddOns = Exclude<
+  BillingOverviewReadModel["addOnCatalog"][number]["quotaKey"],
+  undefined | null
+>;
+
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
@@ -29,11 +34,11 @@ function formatPlanPrice(
   localeTag: string
 ) {
   if (plan.billingModel === "prepaid") {
-    return localeTag.startsWith("en") ? "Prepaid credits" : plan.priceLabel ?? "Ön ödemeli kredi";
+    return localeTag.startsWith("en") ? "Pay as you go" : "Kullandıkça öde";
   }
 
   if (plan.monthlyAmountCents === null) {
-    return localeTag.startsWith("en") ? "Custom pricing" : "Özel teklif";
+    return localeTag.startsWith("en") ? "Custom quote" : "Özel teklif";
   }
 
   return formatMoney(plan.monthlyAmountCents, plan.currency, localeTag);
@@ -44,6 +49,17 @@ function formatAddOnPrice(
   localeTag: string
 ) {
   return formatMoney(addOn.amountCents, addOn.currency, localeTag);
+}
+
+function formatAddOnHeadline(
+  addOn: BillingOverviewReadModel["addOnCatalog"][number],
+  t: (value: string) => string
+) {
+  if (addOn.quantity) {
+    return `+${addOn.quantity} ${t(quotaUnitLabel(addOn.quotaKey))}`;
+  }
+
+  return t(addOn.label);
 }
 
 function formatBillingStatus(status: string) {
@@ -75,11 +91,11 @@ function formatPackageLabel(planKey: BillingPlanKey, locale: "tr" | "en") {
   }
 
   return planKey === "FLEX"
-    ? "Flex"
+    ? "Esnek"
     : planKey === "STARTER"
-      ? "Starter"
+      ? "Başlangıç"
       : planKey === "GROWTH"
-        ? "Growth"
+        ? "Büyüme"
         : "Kurumsal";
 }
 
@@ -111,18 +127,7 @@ function planActionLabel(
     trialContext?: boolean;
   }
 ) {
-  const targetLabel =
-    locale === "en"
-      ? nextPlanKey === "FLEX"
-        ? "Flex"
-        : nextPlanKey === "GROWTH"
-          ? "Growth"
-          : "Starter"
-      : nextPlanKey === "FLEX"
-        ? "Flex"
-        : nextPlanKey === "GROWTH"
-          ? "Growth"
-          : "Starter";
+  const targetLabel = formatPackageLabel(nextPlanKey, locale);
 
   if (options?.trialContext) {
     return locale === "en" ? `Switch to ${targetLabel}` : `${targetLabel} Pakete Geç`;
@@ -137,10 +142,10 @@ function planActionLabel(
   }
 
   return nextPlanKey === "FLEX"
-    ? "Flex'e Geç"
+    ? "Esnek Pakete Geç"
     : nextPlanKey === "GROWTH"
-      ? "Growth'a Geç"
-      : "Starter'a Dön";
+      ? "Büyüme Paketine Geç"
+      : "Başlangıç Paketine Dön";
 }
 
 export default function SubscriptionPage() {
@@ -154,6 +159,10 @@ export default function SubscriptionPage() {
   const [error, setError] = useState("");
   const [busyKey, setBusyKey] = useState("");
   const [actionNotice, setActionNotice] = useState("");
+  const [activeAddOnQuotaKey, setActiveAddOnQuotaKey] = useState<BillingQuotaKeyWithAddOns | null>(null);
+  const [selectedAddOnKey, setSelectedAddOnKey] = useState<
+    BillingOverviewReadModel["addOnCatalog"][number]["key"] | null
+  >(null);
 
   const loadBilling = useCallback(async () => {
     setLoading(true);
@@ -173,6 +182,45 @@ export default function SubscriptionPage() {
   useEffect(() => {
     void loadBilling();
   }, [loadBilling]);
+
+  const activeQuotaAddOns =
+    billing?.addOnCatalog.filter((addOn) => addOn.quotaKey === activeAddOnQuotaKey) ?? [];
+  const activeUsageQuota =
+    billing?.usage.quotas.find((quota) => quota.key === activeAddOnQuotaKey) ?? null;
+
+  useEffect(() => {
+    if (!activeAddOnQuotaKey || !billing) {
+      setSelectedAddOnKey(null);
+      return;
+    }
+
+    const nextAddOns = billing.addOnCatalog.filter((addOn) => addOn.quotaKey === activeAddOnQuotaKey);
+    setSelectedAddOnKey((current) =>
+      current && nextAddOns.some((addOn) => addOn.key === current) ? current : (nextAddOns[0]?.key ?? null)
+    );
+  }, [activeAddOnQuotaKey, billing]);
+
+  useEffect(() => {
+    if (!activeAddOnQuotaKey) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setActiveAddOnQuotaKey(null);
+      }
+    }
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [activeAddOnQuotaKey]);
 
   async function handlePlanCheckout(planKey: Exclude<BillingPlanKey, "ENTERPRISE">) {
     setBusyKey(`plan:${planKey}`);
@@ -221,10 +269,23 @@ export default function SubscriptionPage() {
       } else {
         setActionNotice(t("Ek paket satın alma akışı tamamlandı."));
       }
+      return true;
     } catch (checkoutError) {
       setError(toErrorMessage(checkoutError, t("Ek paket satın alma akışı başlatılamadı.")));
+      return false;
     } finally {
       setBusyKey("");
+    }
+  }
+
+  async function handleSelectedAddOnCheckout() {
+    if (!selectedAddOnKey) {
+      return;
+    }
+
+    const success = await handleAddOnCheckout(selectedAddOnKey);
+    if (success) {
+      setActiveAddOnQuotaKey(null);
     }
   }
 
@@ -342,7 +403,12 @@ export default function SubscriptionPage() {
 
             <div className="tlx-usage-list">
               {billing.usage.quotas.map((quota) => (
-                <QuotaRow key={quota.key} quota={quota} />
+                <QuotaRow
+                  key={quota.key}
+                  quota={quota}
+                  canBuyAddOn={billing.addOnCatalog.some((addOn) => addOn.quotaKey === quota.key)}
+                  onOpenAddOn={() => setActiveAddOnQuotaKey(quota.key as BillingQuotaKeyWithAddOns)}
+                />
               ))}
               <div className="tlx-usage-period">
                 <span>{billing.trial.isActive ? t("Deneme sonu") : t("Dönem sonu")}:</span>
@@ -362,6 +428,7 @@ export default function SubscriptionPage() {
             <div className="tlx-plan-grid">
               {billing.planCatalog.map((plan) => {
                 const isCurrent = !hasTrialContext && plan.key === billing.account.currentPlanKey;
+                const planName = formatPackageLabel(plan.key, locale);
                 return (
                   <article
                     key={plan.key}
@@ -369,16 +436,19 @@ export default function SubscriptionPage() {
                   >
                     {isCurrent ? <div className="tlx-plan-current-label">{t("Mevcut Plan")}</div> : null}
                     <div className="tlx-plan-card-head">
-                      <div className="tlx-plan-card-name">{t(plan.label)}</div>
-                      <div className="tlx-plan-card-price">
+                      <div className="tlx-plan-card-name">{planName}</div>
+                      <div
+                        className={`tlx-plan-card-price${
+                          plan.billingModel !== "subscription" || plan.monthlyAmountCents === null
+                            ? " tlx-plan-card-price-text"
+                            : ""
+                        }`}
+                      >
                         <strong>{formatPlanPrice(plan, localeTag)}</strong>
                         {plan.billingModel === "subscription" && plan.monthlyAmountCents !== null ? (
                           <span> /{locale === "en" ? "mo" : "ay"}</span>
                         ) : null}
                       </div>
-                      {plan.description ? (
-                        <div className="small text-muted" style={{ marginTop: 4 }}>{t(plan.description)}</div>
-                      ) : null}
                     </div>
 
                     <div className="tlx-plan-card-features">
@@ -430,41 +500,136 @@ export default function SubscriptionPage() {
             <div className="subscription-section-head" style={{ marginBottom: 16 }}>
               <div>
                 <h3 className="tlx-section-title">{addOnsHeading}</h3>
-                <p className="small text-muted" style={{ margin: "6px 0 0" }}>{addOnSectionHint}</p>
+                <p className="small text-muted" style={{ margin: "6px 0 0" }}>
+                  {locale === "en"
+                    ? "Open a relevant pack directly from the usage row or pick one of the compact options below."
+                    : "İlgili paketi kullanım satırından açabilir veya aşağıdaki kompakt seçeneklerden seçebilirsiniz."}
+                </p>
               </div>
             </div>
 
-            <div className="billing-addon-grid">
-              {billing.addOnCatalog.map((addOn) => (
-                <article key={addOn.key} className="billing-addon-card">
-                  <div>
-                    <div className="tlx-plan-card-name">{t(addOn.label)}</div>
-                    <div className="tlx-plan-card-price" style={{ marginTop: 8 }}>
-                      <strong>{formatAddOnPrice(addOn, localeTag)}</strong>
-                    </div>
-                    <div className="small text-muted" style={{ marginTop: 6 }}>{t(addOn.description)}</div>
-                  </div>
+            <div className="billing-addon-compact-list">
+              {billing.usage.quotas
+                .filter((quota) => billing.addOnCatalog.some((addOn) => addOn.quotaKey === quota.key))
+                .map((quota) => {
+                  const addOns = billing.addOnCatalog.filter((addOn) => addOn.quotaKey === quota.key);
+                  const summary = addOns
+                    .map((addOn) => formatAddOnHeadline(addOn, t))
+                    .join(locale === "en" ? " or " : " veya ");
 
-                  <div className="tlx-plan-card-features">
-                    {addOn.quantity ? <span>+{addOn.quantity} {t(quotaUnitLabel(addOn.quotaKey))}</span> : null}
-                    <span>{t("90 gün geçerli")}</span>
-                    <span>{t("Satın alındığında hemen aktif olur")}</span>
-                  </div>
+                  return (
+                    <article key={quota.key} className="billing-addon-compact-row">
+                      <div className="billing-addon-compact-copy">
+                        <strong>{t(quota.label)}</strong>
+                        <span>
+                          {summary} •{" "}
+                          {addOns
+                            .map((addOn) => formatAddOnPrice(addOn, localeTag))
+                            .join(" / ")}
+                        </span>
+                      </div>
 
-                  <div className="tlx-plan-card-action">
-                    <button
-                      type="button"
-                      className="tlx-plan-btn"
-                      disabled={!billing.stripeReady || busyKey === `addon:${addOn.key}`}
-                      onClick={() => void handleAddOnCheckout(addOn.key)}
-                    >
-                      {busyKey === `addon:${addOn.key}` ? t("Hazırlanıyor...") : t("Ek Paket Satın Al")}
-                    </button>
-                  </div>
-                </article>
-              ))}
+                      <button
+                        type="button"
+                        className="ghost-button billing-addon-compact-button"
+                        onClick={() => setActiveAddOnQuotaKey(quota.key as BillingQuotaKeyWithAddOns)}
+                      >
+                        {locale === "en" ? "Buy add-on" : "Ek paket al"}
+                      </button>
+                    </article>
+                  );
+                })}
             </div>
           </section>
+
+          {activeAddOnQuotaKey ? (
+            <div
+              className="billing-modal-backdrop"
+              role="presentation"
+              onClick={() => setActiveAddOnQuotaKey(null)}
+            >
+              <div
+                className="billing-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="billing-add-on-modal-title"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="billing-modal-head">
+                  <div>
+                    <h3 id="billing-add-on-modal-title">
+                      {locale === "en" ? "Buy add-on credits" : "Ek kredi paketi al"}
+                    </h3>
+                    <p>
+                      {activeUsageQuota
+                        ? locale === "en"
+                          ? `Choose a ready-made pack for ${t(activeUsageQuota.label).toLowerCase()}.`
+                          : `${t(activeUsageQuota.label)} için hazır paketlerden birini seçin.`
+                        : addOnSectionHint}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="billing-modal-close"
+                    onClick={() => setActiveAddOnQuotaKey(null)}
+                    aria-label={locale === "en" ? "Close modal" : "Pencereyi kapat"}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="billing-modal-option-list">
+                  {activeQuotaAddOns.map((addOn) => (
+                    <button
+                      type="button"
+                      key={addOn.key}
+                      className={`billing-modal-option${selectedAddOnKey === addOn.key ? " is-selected" : ""}`}
+                      onClick={() => setSelectedAddOnKey(addOn.key)}
+                    >
+                      <div className="billing-modal-option-copy">
+                        <strong>{formatAddOnHeadline(addOn, t)}</strong>
+                        <span>{t(addOn.description)}</span>
+                      </div>
+                      <div className="billing-modal-option-price">{formatAddOnPrice(addOn, localeTag)}</div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="billing-modal-footnote">
+                  {locale === "en"
+                    ? "Dynamic custom quantity is not enabled yet, so checkout uses the ready-made packs above."
+                    : "Dinamik adet girişi henüz açık değil; ödeme akışı yukarıdaki hazır paketlerle çalışıyor."}
+                </div>
+
+                <div className="billing-modal-actions">
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => setActiveAddOnQuotaKey(null)}
+                  >
+                    {locale === "en" ? "Cancel" : "Vazgeç"}
+                  </button>
+                  <button
+                    type="button"
+                    className="tlx-plan-btn billing-modal-submit"
+                    disabled={
+                      !billing.stripeReady ||
+                      !selectedAddOnKey ||
+                      busyKey === selectedAddOnKey ||
+                      busyKey === `addon:${selectedAddOnKey}`
+                    }
+                    onClick={() => void handleSelectedAddOnCheckout()}
+                  >
+                    {selectedAddOnKey && busyKey === `addon:${selectedAddOnKey}`
+                      ? t("Hazırlanıyor...")
+                      : locale === "en"
+                        ? "Continue to payment"
+                        : "Ödemeye geç"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
     </section>
@@ -485,9 +650,13 @@ function quotaUnitLabel(quotaKey: BillingOverviewReadModel["addOnCatalog"][numbe
 }
 
 function QuotaRow({
-  quota
+  quota,
+  canBuyAddOn,
+  onOpenAddOn
 }: {
   quota: BillingOverviewReadModel["usage"]["quotas"][number];
+  canBuyAddOn: boolean;
+  onOpenAddOn: () => void;
 }) {
   const { t } = useUiText();
   const accent =
@@ -514,6 +683,13 @@ function QuotaRow({
       <div className="tlx-usage-row-value">
         <strong>{quota.used}</strong>/{quota.limit}
       </div>
+      {canBuyAddOn ? (
+        <div className="tlx-usage-row-action">
+          <button type="button" className="ghost-button tlx-usage-buy-button" onClick={onOpenAddOn}>
+            {t("Ek paket al")}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

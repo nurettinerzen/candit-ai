@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, Inject } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, Inject } from "@nestjs/common";
 import { ApplicationStage, Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { ApplicationsService } from "../applications/applications.service";
 import {
+  deriveFitAssessmentConfidence,
   normalizeConfidence,
   normalizeFitScore,
   normalizeFitScoreSubScores,
@@ -38,6 +39,66 @@ function readHumanDecision(metadata: Prisma.JsonValue | null | undefined) {
     : null;
 }
 
+function hasSuccessfulScreening(status: string | null | undefined) {
+  return status === "SUCCEEDED";
+}
+
+function hasActiveScreening(status: string | null | undefined) {
+  return status === "PENDING" || status === "QUEUED" || status === "RUNNING";
+}
+
+function deriveEffectiveStage(input: {
+  currentStage: ApplicationStage;
+  hasFitScore: boolean;
+  hasAiRecommendation: boolean;
+  screeningStatus: string | null | undefined;
+}) {
+  switch (input.currentStage) {
+    case ApplicationStage.RECRUITER_REVIEW:
+    case ApplicationStage.INTERVIEW_SCHEDULED:
+    case ApplicationStage.INTERVIEW_COMPLETED:
+    case ApplicationStage.HIRING_MANAGER_REVIEW:
+    case ApplicationStage.OFFER:
+    case ApplicationStage.REJECTED:
+    case ApplicationStage.HIRED:
+      return input.currentStage;
+    case ApplicationStage.APPLIED:
+    case ApplicationStage.SCREENING: {
+      if (input.hasFitScore || input.hasAiRecommendation || hasSuccessfulScreening(input.screeningStatus)) {
+        return ApplicationStage.RECRUITER_REVIEW;
+      }
+
+      if (hasActiveScreening(input.screeningStatus)) {
+        return ApplicationStage.SCREENING;
+      }
+
+      return input.currentStage;
+    }
+    default:
+      return input.currentStage;
+  }
+}
+
+function deriveEffectiveStageUpdatedAt(input: {
+  currentStage: ApplicationStage;
+  effectiveStage: ApplicationStage;
+  stageUpdatedAt: Date;
+  fitCreatedAt?: Date | null;
+  screeningCreatedAt?: Date | null;
+}) {
+  if (input.currentStage === input.effectiveStage) {
+    return input.stageUpdatedAt;
+  }
+
+  const timestamps = [
+    input.stageUpdatedAt.getTime(),
+    input.fitCreatedAt?.getTime() ?? 0,
+    input.screeningCreatedAt?.getTime() ?? 0
+  ];
+
+  return new Date(Math.max(...timestamps));
+}
+
 @Injectable()
 export class ApplicantInboxService {
   constructor(
@@ -62,8 +123,7 @@ export class ApplicantInboxService {
 
     const where: Prisma.CandidateApplicationWhereInput = {
       tenantId,
-      jobId,
-      ...(filters?.stage ? { currentStage: filters.stage } : {})
+      jobId
     };
 
     const applications = await this.prisma.candidateApplication.findMany({
@@ -265,6 +325,19 @@ export class ApplicantInboxService {
       const latestScheduling = app.schedulingWorkflows[0] ?? null;
       const cv = cvMap.get(app.candidateId) ?? { hasCv: false, isParsed: false, cvFileId: null };
       const invitation = deriveInterviewInvitationState(latestInterview);
+      const effectiveStage = deriveEffectiveStage({
+        currentStage: app.currentStage,
+        hasFitScore: Boolean(latestFit),
+        hasAiRecommendation: Boolean(app.aiRecommendation),
+        screeningStatus: latestScreening?.status
+      });
+      const effectiveStageUpdatedAt = deriveEffectiveStageUpdatedAt({
+        currentStage: app.currentStage,
+        effectiveStage,
+        stageUpdatedAt: app.stageUpdatedAt,
+        fitCreatedAt: latestFit?.createdAt ?? null,
+        screeningCreatedAt: latestScreening?.createdAt ?? null
+      });
 
       return {
         applicationId: app.id,
@@ -277,13 +350,18 @@ export class ApplicantInboxService {
         externalSource: app.candidate.externalSource,
         externalRef: app.candidate.externalRef,
         yearsOfExperience: app.candidate.yearsOfExperience ? Number(app.candidate.yearsOfExperience) : null,
-        stage: app.currentStage,
-        stageUpdatedAt: app.stageUpdatedAt.toISOString(),
+        stage: effectiveStage,
+        stageUpdatedAt: effectiveStageUpdatedAt.toISOString(),
         createdAt: app.createdAt.toISOString(),
         aiRecommendation: app.aiRecommendation ?? null,
         fitScore: latestFit ? {
           overallScore: normalizeFitScore(latestFit.overallScore),
-          confidence: normalizeConfidence(latestFit.confidence),
+          confidence: deriveFitAssessmentConfidence({
+            confidence: latestFit.confidence,
+            subScores: latestFit.subScoresJson,
+            missingInfo: latestFit.missingInfoJson,
+            reasoning: latestFit.reasoningJson
+          }),
           subScores: normalizeFitScoreSubScores(latestFit.subScoresJson),
           strengths: normalizeFitWarnings(latestFit.strengthsJson),
           risks: normalizeFitWarnings(latestFit.risksJson),
@@ -323,6 +401,10 @@ export class ApplicantInboxService {
           : null
       };
     });
+
+    if (filters?.stage) {
+      applicants = applicants.filter((applicant) => applicant.stage === filters.stage);
+    }
 
     // Filter by source
     if (filters?.source) {
@@ -425,6 +507,7 @@ export class ApplicantInboxService {
         salaryMin: job.salaryMin ? Number(job.salaryMin) : null,
         salaryMax: job.salaryMax ? Number(job.salaryMax) : null,
         jdText: job.jdText,
+        aiDraftText: job.aiDraftText,
         requirements: job.requirements,
         createdAt: job.createdAt.toISOString()
       },
@@ -473,6 +556,9 @@ export class ApplicantInboxService {
       where: { id: input.jobId, tenantId: input.tenantId }
     });
     if (!job) throw new NotFoundException("İş ilanı bulunamadı.");
+    if (job.status === "ARCHIVED") {
+      throw new BadRequestException("Arşivli ilana yeni aday veya CV eklenemez.");
+    }
 
     const results: Array<{ candidateId: string; applicationId: string; deduplicated: boolean }> = [];
     let importedCount = 0;
@@ -556,6 +642,10 @@ export class ApplicantInboxService {
 
     if (!job) {
       throw new NotFoundException("İş ilanı bulunamadı.");
+    }
+
+    if (job.status === "ARCHIVED") {
+      throw new BadRequestException("Arşivli ilana yeni aday veya CV eklenemez.");
     }
 
     const items: Array<{

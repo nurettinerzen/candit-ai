@@ -19,7 +19,7 @@ export function resolveMatchUi(score: number | null | undefined): {
 
   const rounded = Math.max(0, Math.min(100, Math.round(score)));
 
-  if (rounded >= 80) {
+  if (rounded >= 85) {
     return {
       score: rounded,
       label: "Güçlü Uyum",
@@ -29,7 +29,7 @@ export function resolveMatchUi(score: number | null | undefined): {
     };
   }
 
-  if (rounded >= 60) {
+  if (rounded >= 70) {
     return {
       score: rounded,
       label: "Uyumlu",
@@ -39,7 +39,7 @@ export function resolveMatchUi(score: number | null | undefined): {
     };
   }
 
-  if (rounded >= 40) {
+  if (rounded >= 50) {
     return {
       score: rounded,
       label: "Kısmi Uyum",
@@ -51,9 +51,9 @@ export function resolveMatchUi(score: number | null | undefined): {
 
   return {
     score: rounded,
-    label: "Düşük Uyum",
+    label: rounded >= 30 ? "Düşük Uyum" : "Uyumsuz",
     tone: "weak",
-    segments: 2,
+    segments: rounded >= 30 ? 2 : 1,
     color: "var(--danger, #ef4444)"
   };
 }
