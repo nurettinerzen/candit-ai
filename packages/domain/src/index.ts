@@ -136,4 +136,4 @@ export const AI_FEATURE_FLAGS: Record<AiTaskType, string> = {
   APPLICANT_FIT_SCORING: "ai.applicant_fit_scoring.enabled"
 };
 
-export * from "./billing";
+export * from "./billing.js";
