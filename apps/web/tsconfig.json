@@ -5,7 +5,6 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@ai-interviewer/domain": ["../../packages/domain/src"],
       "@ai-interviewer/ui": ["../../packages/ui/src"]
     }
   },

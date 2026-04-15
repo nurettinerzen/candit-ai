@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "node dist/apps/api/src/main.js",
-    "build": "nest build",
+    "build": "corepack pnpm --filter @ai-interviewer/domain build && nest build",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "node ../../scripts/run-ts-tests.mjs src",
     "prisma:generate": "prisma generate",
