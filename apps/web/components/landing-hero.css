@@ -47,7 +47,7 @@
   background: var(--bg-deep);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
-  font-family: "DM Sans", "Google Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* ── Dark mode ── */

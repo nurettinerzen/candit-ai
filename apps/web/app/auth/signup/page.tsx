@@ -21,7 +21,7 @@ function resolveNextPath(raw: string | null) {
 }
 
 function SignupPageContent() {
-  const { t } = useUiText();
+  const { locale, t } = useUiText();
   const searchParams = useSearchParams();
   const nextPath = useMemo(() => resolveNextPath(searchParams.get("returnTo")), [searchParams]);
   const oauthError = formatAuthErrorMessage(searchParams.get("oauth_error"));
@@ -102,6 +102,14 @@ function SignupPageContent() {
     companyName: companyName.trim() || undefined,
     returnTo: nextPath
   });
+  const fullNamePlaceholder = locale === "en" ? "Your full name" : "Adınız Soyadınız";
+  const companyPlaceholder = locale === "en" ? "Your company name" : "Şirketinizin adı";
+  const emailPlaceholder = locale === "en" ? "name@company.com" : "is@sirketiniz.com";
+  const passwordPlaceholder = locale === "en" ? "At least 8 characters" : "En az 8 karakter";
+  const verificationSentMessage =
+    locale === "en"
+      ? `A verification email was sent to ${createdState?.email}.`
+      : `${createdState?.email} adresi için doğrulama e-postası gönderildi.`;
 
   if (createdState) {
     return (
@@ -123,7 +131,7 @@ function SignupPageContent() {
         <div style={{ display: "grid", gap: 14 }}>
           <AuthNotice
             tone="success"
-            message={`${createdState.email} ${t("adresi için doğrulama e-postası gönderildi.")}`}
+            message={verificationSentMessage}
           />
           {createdState.previewUrl ? (
             <AuthNotice
@@ -177,7 +185,7 @@ function SignupPageContent() {
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
             autoComplete="name"
-            placeholder="Adınız Soyadınız"
+            placeholder={fullNamePlaceholder}
             required
             style={inputStyle}
           />
@@ -188,7 +196,7 @@ function SignupPageContent() {
           <input
             value={companyName}
             onChange={(event) => setCompanyName(event.target.value)}
-            placeholder="Şirketinizin adı"
+            placeholder={companyPlaceholder}
             required
             style={inputStyle}
           />
@@ -201,7 +209,7 @@ function SignupPageContent() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
-            placeholder="is@sirketiniz.com"
+            placeholder={emailPlaceholder}
             required
             style={inputStyle}
           />
@@ -218,7 +226,7 @@ function SignupPageContent() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="new-password"
-              placeholder="En az 8 karakter"
+              placeholder={passwordPlaceholder}
               minLength={8}
               required
               style={inputStyle}

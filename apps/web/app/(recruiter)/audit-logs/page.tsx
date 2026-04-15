@@ -47,11 +47,10 @@ export default function AuditLogsPage() {
             as="h2"
             guideKey="auditLogs"
             title={t("Denetim Kayıtları")}
-            style={{ marginBottom: 4 }}
+            subtitle={t("Recruiter kararlarının ve AI sistem aksiyonlarının izlenebilirliği.")}
+            subtitleClassName="small"
+            style={{ margin: 0 }}
           />
-          <p className="small" style={{ marginTop: 0 }}>
-            {t("Recruiter kararlarının ve AI sistem aksiyonlarının izlenebilirliği.")}
-          </p>
         </div>
         <button type="button" className="ghost-button" onClick={() => void loadLogs()}>
           {t("Yenile")}

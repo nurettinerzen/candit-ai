@@ -231,11 +231,10 @@ export default function ApplicationsPage() {
               as="h2"
               guideKey="applications"
               title="Başvurular"
-              style={{ marginBottom: 4 }}
+              subtitle={t("Bu ekran iş kuyruğudur. Aday profili ayrı sayfadadır; buradan ilan bazlı karar ekranına girilir.")}
+              subtitleClassName="small"
+              style={{ margin: 0 }}
             />
-            <p className="small" style={{ marginTop: 0 }}>
-              {t("Bu ekran iş kuyruğudur. Aday profili ayrı sayfadadır; buradan ilan bazlı karar ekranına girilir.")}
-            </p>
           </div>
           <button type="button" className="ghost-button" onClick={() => void loadPageData()}>
             {t("Yenile")}

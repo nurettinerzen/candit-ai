@@ -57,11 +57,10 @@ export default function NewCandidatePage() {
             as="h2"
             guideKey="candidateCreate"
             title={t("Yeni Aday Kaydı")}
-            style={{ marginBottom: 4 }}
+            subtitle={t("Aday kaydı oluşturulduğunda duplicate kontrolü otomatik uygulanır.")}
+            subtitleClassName="small"
+            style={{ margin: 0 }}
           />
-          <p className="small" style={{ marginTop: 0 }}>
-            {t("Aday kaydı oluşturulduğunda duplicate kontrolü otomatik uygulanır.")}
-          </p>
         </div>
         <Link href="/candidates" className="ghost-button">
           {t("Aday Havuzuna Dön")}

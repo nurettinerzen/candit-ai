@@ -192,11 +192,10 @@ export default function RaporlarPage() {
           <PageTitleWithGuide
             guideKey="reports"
             title={t("Raporlar")}
-            style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}
+            subtitle={t("İK ekibinin günlük operasyonu ve üst yönetim raporlaması için kritik KPI'ları tek ekranda izleyin.")}
+            subtitleClassName="small"
+            style={{ margin: 0, fontSize: 22, fontWeight: 700 }}
           />
-          <p className="small" style={{ margin: 0 }}>
-            {t("İK ekibinin günlük operasyonu ve üst yönetim raporlaması için kritik KPI'ları tek ekranda izleyin.")}
-          </p>
         </div>
         <button type="button" className="ghost-button" onClick={() => void loadReports()}>
           {t("Yenile")}

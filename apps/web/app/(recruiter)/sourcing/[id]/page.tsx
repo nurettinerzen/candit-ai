@@ -15,8 +15,7 @@ import {
   PROSPECT_FIT_TONES,
   SOURCING_STAGE_META,
   SUPPRESSION_LABELS,
-  TALENT_SOURCE_LABELS,
-  formatDepartment
+  TALENT_SOURCE_LABELS
 } from "../../../../lib/constants";
 import {
   applicationDetailHref,
@@ -24,6 +23,7 @@ import {
   withApiBaseOverride
 } from "../../../../lib/entity-routes";
 import { formatCurrencyTry, formatDate } from "../../../../lib/format";
+import { formatJobRoleFamilyLabel, formatJobShiftTypeLabel } from "../../../../lib/job-display";
 import type {
   SourcingImportedLead,
   SourcingProjectDetailReadModel,
@@ -836,7 +836,8 @@ export default function SourcingProjectDetailPage() {
             <div className="section-head" style={{ marginBottom: 8 }}>
               <div>
                 <div className="small" style={{ marginBottom: 4 }}>
-                  {data.project.job?.title ?? "Bağlı requisition yok"} · {formatDepartment(data.project.job?.roleFamily)}
+                  {data.project.job?.title ?? t("Bağlı pozisyon yok")} ·{" "}
+                  {formatJobRoleFamilyLabel(data.project.job?.roleFamily, t)}
                 </div>
                 <PageTitleWithGuide
                   guideKey="sourcingProject"
@@ -846,7 +847,8 @@ export default function SourcingProjectDetailPage() {
                 {data.project.job ? (
                   <div className="sourcing-role-banner">
                     <span className="sourcing-role-pill">
-                      <strong>{data.project.job.locationText ?? "Esnek"}</strong> · {data.project.job.shiftType ?? "—"}
+                      <strong>{data.project.job.locationText ?? t("Esnek")}</strong> ·{" "}
+                      {formatJobShiftTypeLabel(data.project.job.shiftType, t) || "—"}
                     </span>
                     <span className="sourcing-role-pill">
                       {formatCurrencyTry(data.project.job.salaryMin)} – {formatCurrencyTry(data.project.job.salaryMax)}

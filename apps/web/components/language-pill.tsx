@@ -9,12 +9,14 @@ const LANGUAGES = [
   { code: "en" as const, label: "English", flag: "EN" }
 ];
 
-const DEFAULT_LANGUAGE = { code: "tr" as const, label: "Türkçe", flag: "TR" };
-
 export function LanguagePill() {
-  const { locale, setLocale } = useUiText();
+  const { locale, setLocale, t } = useUiText();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const localeLabels =
+    locale === "tr"
+      ? { tr: "Türkçe", en: "English" }
+      : { tr: "Turkish", en: "English" };
 
   useEffect(() => {
     function handlePointerDown(e: PointerEvent) {
@@ -27,8 +29,6 @@ export function LanguagePill() {
     return () => document.removeEventListener("pointerdown", handlePointerDown, true);
   }, []);
 
-  const current = LANGUAGES.find((l) => l.code === locale) ?? DEFAULT_LANGUAGE;
-
   return (
     <div className={styles.langDropdown} ref={ref} data-no-translate="">
       <button
@@ -36,27 +36,37 @@ export function LanguagePill() {
         className={styles.langDropdownTrigger}
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={`${t("Dil")}: TR / EN`}
+        data-open={open ? "true" : "false"}
       >
-        <span className={styles.langDropdownFlag}>{current.flag}</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+        <span className={styles.langDropdownTriggerIcon} aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="8" cy="8" r="6.25"/>
+            <path d="M8 1.75C8 1.75 5.5 4.75 5.5 8s2.5 6.25 2.5 6.25"/>
+            <path d="M8 1.75C8 1.75 10.5 4.75 10.5 8S8 14.25 8 14.25"/>
+            <path d="M1.75 8h12.5"/>
+          </svg>
+        </span>
+        <span className={styles.langDropdownTriggerLabel}>TR / EN</span>
       </button>
 
       {open ? (
-        <div className={styles.langDropdownMenu}>
+        <div className={styles.langDropdownMenu} role="menu" aria-label={t("Dil")}>
           {LANGUAGES.map((lang) => (
             <button
               key={lang.code}
               type="button"
               className={`${styles.langDropdownItem}${lang.code === locale ? ` ${styles.langDropdownItemActive}` : ""}`}
               onClick={() => { setLocale(lang.code); setOpen(false); }}
+              role="menuitemradio"
+              aria-checked={lang.code === locale}
             >
               <span className={styles.langDropdownItemFlag}>{lang.flag}</span>
-              <span>{lang.label}</span>
+              <span className={styles.langDropdownItemLabel}>{localeLabels[lang.code]}</span>
               {lang.code === locale ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: "auto" }}>
-                  <polyline points="20 6 9 17 4 12" />
+                <svg className={styles.langDropdownItemCheck} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m3.5 8.25 2.5 2.5 6-6" />
                 </svg>
               ) : null}
             </button>

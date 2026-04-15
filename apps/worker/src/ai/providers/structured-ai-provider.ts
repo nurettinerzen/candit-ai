@@ -76,6 +76,7 @@ export class StructuredAiProvider {
       },
       body: JSON.stringify({
         model: modelKey,
+        seed: 42,
         temperature: 0,
         messages: [
           {

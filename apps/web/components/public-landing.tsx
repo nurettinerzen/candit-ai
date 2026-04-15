@@ -80,6 +80,7 @@ function MarketingHeroCanvas() {
     let frameId = 0;
     let startedAt = 0;
     let reduceMotion = false;
+    let sansFont = '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -103,6 +104,12 @@ function MarketingHeroCanvas() {
 
     function lerp(start: number, end: number, amount: number) {
       return start + (end - start) * amount;
+    }
+
+    function syncSansFont() {
+      const rootFont = getComputedStyle(document.documentElement).getPropertyValue("--font-sans").trim();
+      const bodyFont = getComputedStyle(document.body).fontFamily.trim();
+      sansFont = rootFont || bodyFont || sansFont;
     }
 
     function roundRect(x: number, y: number, w: number, h: number, radius: number) {
@@ -208,7 +215,7 @@ function MarketingHeroCanvas() {
         ctx.scale(scaleOut, scaleOut);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.font = `800 ${Math.min(width * 0.11, 90)}px "Google Sans", sans-serif`;
+        ctx.font = `800 ${Math.min(width * 0.11, 90)}px ${sansFont}`;
         ctx.fillStyle = makeGradient([
           [0, "#ffb38d"],
           [0.34, "#ff7d67"],
@@ -260,7 +267,7 @@ function MarketingHeroCanvas() {
 
           ctx.textAlign = "left";
           ctx.textBaseline = "middle";
-          ctx.font = '600 13px "Google Sans", sans-serif';
+          ctx.font = `600 13px ${sansFont}`;
           ctx.fillStyle = "#eff7ff";
           ctx.fillText(feature.label, x + 44, y + 21);
         });
@@ -294,7 +301,7 @@ function MarketingHeroCanvas() {
         ctx.fillStyle = "#8ba5b7";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.font = '600 11px "Google Sans", sans-serif';
+        ctx.font = `600 11px ${sansFont}`;
         ctx.fillText("Candit Pipeline", frameX + 78, frameY + 32);
 
         const kpis = [
@@ -321,11 +328,11 @@ function MarketingHeroCanvas() {
 
           ctx.fillStyle = "#7d96a8";
           ctx.textAlign = "left";
-          ctx.font = '500 10px "Google Sans", sans-serif';
+          ctx.font = `500 10px ${sansFont}`;
           ctx.fillText(kpi.label.toUpperCase(), x + 14, y + 22);
 
           ctx.fillStyle = kpi.color;
-          ctx.font = '700 26px "Google Sans", sans-serif';
+          ctx.font = `700 26px ${sansFont}`;
           ctx.fillText(kpi.value, x + 14, y + 50);
         });
 
@@ -338,7 +345,7 @@ function MarketingHeroCanvas() {
         const tableTop = frameY + 162;
         ctx.globalAlpha = fadeIn * cardExit * clamp01((sceneTime - 0.58) / 0.32);
         ctx.fillStyle = "#69849a";
-        ctx.font = '600 10px "Google Sans", sans-serif';
+        ctx.font = `600 10px ${sansFont}`;
         ["Aday", "Rol", "Durum", "Skor"].forEach((title, index) => {
           const columnX = frameX + 22 + index * ((frameW - 44) / 4);
           ctx.textAlign = index === 3 ? "right" : "left";
@@ -359,11 +366,11 @@ function MarketingHeroCanvas() {
 
           ctx.textAlign = "left";
           ctx.fillStyle = "#f4f8fb";
-          ctx.font = '600 13px "Google Sans", sans-serif';
+          ctx.font = `600 13px ${sansFont}`;
           ctx.fillText(row.name, frameX + 22 + xOffset, rowY);
 
           ctx.fillStyle = "#8aa2b3";
-          ctx.font = '500 12px "Google Sans", sans-serif';
+          ctx.font = `500 12px ${sansFont}`;
           ctx.fillText(row.role, frameX + 22 + (frameW - 44) / 4 + xOffset * 0.55, rowY);
 
           const statusX = frameX + 22 + ((frameW - 44) / 4) * 2 + xOffset * 0.28;
@@ -375,7 +382,7 @@ function MarketingHeroCanvas() {
           ctx.fillText(row.status, statusX + 12, rowY);
 
           ctx.textAlign = "right";
-          ctx.font = '700 13px "Google Sans", sans-serif';
+          ctx.font = `700 13px ${sansFont}`;
           ctx.fillText(row.score, frameX + frameW - 24, rowY);
         });
 
@@ -401,7 +408,7 @@ function MarketingHeroCanvas() {
         ctx.translate(width / 2, height / 2);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.font = `700 ${Math.min(width * 0.04, 32)}px "Google Sans", sans-serif`;
+        ctx.font = `700 ${Math.min(width * 0.04, 32)}px ${sansFont}`;
         ctx.fillStyle = makeGradient([
           [0, "#ffb38d"],
           [0.3, "#ff7d67"],
@@ -423,6 +430,7 @@ function MarketingHeroCanvas() {
     }
 
     function resize() {
+      syncSansFont();
       const rect = host.getBoundingClientRect();
       width = Math.max(1, rect.width);
       height = Math.max(1, rect.height);
@@ -467,6 +475,12 @@ function MarketingHeroCanvas() {
     prefersReducedMotion.addEventListener("change", syncMotionPreference);
 
     syncMotionPreference();
+
+    if ("fonts" in document) {
+      void document.fonts.ready.then(() => {
+        syncSansFont();
+      });
+    }
 
     return () => {
       window.cancelAnimationFrame(frameId);

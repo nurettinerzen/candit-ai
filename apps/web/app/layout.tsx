@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { JetBrains_Mono, Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 import { ThemeProvider } from "../components/theme-provider";
 import { SiteLanguageProvider } from "../components/site-language-provider";
@@ -9,6 +10,27 @@ export const metadata: Metadata = {
   title: "Candit.ai",
   description: "AI destekli işe alım platformu"
 };
+
+const sansFont = Plus_Jakarta_Sans({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-sans-loaded",
+  display: "swap"
+});
+
+const monoFont = JetBrains_Mono({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500"],
+  variable: "--font-mono-loaded",
+  display: "swap"
+});
+
+const serifFont = Playfair_Display({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-serif-loaded",
+  display: "swap"
+});
 
 const THEME_STORAGE_KEY = "ai_interviewer_theme";
 const THEME_RESOLVED_COOKIE_KEY = "ai_interviewer_theme_resolved";
@@ -41,6 +63,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html
+      className={`${sansFont.variable} ${monoFont.variable} ${serifFont.variable}`}
       lang={initialLocale}
       data-locale={initialLocale}
       data-locale-ready="true"

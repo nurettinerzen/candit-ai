@@ -115,11 +115,10 @@ export default function AiSupportCenterPage() {
             as="h2"
             guideKey="aiSupport"
             title="AI Destek Merkezi"
-            style={{ marginBottom: 4 }}
+            subtitle={t("AI destek akışının aç/kapat kontrolü, son görev durumları ve fallback görünürlüğü.")}
+            subtitleClassName="small"
+            style={{ margin: 0 }}
           />
-          <p className="small" style={{ marginTop: 0 }}>
-            {t("AI destek akışının aç/kapat kontrolü, son görev durumları ve fallback görünürlüğü.")}
-          </p>
         </div>
         <button type="button" className="ghost-button" onClick={() => void loadPage()}>
           {t("Yenile")}

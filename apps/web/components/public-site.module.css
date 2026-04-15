@@ -8,7 +8,7 @@
     radial-gradient(circle at 55% 58%, rgba(139, 92, 246, 0.1), transparent 30%),
     linear-gradient(180deg, #020818 0%, #0c0a2a 52%, #020818 100%);
   color: #ebf0f8;
-  font-family: "Google Sans", "Google Sans Flex", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .page::before {
@@ -140,16 +140,19 @@
 .headerActions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   justify-content: flex-end;
   justify-self: end;
-  min-width: 320px;
+  min-width: 0;
+  flex-wrap: nowrap;
 }
 
 /* ── Language dropdown ── */
 .langDropdown {
   position: relative;
-  flex: 0 0 64px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
 }
 
 .langDropdownTrigger {
@@ -157,39 +160,54 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  width: 64px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.05);
-  color: #dce5f2;
+  min-width: 0;
+  min-height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #eef3f9;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.18s ease, opacity 0.18s ease;
+  vertical-align: middle;
 }
 
 .langDropdownTrigger:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  opacity: 0.92;
 }
 
-.langDropdownFlag {
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.03em;
+.langDropdownTrigger[data-open="true"] {
+  color: #c4b5fd;
+}
+
+.langDropdownTriggerIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4dce9;
+  flex-shrink: 0;
+}
+
+.langDropdownTriggerLabel {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }
 
 .langDropdownMenu {
   position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 160px;
-  padding: 6px;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 188px;
+  padding: 4px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: #1a1a2e;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(18, 26, 42, 0.98) 0%, rgba(12, 17, 30, 0.98) 100%);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
   z-index: 100;
   animation: langFadeIn 0.15s ease;
 }
@@ -204,15 +222,17 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 10px 12px;
+  min-height: 36px;
+  padding: 0 8px;
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: #93a0b1;
-  font-size: 14px;
+  color: #e5ebf4;
+  font-size: 12px;
   font-weight: 500;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: background 0.16s ease, color 0.16s ease;
   text-align: left;
 }
 
@@ -222,21 +242,34 @@
 }
 
 .langDropdownItemActive {
-  background: rgba(101, 84, 255, 0.15);
-  color: #a78bfa;
+  background: linear-gradient(135deg, rgba(80, 70, 229, 0.34) 0%, rgba(124, 58, 237, 0.34) 100%);
+  color: #f5f3ff;
 }
 
 .langDropdownItemActive:hover {
-  background: rgba(101, 84, 255, 0.2);
+  background: linear-gradient(135deg, rgba(80, 70, 229, 0.4) 0%, rgba(124, 58, 237, 0.4) 100%);
 }
 
 .langDropdownItemFlag {
   font-weight: 700;
   font-size: 12px;
-  letter-spacing: 0.03em;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
+  letter-spacing: -0.02em;
+  color: #97a4b8;
+  min-width: 20px;
+}
+
+.langDropdownItemActive .langDropdownItemFlag {
+  color: #ddd6fe;
+}
+
+.langDropdownItemLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+.langDropdownItemCheck {
+  margin-left: auto;
+  color: #e9ddff;
 }
 
 /* Keep old class names for backward compat */
@@ -248,9 +281,22 @@
   align-items: center;
   justify-content: center;
   color: #dce5f2;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1;
   text-decoration: none;
-  min-width: 88px;
+  min-width: 74px;
+  white-space: nowrap;
+}
+
+.headerActions .button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.headerActions .buttonPrimary {
+  min-width: 124px;
+  box-shadow: 0 12px 26px rgba(73, 104, 255, 0.22);
 }
 
 .button {
@@ -269,6 +315,7 @@
     box-shadow 0.22s ease,
     border-color 0.22s ease,
     background 0.22s ease;
+  white-space: nowrap;
 }
 
 .button:hover {
@@ -932,7 +979,7 @@
 .statement {
   max-width: 26ch;
   margin: 18px auto 0;
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: var(--font-serif);
   font-size: clamp(2rem, 4.2vw, 3.6rem);
   line-height: 1.2;
   letter-spacing: -0.04em;
@@ -1424,7 +1471,7 @@
   background: rgba(4, 10, 18, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #c9f7ee;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.7;
 }
@@ -1608,6 +1655,10 @@
     flex-wrap: wrap;
   }
 
+  .langDropdownTrigger {
+    font-size: 12px;
+  }
+
   .statsGrid,
   .statsGridFour,
   .cardGrid,
@@ -1633,6 +1684,19 @@
 
   .headerActions {
     justify-content: flex-start;
+  }
+
+  .langDropdown {
+    width: 100%;
+  }
+
+  .langDropdownTrigger {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .langDropdownMenu {
+    min-width: min(188px, calc(100vw - 24px));
   }
 
   .languagePill {

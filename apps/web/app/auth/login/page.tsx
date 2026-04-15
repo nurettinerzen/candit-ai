@@ -21,7 +21,7 @@ function resolveNextPath(raw: string | null) {
 }
 
 function LoginPageContent() {
-  const { t } = useUiText();
+  const { locale, t } = useUiText();
   const searchParams = useSearchParams();
   const nextPath = useMemo(() => resolveNextPath(searchParams.get("returnTo")), [searchParams]);
   const oauthError = formatAuthErrorMessage(searchParams.get("oauth_error"));
@@ -78,6 +78,7 @@ function LoginPageContent() {
     intent: "login",
     returnTo: nextPath
   });
+  const emailPlaceholder = locale === "en" ? "name@company.com" : "is@sirketiniz.com";
 
   return (
     <AuthShell
@@ -111,7 +112,7 @@ function LoginPageContent() {
             onChange={(event) => setEmail(event.target.value)}
             type="email"
             autoComplete="email"
-            placeholder="is@sirketiniz.com"
+            placeholder={emailPlaceholder}
             required
             style={inputStyle}
           />

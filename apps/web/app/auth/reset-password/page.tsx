@@ -8,7 +8,7 @@ import { useUiText } from "../../../components/site-language-provider";
 import { resetPasswordWithToken, resolvePasswordReset } from "../../../lib/auth/session";
 
 function ResetPasswordPageContent() {
-  const { t } = useUiText();
+  const { locale, t } = useUiText();
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
@@ -91,6 +91,12 @@ function ResetPasswordPageContent() {
   }
 
   const pending = resetInfo?.status === "pending";
+  const resetReadyMessage =
+    resetInfo && pending
+      ? locale === "en"
+        ? `You can set a new password for ${resetInfo.email}.`
+        : `${resetInfo.email} hesabı için yeni parola belirleyebilirsin.`
+      : t("Bu bağlantı artık kullanılamıyor. Yeni bir sıfırlama bağlantısı isteyebilirsin.");
 
   return (
     <AuthShell
@@ -115,11 +121,7 @@ function ResetPasswordPageContent() {
         {!loading && resetInfo ? (
           <AuthNotice
             tone={pending ? "info" : "danger"}
-            message={
-              pending
-                ? `${resetInfo.email} ${t("hesabı için yeni parola belirleyebilirsin.")}`
-                : t("Bu bağlantı artık kullanılamıyor. Yeni bir sıfırlama bağlantısı isteyebilirsin.")
-            }
+            message={resetReadyMessage}
           />
         ) : null}
 

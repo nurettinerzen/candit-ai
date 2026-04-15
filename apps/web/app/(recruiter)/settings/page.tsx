@@ -11,24 +11,19 @@ import { resendEmailVerification, resolveActiveSession, saveSession } from "../.
 import { formatDate } from "../../../lib/format";
 import type { BillingOverviewReadModel, MemberDirectoryItem } from "../../../lib/types";
 
-const ROLE_OPTIONS: Array<{ value: "manager" | "staff"; label: string }> = [
-  { value: "manager", label: getRoleLabel("manager") },
-  { value: "staff", label: getRoleLabel("staff") }
-];
-
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-function statusBadge(status: MemberDirectoryItem["status"]) {
+function statusBadge(status: MemberDirectoryItem["status"], locale: "tr" | "en") {
   switch (status) {
     case "ACTIVE":
-      return { label: "Aktif", ready: true };
+      return { label: locale === "en" ? "Active" : "Aktif", ready: true };
     case "INVITED":
-      return { label: "Davet Bekliyor", ready: false };
+      return { label: locale === "en" ? "Invite Pending" : "Davet Bekliyor", ready: false };
     case "DISABLED":
     default:
-      return { label: "Pasif", ready: false };
+      return { label: locale === "en" ? "Inactive" : "Pasif", ready: false };
   }
 }
 
@@ -62,6 +57,15 @@ export default function SettingsPage() {
     email: "",
     role: "staff" as "manager" | "staff"
   });
+
+  const roleOptions = useMemo(
+    () =>
+      ([
+        { value: "manager", label: getRoleLabel("manager") },
+        { value: "staff", label: getRoleLabel("staff") }
+      ] as const),
+    []
+  );
 
   useEffect(() => {
     const requestedTab = searchParams.get("tab");
@@ -349,8 +353,7 @@ export default function SettingsPage() {
     <section className="page-grid">
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <PageTitleWithGuide guideKey="settings" title={title} />
-          <p>{subtitle}</p>
+          <PageTitleWithGuide guideKey="settings" title={title} subtitle={subtitle} style={{ margin: 0 }} />
         </div>
       </div>
 
@@ -466,7 +469,7 @@ export default function SettingsPage() {
               }))
             }
           >
-            {ROLE_OPTIONS.map((option) => (
+            {roleOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {t(option.label)}
               </option>
@@ -515,7 +518,7 @@ export default function SettingsPage() {
               </thead>
               <tbody>
                 {members.map((member) => {
-                  const status = statusBadge(member.status);
+                  const status = statusBadge(member.status, locale);
                   const roleDraft =
                     memberRoleDrafts[member.userId] ??
                     (member.role === "manager" ? "manager" : "staff");
@@ -544,7 +547,7 @@ export default function SettingsPage() {
                                 }))
                               }
                             >
-                              {ROLE_OPTIONS.map((option) => (
+                              {roleOptions.map((option) => (
                                 <option key={option.value} value={option.value}>
                                   {t(option.label)}
                                 </option>

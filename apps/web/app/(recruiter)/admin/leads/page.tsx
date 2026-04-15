@@ -178,8 +178,12 @@ export default function InternalAdminLeadsPage() {
     <section className="page-grid">
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <PageTitleWithGuide guideKey="adminLeads" title={copy.leadsTitle} />
-          <p>{copy.leadsSubtitle}</p>
+          <PageTitleWithGuide
+            guideKey="adminLeads"
+            title={copy.leadsTitle}
+            subtitle={copy.leadsSubtitle}
+            style={{ margin: 0 }}
+          />
         </div>
       </div>
 

@@ -220,8 +220,12 @@ export default function InternalAdminDashboardPage() {
     <section className="page-grid">
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <PageTitleWithGuide guideKey="adminDashboard" title={copy.dashboardTitle} />
-          <p>{copy.dashboardSubtitle}</p>
+          <PageTitleWithGuide
+            guideKey="adminDashboard"
+            title={copy.dashboardTitle}
+            subtitle={copy.dashboardSubtitle}
+            style={{ margin: 0 }}
+          />
         </div>
       </div>
 

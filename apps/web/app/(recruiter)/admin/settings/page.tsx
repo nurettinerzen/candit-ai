@@ -304,8 +304,12 @@ export default function InternalAdminSettingsPage() {
     <section className="page-grid">
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <PageTitleWithGuide guideKey="adminSettings" title={copy.settingsTitle} />
-          <p>{copy.settingsSubtitle}</p>
+          <PageTitleWithGuide
+            guideKey="adminSettings"
+            title={copy.settingsTitle}
+            subtitle={copy.settingsSubtitle}
+            style={{ margin: 0 }}
+          />
         </div>
       </div>
 

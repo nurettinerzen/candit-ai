@@ -122,11 +122,10 @@ export default function InterviewsPage() {
           <PageTitleWithGuide
             guideKey="interviews"
             title={t("Mülakatlar")}
-            style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}
+            subtitle={t("Tek linkli AI görüşme davetlerini, devam eden oturumları ve tamamlanan görüşmeleri takip edin.")}
+            subtitleClassName="small"
+            style={{ margin: 0, fontSize: 22, fontWeight: 700 }}
           />
-          <p className="small" style={{ margin: 0 }}>
-            {t("Tek linkli AI görüşme davetlerini, devam eden oturumları ve tamamlanan görüşmeleri takip edin.")}
-          </p>
         </div>
         <button type="button" className="ghost-button" onClick={() => void loadSessions()}>
           {t("Yenile")}

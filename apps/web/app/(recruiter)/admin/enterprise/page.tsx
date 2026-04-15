@@ -291,8 +291,12 @@ export default function InternalAdminEnterprisePage() {
       {/* ── Header ── */}
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <PageTitleWithGuide guideKey="adminEnterprise" title={copy.enterpriseTitle} />
-          <p>{copy.enterpriseSubtitle}</p>
+          <PageTitleWithGuide
+            guideKey="adminEnterprise"
+            title={copy.enterpriseTitle}
+            subtitle={copy.enterpriseSubtitle}
+            style={{ margin: 0 }}
+          />
         </div>
       </div>
 

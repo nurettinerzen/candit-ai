@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { SOURCE_LABELS } from "../lib/constants";
 import { useUiText } from "./site-language-provider";
 import type {
@@ -66,32 +66,32 @@ const IMPORT_PRESETS: Record<ImportPresetKey, {
     sourceLabel: "Genel Lead Listesi"
   },
   job_board_export: {
-    label: "Job Board Export",
+    label: "İş panosu dışa aktarımı",
     sourceType: "job_board_export",
-    sourceLabel: "Job Board Export"
+    sourceLabel: "İş panosu dışa aktarımı"
   },
   referral_agency_list: {
-    label: "Referral / Agency List",
+    label: "Referans / ajans listesi",
     sourceType: "agency_upload",
-    sourceLabel: "Referral / Agency List"
+    sourceLabel: "Referans / ajans listesi"
   }
 };
 
 const FIELD_OPTIONS: Array<{ value: LeadFieldKey; label: string }> = [
   { value: "ignore", label: "Yoksay" },
   { value: "fullName", label: "Ad Soyad" },
-  { value: "headline", label: "Headline" },
+  { value: "headline", label: "Profil başlığı" },
   { value: "currentTitle", label: "Unvan" },
   { value: "currentCompany", label: "Şirket" },
   { value: "locationText", label: "Lokasyon" },
   { value: "email", label: "E-posta" },
   { value: "phone", label: "Telefon" },
   { value: "yearsOfExperience", label: "Deneyim Yılı" },
-  { value: "sourceUrl", label: "Public Profile URL" },
-  { value: "skills", label: "Skill Tags" },
+  { value: "sourceUrl", label: "Açık profil URL'si" },
+  { value: "skills", label: "Yetenek etiketleri" },
   { value: "languages", label: "Diller" },
   { value: "notes", label: "Not" },
-  { value: "externalRef", label: "Dış Ref" }
+  { value: "externalRef", label: "Harici referans" }
 ];
 
 function detectSeparator(headerLine: string) {
@@ -228,19 +228,19 @@ function SummaryBlock({ summary }: { summary: SourcingLeadImportSummary }) {
           </strong>
         </li>
         <li className="list-row">
-          <span>{t("Yeni profil / Yeni prospect")}</span>
+          <span>{t("Yeni profil / Yeni aday adayı")}</span>
           <strong>
             {summary.newProfiles} / {summary.newProspects}
           </strong>
         </li>
         <li className="list-row">
-          <span>{t("Merge / Duplicate")}</span>
+          <span>{t("Birleştirilen / Yinelenen")}</span>
           <strong>
             {summary.mergedProfiles} / {summary.duplicateProspects}
           </strong>
         </li>
         <li className="list-row">
-          <span>{t("Mevcut candidate eşleşmesi")}</span>
+          <span>{t("Mevcut aday eşleşmesi")}</span>
           <strong>{summary.existingCandidateMatches}</strong>
         </li>
         <li className="list-row">
@@ -264,6 +264,7 @@ export function SourcingIngestionPanel({
 }: SourcingIngestionPanelProps) {
   const { t } = useUiText();
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const fileInputId = useId();
   const [selectedPreset, setSelectedPreset] = useState<ImportPresetKey>("general_lead_list");
   const [importSourceType, setImportSourceType] = useState<SourcingImportSourceType>("recruiter_import");
   const [importSourceLabel, setImportSourceLabel] = useState("");
@@ -299,6 +300,24 @@ export function SourcingIngestionPanel({
     () => (parsedTable ? buildLeadsFromTable(parsedTable, fieldMapping).slice(0, 5) : []),
     [fieldMapping, parsedTable]
   );
+
+  function openFilePicker() {
+    const input = fileRef.current;
+    if (!input) {
+      return;
+    }
+
+    try {
+      if (typeof input.showPicker === "function") {
+        input.showPicker();
+        return;
+      }
+    } catch {
+      // Fall back to click below.
+    }
+
+    input.click();
+  }
 
   function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -339,6 +358,7 @@ export function SourcingIngestionPanel({
       setFieldMapping(resolvedMapping);
     };
     reader.readAsText(file);
+    event.target.value = "";
   }
 
   async function handleCsvImport() {
@@ -379,7 +399,7 @@ export function SourcingIngestionPanel({
   async function handleUrlImport() {
     const urls = [...new Set(urlText.split(/\n|,/).map((item) => item.trim()).filter(Boolean))];
     if (urls.length === 0) {
-      setUrlError(t("En az bir public profile URL girin."));
+      setUrlError(t("En az bir açık profil URL'si girin."));
       return;
     }
 
@@ -394,7 +414,7 @@ export function SourcingIngestionPanel({
       setUrlText("");
       setUrlNote("");
     } catch (error) {
-      setUrlError(error instanceof Error ? error.message : t("URL ingestion tamamlanamadı."));
+      setUrlError(error instanceof Error ? error.message : t("URL içe alımı tamamlanamadı."));
     } finally {
       setUrlBusy(false);
     }
@@ -431,7 +451,7 @@ export function SourcingIngestionPanel({
         notes: ""
       });
     } catch (error) {
-      setManualError(error instanceof Error ? error.message : t("Lead oluşturulamadı."));
+      setManualError(error instanceof Error ? error.message : t("Kayıt oluşturulamadı."));
     } finally {
       setManualBusy(false);
     }
@@ -442,15 +462,15 @@ export function SourcingIngestionPanel({
       <div className="nested-panel">
         <div className="section-head" style={{ marginBottom: 10 }}>
           <div>
-            <strong>{t("Recruiter-Assisted Lead Ingestion")}</strong>
+            <strong>{t("İşe alımcı destekli aday içe aktarımı")}</strong>
             <p className="small" style={{ marginTop: 6 }}>
-              {t("CSV/job board export, public profile URL ve tekli lead oluşturma ile sourcing projesine gerçek aday ekleyin.")}
+              {t("CSV / iş panosu dışa aktarımı, açık profil URL'si ve tekil kayıt oluşturma ile sourcing projesine gerçek aday ekleyin.")}
             </p>
           </div>
         </div>
         {jobImportHref ? (
           <p className="small" style={{ margin: 0 }}>
-            {t("CV paketi elinizdeyse applicant flow’a geçirmek için")}{" "}
+            {t("CV paketi elinizdeyse başvuru akışına geçirmek için")}{" "}
             <a href={jobImportHref}>{t("İlan Merkezi üzerindeki toplu CV yükleme")}</a>{" "}
             {t("akışını kullanın.")}
           </p>
@@ -460,9 +480,9 @@ export function SourcingIngestionPanel({
       <div className="nested-panel">
         <div className="section-head" style={{ marginBottom: 10 }}>
           <div>
-            <strong>{t("CSV / Job Board Export")}</strong>
+            <strong>{t("CSV / iş panosu dışa aktarımı")}</strong>
             <p className="small" style={{ marginTop: 6 }}>
-              {t("CSV, TSV veya dış job board export dosyasını yükleyin; alan eşlemesini gözden geçirip project’e alın.")}
+              {t("CSV, TSV veya dış iş panosu dışa aktarma dosyasını yükleyin; alan eşlemesini gözden geçirip projeye alın.")}
             </p>
           </div>
         </div>
@@ -478,10 +498,10 @@ export function SourcingIngestionPanel({
                   onClick={() => {
                     setSelectedPreset(key);
                     setImportSourceType(preset.sourceType);
-                    setImportSourceLabel(preset.sourceLabel);
+                    setImportSourceLabel(t(preset.sourceLabel));
                   }}
                 >
-                  {preset.label}
+                  {t(preset.label)}
                 </button>
               ))}
             </div>
@@ -495,7 +515,7 @@ export function SourcingIngestionPanel({
             >
               {IMPORT_SOURCE_OPTIONS.map((option) => (
                 <option key={option} value={option}>
-                  {SOURCE_LABELS[option] ?? option}
+                  {t(SOURCE_LABELS[option] ?? option)}
                 </option>
               ))}
             </select>
@@ -508,13 +528,24 @@ export function SourcingIngestionPanel({
           </div>
 
           <input
+            id={fileInputId}
             ref={fileRef}
             type="file"
             accept=".csv,.tsv,.txt"
             onChange={handleFileSelect}
-            style={{ display: "none" }}
+            style={{
+              position: "absolute",
+              width: 1,
+              height: 1,
+              padding: 0,
+              margin: -1,
+              overflow: "hidden",
+              clip: "rect(0, 0, 0, 0)",
+              whiteSpace: "nowrap",
+              border: 0
+            }}
           />
-          <button type="button" className="ghost-button" onClick={() => fileRef.current?.click()}>
+          <button type="button" className="ghost-button" onClick={openFilePicker}>
             {fileName || t("CSV / Export Dosyası Seç")}
           </button>
 
@@ -540,7 +571,7 @@ export function SourcingIngestionPanel({
                     >
                       {FIELD_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
-                          {option.label}
+                          {t(option.label)}
                         </option>
                       ))}
                     </select>
@@ -578,7 +609,7 @@ export function SourcingIngestionPanel({
             onClick={() => void handleCsvImport()}
             disabled={csvBusy || !parsedTable}
           >
-            {csvBusy ? t("Import çalışıyor...") : t("Lead Listesini Project’e Al")}
+            {csvBusy ? t("İçe aktarma çalışıyor...") : t("Aday listesini projeye al")}
           </button>
           {csvSummary ? <SummaryBlock summary={csvSummary} /> : null}
         </div>
@@ -587,9 +618,9 @@ export function SourcingIngestionPanel({
       <div className="nested-panel">
         <div className="section-head" style={{ marginBottom: 10 }}>
           <div>
-            <strong>{t("Public Profile URL Paste")}</strong>
+            <strong>{t("Açık profil URL yapıştırma")}</strong>
             <p className="small" style={{ marginTop: 6 }}>
-              {t("Kişisel site, portfolio, GitHub benzeri public profile URL’lerini yapıştırın. Sistem kişi profili doğrularsa project’e alır.")}
+              {t("Kişisel site, portfolyo, GitHub benzeri açık profil URL'lerini yapıştırın. Sistem kişi profilini doğrularsa projeye alır.")}
             </p>
           </div>
         </div>
@@ -604,7 +635,7 @@ export function SourcingIngestionPanel({
           className="input"
           value={urlNote}
           onChange={(event) => setUrlNote(event.target.value)}
-          placeholder={t("Recruiter notu / neden bu URL'leri ekliyorum?")}
+          placeholder={t("İşe alımcı notu / bu URL'leri neden ekliyorum?")}
           style={{ minHeight: 70, resize: "vertical", marginTop: 10 }}
         />
         {urlError ? <p className="small" style={{ color: "var(--danger)" }}>{urlError}</p> : null}
@@ -615,7 +646,7 @@ export function SourcingIngestionPanel({
           onClick={() => void handleUrlImport()}
           disabled={urlBusy}
         >
-          {urlBusy ? t("URL'ler işleniyor...") : t("URL'leri Prospect Olarak İşle")}
+          {urlBusy ? t("URL'ler işleniyor...") : t("URL'leri aday adayı olarak işle")}
         </button>
         {urlSummary ? <SummaryBlock summary={urlSummary} /> : null}
       </div>
@@ -623,9 +654,9 @@ export function SourcingIngestionPanel({
       <div className="nested-panel">
         <div className="section-head" style={{ marginBottom: 10 }}>
           <div>
-            <strong>{t("Tekli Manual Lead")}</strong>
+            <strong>{t("Tekil manuel kayıt")}</strong>
             <p className="small" style={{ marginTop: 6 }}>
-              {t("Recruiter’ın dışarıda bulduğu tekil lead’i hızlıca sourcing project’e ekleyin.")}
+              {t("İşe alımcının dışarıda bulduğu tekil kaydı hızlıca sourcing projesine ekleyin.")}
             </p>
           </div>
         </div>
@@ -688,7 +719,7 @@ export function SourcingIngestionPanel({
             className="input"
             value={manualLead.sourceUrl ?? ""}
             onChange={(event) => setManualLead((current) => ({ ...current, sourceUrl: event.target.value }))}
-            placeholder={t("Public profile URL")}
+            placeholder={t("Açık profil URL'si")}
           />
           <input
             className="input"
@@ -699,13 +730,13 @@ export function SourcingIngestionPanel({
                 skills: splitListValue(event.target.value)
               }))
             }
-            placeholder={t("Skill tags")}
+            placeholder={t("Yetenek etiketleri")}
           />
           <textarea
             className="input"
             value={manualLead.notes ?? ""}
             onChange={(event) => setManualLead((current) => ({ ...current, notes: event.target.value }))}
-            placeholder={t("Recruiter notu")}
+            placeholder={t("İşe alımcı notu")}
             style={{ minHeight: 70, resize: "vertical" }}
           />
           {manualError ? <p className="small" style={{ color: "var(--danger)" }}>{manualError}</p> : null}
@@ -715,7 +746,7 @@ export function SourcingIngestionPanel({
             onClick={() => void handleManualLeadCreate()}
             disabled={manualBusy}
           >
-            {manualBusy ? t("Lead ekleniyor...") : t("Tekli Lead Oluştur")}
+            {manualBusy ? t("Kayıt ekleniyor...") : t("Tekil kayıt oluştur")}
           </button>
           {manualSummary ? <SummaryBlock summary={manualSummary} /> : null}
         </div>

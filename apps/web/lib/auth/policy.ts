@@ -118,6 +118,7 @@ export const ROUTE_POLICY_MAP: Record<string, RoutePolicy> = {
   "/dashboard/admin": { requiredPermissions: ["tenant.manage"] },
   "/dashboard/subscription": { requiredPermissions: ["tenant.manage"] },
   "/admin": { requiredPermissions: ["tenant.manage"] },
+  "/admin/settings": { requiredPermissions: ["tenant.manage"] },
   "/applications": { requiredPermissions: ["candidate.read"] },
   "/ai-support": { requiredPermissions: ["ai.task.read"] },
   "/interviews": { requiredPermissions: ["interview.read"] },

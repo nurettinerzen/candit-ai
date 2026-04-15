@@ -7,7 +7,7 @@ import { useUiText } from "../../../components/site-language-provider";
 import { requestPasswordReset } from "../../../lib/auth/session";
 
 export default function ForgotPasswordPage() {
-  const { t } = useUiText();
+  const { locale, t } = useUiText();
   const [email, setEmail] = useState("");
   const [tenantId, setTenantId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,6 +15,7 @@ export default function ForgotPasswordPage() {
   const [result, setResult] = useState<{
     previewUrl?: string | null;
   } | null>(null);
+  const emailPlaceholder = locale === "en" ? "name@company.com" : "is@sirketiniz.com";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -66,11 +67,12 @@ export default function ForgotPasswordPage() {
         ) : null}
 
         <label style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "#cbd5e1", fontSize: 14 }}>E-posta</span>
+          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("E-posta")}</span>
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            placeholder={emailPlaceholder}
             required
             style={inputStyle}
           />

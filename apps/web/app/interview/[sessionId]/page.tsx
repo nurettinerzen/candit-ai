@@ -1188,7 +1188,7 @@ export default function CandidateInterviewPage() {
           ? "radial-gradient(ellipse at 20% 0%, rgba(80,70,229,0.14), transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(13,148,136,0.08), transparent 50%), #07101e"
           : "radial-gradient(ellipse at 50% 0%, rgba(80,70,229,0.10), transparent 40%), #0a1120",
         padding: roomMode ? "24px 18px 40px" : "0",
-        fontFamily: "‘Google Sans’, ‘Google Sans Flex’, -apple-system, BlinkMacSystemFont, ‘Segoe UI’, Roboto, sans-serif",
+        fontFamily: "var(--font-sans)",
         color: "#e2e8f0"
       }}
     >

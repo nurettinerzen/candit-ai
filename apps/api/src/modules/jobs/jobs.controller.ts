@@ -14,6 +14,7 @@ import {
 import { FilesInterceptor } from "@nestjs/platform-express";
 import { Transform, Type } from "class-transformer";
 import {
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsIn,
@@ -91,6 +92,10 @@ class CreateJobRequest {
   @IsOptional()
   jdText?: string;
 
+  @IsString()
+  @IsOptional()
+  aiDraftText?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => RequirementDto)
@@ -140,6 +145,10 @@ class UpdateJobRequest {
   @IsString()
   @IsOptional()
   jdText?: string;
+
+  @IsString()
+  @IsOptional()
+  aiDraftText?: string;
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -223,6 +232,13 @@ class BulkCvUploadBody {
   externalSource?: string;
 }
 
+class BulkDeleteJobsRequest {
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  jobIds!: string[];
+}
+
 class BulkImportCandidateDto {
   @IsString()
   @MinLength(2)
@@ -268,6 +284,20 @@ export class JobsController {
     return this.jobsService.list(tenantId);
   }
 
+  @Post("bulk-delete")
+  @Permissions("job.update")
+  bulkDelete(
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() user: RequestUser,
+    @Body() body: BulkDeleteJobsRequest
+  ) {
+    return this.jobsService.deleteMany({
+      tenantId,
+      deletedBy: user.userId,
+      jobIds: body.jobIds
+    });
+  }
+
   @Get(":id")
   @Permissions("job.read")
   getById(@CurrentTenant() tenantId: string, @Param("id") id: string) {
@@ -302,6 +332,7 @@ export class JobsController {
       salaryMax: body.salaryMax,
       status: body.status,
       jdText: body.jdText,
+      aiDraftText: body.aiDraftText,
       requirements: body.requirements
     });
   }
@@ -352,6 +383,7 @@ export class JobsController {
       salaryMax: body.salaryMax,
       status: body.status,
       jdText: body.jdText,
+      aiDraftText: body.aiDraftText,
       requirements: body.requirements
     });
   }

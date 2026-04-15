@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AUTH_SESSION_MODE } from "../lib/auth/runtime";
 import {
   canAccessRoute,
@@ -19,9 +19,9 @@ import {
   resolveSessionFromServer
 } from "../lib/auth/session";
 import type { WebAuthSession } from "../lib/auth/types";
-import { useUiText } from "./site-language-provider";
+import { useUiText, useSiteLanguage } from "./site-language-provider";
+import { useTheme } from "./theme-provider";
 import { PublicLanding } from "./public-landing";
-import { SiteSettingsSwitcher } from "./site-language-provider";
 
 type NavItem = {
   href:
@@ -36,6 +36,7 @@ type NavItem = {
     | "/admin/red-alert"
     | "/admin/leads"
     | "/admin/users"
+    | "/admin/settings"
     | "/admin/enterprise"
     | "/settings";
   label: string;
@@ -47,6 +48,12 @@ type NavItem = {
 type NavGroup = {
   label: string;
   items: NavItem[];
+};
+
+type FloatingMenuStyle = {
+  top: number;
+  left: number;
+  width: number;
 };
 
 const primaryNavGroups: NavGroup[] = [
@@ -64,13 +71,14 @@ const primaryNavGroups: NavGroup[] = [
     label: "Hesap",
     items: [
       { href: "/subscription", label: "Abonelik", permission: "tenant.manage" },
-      { href: "/settings", label: "Ayarlar & Bağlantılar", permission: "user.manage" }
+      { href: "/settings", label: "Ayarlar", permission: "user.manage" }
     ]
   },
   {
     label: "İç Yönetim",
     items: [
       { href: "/admin", label: "Yönetici Paneli", permission: "tenant.manage", internalOnly: true },
+      { href: "/admin/settings", label: "Sistem Ayarları", permission: "tenant.manage", internalOnly: true },
       { href: "/admin/red-alert", label: "Kırmızı Alarm", permission: "tenant.manage", internalOnly: true },
       { href: "/admin/leads", label: "Leadler", permission: "tenant.manage", internalOnly: true },
       { href: "/admin/users", label: "Kullanıcılar", permission: "tenant.manage", internalOnly: true },
@@ -151,6 +159,10 @@ function resolveActiveNavHref(pathname: string): NavItem["href"] | null {
     return "/admin/leads";
   }
 
+  if (pathname === "/admin/settings" || pathname.startsWith("/admin/settings/")) {
+    return "/admin/settings";
+  }
+
   if (pathname === "/admin/users" || pathname.startsWith("/admin/users/")) {
     return "/admin/users";
   }
@@ -184,6 +196,14 @@ function getInitials(label: string): string {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function clampMenuOffset(value: number, min: number, max: number) {
+  if (max <= min) {
+    return min;
+  }
+
+  return Math.min(Math.max(value, min), max);
 }
 
 export function RecruiterShell({ children }: { children: ReactNode }) {
@@ -329,10 +349,150 @@ function SidebarContent({
 }) {
   const router = useRouter();
   const { t } = useUiText();
+  const language = useSiteLanguage();
+  const theme = useTheme();
   const primaryRole = getPrimaryRole(session);
   const activeNavHref = resolveActiveNavHref(pathname);
   const [loggingOut, setLoggingOut] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const [languageMenuStyle, setLanguageMenuStyle] = useState<FloatingMenuStyle | null>(null);
+  const [themeMenuStyle, setThemeMenuStyle] = useState<FloatingMenuStyle | null>(null);
+  const languageTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const languageMenuRef = useRef<HTMLDivElement | null>(null);
+  const accountCardRef = useRef<HTMLDivElement | null>(null);
+  const themeTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const themeMenuRef = useRef<HTMLDivElement | null>(null);
+  const localeLabels =
+    language.locale === "tr"
+      ? { tr: "Türkçe", en: "English" }
+      : { tr: "Turkish", en: "English" };
+  const themeOptions = [
+    { mode: "light" as const, label: t("Açık") },
+    { mode: "dark" as const, label: t("Koyu") },
+    { mode: "system" as const, label: t("Sistem") }
+  ];
+  const compactRoleLabels =
+    language.locale === "tr"
+      ? { owner: "Sahip", manager: "Yönetici", staff: "Uzman" }
+      : { owner: "Owner", manager: "Manager", staff: "Staff" };
+  const userRoleLabel = primaryRole ? compactRoleLabels[primaryRole] : session.roles;
+
+  useEffect(() => {
+    if (!accountOpen) {
+      setThemeMenuOpen(false);
+      setLanguageOpen(false);
+    }
+  }, [accountOpen]);
+
+  useEffect(() => {
+    if (!languageOpen && !accountOpen && !themeMenuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target;
+
+      if (!(target instanceof Node)) {
+        return;
+      }
+
+      if (
+        languageOpen &&
+        !languageTriggerRef.current?.contains(target) &&
+        !languageMenuRef.current?.contains(target)
+      ) {
+        setLanguageOpen(false);
+      }
+
+      if (
+        themeMenuOpen &&
+        !themeTriggerRef.current?.contains(target) &&
+        !themeMenuRef.current?.contains(target)
+      ) {
+        setThemeMenuOpen(false);
+      }
+
+      if (
+        accountOpen &&
+        !accountCardRef.current?.contains(target) &&
+        !languageMenuRef.current?.contains(target) &&
+        !themeMenuRef.current?.contains(target)
+      ) {
+        setAccountOpen(false);
+        setLanguageOpen(false);
+        setThemeMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      setLanguageOpen(false);
+      setThemeMenuOpen(false);
+      setAccountOpen(false);
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [accountOpen, languageOpen, themeMenuOpen]);
+
+  useEffect(() => {
+    if (!languageOpen && !themeMenuOpen) {
+      return;
+    }
+
+    function updateFloatingMenus() {
+      if (languageOpen && languageTriggerRef.current) {
+        const rect = languageTriggerRef.current.getBoundingClientRect();
+        const width = 176;
+        const preferredLeft = rect.right + 12;
+        const left =
+          preferredLeft + width <= window.innerWidth - 12
+            ? preferredLeft
+            : clampMenuOffset(rect.left - width - 12, 12, window.innerWidth - width - 12);
+        const menuHeight = 150;
+        setLanguageMenuStyle({
+          top: clampMenuOffset(rect.top - 8, 12, window.innerHeight - menuHeight - 12),
+          left,
+          width
+        });
+      }
+
+      if (themeMenuOpen && themeTriggerRef.current) {
+        const rect = themeTriggerRef.current.getBoundingClientRect();
+        const width = 176;
+        const preferredLeft = rect.right + 12;
+        const left =
+          preferredLeft + width <= window.innerWidth - 12
+            ? preferredLeft
+            : clampMenuOffset(rect.left - width - 12, 12, window.innerWidth - width - 12);
+        const menuHeight = 150;
+        setThemeMenuStyle({
+          top: clampMenuOffset(rect.top - 8, 12, window.innerHeight - menuHeight - 12),
+          left,
+          width
+        });
+      }
+    }
+
+    updateFloatingMenus();
+    window.addEventListener("resize", updateFloatingMenus);
+    window.addEventListener("scroll", updateFloatingMenus, true);
+
+    return () => {
+      window.removeEventListener("resize", updateFloatingMenus);
+      window.removeEventListener("scroll", updateFloatingMenus, true);
+    };
+  }, [languageOpen, themeMenuOpen]);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -370,7 +530,7 @@ function SidebarContent({
           }
 
           return (
-            <div key={group.label}>
+            <div key={group.label} className="sidebar-nav-group">
               <p className="sidebar-section-label">{t(group.label)}</p>
               {items.map((item) => (
                 <Link
@@ -388,42 +548,250 @@ function SidebarContent({
       </nav>
 
       <div className="sidebar-session">
-        <div className="sidebar-session-card" data-open={accountOpen ? "true" : "false"}>
+        <div
+          ref={accountCardRef}
+          className="sidebar-session-card"
+          data-open={accountOpen ? "true" : "false"}
+        >
           <button
             type="button"
             className="sidebar-session-trigger"
-            onClick={() => setAccountOpen((current) => !current)}
+            onClick={() => {
+              setAccountOpen((current) => {
+                const next = !current;
+                if (next) {
+                  setLanguageOpen(false);
+                } else {
+                  setThemeMenuOpen(false);
+                }
+                return next;
+              });
+            }}
             aria-expanded={accountOpen}
           >
-            <div className="sidebar-session-info">
-              <div className="sidebar-avatar">{getInitials(session.userLabel)}</div>
-              <div className="sidebar-user-details">
-                <span className="sidebar-user-name">{session.userLabel}</span>
-                <span className="sidebar-user-role">
-                  {primaryRole ? getRoleLabel(primaryRole) : session.roles}
-                </span>
+            <div className="sidebar-avatar">{getInitials(session.userLabel)}</div>
+            <div className="sidebar-user-details">
+              <span className="sidebar-user-name">{t(session.userLabel)}</span>
+              <div className="sidebar-user-meta">
+                <span className="sidebar-user-badge">{userRoleLabel}</span>
               </div>
             </div>
-            <span className="sidebar-session-chevron" aria-hidden="true">
-              {accountOpen ? "▾" : "▸"}
-            </span>
+            <svg
+              className="sidebar-session-chevron"
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 6l4 4 4-4" />
+            </svg>
           </button>
 
           {accountOpen ? (
             <div className="sidebar-session-panel">
-              <div className="sidebar-session-meta">{t("Tenant")}: {session.tenantId}</div>
-              <SiteSettingsSwitcher variant="account" />
+              <button
+                ref={themeTriggerRef}
+                type="button"
+                className="sidebar-session-action"
+                data-open={themeMenuOpen ? "true" : "false"}
+                aria-haspopup="menu"
+                aria-expanded={themeMenuOpen}
+                onClick={() => setThemeMenuOpen((current) => !current)}
+              >
+                <span className="sidebar-session-action-icon" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1.75" y="2.25" width="12.5" height="8.5" rx="1.5"/>
+                    <path d="M5.5 13.75h5"/>
+                    <path d="M8 10.75v3"/>
+                  </svg>
+                </span>
+                <span className="sidebar-session-action-label">{t("Tema")}</span>
+                <svg
+                  className="sidebar-session-action-chevron"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 4.5 4 3.5-4 3.5" />
+                </svg>
+              </button>
+              <button
+                ref={languageTriggerRef}
+                type="button"
+                className="sidebar-session-action"
+                data-open={languageOpen ? "true" : "false"}
+                aria-haspopup="menu"
+                aria-expanded={languageOpen}
+                onClick={() => {
+                  setLanguageOpen((current) => {
+                    const next = !current;
+                    if (next) {
+                      setThemeMenuOpen(false);
+                    }
+                    return next;
+                  });
+                }}
+              >
+                <span className="sidebar-session-action-icon" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="8" cy="8" r="6.25"/>
+                    <path d="M8 1.75C8 1.75 5.5 4.75 5.5 8s2.5 6.25 2.5 6.25"/>
+                    <path d="M8 1.75C8 1.75 10.5 4.75 10.5 8S8 14.25 8 14.25"/>
+                    <path d="M1.75 8h12.5"/>
+                  </svg>
+                </span>
+                <span className="sidebar-session-action-label">{t("Dil")}</span>
+                <svg
+                  className="sidebar-session-action-chevron"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 4.5 4 3.5-4 3.5" />
+                </svg>
+              </button>
               <button
                 type="button"
-                className="ghost-button sidebar-session-logout"
+                className="sidebar-session-action sidebar-session-action-danger"
                 onClick={() => void handleLogout()}
                 disabled={loggingOut}
               >
-                {loggingOut ? t("Çıkış yapılıyor...") : t("Çıkış Yap")}
+                <span className="sidebar-session-action-icon" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9.75 2.25h2.5A1.5 1.5 0 0 1 13.75 3.75v8.5a1.5 1.5 0 0 1-1.5 1.5h-2.5"/>
+                    <path d="M6.75 11.25 10 8 6.75 4.75"/>
+                    <path d="M10 8H2.25"/>
+                  </svg>
+                </span>
+                <span className="sidebar-session-action-label">
+                  {loggingOut ? t("Çıkış yapılıyor...") : t("Çıkış Yap")}
+                </span>
               </button>
             </div>
           ) : null}
         </div>
+
+        {languageOpen && languageMenuStyle ? (
+          <div
+            ref={languageMenuRef}
+            className="sidebar-floating-menu sidebar-language-menu"
+            style={{
+              top: languageMenuStyle.top,
+              left: languageMenuStyle.left,
+              width: languageMenuStyle.width
+            }}
+            role="menu"
+            aria-label={t("Dil")}
+          >
+            {([
+              { value: "tr", short: "TR" },
+              { value: "en", short: "EN" }
+            ] as const).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className="sidebar-floating-option"
+                data-active={language.locale === option.value ? "true" : "false"}
+                role="menuitemradio"
+                aria-checked={language.locale === option.value}
+                onClick={() => {
+                  language.setLocale(option.value);
+                  setLanguageOpen(false);
+                }}
+              >
+                <span className="sidebar-floating-option-short">{option.short}</span>
+                <span className="sidebar-floating-option-label">{localeLabels[option.value]}</span>
+                <span className="sidebar-floating-option-check" aria-hidden="true">
+                  {language.locale === option.value ? (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m3.5 8.25 2.5 2.5 6-6" />
+                    </svg>
+                  ) : null}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {themeMenuOpen && themeMenuStyle ? (
+          <div
+            ref={themeMenuRef}
+            className="sidebar-floating-menu sidebar-theme-menu"
+            style={{
+              top: themeMenuStyle.top,
+              left: themeMenuStyle.left,
+              width: themeMenuStyle.width
+            }}
+            role="menu"
+            aria-label={t("Tema")}
+          >
+            {themeOptions.map((option) => (
+              <button
+                key={option.mode}
+                type="button"
+                className="sidebar-theme-option"
+                data-active={theme.mode === option.mode ? "true" : "false"}
+                role="menuitemradio"
+                aria-checked={theme.mode === option.mode}
+                onClick={() => {
+                  theme.setMode(option.mode);
+                  setThemeMenuOpen(false);
+                }}
+              >
+                <span className="sidebar-theme-option-icon" aria-hidden="true">
+                  {option.mode === "light" ? (
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="8" cy="8" r="3"/>
+                      <line x1="8" y1="1.25" x2="8" y2="2.6"/>
+                      <line x1="8" y1="13.4" x2="8" y2="14.75"/>
+                      <line x1="1.25" y1="8" x2="2.6" y2="8"/>
+                      <line x1="13.4" y1="8" x2="14.75" y2="8"/>
+                      <line x1="3.2" y1="3.2" x2="4.18" y2="4.18"/>
+                      <line x1="11.82" y1="11.82" x2="12.8" y2="12.8"/>
+                      <line x1="12.8" y1="3.2" x2="11.82" y2="4.18"/>
+                      <line x1="4.18" y1="11.82" x2="3.2" y2="12.8"/>
+                    </svg>
+                  ) : option.mode === "dark" ? (
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M13.25 10.25A5.75 5.75 0 0 1 5.75 2.75a5.75 5.75 0 1 0 7.5 7.5z"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="1.75" y="2.25" width="12.5" height="8.5" rx="1.5"/>
+                      <path d="M5.5 13.75h5"/>
+                      <path d="M8 10.75v3"/>
+                    </svg>
+                  )}
+                </span>
+                <span className="sidebar-theme-option-label">{option.label}</span>
+                <span className="sidebar-theme-option-check" aria-hidden="true">
+                  {theme.mode === option.mode ? (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m3.5 8.25 2.5 2.5 6-6" />
+                    </svg>
+                  ) : null}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
     </>
   );

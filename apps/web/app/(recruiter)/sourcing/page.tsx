@@ -92,11 +92,10 @@ export default function SourcingPage() {
           <PageTitleWithGuide
             guideKey="sourcing"
             title="Sourcing"
-            style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}
+            subtitle={t("Requisition bağlantılı talent discovery, rediscovery ve outreach foundation.")}
+            subtitleClassName="small"
+            style={{ margin: 0, fontSize: 22, fontWeight: 700 }}
           />
-          <p className="small" style={{ margin: 0 }}>
-            {t("Requisition bağlantılı talent discovery, rediscovery ve outreach foundation.")}
-          </p>
         </div>
         <div className="row-actions">
           <button type="button" className="ghost-button" onClick={() => void loadPage()}>

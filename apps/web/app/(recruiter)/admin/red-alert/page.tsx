@@ -97,8 +97,12 @@ export default function InternalAdminRedAlertPage() {
       {/* ===== HEADER: title + time-range select + refresh ===== */}
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <PageTitleWithGuide guideKey="adminRedAlert" title={copy.redAlertTitle} />
-          <p>{copy.redAlertSubtitle}</p>
+          <PageTitleWithGuide
+            guideKey="adminRedAlert"
+            title={copy.redAlertTitle}
+            subtitle={copy.redAlertSubtitle}
+            style={{ margin: 0 }}
+          />
         </div>
       </div>
 

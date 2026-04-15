@@ -213,11 +213,10 @@ export default function CandidatesPage() {
           <PageTitleWithGuide
             guideKey="candidates"
             title={t("Adaylar")}
-            style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}
+            subtitle={t("Tüm adaylar ve başvuruları tek ekranda.")}
+            subtitleClassName="small"
+            style={{ margin: 0, fontSize: 22, fontWeight: 700 }}
           />
-          <p className="small" style={{ margin: 0 }}>
-            {t("Tüm adaylar ve başvuruları tek ekranda.")}
-          </p>
         </div>
         <div className="row-actions">
           <button type="button" className="ghost-button" onClick={() => void loadData()}>
