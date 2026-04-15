@@ -35,6 +35,7 @@ export type CreateJobInput = {
   salaryMax?: number;
   status: JobStatus;
   jdText?: string;
+  aiDraftText?: string;
   requirements?: JobRequirementInput[];
 };
 
@@ -50,6 +51,7 @@ export type UpdateJobInput = {
   salaryMax?: number;
   status?: JobStatus;
   jdText?: string;
+  aiDraftText?: string;
   requirements?: JobRequirementInput[];
 };
 
@@ -192,6 +194,7 @@ export class JobsService {
         salaryMax: this.toDecimal(input.salaryMax),
         status: input.status,
         jdText: input.jdText,
+        aiDraftText: input.aiDraftText,
         createdBy: input.userId,
         requirements: input.requirements?.length
           ? {
@@ -242,6 +245,10 @@ export class JobsService {
       })
     ]);
 
+    if (job.status === JobStatus.PUBLISHED) {
+      await this.billingService.recordJobCreditUsage(input.tenantId, job.id);
+    }
+
     return job;
   }
 
@@ -249,7 +256,7 @@ export class JobsService {
     const current = await this.getById(input.tenantId, input.id);
 
     if (input.status === JobStatus.PUBLISHED && current.status !== JobStatus.PUBLISHED) {
-      await this.billingService.assertCanPublishJob(input.tenantId);
+      await this.billingService.assertCanPublishJob(input.tenantId, { jobId: input.id });
     }
 
     const job = await this.prisma.$transaction(async (tx) => {
@@ -273,6 +280,7 @@ export class JobsService {
           salaryMax: this.toDecimal(input.salaryMax),
           status: input.status,
           jdText: input.jdText,
+          aiDraftText: input.aiDraftText !== undefined ? (input.aiDraftText?.trim() || null) : undefined,
           requirements: input.requirements?.length
             ? {
                 create: input.requirements.map((requirement) => ({
@@ -338,7 +346,75 @@ export class JobsService {
       })
     ]);
 
+    if (job.status === JobStatus.PUBLISHED && current.status !== JobStatus.PUBLISHED) {
+      await this.billingService.recordJobCreditUsage(input.tenantId, job.id);
+    }
+
     return job;
+  }
+
+  async deleteMany(input: { tenantId: string; deletedBy: string; jobIds: string[] }) {
+    const jobIds = [...new Set(input.jobIds.map((item) => item.trim()).filter(Boolean))];
+    if (jobIds.length === 0) {
+      throw new NotFoundException("Silinecek ilan bulunamadi.");
+    }
+
+    const jobs = await this.prisma.job.findMany({
+      where: {
+        tenantId: input.tenantId,
+        id: { in: jobIds }
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        roleFamily: true
+      }
+    });
+
+    if (jobs.length !== jobIds.length) {
+      throw new NotFoundException("Secilen ilanlardan biri bulunamadi.");
+    }
+
+    await this.prisma.job.deleteMany({
+      where: {
+        tenantId: input.tenantId,
+        id: { in: jobIds }
+      }
+    });
+
+    await Promise.all(
+      jobs.flatMap((job) => [
+        this.auditWriterService.write({
+          tenantId: input.tenantId,
+          actorUserId: input.deletedBy,
+          action: "job.deleted",
+          entityType: "Job",
+          entityId: job.id,
+          metadata: {
+            title: job.title,
+            roleFamily: job.roleFamily,
+            status: job.status
+          }
+        }),
+        this.domainEventsService.append({
+          tenantId: input.tenantId,
+          aggregateType: "Job",
+          aggregateId: job.id,
+          eventType: "job.deleted",
+          payload: {
+            deletedBy: input.deletedBy,
+            title: job.title,
+            status: job.status
+          }
+        })
+      ])
+    );
+
+    return {
+      deletedCount: jobs.length,
+      deletedIds: jobs.map((job) => job.id)
+    };
   }
 
   private toDecimal(value: number | undefined) {
@@ -353,9 +429,13 @@ export class JobsService {
     return [
       "Sen deneyimli bir IK ve işe alım metin yazarısın.",
       "Türkçe, profesyonel ve dış kariyer platformlarına kolayca yapıştırılabilir bir ilan taslağı hazırla.",
+      "Metin sıradan kurumsal klişelerle dolu olmasın; net, modern, güven veren ve adayın ne yapacağını gerçekten anlatan bir dil kur.",
       "Yalnızca paylaşılan bilgilerden hareket et.",
       "Şirket adı, yan hak, ekip büyüklüğü, başvuru kanalı, marka vaadi veya kesin olmayan diğer detayları uydurma.",
       "Eksik bilgiler varsa bunu genel ve güvenli ifadelerle yönet; gerçekmiş gibi detay ekleme.",
+      "Aynı bilgiyi açılış paragrafı, iş özeti ve madde listelerinde tekrar etme.",
+      "Zorunlu ve tercih edilen nitelikleri ayrıştır; verilen bilgiyi abartma.",
+      "Başlığı ve giriş paragrafını pozisyonun amacını hızlıca anlatacak kadar güçlü tut, ama yapay pazarlama dili kullanma.",
       "Revizyon modunda önceki taslağı daha akıcı ve daha güçlü hale getir ama gerçek dışı yeni bilgi ekleme.",
       "Çıktı yalnızca JSON olmalı."
     ].join(" ");
@@ -379,8 +459,11 @@ export class JobsService {
       rewriteInstruction: input.rewriteInstruction?.trim() || null,
       writingRules: [
         "Başlık dışında emoji kullanma.",
-        "Kısa ama güçlü bir giriş paragrafı yaz.",
+        "Kısa ama güçlü bir giriş paragrafı yaz; rolün neden önemli olduğunu hissettir.",
         "Sorumlulukları ve nitelikleri net, kolay okunur ve yapıştırılmaya hazır şekilde yaz.",
+        "Genel geçer ifadeler yerine mümkün olduğunca verilen requirement ve iş tanımına yaslan.",
+        "Aynı noktayı farklı başlıklarda tekrar etme.",
+        "Metin bir recruiter'ın gerçekten yayınlamak isteyeceği kadar derli toplu ve güvenli olsun.",
         "Nitelikleri verilen bilgilerle uyumlu tut.",
         "Eğer bilgi sınırlıysa, rol başlığı ve verilen detaylardan çıkabilecek makul ama genel ifadeler kullan."
       ]
@@ -461,25 +544,25 @@ export class JobsService {
 
     if (detailLines.length > 0) {
       lines.push("");
-      lines.push("Pozisyon Detayları");
+      lines.push("Rol Hakkinda Kisa Bilgiler");
       detailLines.forEach((detail) => lines.push(`• ${detail}`));
     }
 
     lines.push("");
-    lines.push("İş Tanımı");
+    lines.push("Rolun Ozeti");
     lines.push(outline.jobSummary);
 
     lines.push("");
-    lines.push("Temel Sorumluluklar");
+    lines.push("Bu Rolda Neler Yapacaksiniz?");
     outline.responsibilities.forEach((item) => lines.push(`• ${item}`));
 
     lines.push("");
-    lines.push("Aranan Nitelikler");
+    lines.push("Bu Rol Icin Aradigimiz Temel Noktalar");
     outline.requiredQualifications.forEach((item) => lines.push(`• ${item}`));
 
     if (outline.preferredQualifications.length > 0) {
       lines.push("");
-      lines.push("Tercih Sebebi Olabilecek Nitelikler");
+      lines.push("Sizi One Cikarabilecek Ek Deneyimler");
       outline.preferredQualifications.forEach((item) => lines.push(`• ${item}`));
     }
 
@@ -511,18 +594,18 @@ export class JobsService {
 
     if (detailLines.length > 0) {
       lines.push("");
-      lines.push("Pozisyon Detayları");
+      lines.push("Rol Hakkinda Kisa Bilgiler");
       detailLines.forEach((detail) => lines.push(`• ${detail}`));
     }
 
     lines.push("");
-    lines.push("İş Tanımı");
+    lines.push("Rolun Ozeti");
     lines.push(this.buildFallbackSummary(input));
 
     const responsibilities = this.buildFallbackResponsibilities(input);
     if (responsibilities.length > 0) {
       lines.push("");
-      lines.push("Temel Sorumluluklar");
+      lines.push("Bu Rolda Neler Yapacaksiniz?");
       responsibilities.forEach((item) => lines.push(`• ${item}`));
     }
 
@@ -531,13 +614,13 @@ export class JobsService {
 
     if (required.length > 0) {
       lines.push("");
-      lines.push("Aranan Nitelikler");
+      lines.push("Bu Rol Icin Aradigimiz Temel Noktalar");
       required.forEach((item) => lines.push(`• ${item.value}`));
     }
 
     if (preferred.length > 0) {
       lines.push("");
-      lines.push("Tercih Sebebi Olabilecek Nitelikler");
+      lines.push("Sizi One Cikarabilecek Ek Deneyimler");
       preferred.forEach((item) => lines.push(`• ${item.value}`));
     }
 

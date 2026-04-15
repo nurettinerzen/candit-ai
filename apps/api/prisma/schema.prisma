@@ -243,6 +243,7 @@ enum PlatformIncidentStatus {
 }
 
 enum BillingPlanKey {
+  FLEX
   STARTER
   GROWTH
   ENTERPRISE
@@ -283,6 +284,8 @@ enum BillingCheckoutStatus {
 }
 
 enum BillingAddonKey {
+  JOB_CREDIT_PACK_1
+  JOB_CREDIT_PACK_3
   CANDIDATE_PROCESSING_PACK_50
   INTERVIEW_PACK_10
   INTERVIEW_PACK_25
@@ -455,6 +458,7 @@ model BillingQuotaGrant {
   source         BillingGrantSource
   label          String
   quantity       Int
+  consumedQuantity Int              @default(0)
   expiresAt      DateTime?
   metadataJson   Json?
   createdBy      String?
@@ -710,6 +714,7 @@ model Job {
   salaryMax    Decimal?
   status       JobStatus @default(DRAFT)
   jdText       String?
+  aiDraftText  String?
   createdBy    String
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

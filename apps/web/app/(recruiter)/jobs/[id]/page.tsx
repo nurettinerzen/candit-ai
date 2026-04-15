@@ -18,6 +18,7 @@ import {
   formatInterviewDeadline,
   getInterviewInvitationMeta
 } from "../../../../lib/interview-invitation";
+import { formatJobShiftTypeLabel } from "../../../../lib/job-display";
 import { sourcingProjectDetailHref, withApiBaseOverride } from "../../../../lib/entity-routes";
 import type {
   BillingOverviewReadModel,
@@ -35,7 +36,10 @@ import { InterviewInviteModal } from "../../../../components/interview-invite-mo
 import { MatchIndicator } from "../../../../components/match-indicator";
 import { useUiText } from "../../../../components/site-language-provider";
 import { LoadingState, ErrorState, EmptyState } from "../../../../components/ui-states";
-import { translateUiText, type SiteLocale } from "../../../../lib/i18n";
+import { getLocaleTag, translateUiText, type SiteLocale } from "../../../../lib/i18n";
+
+type ApplicantTableSortKey = "candidate" | "source" | "fit";
+type ApplicantTableSortDirection = "asc" | "desc";
 
 function sourceLabel(source: string | null | undefined): string {
   if (!source) {
@@ -43,6 +47,26 @@ function sourceLabel(source: string | null | undefined): string {
   }
 
   return SOURCE_LABELS[source] ?? source;
+}
+
+function compareTextValues(left: string, right: string, locale: SiteLocale) {
+  return left.localeCompare(right, getLocaleTag(locale), {
+    sensitivity: "base",
+    numeric: true
+  });
+}
+
+function compareNullableNumberValues(left: number | null | undefined, right: number | null | undefined) {
+  if (left == null && right == null) {
+    return 0;
+  }
+  if (left == null) {
+    return 1;
+  }
+  if (right == null) {
+    return -1;
+  }
+  return left - right;
 }
 
 /** Merkezi stage label — her yerde aynı sonucu verir */
@@ -82,29 +106,15 @@ function buildBulkCvUploadMessage(locale: SiteLocale, queued: number, failedCoun
     (failedCount > 0 ? ` ${failedCount} dosyada hata var.` : "");
 }
 
-function outreachOutcomeLabel(status: string | null | undefined) {
-  switch (status) {
-    case "REPLIED":
-      return "Yanıt geldi";
-    case "SENT":
-      return "Yanıt bekleniyor";
-    case "READY_TO_SEND":
-      return "Gönderime hazır";
-    case "DRAFT":
-      return "Taslak oluşturuldu";
-    case "FAILED":
-      return "Gönderim başarısız";
-    case "CANCELLED":
-      return "Gönderim iptal edildi";
-    default:
-      return "Outreach bilgisi yok";
-  }
-}
-
 function applicantNextAction(applicant: JobInboxApplicant, locale: SiteLocale) {
   const interviewMeta = getInterviewInvitationMeta(
     applicant.interview?.invitation ?? null,
     applicant.interview?.status ?? null
+  );
+  const hasCompletedAiScreening = Boolean(
+    applicant.fitScore
+    || applicant.aiRecommendation
+    || applicant.screening?.status === "SUCCEEDED"
   );
 
   if (applicant.interview) {
@@ -128,17 +138,17 @@ function applicantNextAction(applicant: JobInboxApplicant, locale: SiteLocale) {
 
   if (applicant.stage === "INTERVIEW_COMPLETED") {
     return {
-      label: "Karar Bekleniyor",
-      detail: "AI değerlendirmesini inceleyip recruiter kararını verin.",
+      label: "Recruiter Değerlendirmesi",
+      detail: "AI mülakat ve rapor hazır. Recruiter kararını verebilir.",
       tone: "success" as const
     };
   }
 
   if (applicant.stage === "RECRUITER_REVIEW") {
     return {
-      label: "Mülakata Davet Et",
-      detail: "Ön eleme tamamlandı. Tek tıkla AI first interview gönderebilirsiniz.",
-      tone: "warn" as const
+      label: "Recruiter Değerlendirmesi",
+      detail: "Fit score ve screening hazır. Recruiter değerlendirmesi yapılabilir.",
+      tone: "success" as const
     };
   }
 
@@ -166,26 +176,19 @@ function applicantNextAction(applicant: JobInboxApplicant, locale: SiteLocale) {
     };
   }
 
+  if (hasCompletedAiScreening) {
+    return {
+      label: "AI Ön Eleme Tamamlandı",
+      detail: "Fit score ve screening hazır. Recruiter değerlendirmesine geçilebilir.",
+      tone: "success" as const
+    };
+  }
+
   return {
     label: "AI Ön Eleme Başlayacak",
     detail: "Başvuru yeni eklendi; screening ve fit score hazırlanacak.",
     tone: "neutral" as const
   };
-}
-
-function nextActionColor(tone: "neutral" | "info" | "warn" | "success" | "danger") {
-  switch (tone) {
-    case "info":
-      return "var(--info, #60a5fa)";
-    case "warn":
-      return "var(--warn, #f59e0b)";
-    case "success":
-      return "var(--success, #22c55e)";
-    case "danger":
-      return "var(--danger, #ef4444)";
-    default:
-      return "var(--text-secondary)";
-  }
 }
 
 function buildInviteSuccessMessage(
@@ -260,18 +263,25 @@ function riskSummary(applicant: JobInboxApplicant): { count: number; tags: strin
   if (!applicant.cvStatus.hasCv) tags.push("CV Yok");
   else if (!applicant.cvStatus.isParsed) tags.push("CV İşlenmedi");
   if (applicant.fitScore) {
+    const overallScore = applicant.fitScore.overallScore;
     const missingInfo = [...new Set(applicant.fitScore.missingInfo.map(normalizeSignalText).filter(Boolean))];
     const risks = [...new Set(applicant.fitScore.risks.map(normalizeSignalText).filter(Boolean))]
       .filter((item) => !overlapsMissingInformation(item, missingInfo));
     if (missingInfo.length > 0) tags.push(`${missingInfo.length} Eksik Bilgi`);
-    if (risks.length > 0) tags.push(`${risks.length} Uyarı`);
+    if (risks.length > 0) {
+      tags.push(`${risks.length} Uyarı`);
+    } else if (overallScore < 30) {
+      tags.push("Kritik Uyum Riski");
+    } else if (overallScore < 50) {
+      tags.push("Düşük Uyum Riski");
+    }
   }
   return { count: tags.length, tags };
 }
 
 /** Ön eleme tamamlanmış, recruiter'ın karar vermesi beklenen adaylar */
 function needsAttention(a: JobInboxApplicant): boolean {
-  return a.stage === "RECRUITER_REVIEW";
+  return a.stage === "RECRUITER_REVIEW" || a.stage === "INTERVIEW_COMPLETED";
 }
 
 /* ── stage pills ── */
@@ -311,6 +321,10 @@ export default function JobDetailPage() {
   const [minFitScore, setMinFitScore] = useState("");
   const [sortBy, setSortBy] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [tableSort, setTableSort] = useState<{
+    key: ApplicantTableSortKey;
+    direction: ApplicantTableSortDirection;
+  } | null>(null);
 
   // Modals & drawers
   const [selectedApplicant, setSelectedApplicant] = useState<JobInboxApplicant | null>(null);
@@ -319,18 +333,18 @@ export default function JobDetailPage() {
   // Bulk selection for interview approval
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkApproving, setBulkApproving] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkResult, setBulkResult] = useState<{ label: string; ok: number; fail: number } | null>(null);
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const [inviteOutcome, setInviteOutcome] = useState<{ interviewLink: string | null; expiresAt: string | null } | null>(null);
+  const [showJobInfo, setShowJobInfo] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ applicant: JobInboxApplicant; action: QuickActionType } | null>(null);
   const [inviteDialogApplicant, setInviteDialogApplicant] = useState<JobInboxApplicant | null>(null);
   const [pendingAutomationIds, setPendingAutomationIds] = useState<string[]>([]);
   const hasLoadedInboxRef = useRef(false);
 
-  // Job info panel toggle
-  const [showJobInfo, setShowJobInfo] = useState(false);
 
   const fetchInbox = useCallback(async (options?: {
     silent?: boolean;
@@ -506,7 +520,63 @@ export default function JobDetailPage() {
     });
   }, [data?.applicants, searchQuery, stageFilter]);
 
+  const sortedApplicants = useMemo(() => {
+    if (!tableSort) {
+      return filteredApplicants;
+    }
+
+    const directionFactor = tableSort.direction === "asc" ? 1 : -1;
+
+    return filteredApplicants
+      .map((applicant, index) => ({ applicant, index }))
+      .sort((left, right) => {
+        let comparison = 0;
+
+        if (tableSort.key === "candidate") {
+          comparison = compareTextValues(left.applicant.fullName, right.applicant.fullName, locale);
+        } else if (tableSort.key === "source") {
+          const leftSource = translateUiText(sourceLabel(left.applicant.source), locale);
+          const rightSource = translateUiText(sourceLabel(right.applicant.source), locale);
+          comparison = compareTextValues(leftSource, rightSource, locale);
+        } else if (tableSort.key === "fit") {
+          comparison = compareNullableNumberValues(
+            left.applicant.fitScore?.overallScore,
+            right.applicant.fitScore?.overallScore
+          );
+        }
+
+        if (comparison === 0) {
+          return left.index - right.index;
+        }
+
+        return comparison * directionFactor;
+      })
+      .map((item) => item.applicant);
+  }, [filteredApplicants, locale, tableSort]);
+
+  const toggleTableSort = useCallback((key: ApplicantTableSortKey) => {
+    setTableSort((current) => {
+      if (!current || current.key !== key) {
+        return {
+          key,
+          direction: key === "fit" ? "desc" : "asc"
+        };
+      }
+
+      return {
+        key,
+        direction: current.direction === "asc" ? "desc" : "asc"
+      };
+    });
+  }, []);
+
   const handleQuickAction = (applicant: JobInboxApplicant, action: QuickActionType) => {
+    if (isArchivedJob) {
+      setActionMessage("");
+      setActionError(t("Arşivli ilanda aşama değiştirilemez."));
+      return;
+    }
+
     setInviteOutcome(null);
     if (action === "invite_interview") {
       setInviteDialogApplicant(applicant);
@@ -547,6 +617,13 @@ export default function JobDetailPage() {
   };
 
   const handleBulkCvUpload = async (files: File[], source: string, externalSource?: string) => {
+    if (job?.status === "ARCHIVED") {
+      setBulkCvUploadOpen(false);
+      setActionMessage("");
+      setActionError(t("Arşivli ilana yeni CV eklenemez."));
+      return;
+    }
+
     const result = await apiClient.bulkUploadApplicantCvs(jobId, {
       files,
       source,
@@ -582,16 +659,16 @@ export default function JobDetailPage() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === filteredApplicants.length) {
+    if (selectedIds.size === sortedApplicants.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filteredApplicants.map((a) => a.applicationId)));
+      setSelectedIds(new Set(sortedApplicants.map((a) => a.applicationId)));
     }
   };
 
   const selectedApplicants = useMemo(
-    () => filteredApplicants.filter((applicant) => selectedIds.has(applicant.applicationId)),
-    [filteredApplicants, selectedIds]
+    () => sortedApplicants.filter((applicant) => selectedIds.has(applicant.applicationId)),
+    [sortedApplicants, selectedIds]
   );
 
   const bulkInviteEligibleIds = useMemo(
@@ -668,11 +745,41 @@ export default function JobDetailPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0 || bulkDeleting) return;
+    const selectedCount = selectedIds.size;
+    const confirmed = window.confirm(
+      t(`Seçilen ${selectedCount} aday kalıcı olarak silinecek. Bu işlem bu ilana ait başvuru, mülakat ve AI kayıtlarını da kaldırabilir. Devam etmek istiyor musunuz?`)
+    );
+    if (!confirmed) return;
+
+    setBulkDeleting(true);
+    setBulkResult(null);
+    setInviteOutcome(null);
+    setActionError("");
+    try {
+      const result = await apiClient.bulkDeleteApplications([...selectedIds]);
+      setBulkResult({ label: "Silme", ok: result.deletedCount, fail: selectedCount - result.deletedCount });
+      setSelectedIds(new Set());
+      setSelectedApplicant((current) => (
+        current && result.deletedIds.includes(current.applicationId) ? null : current
+      ));
+      setActionMessage(`${result.deletedCount} ${t("aday kalıcı olarak silindi.")}`);
+      void loadInbox();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : t("Adaylar silinemedi."));
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const job = data?.job;
+  const isArchivedJob = job?.status === "ARCHIVED";
   const stats = data?.stats;
   const commandCenter = data?.commandCenter;
+  const jobDetailText = job?.aiDraftText?.trim() || job?.jdText?.trim() || "";
   const activeJobsQuota = billing?.usage.quotas.find((quota) => quota.key === "ACTIVE_JOBS") ?? null;
-  const canPublishJob = activeJobsQuota ? activeJobsQuota.remaining > 0 : true;
+  const canPublishJob = activeJobsQuota ? activeJobsQuota.remaining > 0 || job?.status === "ARCHIVED" : true;
 
   // Recruiter'ın karar vermesi gereken adaylar (Ön Eleme Tamamlandı)
   const attentionCount = useMemo(() => {
@@ -695,14 +802,43 @@ export default function JobDetailPage() {
     }
 
     setActionError(
-      t("Aktif ilan kotanız dolu. Bu ilanı yeniden yayına almak için önce bir ilanı arşivleyin ya da planınızı yükseltin.")
+      t("İlan krediniz dolu. Bu ilanı yeniden yayına almak için ek ilan kredisi alın ya da planınızı yükseltin.")
     );
     return false;
   }, [canPublishJob, t]);
 
+  useEffect(() => {
+    if (isArchivedJob && bulkCvUploadOpen) {
+      setBulkCvUploadOpen(false);
+    }
+  }, [bulkCvUploadOpen, isArchivedJob]);
+
+  const sortableHeaderButtonStyle = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    width: "100%",
+    padding: 0,
+    border: 0,
+    background: "transparent",
+    color: "inherit",
+    font: "inherit",
+    fontWeight: 600,
+    cursor: "pointer",
+    textAlign: "left" as const
+  };
+
+  const getTableSortIndicator = (key: ApplicantTableSortKey) => {
+    if (!tableSort || tableSort.key !== key) {
+      return "↕";
+    }
+
+    return tableSort.direction === "asc" ? "↑" : "↓";
+  };
+
   return (
-    <div className="page-grid">
-      {/* ── Command Center Header ── */}
+    <div className="page-grid job-detail-page">
+      {/* ── Job Header ── */}
       <section className="panel job-detail-hero">
         <div className="section-head job-detail-hero-head">
           <div className="job-detail-hero-main">
@@ -711,27 +847,26 @@ export default function JobDetailPage() {
             </Link>
             {job && (
               <>
-                <PageTitleWithGuide
-                  as="h2"
-                  guideKey="jobDetail"
-                  title={job.title}
-                  className="job-detail-title"
-                />
+                <h2 className="job-detail-title">{job.title}</h2>
                 <div className="drawer-meta job-detail-meta-row" style={{ gap: 8 }}>
                   <JobStatusChip status={job.status} />
                   {job.locationText && <span className="text-sm">{job.locationText}</span>}
-                  {job.shiftType && <span className="text-sm">{t(job.shiftType)}</span>}
+                  {job.shiftType && (
+                    <span className="text-sm">{formatJobShiftTypeLabel(job.shiftType, t)}</span>
+                  )}
                   {(job.salaryMin || job.salaryMax) && (
                     <span className="text-sm">{formatCurrencyTry(job.salaryMin)} – {formatCurrencyTry(job.salaryMax)}</span>
                   )}
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    style={{ fontSize: 12, padding: "2px 8px" }}
-                    onClick={() => setShowJobInfo(!showJobInfo)}
-                  >
-                    {showJobInfo ? t("İlan Bilgilerini Gizle") : t("İlan Bilgilerini Göster")}
-                  </button>
+                  {jobDetailText && (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      style={{ fontSize: 12, padding: "2px 8px" }}
+                      onClick={() => setShowJobInfo((v) => !v)}
+                    >
+                      {showJobInfo ? t("İlan Bilgilerini Gizle") : t("İlan Bilgilerini Göster")}
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -834,38 +969,12 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        {/* Expandable job info panel */}
-        {showJobInfo && job && (
+        {/* Job info */}
+        {showJobInfo && jobDetailText && (
           <div className="panel nested-panel" style={{ marginTop: 12 }}>
-            {job.jdText && (
-              <div style={{ marginBottom: 12 }}>
-                <strong className="text-sm" style={{ display: "block", marginBottom: 4 }}>{t("İş Tanımı")}</strong>
-                <p className="small" style={{ margin: 0, whiteSpace: "pre-wrap" }}>{job.jdText}</p>
-              </div>
-            )}
-            {job.requirements && job.requirements.length > 0 && (
-              <div>
-                <strong className="text-sm" style={{ display: "block", marginBottom: 4 }}>{t("Aranan Nitelikler")}</strong>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {job.requirements.map((r) => (
-                    <span
-                      key={r.id}
-                      className="text-xs"
-                      style={{
-                        padding: "3px 10px",
-                        borderRadius: 999,
-                        background: r.required ? "var(--primary-light, #ede9fe)" : "var(--surface-muted, #f3f4f6)",
-                        color: r.required ? "var(--primary, #5046e5)" : "var(--text-secondary)",
-                        border: `1px solid ${r.required ? "var(--primary-border, #c4b5fd)" : "var(--border)"}`,
-                      }}
-                      title={translateUiText(`${r.key}: ${r.value}${r.required ? ` (${t("Zorunlu")})` : ""}`, locale)}
-                    >
-                      {r.required && "● "}{r.value || r.key}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+            <p className="small" style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
+              {jobDetailText}
+            </p>
           </div>
         )}
 
@@ -874,10 +983,10 @@ export default function JobDetailPage() {
             className="panel nested-panel"
             style={{ marginTop: 12, borderColor: "rgba(239,68,68,0.35)" }}
           >
-            <strong style={{ display: "block", marginBottom: 6 }}>{translateUiText("Aktif ilan kotası dolu", locale)}</strong>
+            <strong style={{ display: "block", marginBottom: 6 }}>{translateUiText("İlan krediniz dolu", locale)}</strong>
             <p className="small" style={{ margin: 0 }}>
-              {translateUiText(`Bu dönem ${activeJobsQuota.used} / ${activeJobsQuota.limit} aktif ilan kullanıyorsunuz.`, locale)}
-              {translateUiText("Bu ilanı taslakta tutabilir, slot açıldığında yayına alabilirsiniz.", locale)}
+              {translateUiText(`Bu dönem ${activeJobsQuota.used} / ${activeJobsQuota.limit} ilan kredisi kullandınız.`, locale)}
+              {translateUiText("Bu ilanı taslakta tutabilir, ek ilan kredisi aldığınızda yayına alabilirsiniz.", locale)}
             </p>
           </div>
         ) : null}
@@ -904,73 +1013,15 @@ export default function JobDetailPage() {
                   <p className="small">{t("Skoru Hazır")}</p>
               <p className="kpi-value">{stats.scoredCount}</p>
             </article>
+            <article className="kpi-card decision-kpi-card">
+              <p className="small">{t("Karar Bekleyen")}</p>
+              <p className="kpi-value">{attentionCount}</p>
+            </article>
             <article className="kpi-card">
                   <p className="small">{t("Ort. Uyum Skoru")}</p>
               <p className="kpi-value">{stats.avgFitScore != null ? `${stats.avgFitScore}%` : "—"}</p>
             </article>
-            <article className="kpi-card">
-              <p className="small" style={{ color: attentionCount > 0 ? "var(--warn, #f59e0b)" : undefined }}>
-                {t("Karar Bekleyen")}
-              </p>
-              <p className="kpi-value" style={{ color: attentionCount > 0 ? "var(--warn, #f59e0b)" : undefined }}>
-                {attentionCount}
-              </p>
-            </article>
           </div>
-
-          <section className="panel" style={{ marginTop: 16 }}>
-            <div className="section-head" style={{ marginBottom: 12 }}>
-              <div>
-                <h3 style={{ margin: 0 }}>{t("Pozisyon Komuta Merkezi")}</h3>
-                <p className="small" style={{ margin: "6px 0 0" }}>
-                  {t("Başvuru, mülakat ve recruiter karar akışı aynı yerden izlenir.")}
-                </p>
-              </div>
-              {canViewSourcing && commandCenter?.sourcingProject ? (
-                <Link
-                  href={withApiBaseOverride(sourcingProjectDetailHref(commandCenter.sourcingProject.id), searchParams)}
-                  className="button-link"
-                  style={{ padding: "8px 12px", textDecoration: "none" }}
-                >
-                  {commandCenter.sourcingProject.name}
-                </Link>
-              ) : null}
-            </div>
-            <div className="kpi-grid">
-              {canViewSourcing ? (
-                <article className="kpi-card">
-                  <p className="small">{t("Kaynak Bulma Projesi")}</p>
-                  <p className="kpi-value">{commandCenter?.sourcingProject?.metrics.totalProspects ?? 0}</p>
-                  <p className="small" style={{ marginBottom: 0 }}>
-                    {t("Prospect")} · {commandCenter?.sourcingProject?.metrics.attachedApplicants ?? 0} {t("akışa bağlandı")}
-                  </p>
-                </article>
-              ) : null}
-              <article className="kpi-card">
-                <p className="small">{t("Harici Kaynaklı Aday")}</p>
-                <p className="kpi-value">{commandCenter?.sourcedApplicants ?? 0}</p>
-                <p className="small" style={{ marginBottom: 0 }}>
-                  {t("İçe aktarılan ve yeniden keşfedilen adaylar dahil")}
-                </p>
-              </article>
-              <article className="kpi-card">
-                <p className="small">{t("Mülakat Daveti Hazır")}</p>
-                <p className="kpi-value">{commandCenter?.readyForInterviewInvite ?? 0}</p>
-                <p className="small" style={{ marginBottom: 0 }}>
-                  {t("E-posta mevcut, tek tıkla AI invite gönderebilirsiniz")}
-                </p>
-              </article>
-              <article className="kpi-card">
-                <p className="small">{t("Aktif Invite / Outreach")}</p>
-                <p className="kpi-value">
-                  {(commandCenter?.activeInterviewInvites ?? 0) + (commandCenter?.outreachAwaitingReply ?? 0)}
-                </p>
-                <p className="small" style={{ marginBottom: 0 }}>
-                  {commandCenter?.activeInterviewInvites ?? 0} {t("invite")}, {commandCenter?.outreachAwaitingReply ?? 0} {t("outreach yanıt bekliyor")}
-                </p>
-              </article>
-            </div>
-          </section>
 
           {/* ── Toolbar: Search + Filters + Actions ── */}
           <section className="panel applicant-toolbar-panel">
@@ -1023,7 +1074,13 @@ export default function JobDetailPage() {
                 <option value="appliedAt_desc">{translateUiText("Tarih (Yeni)", locale)}</option>
                 <option value="appliedAt_asc">{translateUiText("Tarih (Eski)", locale)}</option>
               </select>
-              <button className="button-link applicant-filter-upload-btn" onClick={() => setBulkCvUploadOpen(true)}>
+              <button
+                type="button"
+                className="button-link applicant-filter-upload-btn"
+                onClick={() => setBulkCvUploadOpen(true)}
+                disabled={isArchivedJob}
+                title={isArchivedJob ? t("Arşivli ilana yeni CV eklenemez.") : undefined}
+              >
                 {t("CV Yükle")}
               </button>
               {selectedIds.size > 0 && (
@@ -1032,7 +1089,7 @@ export default function JobDetailPage() {
                     <button
                       className="button-link applicant-filter-bulk-btn"
                       onClick={() => void handleBulkApproveInterview()}
-                      disabled={bulkApproving}
+                      disabled={bulkApproving || bulkDeleting || isArchivedJob}
                     >
                       {bulkApproving ? t("Gönderiliyor...") : `${t("Mülakata Davet Et")} (${bulkInviteEligibleIds.length})`}
                     </button>
@@ -1041,11 +1098,19 @@ export default function JobDetailPage() {
                     <button
                       className="ghost-button applicant-filter-bulk-btn"
                       onClick={() => void handleBulkReject()}
-                      disabled={bulkApproving}
+                      disabled={bulkApproving || bulkDeleting || isArchivedJob}
                     >
                       {bulkApproving ? t("İşleniyor...") : `${t("Reddet")} (${bulkRejectEligibleIds.length})`}
                     </button>
                   ) : null}
+                  <button
+                    className="ghost-button applicant-filter-bulk-btn"
+                    onClick={() => void handleBulkDelete()}
+                    disabled={bulkApproving || bulkDeleting}
+                    style={{ color: "var(--danger, #ef4444)", borderColor: "rgba(239,68,68,0.35)" }}
+                  >
+                    {bulkDeleting ? t("Siliniyor...") : `${t("Sil")} (${selectedIds.size})`}
+                  </button>
                 </div>
               )}
               {bulkResult && (
@@ -1111,18 +1176,33 @@ export default function JobDetailPage() {
                     <thead>
                       <tr>
                         <th style={{ width: 40 }} onClick={(e) => e.stopPropagation()}>
-                          <input type="checkbox" checked={selectedIds.size === filteredApplicants.length && filteredApplicants.length > 0} onChange={toggleSelectAll} />
+                          <input type="checkbox" checked={selectedIds.size === sortedApplicants.length && sortedApplicants.length > 0} onChange={toggleSelectAll} />
                         </th>
-                        <th>{t("Aday")}</th>
-                        <th>{t("Kaynak")}</th>
-                        <th>{t("Eşleşme")}</th>
+                        <th>
+                          <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleTableSort("candidate")}>
+                            <span>{t("Aday")}</span>
+                            <span className="text-xs text-muted">{getTableSortIndicator("candidate")}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleTableSort("source")}>
+                            <span>{t("Kaynak")}</span>
+                            <span className="text-xs text-muted">{getTableSortIndicator("source")}</span>
+                          </button>
+                        </th>
+                        <th>
+                          <button type="button" style={sortableHeaderButtonStyle} onClick={() => toggleTableSort("fit")}>
+                            <span>{t("Eşleşme")}</span>
+                            <span className="text-xs text-muted">{getTableSortIndicator("fit")}</span>
+                          </button>
+                        </th>
                         <th>{t("Eksik / Uyarı")}</th>
                         <th>{t("Aşama")}</th>
                         <th>{t("İşlem")}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredApplicants.map((a) => {
+                      {sortedApplicants.map((a) => {
                         const fit = a.fitScore;
                         const fitPct = toFitScorePercent(fit?.overallScore);
                         const risk = riskSummary(a);
@@ -1182,11 +1262,6 @@ export default function JobDetailPage() {
                               {fitPct != null ? (
                                 <div style={{ display: "grid", gap: 6 }}>
                                   <MatchIndicator score={fitPct} compact />
-                                  {fit?.strengths?.[0] ? (
-                                    <span className="text-xs text-muted" style={{ lineHeight: 1.4 }}>
-                                      {fit.strengths[0]}
-                                    </span>
-                                  ) : null}
                                 </div>
                               ) : (
                                 <span className="text-muted text-sm">—</span>
@@ -1225,13 +1300,7 @@ export default function JobDetailPage() {
                                   {t(stageTextStyle(a.stage as ApplicationStage).label)}
                                 </span>
                                 <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                                  <div style={{ fontWeight: 600, color: nextActionColor(nextAction.tone) }}>{t(nextAction.label)}</div>
                                   <div>{t(nextAction.detail)}</div>
-                                  {a.sourcing?.latestOutreach?.status ? (
-                                    <div>
-                                      {t("Outreach:")} {t(outreachOutcomeLabel(a.sourcing.latestOutreach.status))}
-                                    </div>
-                                  ) : null}
                                   {a.interview?.candidateInterviewUrl ? (
                                     <a
                                       href={a.interview.candidateInterviewUrl}
@@ -1241,8 +1310,8 @@ export default function JobDetailPage() {
                                     >
                                       {t("Aday görüşme linki")}
                                     </a>
-                                  ) : a.interview && interviewMeta.detail ? (
-                                    <div>{interviewMeta.detail}</div>
+                                  ) : a.interview && interviewMeta.detail && interviewMeta.detail !== nextAction.detail ? (
+                                    <div>{t(interviewMeta.detail)}</div>
                                   ) : null}
                                 </div>
                               </div>
@@ -1251,7 +1320,7 @@ export default function JobDetailPage() {
                               <QuickActionMenu
                                 stage={a.stage as ApplicationStage}
                                 onAction={(act) => handleQuickAction(a, act)}
-                                disabled={actionLoadingId === a.applicationId}
+                                disabled={actionLoadingId === a.applicationId || isArchivedJob}
                               />
                             </td>
                           </tr>
@@ -1269,6 +1338,7 @@ export default function JobDetailPage() {
       {/* Drawer */}
       <ApplicantDrawer
         applicant={selectedApplicant}
+        jobStatus={job?.status ?? null}
         onClose={() => setSelectedApplicant(null)}
         onActionDone={() => {
           setSelectedApplicant(null);

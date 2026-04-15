@@ -35,7 +35,7 @@ const DEPARTMENTS = [
 
 const WORK_MODELS = [
   { value: "", label: "Seçiniz" },
-  { value: "onsite", label: "Ofisten (On-site)" },
+  { value: "onsite", label: "Ofis İçi" },
   { value: "hybrid", label: "Hibrit" },
   { value: "remote", label: "Uzaktan" },
 ];
@@ -308,7 +308,7 @@ export default function NewJobPage() {
 
     if (status === "PUBLISHED" && !hasPublishCapacity) {
       setFieldError(
-        t("Aktif ilan kotanız dolu. İlanı taslak olarak kaydedebilir, daha sonra slot açıldığında yayına alabilirsiniz.")
+        t("İlan krediniz dolu. İlanı taslak olarak kaydedebilir, ek ilan kredisi aldığınızda yayına alabilirsiniz.")
       );
       return;
     }
@@ -324,6 +324,7 @@ export default function NewJobPage() {
         salaryMin: salaryMin ? Number(salaryMin) : undefined,
         salaryMax: salaryMax ? Number(salaryMax) : undefined,
         jdText: jdText.trim() || undefined,
+        aiDraftText: draftText.trim() || undefined,
         requirements: normalizedRequirements.length ? normalizedRequirements : undefined,
       });
       router.push("/jobs");
@@ -367,11 +368,10 @@ export default function NewJobPage() {
               as="h2"
               guideKey="jobCreate"
               title={t("Yeni İlan Hazırla")}
-              style={{ marginBottom: 4, marginTop: 8 }}
+              subtitle={t("Pozisyon bilgilerini girin. AI taslak oluşturup harici platformlara kopyalayabilirsiniz.")}
+              subtitleClassName="small"
+              style={{ margin: "8px 0 0" }}
             />
-            <p className="small" style={{ marginTop: 0 }}>
-              {t("Pozisyon bilgilerini girin. AI taslak oluşturup harici platformlara kopyalayabilirsiniz.")}
-            </p>
           </div>
         </div>
 
@@ -391,13 +391,13 @@ export default function NewJobPage() {
                       : "var(--border)"
               }}
             >
-              <strong style={{ display: "block", marginBottom: 8 }}>{t("Aktif ilan kotası")}</strong>
+              <strong style={{ display: "block", marginBottom: 8 }}>{t("İlan kredisi")}</strong>
               <p className="small" style={{ margin: 0 }}>
-                {t(`Bu dönem ${activeJobsQuota.used} / ${activeJobsQuota.limit} aktif ilan kullanıyorsunuz.`)}
+                {t(`Bu dönem ${activeJobsQuota.used} / ${activeJobsQuota.limit} ilan kredisi kullandınız.`)}
                 {" "}
                 {hasPublishCapacity
                   ? t("Bu ilanı taslak veya yayında olarak kaydedebilirsiniz.")
-                  : t("Şu anda yalnızca taslak oluşturabilirsiniz. Yayına almak için önce bir ilanı arşivleyin ya da planınızı yükseltin.")}
+                  : t("Şu anda yalnızca taslak oluşturabilirsiniz. Yayına almak için ek ilan kredisi alın ya da planınızı yükseltin.")}
               </p>
             </div>
           ) : null}

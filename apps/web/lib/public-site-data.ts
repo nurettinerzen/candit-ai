@@ -1,3 +1,5 @@
+import { BILLING_ADDON_CATALOG, BILLING_PLAN_CATALOG } from "@ai-interviewer/domain";
+
 export type PublicNavLink = {
   label: string;
   href: string;
@@ -74,6 +76,56 @@ export type PublicSolution = {
   ctaTitle: string;
   ctaBody: string;
 };
+
+function formatTryPrice(amountCents: number) {
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency: "TRY",
+    maximumFractionDigits: 0
+  }).format(amountCents / 100);
+}
+
+function buildPublicPlanBullets(plan: (typeof BILLING_PLAN_CATALOG)[keyof typeof BILLING_PLAN_CATALOG]) {
+  if (plan.key === "FLEX") {
+    return [
+      "1 kullanıcı",
+      "İlan kredisi satın al",
+      "Aday değerlendirme kredisi satın al",
+      "AI mülakat kredisi satın al",
+      "Aşım yok, kredi bittiğinde yeni paket alın",
+      "Temel raporlama",
+      "E-posta desteği"
+    ];
+  }
+
+  if (plan.key === "ENTERPRISE") {
+    return [
+      "Özel kullanıcı limiti",
+      "Özel ilan kredisi",
+      "Özel aday değerlendirme kredisi",
+      "Özel AI mülakat kredisi",
+      "Takvim entegrasyonları",
+      "Gelişmiş raporlama",
+      "Özel onboarding + SLA"
+    ];
+  }
+
+  const bullets = [
+    `${plan.seatsIncluded} kullanıcı`,
+    `${plan.activeJobsIncluded} ilan kredisi`,
+    `${plan.candidateProcessingIncluded} aday değerlendirme kredisi`,
+    `${plan.aiInterviewsIncluded} AI mülakat kredisi`
+  ];
+
+  if (plan.features.calendarIntegrations) {
+    bullets.push("Takvim entegrasyonları");
+  }
+
+  bullets.push(plan.features.advancedReporting ? "Gelişmiş raporlama" : "Temel raporlama");
+  bullets.push(plan.supportLabel);
+
+  return bullets;
+}
 
 export const PUBLIC_TOP_NAV: PublicNavLink[] = [
   { label: "Özellikler", href: "/features" },
@@ -428,77 +480,39 @@ export const PUBLIC_PRICING_PLANS: PublicCard[] = [
     meta: "Ücretsiz",
     bullets: [
       "1 kullanıcı",
-      "1 aktif ilan",
-      "25 aday ön eleme",
-      "3 AI mülakat",
+      "1 ilan kredisi",
+      "25 aday değerlendirme kredisi",
+      "3 AI mülakat kredisi",
       "Temel raporlama",
       "E-posta desteği"
     ],
     href: "/auth/signup",
     actionLabel: "Ücretsiz Deneyin"
   },
-  {
-    title: "Starter",
-    body: "Tek işe alım uzmanı ile düzenli işe alım yapan ekipler için.",
-    meta: "4.499₺/ay",
-    bullets: [
-      "1 kullanıcı",
-      "2 aktif ilan",
-      "100 aday işleme",
-      "15 AI mülakat",
-      "Temel raporlama",
-      "E-posta desteği"
-    ],
-    href: "/auth/signup",
-    actionLabel: "Hemen Başlayın"
-  },
-  {
-    badge: "En Popüler",
-    title: "Growth",
-    body: "Düzenli işe alım yapan küçük ekipler için.",
-    meta: "12.999₺/ay",
-    bullets: [
-      "2 kullanıcı",
-      "10 aktif ilan",
-      "500 aday işleme",
-      "50 AI mülakat",
-      "Takvim entegrasyonları",
-      "Gelişmiş raporlama",
-      "Öncelikli destek"
-    ],
-    href: "/auth/signup",
-    actionLabel: "Hemen Başlayın"
-  },
-  {
-    title: "Kurumsal",
-    body: "Büyük ekipler için özel kota, branded deneyim, SLA ve entegrasyonlar.",
-    meta: "Özel Teklif",
-    bullets: [
-      "Özel kullanıcı limiti",
-      "Özel aktif ilan",
-      "Özel aday işleme",
-      "Özel AI mülakat",
-      "Takvim entegrasyonları",
-      "Gelişmiş raporlama",
-      "Özel işe alıştırma + SLA"
-    ],
-    href: "/contact",
-    actionLabel: "Bize Ulaşın"
-  }
+  ...Object.values(BILLING_PLAN_CATALOG).map((plan) => ({
+    badge: plan.recommended ? "En Popüler" : undefined,
+    title: plan.key === "ENTERPRISE" ? "Kurumsal" : plan.label,
+    body: plan.description,
+    meta:
+      plan.billingModel === "prepaid"
+        ? plan.priceLabel ?? "Ön ödemeli kredi"
+        : plan.monthlyAmountCents === null
+          ? "Özel Teklif"
+          : `${formatTryPrice(plan.monthlyAmountCents)}/ay`,
+    bullets: buildPublicPlanBullets(plan),
+    href: plan.key === "ENTERPRISE" ? "/contact" : "/auth/signup",
+    actionLabel: plan.key === "ENTERPRISE" ? "Bize Ulaşın" : "Hemen Başlayın"
+  }))
 ];
 
 export const PUBLIC_PAY_AS_YOU_GO: PublicCard = {
   eyebrow: "Ek Paketler",
   title: "Planınızı Bozmadan Kapasite Artırın",
-  body: "Planınızı değiştirmeden yoğun dönemlerde ek aday işleme ve AI mülakat kotası satın alın.",
-  meta: "1.099₺ - 2.499₺",
-  bullets: [
-    "Ek aday işleme: 1.099₺ / 50 aday",
-    "Ek aday işleme: 1.999₺ / 100 aday",
-    "Ek AI mülakat: 1.199₺ / 10 mülakat",
-    "Ek AI mülakat: 2.499₺ / 25 mülakat",
-    "Mevcut plana eklenir, dönem içinde aktif olur"
-  ],
+  body: "Flex planda doğrudan, Starter ve Growth planda ise ek kapasite olarak kredi paketleri satın alın.",
+  meta: `${formatTryPrice(149900)} - ${formatTryPrice(399900)}`,
+  bullets: Object.values(BILLING_ADDON_CATALOG).map(
+    (addOn) => `${addOn.label}: ${formatTryPrice(addOn.amountCents)}`
+  ),
   href: "/subscription",
   actionLabel: "Plana Ekle"
 };

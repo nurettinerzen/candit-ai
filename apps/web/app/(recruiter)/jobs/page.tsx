@@ -10,8 +10,8 @@ import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-sta
 import { canPerformAction } from "../../../lib/auth/policy";
 import { resolveActiveSession } from "../../../lib/auth/session";
 import { apiClient } from "../../../lib/api-client";
-import { formatDepartment } from "../../../lib/constants";
 import { formatCurrencyTry, formatDate } from "../../../lib/format";
+import { formatJobRoleFamilyLabel, formatJobShiftTypeLabel } from "../../../lib/job-display";
 import type { BillingOverviewReadModel, Job, JobStatus } from "../../../lib/types";
 
 type StatusFilter = "" | JobStatus;
@@ -20,12 +20,14 @@ export default function JobsPage() {
   const { t, locale } = useUiText();
   const session = useMemo(() => resolveActiveSession(), []);
   const canCreateJob = canPerformAction(session, "job.create");
+  const canManageJobs = canPerformAction(session, "job.update");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [billing, setBilling] = useState<BillingOverviewReadModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [billingLoadError, setBillingLoadError] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
 
   const loadJobs = useCallback(async () => {
     setLoading(true);
@@ -65,6 +67,7 @@ export default function JobsPage() {
     void loadJobs();
   }, [loadJobs]);
 
+
   const filteredJobs = useMemo(() => {
     if (!statusFilter) return jobs;
     return jobs.filter((j) => j.status === statusFilter);
@@ -87,6 +90,19 @@ export default function JobsPage() {
   const hasPublishCapacity = activeJobsQuota ? activeJobsQuota.remaining > 0 : true;
   const activeJobsWarning = activeJobsQuota?.warningState === "warning";
   const activeJobsExceeded = activeJobsQuota?.warningState === "exceeded";
+  const handleDeleteJob = useCallback(async (jobId: string) => {
+    if (!window.confirm(t("Bu ilan kalıcı olarak silinecek. Başvurular ve bağlı kayıtlar da kaldırılacak. Devam etmek istiyor musunuz?"))) return;
+    setDeletingJobId(jobId);
+    setError("");
+    try {
+      const result = await apiClient.deleteJobs([jobId]);
+      setJobs((current) => current.filter((job) => !result.deletedIds.includes(job.id)));
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : t("İlan silinemedi."));
+    } finally {
+      setDeletingJobId(null);
+    }
+  }, [t]);
 
   function buildLocationSalary(job: Job): string {
     const parts: string[] = [];
@@ -97,18 +113,6 @@ export default function JobsPage() {
     return parts.join(" · ") || t("—");
   }
 
-  function formatShiftType(value: string | null): string {
-    if (!value) return "";
-    const map: Record<string, string> = {
-      tam_zamanli: "Tam Zamanlı",
-      yari_zamanli: "Yarı Zamanlı",
-      vardiyali: "Vardiyalı",
-      hibrit: "Hibrit",
-      full_time: "Tam Zamanlı",
-    };
-    return map[value] ?? value;
-  }
-
   return (
     <section className="page-grid">
       <div className="section-head" style={{ marginBottom: 0 }}>
@@ -116,11 +120,10 @@ export default function JobsPage() {
           <PageTitleWithGuide
             guideKey="jobs"
             title={t("İlan Merkezi")}
-            style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700 }}
+            subtitle={t("İlan oluşturma, aday yönetimi ve işe alım süreçlerinizin merkezi.")}
+            subtitleClassName="small"
+            style={{ margin: 0, fontSize: 22, fontWeight: 700 }}
           />
-          <p className="small" style={{ margin: 0 }}>
-            {t("İlan oluşturma, aday yönetimi ve işe alım süreçlerinizin merkezi.")}
-          </p>
         </div>
         <div className="row-actions">
           <button type="button" className="ghost-button" onClick={() => void loadJobs()}>
@@ -156,14 +159,14 @@ export default function JobsPage() {
             }}
           >
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>{t("Aktif ilan kotası")}</div>
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{t("İlan kredisi")}</div>
               <p className="small" style={{ margin: "6px 0 0" }}>
                 {locale === "en"
-                  ? `You are using ${activeJobsQuota.used} / ${activeJobsQuota.limit} active jobs this period.`
-                  : `Bu dönem ${activeJobsQuota.used} / ${activeJobsQuota.limit} aktif ilan kullanıyorsunuz.`}
+                  ? `You used ${activeJobsQuota.used} / ${activeJobsQuota.limit} job credits this period.`
+                  : `Bu dönem ${activeJobsQuota.used} / ${activeJobsQuota.limit} ilan kredisi kullandınız.`}
                 {hasPublishCapacity
-                  ? t(" Yeni ilan hazırlayabilir ve uygun olduğunda yayına alabilirsiniz.")
-                  : t(" Yeni ilanı taslak olarak hazırlayabilirsiniz; yeniden yayına almak veya yayınlamak için önce slot açmanız ya da paketinizi yükseltmeniz gerekir.")}
+                  ? ` ${t("Yeni ilan hazırlayabilir ve uygun olduğunda yayına alabilirsiniz.")}`
+                  : ` ${t("Yeni ilanı taslak olarak hazırlayabilirsiniz; yayına almak için ek ilan kredisi almanız ya da paketinizi yükseltmeniz gerekir.")}`}
               </p>
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -242,6 +245,7 @@ export default function JobsPage() {
         </div>
       )}
 
+
       {loading ? (
         <section className="panel">
           <LoadingState message={t("İlanlar yükleniyor...")} />
@@ -272,71 +276,121 @@ export default function JobsPage() {
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
           gap: 14,
+          alignItems: "stretch",
         }}>
           {filteredJobs.map((job) => (
-            <Link
+            <article
               key={job.id}
-              href={`/jobs/${job.id}` as any}
+              className="job-card-item"
               style={{
-                textDecoration: "none",
-                color: "inherit",
                 background: "var(--surface)",
                 border: "1px solid var(--border)",
                 borderRadius: 10,
                 padding: 20,
-                display: "block",
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+                minHeight: 218,
                 transition: "all 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "rgba(99,102,241,0.3)";
-                e.currentTarget.style.background = "var(--surface-hover, #1f222d)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "var(--border)";
-                e.currentTarget.style.background = "var(--surface)";
+                position: "relative"
               }}
             >
-              {/* Header: title + status */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 600 }}>{job.title}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 2 }}>
-                    {t(formatDepartment(job.roleFamily))}
+              {canManageJobs ? (
+                <div className="job-card-actions">
+                  <button
+                    type="button"
+                    className="job-card-delete-btn"
+                    disabled={deletingJobId === job.id}
+                    onClick={(e) => { e.preventDefault(); void handleDeleteJob(job.id); }}
+                    title={t("İlanı Sil")}
+                    aria-label={t("İlanı Sil")}
+                  >
+                    {deletingJobId === job.id ? (
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="10" /></svg>
+                    ) : (
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 4 13 4"/>
+                        <path d="M5 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/>
+                        <path d="M6 7v5M10 7v5"/>
+                        <path d="M4 4l.8 9a1 1 0 0 0 1 .9h4.4a1 1 0 0 0 1-.9L12 4"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              ) : null}
+              <Link
+                href={`/jobs/${job.id}` as any}
+                className="job-center-card"
+                style={{
+                  textDecoration: "none",
+                  color: "inherit",
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%"
+                }}
+                onMouseEnter={(e) => {
+                  const card = e.currentTarget.parentElement;
+                  if (card) {
+                    card.style.borderColor = "rgba(99,102,241,0.3)";
+                    card.style.background = "var(--surface-hover, #1f222d)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  const card = e.currentTarget.parentElement;
+                  if (card) {
+                    card.style.borderColor = "var(--border)";
+                    card.style.background = "var(--surface)";
+                  }
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    marginBottom: 10,
+                    minHeight: 52
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 600 }}>{job.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 2 }}>
+                      {formatJobRoleFamilyLabel(job.roleFamily, t)}
+                    </div>
+                  </div>
+                  <JobStatusChip status={job.status} />
+                </div>
+
+                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>
+                  {buildLocationSalary(job)}
+                </div>
+
+                <div style={{ fontSize: 12, color: "var(--text-dim)", minHeight: 16 }}>
+                  {formatJobShiftTypeLabel(job.shiftType, t) || "\u00A0"}
+                </div>
+
+                <div style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginTop: "auto",
+                  paddingTop: 12,
+                  borderTop: "1px solid var(--border)",
+                }}>
+                  <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                    <strong style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginRight: 2 }}>
+                      {job._count?.applications ?? 0}
+                    </strong>
+                    {" "}
+                    {t("başvuru")}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
+                    {formatDate(job.createdAt)}
                   </div>
                 </div>
-                <JobStatusChip status={job.status} />
-              </div>
-
-              {/* Line 1: location + salary */}
-              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>
-                {buildLocationSalary(job)}
-              </div>
-
-              {/* Line 2: shift/work type */}
-              <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 14, minHeight: 16 }}>
-                    {t(formatShiftType(job.shiftType)) || "\u00A0"}
-                  </div>
-
-              {/* Footer: application count + date */}
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                paddingTop: 12,
-                borderTop: "1px solid var(--border)",
-              }}>
-                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                  <strong style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", marginRight: 2 }}>
-                    {job._count?.applications ?? 0}
-                  </strong>
-                  {" "}
-                  {t("başvuru")}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
-                  {formatDate(job.createdAt)}
-                </div>
-              </div>
-            </Link>
+              </Link>
+            </article>
           ))}
         </div>
       ) : null}

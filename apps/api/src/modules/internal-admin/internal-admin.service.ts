@@ -134,11 +134,11 @@ function quotaLabel(key: BillingQuotaKey) {
     case BillingQuotaKey.SEATS:
       return "Kullanıcı";
     case BillingQuotaKey.ACTIVE_JOBS:
-      return "Aktif ilan";
+      return "İlan kredisi";
     case BillingQuotaKey.CANDIDATE_PROCESSING:
-      return "Aday işleme";
+      return "Aday değerlendirme kredisi";
     case BillingQuotaKey.AI_INTERVIEWS:
-      return "AI mülakat";
+      return "AI mülakat kredisi";
     default:
       return key;
   }
@@ -812,6 +812,7 @@ export class InternalAdminService {
         total: rows.length,
         active: rows.filter((row) => row.tenantStatus === TenantStatus.ACTIVE).length,
         suspended: rows.filter((row) => row.tenantStatus === TenantStatus.SUSPENDED).length,
+        flex: rows.filter((row) => row.billing.currentPlanKey === BillingPlanKey.FLEX).length,
         starter: rows.filter((row) => row.billing.currentPlanKey === BillingPlanKey.STARTER).length,
         growth: rows.filter((row) => row.billing.currentPlanKey === BillingPlanKey.GROWTH).length,
         enterprise: rows.filter((row) => row.billing.currentPlanKey === BillingPlanKey.ENTERPRISE).length,

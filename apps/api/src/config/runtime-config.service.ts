@@ -419,6 +419,8 @@ export class RuntimeConfigService {
         toOptionalString(this.configService.get<string>("STRIPE_BILLING_PORTAL_CONFIGURATION_ID")) ??
         null,
       planPriceIds: {
+        FLEX:
+          toOptionalString(this.configService.get<string>("STRIPE_PRICE_FLEX_MONTHLY")) ?? "",
         STARTER:
           toOptionalString(this.configService.get<string>("STRIPE_PRICE_STARTER_MONTHLY")) ?? "",
         GROWTH:
@@ -427,6 +429,10 @@ export class RuntimeConfigService {
           toOptionalString(this.configService.get<string>("STRIPE_PRICE_ENTERPRISE_MONTHLY")) ?? ""
       },
       addOnPriceIds: {
+        JOB_CREDIT_PACK_1:
+          toOptionalString(this.configService.get<string>("STRIPE_PRICE_JOB_CREDIT_PACK_1")) ?? "",
+        JOB_CREDIT_PACK_3:
+          toOptionalString(this.configService.get<string>("STRIPE_PRICE_JOB_CREDIT_PACK_3")) ?? "",
         CANDIDATE_PROCESSING_PACK_50:
           toOptionalString(
             this.configService.get<string>("STRIPE_PRICE_CANDIDATE_PROCESSING_PACK_50")

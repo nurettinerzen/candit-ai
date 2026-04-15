@@ -1,10 +1,10 @@
 import type { SiteLocale } from "./i18n";
 
-export function getInternalAdminCopy(locale: SiteLocale) {
-  if (locale === "en") {
-    return {
+const EN_INTERNAL_ADMIN_COPY = {
       dashboardTitle: "Admin Panel",
       dashboardSubtitle: "Monitor platform health, customer segments, and commercial lifecycle from one internal view.",
+      settingsTitle: "System Settings",
+      settingsSubtitle: "Manage AI behavior, system readiness, and internal runtime controls from one place.",
       redAlertTitle: "Red Alert",
       redAlertSubtitle:
         "Track security signals, application failures, assistant quality, and operational issues in one place.",
@@ -205,12 +205,17 @@ export function getInternalAdminCopy(locale: SiteLocale) {
       openCustomerWorkspace: "Open Customer Workspace",
       linkSent: "Link Sent",
       notSent: "Not Sent"
-    };
-  }
+};
 
-  return {
+export type InternalAdminCopy = {
+  [Key in keyof typeof EN_INTERNAL_ADMIN_COPY]: string;
+};
+
+const TR_INTERNAL_ADMIN_COPY = {
     dashboardTitle: "Yönetici Paneli",
     dashboardSubtitle: "Platform sağlığını, müşteri segmentlerini ve ticari yaşam döngüsünü tek iç görünümden izleyin.",
+    settingsTitle: "Sistem Ayarları",
+    settingsSubtitle: "AI davranışını, sistem hazırlığını ve iç runtime kontrollerini tek yerden yönetin.",
     redAlertTitle: "Kırmızı Alarm",
     redAlertSubtitle:
       "Güvenlik sinyallerini, uygulama hatalarını, asistan kalitesini ve operasyon olaylarını tek yerde izleyin.",
@@ -411,15 +416,35 @@ export function getInternalAdminCopy(locale: SiteLocale) {
     openCustomerWorkspace: "Müşteri Panelini Aç",
     linkSent: "Link gönderildi",
     notSent: "Henüz gönderilmedi"
-  };
+} satisfies InternalAdminCopy;
+
+const INTERNAL_ADMIN_COPY: Record<SiteLocale, InternalAdminCopy> = {
+  en: EN_INTERNAL_ADMIN_COPY,
+  tr: TR_INTERNAL_ADMIN_COPY
+};
+
+export function getInternalAdminCopy(locale: SiteLocale): InternalAdminCopy {
+  return INTERNAL_ADMIN_COPY[locale];
 }
 
-export function formatInternalPlan(planKey: "STARTER" | "GROWTH" | "ENTERPRISE", locale: SiteLocale) {
+export function formatInternalPlan(planKey: "FLEX" | "STARTER" | "GROWTH" | "ENTERPRISE", locale: SiteLocale) {
   if (locale === "en") {
-    return planKey === "STARTER" ? "Starter" : planKey === "GROWTH" ? "Growth" : "Enterprise";
+    return planKey === "FLEX"
+      ? "Flex"
+      : planKey === "STARTER"
+        ? "Starter"
+        : planKey === "GROWTH"
+          ? "Growth"
+          : "Enterprise";
   }
 
-  return planKey === "STARTER" ? "Starter" : planKey === "GROWTH" ? "Growth" : "Enterprise";
+  return planKey === "FLEX"
+    ? "Flex"
+    : planKey === "STARTER"
+      ? "Starter"
+      : planKey === "GROWTH"
+        ? "Growth"
+        : "Kurumsal";
 }
 
 export function formatTenantStatus(status: "ACTIVE" | "SUSPENDED" | "DELETED", locale: SiteLocale) {
@@ -473,11 +498,11 @@ export function quotaKeyLabel(
       case "SEATS":
         return "Seats";
       case "ACTIVE_JOBS":
-        return "Active Jobs";
+        return "Job Credits";
       case "CANDIDATE_PROCESSING":
-        return "Candidate Processing";
+        return "Candidate Evaluation Credits";
       case "AI_INTERVIEWS":
-        return "AI Interviews";
+        return "AI Interview Credits";
     }
   }
 
@@ -485,11 +510,11 @@ export function quotaKeyLabel(
     case "SEATS":
       return "Kullanıcı";
     case "ACTIVE_JOBS":
-      return "Aktif İlan";
+      return "İlan Kredisi";
     case "CANDIDATE_PROCESSING":
-      return "Aday İşleme";
+      return "Aday Değerlendirme Kredisi";
     case "AI_INTERVIEWS":
-      return "AI Mülakat";
+      return "AI Mülakat Kredisi";
   }
 }
 

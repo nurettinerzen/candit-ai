@@ -29,8 +29,8 @@ class AdminAccountQuery {
   query?: string;
 
   @IsOptional()
-  @IsIn(["ALL", "STARTER", "GROWTH", "ENTERPRISE"])
-  planKey?: "ALL" | "STARTER" | "GROWTH" | "ENTERPRISE";
+  @IsIn(["ALL", "FLEX", "STARTER", "GROWTH", "ENTERPRISE"])
+  planKey?: "ALL" | "FLEX" | "STARTER" | "GROWTH" | "ENTERPRISE";
 
   @IsOptional()
   @IsIn(["ALL", "ACTIVE", "SUSPENDED", "DELETED"])
@@ -97,17 +97,17 @@ class UpdateAccountPlanBody {
 
   @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   activeJobsIncluded?: number;
 
   @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   candidateProcessingIncluded?: number;
 
   @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   aiInterviewsIncluded?: number;
 
   @IsOptional()

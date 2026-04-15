@@ -21,20 +21,17 @@ import { RuntimeConfigService } from "../../config/runtime-config.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import {
+  BILLING_ADDON_ROLLOVER_DAYS,
   BILLING_ADDON_CATALOG,
   BILLING_PLAN_CATALOG,
+  buildPlanSnapshot,
   buildTrialSnapshot,
   FREE_TRIAL_DEFINITION,
   type BillingAddonDefinition,
+  type BillingFeatureKey,
   type BillingPlanDefinition,
   type BillingTrialDefinition
 } from "./billing-catalog";
-
-type BillingFeatureKey =
-  | "advancedReporting"
-  | "calendarIntegrations"
-  | "brandedCandidateExperience"
-  | "customIntegrations";
 
 type ResolvedBillingState = {
   account: {
@@ -42,6 +39,7 @@ type ResolvedBillingState = {
     tenantId: string;
     billingEmail: string | null;
     stripeCustomerId: string | null;
+    stripeSubscriptionId: string | null;
     currentPlanKey: BillingPlanKey;
     status: BillingAccountStatus;
     currentPeriodStart: Date;
@@ -165,6 +163,15 @@ function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+function quotaLimitForDisplay(input: {
+  used: number;
+  included: number;
+  addOnRemaining: number;
+}) {
+  const remainingIncluded = Math.max(0, input.included - input.used);
+  return input.used + remainingIncluded + input.addOnRemaining;
+}
+
 const DISABLED_TRIAL_FEATURES: BillingPlanDefinition["features"] = {
   advancedReporting: false,
   calendarIntegrations: false,
@@ -245,11 +252,11 @@ function quotaLabel(key: BillingQuotaKey) {
     case BillingQuotaKey.SEATS:
       return "Kullanıcı";
     case BillingQuotaKey.ACTIVE_JOBS:
-      return "Aktif ilan";
+      return "İlan kredisi";
     case BillingQuotaKey.CANDIDATE_PROCESSING:
-      return "Aday işleme";
+      return "Aday değerlendirme kredisi";
     case BillingQuotaKey.AI_INTERVIEWS:
-      return "AI mülakat";
+      return "AI mülakat kredisi";
     default:
       return key;
   }
@@ -408,7 +415,25 @@ export class BillingService {
     await this.assertQuota(tenantId, BillingQuotaKey.SEATS, 1);
   }
 
-  async assertCanPublishJob(tenantId: string) {
+  async assertCanPublishJob(tenantId: string, options?: { jobId?: string }) {
+    if (options?.jobId) {
+      const state = await this.resolveBillingState(tenantId);
+      this.assertTrialAccessAvailable(state);
+      const periodKey = state.account.currentPeriodStart.toISOString().slice(0, 10);
+      const existingUsage = await this.prisma.billingUsageEvent.findUnique({
+        where: {
+          uniqueKey: `job_credit:${options.jobId}:${periodKey}`
+        },
+        select: {
+          id: true
+        }
+      });
+
+      if (existingUsage) {
+        return;
+      }
+    }
+
     await this.assertQuota(tenantId, BillingQuotaKey.ACTIVE_JOBS, 1);
   }
 
@@ -452,6 +477,19 @@ export class BillingService {
     });
   }
 
+  async recordJobCreditUsage(tenantId: string, jobId: string) {
+    const state = await this.resolveBillingState(tenantId);
+    const periodKey = state.account.currentPeriodStart.toISOString().slice(0, 10);
+
+    await this.recordUsageEvent({
+      tenantId,
+      quotaKey: BillingQuotaKey.ACTIVE_JOBS,
+      entityType: "Job",
+      entityId: jobId,
+      uniqueKey: `job_credit:${jobId}:${periodKey}`
+    });
+  }
+
   async recordAiInterviewUsage(tenantId: string, sessionId: string) {
     await this.recordUsageEvent({
       tenantId,
@@ -465,10 +503,18 @@ export class BillingService {
   async createPlanCheckoutSession(input: {
     tenantId: string;
     requestedBy: string;
-    planKey: "STARTER" | "GROWTH";
+    planKey: "FLEX" | "STARTER" | "GROWTH";
     billingEmail?: string;
   }) {
     const plan = BILLING_PLAN_CATALOG[input.planKey];
+    if (plan.billingModel === "prepaid") {
+      return this.activateFlexPlan({
+        tenantId: input.tenantId,
+        requestedBy: input.requestedBy,
+        billingEmail: input.billingEmail
+      });
+    }
+
     const state = await this.resolveBillingState(input.tenantId);
     const stripe = this.getStripeClient();
     const customer = await this.findOrCreateStripeCustomer(
@@ -535,14 +581,119 @@ export class BillingService {
     };
   }
 
+  private async activateFlexPlan(input: {
+    tenantId: string;
+    requestedBy: string;
+    billingEmail?: string;
+  }) {
+    const state = await this.resolveBillingState(input.tenantId);
+
+    if (
+      state.account.currentPlanKey === BillingPlanKey.FLEX &&
+      state.account.status === BillingAccountStatus.ACTIVE
+    ) {
+      return {
+        checkoutUrl: null,
+        sessionId: `flex:${state.account.id}:current`
+      };
+    }
+
+    if (state.account.stripeSubscriptionId) {
+      throw new BadRequestException(
+        "Aktif abonelikten Flex plana geçmeden önce mevcut Stripe aboneliğinizi müşteri portalından yönetin."
+      );
+    }
+
+    const plan = BILLING_PLAN_CATALOG.FLEX;
+    const now = new Date();
+    const periodStart = startOfCurrentMonth(now);
+    const periodEnd = startOfNextMonth(now);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tenantBillingSubscription.updateMany({
+        where: {
+          tenantId: input.tenantId,
+          canceledAt: null,
+          status: {
+            in: [
+              BillingAccountStatus.TRIALING,
+              BillingAccountStatus.ACTIVE,
+              BillingAccountStatus.PAST_DUE,
+              BillingAccountStatus.INCOMPLETE
+            ]
+          }
+        },
+        data: {
+          status: BillingAccountStatus.CANCELED,
+          canceledAt: now
+        }
+      });
+
+      await tx.tenantBillingSubscription.create({
+        data: {
+          tenantId: input.tenantId,
+          accountId: state.account.id,
+          planKey: BillingPlanKey.FLEX,
+          status: BillingAccountStatus.ACTIVE,
+          billingEmail: input.billingEmail ?? state.account.billingEmail,
+          periodStart,
+          periodEnd,
+          seatsIncluded: plan.seatsIncluded,
+          activeJobsIncluded: plan.activeJobsIncluded,
+          candidateProcessingIncluded: plan.candidateProcessingIncluded,
+          aiInterviewsIncluded: plan.aiInterviewsIncluded,
+          featuresJson: plan.features,
+          metadataJson: {
+            source: "flex_activation"
+          },
+          createdBy: input.requestedBy
+        }
+      });
+
+      await tx.tenantBillingAccount.update({
+        where: { id: state.account.id },
+        data: {
+          billingEmail: input.billingEmail ?? state.account.billingEmail,
+          currentPlanKey: BillingPlanKey.FLEX,
+          status: BillingAccountStatus.ACTIVE,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          featuresJson: plan.features,
+          planSnapshotJson: buildPlanSnapshot(plan)
+        }
+      });
+
+      await tx.billingCheckoutSession.create({
+        data: {
+          tenantId: input.tenantId,
+          accountId: state.account.id,
+          checkoutType: BillingCheckoutType.PLAN_SUBSCRIPTION,
+          status: BillingCheckoutStatus.COMPLETED,
+          planKey: BillingPlanKey.FLEX,
+          label: "Flex planı",
+          billingEmail: input.billingEmail ?? state.account.billingEmail,
+          amountCents: 0,
+          currency: plan.currency,
+          payloadJson: {
+            localActivation: true,
+            planKey: BillingPlanKey.FLEX
+          },
+          createdBy: input.requestedBy,
+          completedAt: now
+        }
+      });
+    });
+
+    return {
+      checkoutUrl: null,
+      sessionId: `flex:${state.account.id}:${now.getTime()}`
+    };
+  }
+
   async createAddOnCheckoutSession(input: {
     tenantId: string;
     requestedBy: string;
-    addOnKey:
-      | "CANDIDATE_PROCESSING_PACK_50"
-      | "INTERVIEW_PACK_10"
-      | "INTERVIEW_PACK_25"
-      | "CANDIDATE_PROCESSING_PACK_100";
+    addOnKey: BillingAddonKey;
     billingEmail?: string;
   }) {
     const addOn = BILLING_ADDON_CATALOG[input.addOnKey];
@@ -870,7 +1021,7 @@ export class BillingService {
               source: BillingGrantSource.ADDON,
               label: addOn.label,
               quantity: addOn.quantity,
-              expiresAt: account.currentPeriodEnd,
+              expiresAt: addDaysUtc(new Date(), BILLING_ADDON_ROLLOVER_DAYS),
               createdBy: asString(metadata.requestedBy),
               metadataJson: {
                 checkoutSessionId: session.id,
@@ -1140,9 +1291,9 @@ export class BillingService {
       : BILLING_PLAN_CATALOG[state.account.currentPlanKey].label;
     const messageByQuota: Record<BillingQuotaKey, string> = {
       [BillingQuotaKey.SEATS]: `${planLabel} planınızdaki ekip erişim limiti doldu. Yeni kullanıcı daveti için plan yükseltin.`,
-      [BillingQuotaKey.ACTIVE_JOBS]: `${planLabel} planınızdaki aktif ilan limiti doldu. Yeni ilan açmadan önce bir ilanı kapatın veya planınızı yükseltin.`,
-      [BillingQuotaKey.CANDIDATE_PROCESSING]: `${planLabel} planınızdaki aday işleme limiti doldu. Ek aday işleme paketi alın veya planınızı yükseltin.`,
-      [BillingQuotaKey.AI_INTERVIEWS]: `${planLabel} planınızdaki AI interview limiti doldu. Ek interview paketi alın veya planınızı yükseltin.`
+      [BillingQuotaKey.ACTIVE_JOBS]: `${planLabel} planınızdaki ilan kredisi limiti doldu. Yeni ilan yayımlamak için ek ilan kredisi alın veya planınızı yükseltin.`,
+      [BillingQuotaKey.CANDIDATE_PROCESSING]: `${planLabel} planınızdaki aday değerlendirme kredisi doldu. Ek kredi alın veya planınızı yükseltin.`,
+      [BillingQuotaKey.AI_INTERVIEWS]: `${planLabel} planınızdaki AI mülakat kredisi doldu. Ek kredi alın veya planınızı yükseltin.`
     };
 
     throw new BadRequestException(messageByQuota[quotaKey]);
@@ -1169,18 +1320,34 @@ export class BillingService {
   }) {
     const state = await this.resolveBillingState(input.tenantId);
     this.assertTrialAccessAvailable(state);
+    const used = state.usage[input.quotaKey] ?? 0;
+    const included = this.includedForQuota(state.subscription, input.quotaKey);
+    const addOnConsumptionDelta =
+      Math.max(0, used + 1 - included) - Math.max(0, used - included);
 
     try {
-      await this.prisma.billingUsageEvent.create({
-        data: {
-          tenantId: input.tenantId,
-          accountId: state.account.id,
-          quotaKey: input.quotaKey,
-          entityType: input.entityType,
-          entityId: input.entityId,
-          uniqueKey: input.uniqueKey,
-          periodStart: state.account.currentPeriodStart,
-          periodEnd: state.account.currentPeriodEnd
+      await this.prisma.$transaction(async (tx) => {
+        await tx.billingUsageEvent.create({
+          data: {
+            tenantId: input.tenantId,
+            accountId: state.account.id,
+            quotaKey: input.quotaKey,
+            entityType: input.entityType,
+            entityId: input.entityId,
+            uniqueKey: input.uniqueKey,
+            periodStart: state.account.currentPeriodStart,
+            periodEnd: state.account.currentPeriodEnd
+          }
+        });
+
+        if (addOnConsumptionDelta > 0) {
+          await this.consumeAddOnGrantBalance({
+            db: tx,
+            tenantId: input.tenantId,
+            accountId: state.account.id,
+            quotaKey: input.quotaKey,
+            quantity: addOnConsumptionDelta
+          });
         }
       });
     } catch (error) {
@@ -1192,6 +1359,75 @@ export class BillingService {
       }
 
       throw error;
+    }
+  }
+
+  private async consumeAddOnGrantBalance(input: {
+    db: Prisma.TransactionClient | PrismaService;
+    tenantId: string;
+    accountId: string;
+    quotaKey: BillingQuotaKey;
+    quantity: number;
+  }) {
+    let remainingToConsume = input.quantity;
+
+    const grants = await input.db.billingQuotaGrant.findMany({
+      where: {
+        tenantId: input.tenantId,
+        accountId: input.accountId,
+        quotaKey: input.quotaKey,
+        source: {
+          in: [BillingGrantSource.ADDON, BillingGrantSource.MANUAL]
+        },
+        OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }]
+      },
+      orderBy: [{ createdAt: "asc" }]
+    });
+
+    grants.sort((left, right) => {
+      if (left.expiresAt && right.expiresAt) {
+        return left.expiresAt.getTime() - right.expiresAt.getTime();
+      }
+
+      if (left.expiresAt) {
+        return -1;
+      }
+
+      if (right.expiresAt) {
+        return 1;
+      }
+
+      return left.createdAt.getTime() - right.createdAt.getTime();
+    });
+
+    for (const grant of grants) {
+      const remainingGrantBalance = Math.max(0, grant.quantity - grant.consumedQuantity);
+      if (remainingGrantBalance <= 0) {
+        continue;
+      }
+
+      const consumeNow = Math.min(remainingGrantBalance, remainingToConsume);
+      if (consumeNow <= 0) {
+        continue;
+      }
+
+      await input.db.billingQuotaGrant.update({
+        where: { id: grant.id },
+        data: {
+          consumedQuantity: {
+            increment: consumeNow
+          }
+        }
+      });
+
+      remainingToConsume -= consumeNow;
+      if (remainingToConsume === 0) {
+        return;
+      }
+    }
+
+    if (remainingToConsume > 0) {
+      throw new BadRequestException("Ek paket bakiyesi bulunamadi.");
     }
   }
 
@@ -1222,6 +1458,11 @@ export class BillingService {
     const rawCurrentPeriodStart = account.currentPeriodStart ?? subscription.periodStart;
     const rawCurrentPeriodEnd = account.currentPeriodEnd ?? subscription.periodEnd;
     const now = new Date();
+    const isFlexAccount =
+      account.currentPlanKey === BillingPlanKey.FLEX &&
+      account.status !== BillingAccountStatus.TRIALING;
+    const flexPeriodStart = startOfCurrentMonth(now);
+    const flexPeriodEnd = startOfNextMonth(now);
     const trialStartedAtBase =
       account.status === BillingAccountStatus.TRIALING
         ? rawCurrentPeriodStart
@@ -1235,11 +1476,13 @@ export class BillingService {
         ? configuredTrialEndsAt ?? rawCurrentPeriodEnd
         : parseOptionalDate(snapshot.trialEndsAt) ??
           parseOptionalDate(subscriptionMetadata.trialEndsAt);
-    const currentPeriodStart = rawCurrentPeriodStart;
+    const currentPeriodStart = isFlexAccount ? flexPeriodStart : rawCurrentPeriodStart;
     const currentPeriodEnd =
       account.status === BillingAccountStatus.TRIALING && trialEndsAt
         ? trialEndsAt
-        : rawCurrentPeriodEnd;
+        : isFlexAccount
+          ? flexPeriodEnd
+          : rawCurrentPeriodEnd;
     const trialStartedAt = trialStartedAtBase;
     const trialBlockReason =
       asString(snapshot.trialBlockedReason) ??
@@ -1261,7 +1504,7 @@ export class BillingService {
     const daysRemaining =
       trialIsActive && trialEndsAt ? diffDaysCeil(now, trialEndsAt) : 0;
 
-    const [seatsUsed, activeJobsUsed, candidateProcessingAgg, aiInterviewsAgg, grants] =
+    const [seatsUsed, jobCreditsAgg, candidateProcessingAgg, aiInterviewsAgg, grants] =
       await Promise.all([
         this.prisma.user.count({
           where: {
@@ -1272,11 +1515,17 @@ export class BillingService {
             }
           }
         }),
-        this.prisma.job.count({
+        this.prisma.billingUsageEvent.aggregate({
           where: {
             tenantId,
-            archivedAt: null,
-            status: "PUBLISHED"
+            quotaKey: BillingQuotaKey.ACTIVE_JOBS,
+            occurredAt: {
+              gte: currentPeriodStart,
+              lt: currentPeriodEnd
+            }
+          },
+          _sum: {
+            quantity: true
           }
         }),
         this.prisma.billingUsageEvent.aggregate({
@@ -1310,7 +1559,8 @@ export class BillingService {
             tenantId,
             accountId: account.id,
             OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }]
-          }
+          },
+          orderBy: [{ expiresAt: "asc" }, { createdAt: "asc" }]
         })
       ]);
 
@@ -1322,31 +1572,40 @@ export class BillingService {
     };
 
     for (const grant of grants) {
-      addOnTotals[grant.quotaKey] += grant.quantity;
+      addOnTotals[grant.quotaKey] += Math.max(0, grant.quantity - grant.consumedQuantity);
     }
 
     const usage: Record<BillingQuotaKey, number> = {
       [BillingQuotaKey.SEATS]: seatsUsed,
-      [BillingQuotaKey.ACTIVE_JOBS]: activeJobsUsed,
+      [BillingQuotaKey.ACTIVE_JOBS]: jobCreditsAgg._sum.quantity ?? 0,
       [BillingQuotaKey.CANDIDATE_PROCESSING]: candidateProcessingAgg._sum.quantity ?? 0,
       [BillingQuotaKey.AI_INTERVIEWS]: aiInterviewsAgg._sum.quantity ?? 0
     };
 
     const limits: Record<BillingQuotaKey, number> = {
-      [BillingQuotaKey.SEATS]:
-        asNumber(snapshot.seatsIncluded, subscription.seatsIncluded) +
-        addOnTotals[BillingQuotaKey.SEATS],
-      [BillingQuotaKey.ACTIVE_JOBS]:
-        asNumber(snapshot.activeJobsIncluded, subscription.activeJobsIncluded) +
-        addOnTotals[BillingQuotaKey.ACTIVE_JOBS],
-      [BillingQuotaKey.CANDIDATE_PROCESSING]:
-        asNumber(
+      [BillingQuotaKey.SEATS]: quotaLimitForDisplay({
+        used: usage[BillingQuotaKey.SEATS],
+        included: asNumber(snapshot.seatsIncluded, subscription.seatsIncluded),
+        addOnRemaining: addOnTotals[BillingQuotaKey.SEATS]
+      }),
+      [BillingQuotaKey.ACTIVE_JOBS]: quotaLimitForDisplay({
+        used: usage[BillingQuotaKey.ACTIVE_JOBS],
+        included: asNumber(snapshot.activeJobsIncluded, subscription.activeJobsIncluded),
+        addOnRemaining: addOnTotals[BillingQuotaKey.ACTIVE_JOBS]
+      }),
+      [BillingQuotaKey.CANDIDATE_PROCESSING]: quotaLimitForDisplay({
+        used: usage[BillingQuotaKey.CANDIDATE_PROCESSING],
+        included: asNumber(
           snapshot.candidateProcessingIncluded,
           subscription.candidateProcessingIncluded
-        ) + addOnTotals[BillingQuotaKey.CANDIDATE_PROCESSING],
-      [BillingQuotaKey.AI_INTERVIEWS]:
-        asNumber(snapshot.aiInterviewsIncluded, subscription.aiInterviewsIncluded) +
-        addOnTotals[BillingQuotaKey.AI_INTERVIEWS]
+        ),
+        addOnRemaining: addOnTotals[BillingQuotaKey.CANDIDATE_PROCESSING]
+      }),
+      [BillingQuotaKey.AI_INTERVIEWS]: quotaLimitForDisplay({
+        used: usage[BillingQuotaKey.AI_INTERVIEWS],
+        included: asNumber(snapshot.aiInterviewsIncluded, subscription.aiInterviewsIncluded),
+        addOnRemaining: addOnTotals[BillingQuotaKey.AI_INTERVIEWS]
+      })
     };
 
     return {
@@ -1355,6 +1614,7 @@ export class BillingService {
         tenantId: account.tenantId,
         billingEmail: account.billingEmail,
         stripeCustomerId: account.stripeCustomerId,
+        stripeSubscriptionId: account.stripeSubscriptionId,
         currentPlanKey: account.currentPlanKey,
         status: account.status,
         currentPeriodStart,

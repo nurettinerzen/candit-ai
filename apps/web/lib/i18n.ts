@@ -256,10 +256,14 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "Ürün": "Product",
   "Hesap": "Account",
   "İç Yönetim": "Internal Admin",
+  "Yönetici Paneli": "Admin Dashboard",
+  "Sistem Ayarları": "System Settings",
+  Leadler: "Leads",
   "Kaynak Bulma": "Sourcing",
   "Kaynak Bulma (Beta)": "Sourcing (Beta)",
   Beta: "Beta",
   "İşe alım işletim paneli": "Recruiting operations console",
+  "Demo Hesap Sahibi": "Demo Owner",
   "Çıkış Yap": "Sign Out",
   "Çıkış yapılıyor...": "Signing out...",
   "Bu sayfa için gerekli yetkiniz bulunmuyor.": "You do not have permission to access this page.",
@@ -284,16 +288,33 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "kullanıcı": "users",
   "aktif ilan": "active jobs",
   "aday işleme": "candidate processing",
+  "ilan kredisi": "job credits",
+  "aday değerlendirme kredisi": "candidate evaluation credits",
+  "AI mülakat kredisi": "AI interview credits",
   "mülakat": "interviews",
   "+ ek paket": "+ add-on",
   "Kullanıcı limiti doldu.": "User limit reached.",
   "Aktif ilan limiti doldu.": "Active job limit reached.",
   "Aday işleme limiti doldu.": "Candidate processing limit reached.",
   "AI mülakat limiti doldu.": "AI interview limit reached.",
+  "İlan kredisi limiti doldu.": "Job credit limit reached.",
+  "Aday değerlendirme kredisi limiti doldu.": "Candidate evaluation credit limit reached.",
+  "AI mülakat kredisi limiti doldu.": "AI interview credit limit reached.",
   "Kullanıcı kullanımınız %80 seviyesine ulaştı.": "User usage has reached 80%.",
   "Aktif ilan kullanımınız %80 seviyesine ulaştı.": "Active job usage has reached 80%.",
   "Aday işleme kullanımınız %80 seviyesine ulaştı.": "Candidate processing usage has reached 80%.",
   "AI mülakat kullanımınız %80 seviyesine ulaştı.": "AI interview usage has reached 80%.",
+  "İlan kredisi kullanımınız %80 seviyesine ulaştı.": "Job credit usage has reached 80%.",
+  "Aday değerlendirme kredisi kullanımınız %80 seviyesine ulaştı.": "Candidate evaluation credit usage has reached 80%.",
+  "AI mülakat kredisi kullanımınız %80 seviyesine ulaştı.": "AI interview credit usage has reached 80%.",
+  "Flex planı aktifleştirildi.": "Flex plan activated.",
+  "Plan değişikliği tamamlandı.": "Plan change completed.",
+  "Ek paket satın alma akışı tamamlandı.": "Add-on purchase completed.",
+  "Kredi Paketleri": "Credit Packs",
+  "Paket içindeki aylık kullanım her dönemde sıfırlanır. Satın aldığınız kredi paketleri 90 gün geçerlidir.":
+    "Included monthly usage resets each period. Purchased credit packs stay active for 90 days.",
+  "90 gün geçerli": "Valid for 90 days",
+  "Satın alındığında hemen aktif olur": "Activates immediately after purchase",
   "Admin": "Admin",
   "Stripe ödeme sayfası yeni sekmede açıldı.": "Stripe checkout opened in a new tab.",
   "User limit doldu.": "User limit reached.",
@@ -350,6 +371,9 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "İptal": "Canceled",
   "Özel": "Custom",
   "Durum": "Status",
+  "Hesap Sahibi": "Owner",
+  Menajer: "Manager",
+  "Uzman / Personel": "Specialist / Staff",
   "Tarih": "Date",
   "Kaynak": "Source",
   "Reddedilen": "Rejected",
@@ -366,6 +390,10 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "E-posta desteği": "Email support",
   "Öncelikli destek": "Priority support",
   "Özel onboarding + SLA": "Custom onboarding + SLA",
+  "Tek recruiter ile düzenli işe alım yapan ekipler için. Düşük hacim, düşük koltuk, net operasyon.":
+    "For teams hiring regularly with a single recruiter. Lower volume, smaller seat count, clear operations.",
+  "Düzenli işe alım yapan küçük ekipler için. Daha fazla hacim, takvim entegrasyonu ve raporlama.":
+    "For small teams doing regular hiring. More volume, calendar integrations, and reporting.",
   "Ek AI Mülakat Paketi 10": "Extra AI interview pack 10",
   "Mevcut dönem için +10 AI mülakat hakkı.": "+10 AI interview credits for the current period.",
   "Ek AI Mülakat Paketi 25": "Extra AI interview pack 25",
@@ -416,6 +444,15 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "Uyarı": "Warning",
   "Hesap içindeki aktif ekip, davet bekleyen kullanıcılar ve son oturum görünürlüğü.":
     "View active team members, pending invitations, and last session activity in this account.",
+  "E-posta doğrulaması bekleniyor": "Email verification is pending",
+  "Doğrulama mailini tekrar gönder": "Resend verification email",
+  "Davet preview bağlantısını aç": "Open invite preview link",
+  "Doğrulama preview bağlantısını aç": "Open verification preview link",
+  "Yeni üye davet et": "Invite teammate",
+  "Üye listesi": "Team members",
+  "Henüz ekip üyesi bulunmuyor.": "There are no team members yet.",
+  "Çalışma alanında tek bir owner bulunur. Menajer operasyonu yönetir, personel günlük akışta çalışır.":
+    "One owner controls the workspace. Managers run operations; staff work in the daily flow.",
   "Toplam": "Total",
   "Davet": "Invited",
   "Pasif": "Inactive",
@@ -490,6 +527,9 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
     "You can prepare a new posting and publish it when you're ready.",
   "Yeni ilanı taslak olarak hazırlayabilirsiniz; yeniden yayına almak veya yayınlamak için önce slot açmanız ya da paketinizi yükseltmeniz gerekir.":
     "You can prepare the new posting as a draft; to publish or republish it, you must first free up a slot or upgrade your plan.",
+  "Yeni ilanı taslak olarak hazırlayabilirsiniz; yayına almak için ek ilan kredisi almanız ya da paketinizi yükseltmeniz gerekir.":
+    "You can prepare the new posting as a draft; to publish it, buy additional job credits or upgrade your plan.",
+  "İlan kredisi": "Job credits",
   "Aktif ilan kotası": "Active job quota",
   "Limit yaklaşıyor": "Approaching limit",
   "Kullanim ve limitler": "Usage and limits",
@@ -527,6 +567,8 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
     "Includes imported and rediscovered candidates.",
   "Bu ilanı taslakta tutabilir, slot açıldığında yayına alabilirsiniz.":
     "You can keep this posting as a draft and publish it when a slot becomes available.",
+  "Bu ilanı taslakta tutabilir, ek ilan kredisi aldığınızda yayına alabilirsiniz.":
+    "You can keep this posting as a draft and publish it once you buy extra job credits.",
   "Aday Havuzu": "Candidate Pool",
   "Yeni Aday Ekle": "Add New Candidate",
   "Başvuru Operasyon Paneli": "Application Operations Panel",
@@ -587,11 +629,18 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "Tercih Edilen": "Preferred",
   "Seçiniz": "Select",
   "Ofisten (On-site)": "On-site",
+  "Ofis İçi": "On-site",
   Hibrit: "Hybrid",
   Uzaktan: "Remote",
+  Esnek: "Flexible",
   "Tam Zamanlı": "Full-time",
   "Yarı Zamanlı": "Part-time",
   Vardiyalı: "Shift-based",
+  "Depo / Lojistik": "Warehouse / Logistics",
+  "Destek / Giriş Seviyesi": "Support / Entry Level",
+  "Mağaza / Perakende": "Store / Retail",
+  "Mağaza / Retail": "Store / Retail",
+  "Bağlı pozisyon yok": "No linked role",
   Stajyer: "Intern",
   Sözleşmeli: "Contract",
   Operasyon: "Operations",
@@ -642,12 +691,19 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
     "You can save this posting as draft or published.",
   "Şu anda yalnızca taslak oluşturabilirsiniz. Yayına almak için önce bir ilanı arşivleyin ya da planınızı yükseltin.":
     "You can only create a draft right now. To publish it, archive a posting first or upgrade your plan.",
+  "Şu anda yalnızca taslak oluşturabilirsiniz. Yayına almak için ek ilan kredisi alın ya da planınızı yükseltin.":
+    "You can only create a draft right now. To publish it, buy extra job credits or upgrade your plan.",
   "Yukarıdaki bilgilere göre profesyonel ilan metni oluşturur. Taslağı düzenleyip harici platformlara kopyalayabilirsiniz.":
     "Generates a professional job posting based on the information above. You can edit the draft and copy it to external platforms.",
   "Aktif ilan kotanız dolu. İlanı taslak olarak kaydedebilir, daha sonra slot açıldığında yayına alabilirsiniz.":
     "Your active job quota is full. You can save the posting as a draft and publish it later when a slot becomes available.",
   "Aktif ilan kotanız dolu. Bu ilanı yeniden yayına almak için önce bir ilanı arşivleyin ya da planınızı yükseltin.":
     "Your active job quota is full. To republish this posting, archive another posting first or upgrade your plan.",
+  "İlan krediniz dolu. İlanı taslak olarak kaydedebilir, ek ilan kredisi aldığınızda yayına alabilirsiniz.":
+    "Your job credits are fully used. You can save the posting as a draft and publish it after buying extra job credits.",
+  "İlan krediniz dolu. Bu ilanı yeniden yayına almak için ek ilan kredisi alın ya da planınızı yükseltin.":
+    "Your job credits are fully used. Buy extra job credits or upgrade your plan to republish this posting.",
+  "İlan krediniz dolu": "Job credits exhausted",
   "Arşivle": "Archive",
   "Tekrar Yayınla": "Republish",
   Yayınla: "Publish",
@@ -656,6 +712,21 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "Doğrudan başvuru akışı": "Direct application flow",
   "Aday görüşme linki": "Candidate interview link",
   "Outreach:": "Outreach:",
+  "Başvuru Geldi": "Application Received",
+  "AI Ön Eleme": "AI Pre-screening",
+  "Ön Eleme Tamamlandı": "Pre-screening Completed",
+  "Değerlendirme Hazır": "Evaluation Ready",
+  "Mülakata Davet Et": "Invite to Interview",
+  Reddet: "Reject",
+  Reddetme: "Reject",
+  "Karar Bekleniyor": "Decision Pending",
+  "Yanıt geldi": "Reply received",
+  "Yanıt bekleniyor": "Awaiting reply",
+  "Gönderime hazır": "Ready to send",
+  "Taslak oluşturuldu": "Draft created",
+  "Gönderim başarısız": "Delivery failed",
+  "Gönderim iptal edildi": "Delivery canceled",
+  "Outreach bilgisi yok": "No outreach data",
   "Mülakat Daveti Hazır": "Interview Invite Ready",
   "Aktif Invite / Outreach": "Active Invites / Outreach",
   Prospect: "Prospect",
@@ -666,9 +737,12 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
     "Email is available; you can send an AI invite in one click.",
   "başarılı": "successful",
   hata: "errors",
+  "Gönderiliyor...": "Submitting...",
+  "İşleniyor...": "Processing...",
   "Adayı Reddet": "Reject Candidate",
   "Evet, Davet Gönder": "Yes, Send Invite",
   "Evet, Reddet": "Yes, Reject",
+  "Arşivli ilanda aşama değiştirilemez.": "Stage changes are not allowed on an archived job.",
   "adayına tek linkli AI mülakat daveti gönderilecek. Bu akışta slot seçimi yoktur.":
     "will receive a single-link AI interview invitation. There is no slot selection in this flow.",
   "adayı reddedilecek.": "will be rejected.",
@@ -2018,6 +2092,18 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Gönderilen AI mülakat linki": "Sent AI interview link",
   "Gönderilen AI mülakat linkini aç": "Open the sent AI interview link",
   "Son geçerlilik": "Valid until",
+  "Davet gönderildi.": "Invitation sent.",
+  "Hatırlatma Gönderildi": "Reminder Sent",
+  "Adayın aynı linkle görüşmeye başlaması bekleniyor.": "The candidate is expected to start the interview using the same link.",
+  "Görüşme Devam Ediyor": "Interview In Progress",
+  "Aday AI ön görüşmede.": "The candidate is in the AI pre-interview.",
+  "Görüşme Tamamlandı": "Interview Completed",
+  "Değerlendirme çıktıları hazır.": "Evaluation outputs are ready.",
+  "Süresi Doldu": "Expired",
+  "Link geçerlilik penceresi kapandı.": "The link validity window has closed.",
+  "Başarısız / Yarıda Kaldı": "Failed / Incomplete",
+  "Oturum tamamlanmadan sonlandı.": "The session ended before completion.",
+  "Henüz interview daveti oluşturulmadı.": "No interview invitation has been created yet.",
   "AI Ön Eleme Sırada": "AI Pre-screening Queued",
   "AI Ön Eleme Başlayacak": "AI Pre-screening Starting",
   "Başvuru yeni eklendi; screening ve fit score hazırlanacak.":
@@ -2225,6 +2311,40 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "URL ingestion tamamlanamadı.": "URL ingestion could not be completed.",
   "Ad soyad zorunlu.": "Full name is required.",
   "Lead oluşturulamadı.": "Lead could not be created.",
+  "En az bir açık profil URL'si girin.": "Enter at least one public profile URL.",
+  "Kayıt oluşturulamadı.": "Record could not be created.",
+  "İçe aktarma çalışıyor...": "Import is running...",
+  "Aday listesini projeye al": "Import candidate list into project",
+  "İşe alımcı destekli aday içe aktarımı": "Recruiter-assisted candidate ingestion",
+  "CSV / iş panosu dışa aktarımı, açık profil URL'si ve tekil kayıt oluşturma ile sourcing projesine gerçek aday ekleyin.":
+    "Add real candidates to the sourcing project with CSV exports, public profile URLs, and single-record creation.",
+  "CV paketi elinizdeyse başvuru akışına geçirmek için":
+    "If you already have a CV package and want to move it into the applicant flow,",
+  "CSV / iş panosu dışa aktarımı": "CSV / job board export",
+  "CSV, TSV veya dış iş panosu dışa aktarma dosyasını yükleyin; alan eşlemesini gözden geçirip projeye alın.":
+    "Upload a CSV, TSV, or external job board export file, review field mapping, and add it to the project.",
+  "İş panosu dışa aktarımı": "Job board export",
+  "Referans / ajans listesi": "Referral / agency list",
+  "Profil başlığı": "Headline",
+  "Açık profil URL'si": "Public profile URL",
+  "Yetenek etiketleri": "Skill tags",
+  "Harici referans": "External reference",
+  "Yeni profil / Yeni aday adayı": "New profiles / New prospects",
+  "Birleştirilen / Yinelenen": "Merged / Duplicate",
+  "Mevcut aday eşleşmesi": "Existing candidate matches",
+  "URL içe alımı tamamlanamadı.": "URL ingestion could not be completed.",
+  "Açık profil URL yapıştırma": "Public profile URL paste",
+  "Kişisel site, portfolyo, GitHub benzeri açık profil URL'lerini yapıştırın. Sistem kişi profilini doğrularsa projeye alır.":
+    "Paste personal site, portfolio, or public profile URLs such as GitHub. If the system validates the person profile, it adds it to the project.",
+  "İşe alımcı notu / bu URL'leri neden ekliyorum?":
+    "Recruiter note / why am I adding these URLs?",
+  "URL'leri aday adayı olarak işle": "Process URLs as prospects",
+  "Tekil manuel kayıt": "Single manual record",
+  "İşe alımcının dışarıda bulduğu tekil kaydı hızlıca sourcing projesine ekleyin.":
+    "Quickly add a single record the recruiter found externally to the sourcing project.",
+  "İşe alımcı notu": "Recruiter note",
+  "Kayıt ekleniyor...": "Adding record...",
+  "Tekil kayıt oluştur": "Create single record",
   "Recruiter-Assisted Lead Ingestion": "Recruiter-Assisted Lead Ingestion",
   "CSV/job board export, public profile URL ve tekli lead oluşturma ile sourcing projesine gerçek aday ekleyin.":
     "Add real candidates to the sourcing project with CSV/job board exports, public profile URLs, and single lead creation.",
@@ -2827,12 +2947,39 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Tek işe alım uzmanı ile düzenli işe alım yapan ekipler için.": "For teams with a single recruiter doing regular hiring.",
   "Growth": "Growth",
   "Düzenli işe alım yapan küçük ekipler için.": "For small teams doing regular hiring.",
+  "Düzenli işe alımı olmayan ekipler için. 1 kullanıcıyla başlayın, ilan kredisi, aday değerlendirme kredisi ve AI mülakat kredisi satın alarak ilerleyin.":
+    "For teams without steady hiring. Start with 1 user and move forward by purchasing job credits, candidate evaluation credits, and AI interview credits.",
+  "Tek recruiter ile düzenli işe alım yapan ekipler için. Düşük hacim, net operasyon ve aylık dahil kullanım.":
+    "For teams hiring regularly with a single recruiter. Low volume, clear operations, and monthly included usage.",
+  "Düzenli işe alım yapan küçük ekipler için. Daha fazla hacim, aylık dahil kullanım, takvim entegrasyonu ve raporlama.":
+    "For small teams hiring regularly. More volume, monthly included usage, calendar integrations, and reporting.",
+  "Büyük ekipler için özel kota, markalı aday deneyimi, özel entegrasyon ve SLA.":
+    "For larger teams with custom quotas, branded candidate experience, bespoke integrations, and SLA.",
   "Kurumsal": "Enterprise",
   "Büyük ekipler için özel kota, branded deneyim, SLA ve entegrasyonlar.":
     "Custom quotas, branded experience, SLA, and integrations for large teams.",
   "Özel Teklif": "Custom Quote",
+  "Ön ödemeli kredi": "Prepaid credits",
+  "14 gün boyunca 1 ilan kredisi, aday değerlendirme ve AI mülakat akışını deneyin. Kredi kartı gerekmez.":
+    "Try 1 job credit, candidate evaluation, and AI interview flows for 14 days. No credit card required.",
   "1 kullanıcı": "1 user",
   "2 kullanıcı": "2 users",
+  "1 ilan kredisi": "1 job credit",
+  "2 ilan kredisi": "2 job credits",
+  "10 ilan kredisi": "10 job credits",
+  "Özel ilan kredisi": "Custom job credits",
+  "25 aday değerlendirme kredisi": "25 candidate evaluation credits",
+  "3 AI mülakat kredisi": "3 AI interview credits",
+  "100 aday değerlendirme kredisi": "100 candidate evaluation credits",
+  "500 aday değerlendirme kredisi": "500 candidate evaluation credits",
+  "Özel aday değerlendirme kredisi": "Custom candidate evaluation credits",
+  "15 AI mülakat kredisi": "15 AI interview credits",
+  "50 AI mülakat kredisi": "50 AI interview credits",
+  "Özel AI mülakat kredisi": "Custom AI interview credits",
+  "İlan kredisi satın al": "Buy job credits",
+  "Aday değerlendirme kredisi satın al": "Buy candidate evaluation credits",
+  "AI mülakat kredisi satın al": "Buy AI interview credits",
+  "Aşım yok, kredi bittiğinde yeni paket alın": "No overages, buy a new pack when your credits run out",
   "1 aktif ilan": "1 active job",
   "2 aktif ilan": "2 active jobs",
   "10 aktif ilan": "10 active jobs",
@@ -2863,6 +3010,26 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Planınızı Bozmadan Kapasite Artırın": "Increase Capacity Without Changing Your Plan",
   "Planınızı değiştirmeden yoğun dönemlerde ek aday işleme ve AI mülakat kotası satın alın.":
     "Buy extra candidate processing and AI interview quota during busy periods without changing your plan.",
+  "Flex planda doğrudan, Starter ve Growth planda ise ek kapasite olarak kredi paketleri satın alın.":
+    "Buy credit packs directly on Flex, or as extra capacity on Starter and Growth.",
+  "İlan Kredisi Paketi 1": "Job Credit Pack 1",
+  "İlan Kredisi Paketi 3": "Job Credit Pack 3",
+  "Aday Değerlendirme Kredisi 50": "Candidate Evaluation Credit Pack 50",
+  "Aday Değerlendirme Kredisi 100": "Candidate Evaluation Credit Pack 100",
+  "AI Mülakat Kredisi 10": "AI Interview Credit Pack 10",
+  "AI Mülakat Kredisi 25": "AI Interview Credit Pack 25",
+  "Satın alma tarihinden itibaren 90 gün geçerli +1 ilan kredisi.":
+    "Valid for 90 days from purchase: +1 job credit.",
+  "Satın alma tarihinden itibaren 90 gün geçerli +3 ilan kredisi.":
+    "Valid for 90 days from purchase: +3 job credits.",
+  "Satın alma tarihinden itibaren 90 gün geçerli +50 aday değerlendirme kredisi.":
+    "Valid for 90 days from purchase: +50 candidate evaluation credits.",
+  "Satın alma tarihinden itibaren 90 gün geçerli +100 aday değerlendirme kredisi.":
+    "Valid for 90 days from purchase: +100 candidate evaluation credits.",
+  "Satın alma tarihinden itibaren 90 gün geçerli +10 AI mülakat kredisi.":
+    "Valid for 90 days from purchase: +10 AI interview credits.",
+  "Satın alma tarihinden itibaren 90 gün geçerli +25 AI mülakat kredisi.":
+    "Valid for 90 days from purchase: +25 AI interview credits.",
   "Ek aday işleme: 1.099₺ / 50 aday": "Extra candidate processing: 1,099₺ / 50 candidates",
   "Ek aday işleme: 1.999₺ / 100 aday": "Extra candidate processing: 1,999₺ / 100 candidates",
   "Ek AI mülakat: 1.199₺ / 10 mülakat": "Extra AI interviews: 1,199₺ / 10 interviews",
@@ -3550,21 +3717,102 @@ function buildSafeWordMap(
   return map;
 }
 
+type PhraseMapEntry = {
+  from: string;
+  to: string;
+  pattern: RegExp | null;
+};
+
+const PHRASE_MAP_ENTRY_CACHE = new WeakMap<Record<string, string>, PhraseMapEntry[]>();
+const UI_TEXT_TRANSFORM_CACHE_LIMIT = 4000;
+const UI_TEXT_TRANSFORM_CACHE: Record<SiteLocale, Map<string, string>> = {
+  tr: new Map(),
+  en: new Map()
+};
+
+let enToTrPhraseTranslationsCache: Record<string, string> | null = null;
+
+function getPhraseMapEntries(map: Record<string, string>) {
+  const cachedEntries = PHRASE_MAP_ENTRY_CACHE.get(map);
+  if (cachedEntries) {
+    return cachedEntries;
+  }
+
+  const entries = Object.entries(map)
+    .sort((a, b) => b[0].length - a[0].length)
+    .map<PhraseMapEntry>(([from, to]) => {
+      const isWordLikeKey = /^[\p{L}\p{N}_]+$/u.test(from);
+      return {
+        from,
+        to,
+        pattern: isWordLikeKey
+          ? new RegExp(
+              `(?<![\\p{L}\\p{N}_])${escapeRegExp(from)}(?![\\p{L}\\p{N}_])`,
+              "gu"
+            )
+          : null
+      };
+    });
+
+  PHRASE_MAP_ENTRY_CACHE.set(map, entries);
+  return entries;
+}
+
+function buildEnToTrPhraseTranslations() {
+  return Object.entries(EN_PHRASE_TRANSLATIONS).reduce<Record<string, string>>((acc, [tr, en]) => {
+    const normalizedEnglish = en.trim();
+    const isSafeReversePhrase =
+      normalizedEnglish.length >= 3 &&
+      /[\p{L}\p{N}]/u.test(normalizedEnglish);
+
+    if (isSafeReversePhrase && !acc[normalizedEnglish]) {
+      acc[normalizedEnglish] = tr;
+    }
+    return acc;
+  }, {});
+}
+
+function getEnToTrPhraseTranslations() {
+  if (!enToTrPhraseTranslationsCache) {
+    enToTrPhraseTranslationsCache = buildEnToTrPhraseTranslations();
+  }
+
+  return enToTrPhraseTranslationsCache;
+}
+
+function readCachedTransformedUiText(text: string, locale: SiteLocale) {
+  const cache = UI_TEXT_TRANSFORM_CACHE[locale];
+  if (!cache.has(text)) {
+    return null;
+  }
+
+  return cache.get(text) ?? "";
+}
+
+function cacheTransformedUiText(text: string, locale: SiteLocale, value: string) {
+  const cache = UI_TEXT_TRANSFORM_CACHE[locale];
+  cache.set(text, value);
+
+  if (cache.size > UI_TEXT_TRANSFORM_CACHE_LIMIT) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) {
+      cache.delete(oldestKey);
+    }
+  }
+
+  return value;
+}
+
 function applyPhraseMap(value: string, map: Record<string, string>) {
   let next = value;
-  const entries = Object.entries(map).sort((a, b) => b[0].length - a[0].length);
+  const entries = getPhraseMapEntries(map);
 
-  for (const [from, to] of entries) {
+  for (const { from, to, pattern } of entries) {
     if (!next.includes(from)) {
       continue;
     }
 
-    const isWordLikeKey = /^[\p{L}\p{N}_]+$/u.test(from);
-    if (isWordLikeKey) {
-      const pattern = new RegExp(
-        `(?<![\\p{L}\\p{N}_])${escapeRegExp(from)}(?![\\p{L}\\p{N}_])`,
-        "gu"
-      );
+    if (pattern) {
       next = next.replace(pattern, to);
       continue;
     }
@@ -3782,20 +4030,6 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Runtime validation data is currently incomplete."
 });
 
-const EN_TO_TR_PHRASE_TRANSLATIONS: Record<string, string> = Object.entries(
-  EN_PHRASE_TRANSLATIONS
-).reduce<Record<string, string>>((acc, [tr, en]) => {
-  const normalizedEnglish = en.trim();
-  const isSafeReversePhrase =
-    normalizedEnglish.length >= 3 &&
-    /[\p{L}\p{N}]/u.test(normalizedEnglish);
-
-  if (isSafeReversePhrase && !acc[normalizedEnglish]) {
-    acc[normalizedEnglish] = tr;
-  }
-  return acc;
-}, {});
-
 const TURKISH_WORD_FIX_MAP = buildSafeWordMap(TURKISH_WORD_FIXES, {
   sourceLocale: "tr-TR",
   targetLocale: "tr-TR",
@@ -3843,7 +4077,7 @@ export function normalizeTurkishUiText(text: string) {
   }
 
   const compactText = normalizeWhitespace(text);
-  const canonicalized = applyPhraseMap(compactText, EN_TO_TR_PHRASE_TRANSLATIONS);
+  const canonicalized = applyPhraseMap(compactText, getEnToTrPhraseTranslations());
   const phraseFixed = applyPhraseMap(canonicalized, TURKISH_PHRASE_FIXES);
   return normalizeWhitespace(applyPhraseMap(phraseFixed, TURKISH_WORD_FIX_MAP));
 }
@@ -3863,14 +4097,18 @@ function translateTurkishUiToEnglish(text: string) {
     [/Taslak\s*\((\d+)\)/giu, "Draft ($1)"],
     [/Arşiv\s*\((\d+)\)/giu, "Archived ($1)"],
     [/Bu dönem\s+(\d+)\s*\/\s*(\d+)\s+aktif ilan kullanıyorsunuz\./giu, "You are using $1 / $2 active jobs this period."],
+    [/Bu dönem\s+(\d+)\s*\/\s*(\d+)\s+ilan kredisi kullandınız\./giu, "You used $1 / $2 job credits this period."],
     [/(\d+)\s+başvuru/giu, "$1 applications"],
     [/(\d+)\s+ödeme kaydı/giu, "$1 payment records"],
     [/(\d+)\s+kritik uyarı/giu, "$1 critical alerts"],
     [/Ödeme bağlantısı\s+(.+?)\s+adresine gönderildi\./giu, "Payment link sent to $1."],
     [/Kullanıcı kullanımınız %(\d+)\s+seviyesine ulaştı\./giu, "User usage has reached $1%."],
     [/Aktif ilan kullanımınız %(\d+)\s+seviyesine ulaştı\./giu, "Active job usage has reached $1%."],
+    [/İlan kredisi kullanımınız %(\d+)\s+seviyesine ulaştı\./giu, "Job credit usage has reached $1%."],
     [/Aday işleme kullanımınız %(\d+)\s+seviyesine ulaştı\./giu, "Candidate processing usage has reached $1%."],
+    [/Aday değerlendirme kredisi kullanımınız %(\d+)\s+seviyesine ulaştı\./giu, "Candidate evaluation credit usage has reached $1%."],
     [/AI mülakat kullanımınız %(\d+)\s+seviyesine ulaştı\./giu, "AI interview usage has reached $1%."],
+    [/AI mülakat kredisi kullanımınız %(\d+)\s+seviyesine ulaştı\./giu, "AI interview credit usage has reached $1%."],
     [/Davet:\s*/giu, "Invite: "],
     [/Son giriş:\s*/giu, "Last login: "],
     [/Son geçerlilik:\s*(.+)/giu, "Valid until: $1"],
@@ -3934,12 +4172,18 @@ function translateTurkishUiToEnglish(text: string) {
 }
 
 export function transformUiText(text: string, locale: SiteLocale) {
-  const normalized = normalizeTurkishUiText(text);
-  if (locale === "tr") {
-    return normalized;
+  if (!text) {
+    return text;
   }
 
-  return translateTurkishUiToEnglish(normalized);
+  const cached = readCachedTransformedUiText(text, locale);
+  if (cached !== null) {
+    return cached;
+  }
+
+  const normalized = normalizeTurkishUiText(text);
+  const transformed = locale === "tr" ? normalized : translateTurkishUiToEnglish(normalized);
+  return cacheTransformedUiText(text, locale, transformed);
 }
 
 export function translateUiText(text: string, locale: SiteLocale) {
@@ -3962,6 +4206,86 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
 Object.assign(EN_PHRASE_TRANSLATIONS, {
   "14 gün ücretsiz deneyin": "Try free for 14 days",
   "Kredi kartı gerekmez. Hemen hesap oluşturun ve tüm özellikleri keşfedin.": "No credit card required. Create your account and explore all features.",
+});
+
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  "Giriş": "Sign in",
+  "veya": "or",
+  "Şifremi unuttum": "Forgot password",
+  "Google ile giriş yap": "Sign in with Google",
+  "Google ile giriş yakında aktif olacak.": "Google sign-in will be available soon.",
+  "Hesabınıza giriş yapın": "Sign in to your account",
+  "E-posta ve şifrenizle veya Google hesabınızla oturum açın.":
+    "Sign in with your email and password or continue with your Google account.",
+  "Yeni hesap": "New account",
+  "Candit'e katılın": "Join Candit",
+  "Şirketiniz için bir hesap oluşturun ve ekibinizi davet etmeye başlayın.":
+    "Create an account for your company and start inviting your team.",
+  "Ana sayfa": "Home",
+  "Zaten hesabınız var mı? Giriş yapın": "Already have an account? Sign in",
+  "Ad soyad": "Full name",
+  "Şirket adı": "Company name",
+  "Şirket e-posta adresi önerilir": "A company email address is recommended",
+  "Şifre tekrar": "Confirm password",
+  "Hesap Oluştur": "Create account",
+  "Hesap oluşturuluyor...": "Creating account...",
+  "Google ile kayıt ol": "Sign up with Google",
+  "Google ile kayıt yakında aktif olacak.": "Google sign-up will be available soon.",
+  "Hesap hazır": "Account ready",
+  "Hesabınız oluşturuldu": "Your account has been created",
+  "E-posta adresinizi doğrulayarak kurulumu tamamlayabilirsiniz.":
+    "Complete the setup by verifying your email address.",
+  "Panele git": "Go to dashboard",
+  "Panele devam et": "Continue to dashboard",
+  "Giriş ekranı": "Login screen",
+  "Geliştirme ortamı: Aşağıdaki bağlantıdan doğrulama ekranını açabilirsiniz.":
+    "Development mode: You can open the verification page from the link below.",
+  "E-posta kutunuzu kontrol edip doğrulama bağlantısına tıklayın.":
+    "Check your inbox and click the verification link.",
+  "Doğrulama bağlantısını aç": "Open verification link",
+  "Şifre sıfırlama": "Password reset",
+  "Yeni parola bağlantısı iste": "Request a reset link",
+  "E-posta adresini yaz, varsa tenant kodunu ekle; sana yeni şifre oluşturma bağlantısı hazırlayalım.":
+    "Enter your email address and, if needed, your tenant code so we can prepare a password reset link.",
+  "Giriş ekranına dön": "Back to login",
+  "Yeni hesap oluştur": "Create a new account",
+  "Bağlantı hazırlandı. Hesabın varsa e-posta kutuna veya lokal preview linkine bakabilirsin.":
+    "The link is ready. If your account exists, check your inbox or the local preview link.",
+  "Tenant kodu": "Tenant code",
+  opsiyonel: "optional",
+  "Şifre sıfırlama bağlantısı gönder": "Send reset link",
+  "Lokal reset bağlantısını aç": "Open local reset link",
+  "Parola yenile": "Reset password",
+  "Yeni şifreni belirle": "Set your new password",
+  "Bağlantı geçerliyse yeni parolanı kaydedeceğiz ve hesabını tekrar açacağız.":
+    "If the link is valid, we will save your new password and reopen your account.",
+  "Yeni bağlantı iste": "Request a new link",
+  "Bağlantı kontrol ediliyor...": "Checking the link...",
+  "Bu bağlantı artık kullanılamıyor. Yeni bir sıfırlama bağlantısı isteyebilirsin.":
+    "This link can no longer be used. You can request a new reset link.",
+  "Yeni şifre": "New password",
+  "Yeni şifreyi kaydet": "Save new password",
+  "Şifre sıfırlama bağlantısı doğrulanamadı.": "The reset link could not be verified.",
+  "Şifre sıfırlanamadı.": "Password could not be reset.",
+  "Google oturumu": "Google sign-in",
+  "Google hesabın bağlanıyor": "Connecting your Google account",
+  "Oturumu tamamlayıp seni çalışma alanına yönlendireceğiz.":
+    "We will finish the sign-in process and redirect you to your workspace.",
+  "Kayıt ekranı": "Sign-up screen",
+  "Google profili doğrulanıyor ve oturum hazırlanıyor...":
+    "Verifying your Google profile and preparing your session...",
+  "OAuth tokenı bulunamadı.": "OAuth token could not be found.",
+  "Google oturumu tamamlanamadı.": "Google sign-in could not be completed.",
+  "E-posta doğrulama": "Email verification",
+  "Hesabın doğrulanıyor": "Verifying your account",
+  "Bağlantı geçerliyse e-posta adresini onaylayıp hesabı hazır hale getireceğiz.":
+    "If the link is valid, we will confirm your email address and finish preparing your account.",
+  "Doğrulama bağlantısı kontrol ediliyor...": "Checking the verification link...",
+  "E-posta adresin başarıyla doğrulandı.": "Your email address has been verified successfully.",
+  "Doğrulama tokenı bulunamadı.": "Verification token could not be found.",
+  "E-posta doğrulanamadı.": "Email could not be verified.",
+  "Arşivli ilana yeni CV eklenemez.": "New CVs cannot be added to an archived job.",
+  "Arşivli ilana yeni aday veya CV eklenemez.": "New candidates or CVs cannot be added to an archived job."
 });
 
 Object.assign(EN_PHRASE_TRANSLATIONS, {

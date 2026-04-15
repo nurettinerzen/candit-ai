@@ -24,8 +24,10 @@ import { Permissions } from "../../common/decorators/permissions.decorator";
 import type { RequestUser } from "../../common/interfaces/request-user.interface";
 import { BillingService } from "./billing.service";
 
-const PLAN_KEYS = ["STARTER", "GROWTH"] as const;
+const PLAN_KEYS = ["FLEX", "STARTER", "GROWTH"] as const;
 const ADDON_KEYS = [
+  "JOB_CREDIT_PACK_1",
+  "JOB_CREDIT_PACK_3",
   "CANDIDATE_PROCESSING_PACK_50",
   "INTERVIEW_PACK_10",
   "INTERVIEW_PACK_25",

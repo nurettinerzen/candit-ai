@@ -1129,6 +1129,7 @@ export function PublicPricingPage() {
               const isPopular = plan.badge === "En Pop\u00FCler";
               const isEnterprise = plan.title === "Kurumsal";
               const isTrial = plan.title === "Deneme";
+              const isPrepaid = plan.meta === "Ön ödemeli kredi";
 
               return (
                 <article
@@ -1153,6 +1154,8 @@ export function PublicPricingPage() {
                         <span className={styles.prPriceFree}>{t("Ücretsiz")}</span>
                       ) : isEnterprise ? (
                         <span className={styles.prPriceContact}>{t("İletişime Geçin")}</span>
+                      ) : isPrepaid ? (
+                        <span className={styles.prPriceContact}>{t(plan.meta ?? "")}</span>
                       ) : (
                         <>
                           <span className={styles.prPriceAmount}>

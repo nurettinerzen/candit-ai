@@ -90,6 +90,7 @@ export type Job = {
   salaryMin: string | null;
   salaryMax: string | null;
   jdText: string | null;
+  aiDraftText: string | null;
   createdAt: string;
   requirements: JobRequirement[];
   _count?: {
@@ -766,7 +767,7 @@ export type FeatureFlag = {
   updatedAt: string;
 };
 
-export type BillingPlanKey = "STARTER" | "GROWTH" | "ENTERPRISE";
+export type BillingPlanKey = "FLEX" | "STARTER" | "GROWTH" | "ENTERPRISE";
 export type BillingQuotaKey =
   | "SEATS"
   | "ACTIVE_JOBS"
@@ -778,6 +779,8 @@ export type BillingFeatureKey =
   | "brandedCandidateExperience"
   | "customIntegrations";
 export type BillingAddonKey =
+  | "JOB_CREDIT_PACK_1"
+  | "JOB_CREDIT_PACK_3"
   | "CANDIDATE_PROCESSING_PACK_50"
   | "INTERVIEW_PACK_10"
   | "INTERVIEW_PACK_25"
@@ -789,6 +792,8 @@ export type BillingPlanDefinition = {
   description: string;
   monthlyAmountCents: number | null;
   currency: string;
+  billingModel: "prepaid" | "subscription" | "custom";
+  priceLabel?: string;
   seatsIncluded: number;
   activeJobsIncluded: number;
   candidateProcessingIncluded: number;
@@ -804,7 +809,7 @@ export type BillingAddonDefinition = {
   description: string;
   amountCents: number;
   currency: string;
-  quotaKey?: Exclude<BillingQuotaKey, "SEATS" | "ACTIVE_JOBS">;
+  quotaKey?: Exclude<BillingQuotaKey, "SEATS">;
   quantity?: number;
   serviceOnly?: boolean;
 };
@@ -974,6 +979,7 @@ export type InternalAdminAccountListReadModel = {
     total: number;
     active: number;
     suspended: number;
+    flex: number;
     starter: number;
     growth: number;
     enterprise: number;

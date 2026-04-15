@@ -358,8 +358,12 @@ export default function InternalAdminAccountDetailPage() {
 
       <div className="page-header">
         <div className="page-header-copy">
-          <PageTitleWithGuide guideKey="tenantDetail" title={detail.tenant.name} />
-          <p>{copy.accountDetailSubtitle}</p>
+          <PageTitleWithGuide
+            guideKey="tenantDetail"
+            title={detail.tenant.name}
+            subtitle={copy.accountDetailSubtitle}
+            style={{ margin: 0 }}
+          />
         </div>
         <div className="page-header-actions">
           <span className={`status-badge status-${statusVariant(detail.tenant.status)}`}>
@@ -426,6 +430,7 @@ export default function InternalAdminAccountDetailPage() {
                 <div className="field">
                   <label className="field-label">{copy.planKey}</label>
                   <select className="select" value={planForm.planKey} onChange={(event) => handlePlanKeyChange(event.target.value as BillingPlanKey)}>
+                    <option value="FLEX">{formatInternalPlan("FLEX", locale)}</option>
                     <option value="STARTER">{formatInternalPlan("STARTER", locale)}</option>
                     <option value="GROWTH">{formatInternalPlan("GROWTH", locale)}</option>
                     <option value="ENTERPRISE">{formatInternalPlan("ENTERPRISE", locale)}</option>

@@ -45,7 +45,7 @@ function statusVariant(status: string) {
 }
 
 function normalizePlanKey(raw: string | null): "ALL" | BillingPlanKey {
-  return raw === "STARTER" || raw === "GROWTH" || raw === "ENTERPRISE" ? raw : "ALL";
+  return raw === "FLEX" || raw === "STARTER" || raw === "GROWTH" || raw === "ENTERPRISE" ? raw : "ALL";
 }
 
 function normalizeWorkspaceStatus(raw: string | null): "ALL" | "ACTIVE" {
@@ -244,6 +244,7 @@ export default function InternalAdminUsersPage() {
 
     return {
       trial: rows.filter((row) => isTrialRow(row)).length,
+      flex: rows.filter((row) => !isTrialRow(row) && row.billing.currentPlanKey === "FLEX").length,
       starter: rows.filter((row) => !isTrialRow(row) && row.billing.currentPlanKey === "STARTER").length,
       growth: rows.filter((row) => !isTrialRow(row) && row.billing.currentPlanKey === "GROWTH").length,
       enterprise: rows.filter((row) => !isTrialRow(row) && row.billing.currentPlanKey === "ENTERPRISE").length
@@ -271,6 +272,7 @@ export default function InternalAdminUsersPage() {
 
   const planCards = [
     { key: "TRIAL" as const, label: copy.segmentTrial, count: cardCounts.trial, tone: "warning" },
+    { key: "FLEX" as const, label: formatInternalPlan("FLEX", locale), count: cardCounts.flex, tone: "muted" },
     { key: "STARTER" as const, label: formatInternalPlan("STARTER", locale), count: cardCounts.starter, tone: "warn" },
     { key: "GROWTH" as const, label: formatInternalPlan("GROWTH", locale), count: cardCounts.growth, tone: "success" },
     {
@@ -296,8 +298,12 @@ export default function InternalAdminUsersPage() {
     <section className="page-grid">
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <PageTitleWithGuide guideKey="adminUsers" title={copy.usersTitle} />
-          <p>{copy.usersSubtitle}</p>
+          <PageTitleWithGuide
+            guideKey="adminUsers"
+            title={copy.usersTitle}
+            subtitle={copy.usersSubtitle}
+            style={{ margin: 0 }}
+          />
         </div>
       </div>
 

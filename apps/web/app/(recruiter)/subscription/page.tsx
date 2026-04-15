@@ -16,16 +16,34 @@ function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-function formatPlanPrice(amountCents: number | null, currency: string, localeTag: string) {
-  if (amountCents === null) {
-    return localeTag.startsWith("en") ? "Custom pricing" : "Özel teklif";
-  }
-
+function formatMoney(amountCents: number, currency: string, localeTag: string) {
   return new Intl.NumberFormat(localeTag, {
     style: "currency",
     currency: currency.toUpperCase(),
     maximumFractionDigits: 0
   }).format(amountCents / 100);
+}
+
+function formatPlanPrice(
+  plan: BillingOverviewReadModel["planCatalog"][number],
+  localeTag: string
+) {
+  if (plan.billingModel === "prepaid") {
+    return localeTag.startsWith("en") ? "Prepaid credits" : plan.priceLabel ?? "Ön ödemeli kredi";
+  }
+
+  if (plan.monthlyAmountCents === null) {
+    return localeTag.startsWith("en") ? "Custom pricing" : "Özel teklif";
+  }
+
+  return formatMoney(plan.monthlyAmountCents, plan.currency, localeTag);
+}
+
+function formatAddOnPrice(
+  addOn: BillingOverviewReadModel["addOnCatalog"][number],
+  localeTag: string
+) {
+  return formatMoney(addOn.amountCents, addOn.currency, localeTag);
 }
 
 function formatBillingStatus(status: string) {
@@ -47,10 +65,22 @@ function formatBillingStatus(status: string) {
 
 function formatPackageLabel(planKey: BillingPlanKey, locale: "tr" | "en") {
   if (locale === "en") {
-    return planKey === "STARTER" ? "Starter" : planKey === "GROWTH" ? "Growth" : "Enterprise";
+    return planKey === "FLEX"
+      ? "Flex"
+      : planKey === "STARTER"
+        ? "Starter"
+        : planKey === "GROWTH"
+          ? "Growth"
+          : "Enterprise";
   }
 
-  return planKey === "STARTER" ? "Starter" : planKey === "GROWTH" ? "Growth" : "Kurumsal";
+  return planKey === "FLEX"
+    ? "Flex"
+    : planKey === "STARTER"
+      ? "Starter"
+      : planKey === "GROWTH"
+        ? "Growth"
+        : "Kurumsal";
 }
 
 function formatLifecycleLabel(
@@ -81,24 +111,33 @@ function planActionLabel(
     trialContext?: boolean;
   }
 ) {
+  const targetLabel =
+    locale === "en"
+      ? nextPlanKey === "FLEX"
+        ? "Flex"
+        : nextPlanKey === "GROWTH"
+          ? "Growth"
+          : "Starter"
+      : nextPlanKey === "FLEX"
+        ? "Flex"
+        : nextPlanKey === "GROWTH"
+          ? "Growth"
+          : "Starter";
+
   if (options?.trialContext) {
-    return locale === "en"
-      ? nextPlanKey === "GROWTH"
-        ? "Switch to Growth"
-        : "Switch to Starter"
-      : nextPlanKey === "GROWTH"
-        ? "Growth Pakete Geç"
-        : "Starter Pakete Geç";
+    return locale === "en" ? `Switch to ${targetLabel}` : `${targetLabel} Pakete Geç`;
   }
 
   if (currentPlanKey === nextPlanKey) {
     return locale === "en" ? "Current Plan" : "Mevcut Plan";
   }
 
-  return locale === "en"
-    ? nextPlanKey === "GROWTH"
-      ? "Switch to Growth"
-      : "Switch to Starter"
+  if (locale === "en") {
+    return `Switch to ${targetLabel}`;
+  }
+
+  return nextPlanKey === "FLEX"
+    ? "Flex'e Geç"
     : nextPlanKey === "GROWTH"
       ? "Growth'a Geç"
       : "Starter'a Dön";
@@ -150,11 +189,40 @@ export default function SubscriptionPage() {
 
       if (result.checkoutUrl) {
         window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+        setActionNotice(t("Stripe ödeme sayfası yeni sekmede açıldı."));
+      } else if (planKey === "FLEX") {
+        setActionNotice(t("Flex planı aktifleştirildi."));
+      } else {
+        setActionNotice(t("Plan değişikliği tamamlandı."));
       }
-
-      setActionNotice(t("Stripe ödeme sayfası yeni sekmede açıldı."));
     } catch (checkoutError) {
       setError(toErrorMessage(checkoutError, t("Plan değişikliği başlatılamadı.")));
+    } finally {
+      setBusyKey("");
+    }
+  }
+
+  async function handleAddOnCheckout(addOnKey: BillingOverviewReadModel["addOnCatalog"][number]["key"]) {
+    setBusyKey(`addon:${addOnKey}`);
+    setError("");
+    setActionNotice("");
+
+    try {
+      const result = await apiClient.createAddOnCheckout({
+        addOnKey,
+        billingEmail: billing?.account.billingEmail ?? undefined
+      });
+
+      await loadBilling();
+
+      if (result.checkoutUrl) {
+        window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
+        setActionNotice(t("Ek paket ödeme sayfası yeni sekmede açıldı."));
+      } else {
+        setActionNotice(t("Ek paket satın alma akışı tamamlandı."));
+      }
+    } catch (checkoutError) {
+      setError(toErrorMessage(checkoutError, t("Ek paket satın alma akışı başlatılamadı.")));
     } finally {
       setBusyKey("");
     }
@@ -203,6 +271,7 @@ export default function SubscriptionPage() {
   const packageHeading = locale === "en" ? "Package" : "Paket";
   const lifecycleHeading = locale === "en" ? "Lifecycle" : "Yaşam Döngüsü";
   const plansHeading = locale === "en" ? "Packages" : "Paketler";
+  const addOnsHeading = locale === "en" ? "Credit Packs" : "Kredi Paketleri";
   const planSectionHint = hasTrialContext
     ? locale === "en"
       ? "You can switch directly to a paid package during the trial."
@@ -210,14 +279,22 @@ export default function SubscriptionPage() {
     : locale === "en"
       ? "You can upgrade or downgrade your package based on your needs."
       : "İhtiyacınıza göre paketinizi yükseltebilir veya düşürebilirsiniz.";
+  const addOnSectionHint =
+    locale === "en"
+      ? "Included monthly usage resets every period. Purchased credit packs stay active for 90 days."
+      : "Paket içindeki aylık kullanım her dönemde sıfırlanır. Satın aldığınız kredi paketleri 90 gün geçerlidir.";
   const enterpriseCta = locale === "en" ? "Request Enterprise Quote" : "Kurumsal Teklif İste";
 
   return (
     <section className="page-grid">
       <div className="page-header page-header-plain">
         <div className="page-header-copy">
-          <PageTitleWithGuide guideKey="subscription" title={t("Abonelik")} />
-          <p>{pageSubtitle}</p>
+          <PageTitleWithGuide
+            guideKey="subscription"
+            title={t("Abonelik")}
+            subtitle={pageSubtitle}
+            style={{ margin: 0 }}
+          />
         </div>
       </div>
 
@@ -294,8 +371,10 @@ export default function SubscriptionPage() {
                     <div className="tlx-plan-card-head">
                       <div className="tlx-plan-card-name">{t(plan.label)}</div>
                       <div className="tlx-plan-card-price">
-                        <strong>{formatPlanPrice(plan.monthlyAmountCents, plan.currency, localeTag)}</strong>
-                        {plan.monthlyAmountCents !== null ? <span> /{locale === "en" ? "mo" : "ay"}</span> : null}
+                        <strong>{formatPlanPrice(plan, localeTag)}</strong>
+                        {plan.billingModel === "subscription" && plan.monthlyAmountCents !== null ? (
+                          <span> /{locale === "en" ? "mo" : "ay"}</span>
+                        ) : null}
                       </div>
                       {plan.description ? (
                         <div className="small text-muted" style={{ marginTop: 4 }}>{t(plan.description)}</div>
@@ -304,9 +383,9 @@ export default function SubscriptionPage() {
 
                     <div className="tlx-plan-card-features">
                       <span>{plan.seatsIncluded || t("Özel")} {t("kullanıcı")}</span>
-                      <span>{plan.activeJobsIncluded || t("Özel")} {t("aktif ilan")}</span>
-                      <span>{plan.candidateProcessingIncluded || t("Özel")} {t("aday işleme")}</span>
-                      <span>{plan.aiInterviewsIncluded || t("Özel")} {t("AI mülakat")}</span>
+                      <span>{plan.activeJobsIncluded || t("Özel")} {t("ilan kredisi")}</span>
+                      <span>{plan.candidateProcessingIncluded || t("Özel")} {t("aday değerlendirme kredisi")}</span>
+                      <span>{plan.aiInterviewsIncluded || t("Özel")} {t("AI mülakat kredisi")}</span>
                       <span>{plan.features.calendarIntegrations ? t("Takvim entegrasyonları") : t("Takvim entegrasyonu yok")}</span>
                       <span>{plan.features.advancedReporting ? t("Gelişmiş raporlama") : t("Temel raporlama")}</span>
                       <span>{t(plan.supportLabel)}</span>
@@ -321,7 +400,11 @@ export default function SubscriptionPage() {
                         <button
                           type="button"
                           className="tlx-plan-btn"
-                          disabled={!billing.stripeReady || isCurrent || busyKey === `plan:${plan.key}`}
+                          disabled={
+                            (plan.billingModel !== "prepaid" && !billing.stripeReady) ||
+                            isCurrent ||
+                            busyKey === `plan:${plan.key}`
+                          }
                           onClick={() => void handlePlanCheckout(plan.key as Exclude<BillingPlanKey, "ENTERPRISE">)}
                         >
                           {busyKey === `plan:${plan.key}`
@@ -342,10 +425,63 @@ export default function SubscriptionPage() {
               })}
             </div>
           </section>
+
+          <section className="panel">
+            <div className="subscription-section-head" style={{ marginBottom: 16 }}>
+              <div>
+                <h3 className="tlx-section-title">{addOnsHeading}</h3>
+                <p className="small text-muted" style={{ margin: "6px 0 0" }}>{addOnSectionHint}</p>
+              </div>
+            </div>
+
+            <div className="billing-addon-grid">
+              {billing.addOnCatalog.map((addOn) => (
+                <article key={addOn.key} className="billing-addon-card">
+                  <div>
+                    <div className="tlx-plan-card-name">{t(addOn.label)}</div>
+                    <div className="tlx-plan-card-price" style={{ marginTop: 8 }}>
+                      <strong>{formatAddOnPrice(addOn, localeTag)}</strong>
+                    </div>
+                    <div className="small text-muted" style={{ marginTop: 6 }}>{t(addOn.description)}</div>
+                  </div>
+
+                  <div className="tlx-plan-card-features">
+                    {addOn.quantity ? <span>+{addOn.quantity} {t(quotaUnitLabel(addOn.quotaKey))}</span> : null}
+                    <span>{t("90 gün geçerli")}</span>
+                    <span>{t("Satın alındığında hemen aktif olur")}</span>
+                  </div>
+
+                  <div className="tlx-plan-card-action">
+                    <button
+                      type="button"
+                      className="tlx-plan-btn"
+                      disabled={!billing.stripeReady || busyKey === `addon:${addOn.key}`}
+                      onClick={() => void handleAddOnCheckout(addOn.key)}
+                    >
+                      {busyKey === `addon:${addOn.key}` ? t("Hazırlanıyor...") : t("Ek Paket Satın Al")}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
         </>
       )}
     </section>
   );
+}
+
+function quotaUnitLabel(quotaKey: BillingOverviewReadModel["addOnCatalog"][number]["quotaKey"]) {
+  switch (quotaKey) {
+    case "ACTIVE_JOBS":
+      return "ilan kredisi";
+    case "CANDIDATE_PROCESSING":
+      return "aday değerlendirme kredisi";
+    case "AI_INTERVIEWS":
+      return "AI mülakat kredisi";
+    default:
+      return "kredi";
+  }
 }
 
 function QuotaRow({
