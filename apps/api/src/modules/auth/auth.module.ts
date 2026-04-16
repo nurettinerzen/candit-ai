@@ -5,6 +5,7 @@ import { RuntimeConfigModule } from "../../config/runtime-config.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { SecurityEventsModule } from "../security-events/security-events.module";
+import { StorageModule } from "../storage/storage.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { GoogleAuthController } from "./google-auth.controller";
@@ -17,6 +18,7 @@ import { SessionResolverService } from "./session-resolver.service";
     FeatureFlagsModule,
     NotificationsModule,
     SecurityEventsModule,
+    StorageModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

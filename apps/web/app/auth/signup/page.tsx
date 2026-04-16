@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { AuthNotice, AuthShell } from "../../../components/auth-shell";
+import { PasswordField, PasswordRequirements } from "../../../components/password-field";
 import { useUiText } from "../../../components/site-language-provider";
 import { formatAuthErrorMessage } from "../../../lib/auth/error";
+import { PASSWORD_MIN_LENGTH, PASSWORD_POLICY_ERROR_MESSAGE, getPasswordPolicyStatus } from "../../../lib/auth/password-policy";
 import {
   type AuthEmailVerificationPayload,
   getAuthProviders,
@@ -67,8 +69,8 @@ function SignupPageContent() {
     event.preventDefault();
     setError("");
 
-    if (password.length < 8) {
-      setError(t("Şifre en az 8 karakter olmalıdır."));
+    if (!getPasswordPolicyStatus(password).isValid) {
+      setError(t(PASSWORD_POLICY_ERROR_MESSAGE));
       return;
     }
 
@@ -103,11 +105,6 @@ function SignupPageContent() {
     companyName: companyName.trim() || undefined,
     returnTo: nextPath
   });
-  const fullNamePlaceholder = locale === "en" ? "Your full name" : "Adınız Soyadınız";
-  const companyPlaceholder = locale === "en" ? "Your company name" : "Şirketinizin adı";
-  const emailPlaceholder = locale === "en" ? "name@company.com" : "is@sirketiniz.com";
-  const passwordPlaceholder = locale === "en" ? "At least 8 characters" : "En az 8 karakter";
-
   if (createdState) {
     const emailVerification = createdState.emailVerification;
     const verificationEnabled = Boolean(emailVerification?.enabled);
@@ -216,12 +213,11 @@ function SignupPageContent() {
         {error ? <AuthNotice tone="danger" message={error} /> : null}
 
         <label style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Ad soyad")}</span>
+          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Ad Soyad")}</span>
           <input
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
             autoComplete="name"
-            placeholder={fullNamePlaceholder}
             required
             style={inputStyle}
           />
@@ -232,7 +228,6 @@ function SignupPageContent() {
           <input
             value={companyName}
             onChange={(event) => setCompanyName(event.target.value)}
-            placeholder={companyPlaceholder}
             required
             style={inputStyle}
           />
@@ -245,43 +240,33 @@ function SignupPageContent() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
-            placeholder={emailPlaceholder}
             required
             style={inputStyle}
           />
-          <span style={{ color: "#94a3b8", fontSize: 12 }}>
-            {t("Şirket e-posta adresi önerilir")}
-          </span>
         </label>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <label style={{ display: "grid", gap: 8 }}>
-            <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Şifre")}</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="new-password"
-              placeholder={passwordPlaceholder}
-              minLength={8}
-              required
-              style={inputStyle}
-            />
-          </label>
-          <label style={{ display: "grid", gap: 8 }}>
-            <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Şifre tekrar")}</span>
-            <input
-              type="password"
-              value={passwordConfirm}
-              onChange={(event) => setPasswordConfirm(event.target.value)}
-              autoComplete="new-password"
-              placeholder="••••••••"
-              minLength={8}
-              required
-              style={inputStyle}
-            />
-          </label>
+          <PasswordField
+            label={t("Şifre")}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="new-password"
+            minLength={PASSWORD_MIN_LENGTH}
+            required
+            inputStyle={inputStyle}
+          />
+          <PasswordField
+            label={t("Şifre tekrar")}
+            value={passwordConfirm}
+            onChange={(event) => setPasswordConfirm(event.target.value)}
+            autoComplete="new-password"
+            minLength={PASSWORD_MIN_LENGTH}
+            required
+            inputStyle={inputStyle}
+          />
         </div>
+
+        <PasswordRequirements password={password} />
 
         <button type="submit" disabled={loading} style={primaryButtonStyle}>
           {loading ? t("Hesap oluşturuluyor...") : t("Hesap Oluştur")}

@@ -2,9 +2,15 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { Suspense, useEffect, useState } from "react";
+import { PasswordField, PasswordRequirements } from "../../../../components/password-field";
 import { useUiText } from "../../../../components/site-language-provider";
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_POLICY_ERROR_MESSAGE,
+  getPasswordPolicyStatus
+} from "../../../../lib/auth/password-policy";
 import { getRoleLabel } from "../../../../lib/auth/policy";
 import { acceptInvitation, resolveInvitation } from "../../../../lib/auth/session";
 import { getActiveSiteLocale, translateUiText } from "../../../../lib/i18n";
@@ -95,8 +101,8 @@ function AcceptInvitationContent() {
       return;
     }
 
-    if (password.length < 8) {
-      setError(t("Şifre en az 8 karakter olmalıdır."));
+    if (!getPasswordPolicyStatus(password).isValid) {
+      setError(t(PASSWORD_POLICY_ERROR_MESSAGE));
       return;
     }
 
@@ -153,31 +159,36 @@ function AcceptInvitationContent() {
             {invitation.status !== "pending" ? (
               <p style={{ color: "#c2410c", margin: 0 }}>{statusMessage(invitation.status)}</p>
             ) : (
-              <form onSubmit={handleSubmit}>
-                <label className="field">
-                  <span className="small">Ad Soyad</span>
-                  <input value={fullName} onChange={(event) => setFullName(event.target.value)} required />
-                </label>
-                <label className="field">
-                  <span className="small">Sifre</span>
+              <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }}>
+                <label style={{ display: "grid", gap: 8 }}>
+                  <span style={fieldLabelStyle}>{t("Ad soyad")}</span>
                   <input
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    value={fullName}
+                    onChange={(event) => setFullName(event.target.value)}
                     required
-                    minLength={8}
+                    style={inputStyle}
                   />
                 </label>
-                <label className="field">
-                  <span className="small">Sifre Tekrar</span>
-                  <input
-                    type="password"
-                    value={passwordConfirm}
-                    onChange={(event) => setPasswordConfirm(event.target.value)}
-                    required
-                    minLength={8}
-                  />
-                </label>
+                <PasswordField
+                  label={t("Şifre")}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="new-password"
+                  required
+                  minLength={PASSWORD_MIN_LENGTH}
+                  inputStyle={inputStyle}
+                />
+                <PasswordField
+                  label={t("Şifre tekrar")}
+                  value={passwordConfirm}
+                  onChange={(event) => setPasswordConfirm(event.target.value)}
+                  autoComplete="new-password"
+                  required
+                  minLength={PASSWORD_MIN_LENGTH}
+                  inputStyle={inputStyle}
+                />
+
+                <PasswordRequirements password={password} />
 
                 {error ? <p style={{ color: "#c2410c", marginBottom: 8 }}>{error}</p> : null}
 
@@ -207,3 +218,20 @@ export default function AcceptInvitationPage() {
     </Suspense>
   );
 }
+
+const inputStyle: CSSProperties = {
+  width: "100%",
+  borderRadius: 16,
+  border: "1px solid rgba(148,163,184,0.18)",
+  background: "rgba(15,23,42,0.9)",
+  color: "#f8fafc",
+  padding: "14px 16px",
+  fontSize: 15,
+  outline: "none",
+  fontFamily: "inherit"
+};
+
+const fieldLabelStyle: CSSProperties = {
+  color: "#cbd5e1",
+  fontSize: 14
+};

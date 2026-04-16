@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { AuthNotice, AuthShell } from "../../../components/auth-shell";
+import { PasswordField } from "../../../components/password-field";
 import { useUiText } from "../../../components/site-language-provider";
 import { formatAuthErrorMessage } from "../../../lib/auth/error";
 import {
@@ -83,7 +84,6 @@ function LoginPageContent() {
     intent: "login",
     returnTo: nextPath
   });
-  const emailPlaceholder = locale === "en" ? "name@company.com" : "is@sirketiniz.com";
 
   return (
     <AuthShell
@@ -127,24 +127,19 @@ function LoginPageContent() {
             onChange={(event) => setEmail(event.target.value)}
             type="email"
             autoComplete="email"
-            placeholder={emailPlaceholder}
             required
             style={inputStyle}
           />
         </label>
 
-        <label style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Şifre")}</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
-            placeholder="••••••••"
-            required
-            style={inputStyle}
-          />
-        </label>
+        <PasswordField
+          label={t("Şifre")}
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete="current-password"
+          required
+          inputStyle={inputStyle}
+        />
 
         <button type="submit" disabled={loading} style={primaryButtonStyle}>
           {loading ? t("Giriş yapılıyor...") : t("Giriş Yap")}

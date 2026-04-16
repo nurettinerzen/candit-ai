@@ -145,19 +145,25 @@ export class MembersService {
       throw new BadRequestException("Ad soyad ve e-posta zorunludur.");
     }
 
-    const existingUser = await this.prisma.user.findUnique({
+    const existingUsers = await this.prisma.user.findMany({
       where: {
-        tenantId_email: {
-          tenantId: input.tenantId,
-          email
-        }
+        email,
+        deletedAt: null
       },
       select: {
         id: true,
+        tenantId: true,
         status: true,
         deletedAt: true
-      }
+      },
+      take: 2
     });
+    const existingUser = existingUsers.find((user) => user.tenantId === input.tenantId);
+    const otherTenantUser = existingUsers.find((user) => user.tenantId !== input.tenantId);
+
+    if (otherTenantUser) {
+      throw new ConflictException("Bu e-posta adresi başka bir Candit hesabında kullanılıyor.");
+    }
 
     if (existingUser?.deletedAt) {
       throw new ConflictException("Silinmiş kullanıcı için yeni davet oluşturulamaz.");

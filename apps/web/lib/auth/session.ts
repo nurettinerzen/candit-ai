@@ -9,7 +9,6 @@ import {
   clearStoredSession,
   isExplicitlyLoggedOut,
   persistSession,
-  readLastTenantId,
   readStoredSession,
   setExplicitlyLoggedOut
 } from "./session-store";
@@ -200,7 +199,6 @@ export function buildAuthHeaders(session: WebAuthSession | null): Record<string,
 }
 
 export async function loginWithPassword(input: {
-  tenantId?: string;
   email: string;
   password: string;
 }): Promise<WebAuthSession> {
@@ -334,7 +332,7 @@ export async function signupWithPassword(input: {
   };
 }
 
-export async function requestPasswordReset(input: { email: string; tenantId?: string }) {
+export async function requestPasswordReset(input: { email: string }) {
   const response = await fetch(`${API_BASE_URL}/auth/password/forgot`, {
     method: "POST",
     headers: {
@@ -445,6 +443,85 @@ export async function resendEmailVerification(session: WebAuthSession | null) {
   return payload;
 }
 
+export async function changePasswordForCurrentSession(
+  session: WebAuthSession | null,
+  input: {
+    currentPassword: string;
+    newPassword: string;
+  }
+): Promise<WebAuthSession> {
+  if (!session) {
+    throw new Error("Aktif oturum bulunamadi.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/auth/password/change`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...buildAuthHeaders(session)
+    },
+    credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
+    body: JSON.stringify(input),
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as AuthResponsePayload;
+
+  if (!response.ok || !payload.user?.id || !payload.user.tenantId) {
+    throw createAuthError(payload, `Sifre degistirilemedi (${response.status}).`);
+  }
+
+  const isCookieTransport = AUTH_TOKEN_TRANSPORT === "cookie";
+
+  if (!isCookieTransport && !payload.accessToken) {
+    throw new Error("Sifre degistirme cevabi access token icermiyor.");
+  }
+
+  const nextSession = buildSessionFromPayload(payload, isCookieTransport ? "jwt_cookie" : "jwt");
+  setExplicitlyLoggedOut(false);
+  persistSession(nextSession);
+  return nextSession;
+}
+
+export async function deleteCurrentAccount(
+  session: WebAuthSession | null,
+  input: {
+    currentPassword: string;
+    confirmationText: string;
+  }
+) {
+  if (!session) {
+    throw new Error("Aktif oturum bulunamadi.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/auth/account/delete`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...buildAuthHeaders(session)
+    },
+    credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
+    body: JSON.stringify(input),
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as {
+    ok?: boolean;
+    message?: string | string[];
+  };
+
+  if (!response.ok) {
+    throw new Error(
+      resolveErrorMessage(payload.message, `Hesap silinemedi (${response.status}).`)
+    );
+  }
+
+  clearStoredSession();
+  setExplicitlyLoggedOut(true);
+
+  return payload;
+}
+
 export function readAuthFlowError(error: unknown): AuthFlowError | null {
   if (!error || typeof error !== "object") {
     return null;
@@ -534,13 +611,11 @@ export async function getAuthProviders() {
 
 export function getGoogleAuthAuthorizeUrl(input: {
   intent: "login" | "signup";
-  tenantId?: string | null;
   companyName?: string | null;
   returnTo?: string;
 }) {
   return buildPublicApiUrl("auth/google/authorize", {
     intent: input.intent,
-    tenantId: input.tenantId ?? undefined,
     companyName: input.companyName ?? undefined,
     returnTo: input.returnTo ?? "/dashboard"
   });
@@ -680,10 +755,6 @@ export function loginWithDemoSession(): WebAuthSession {
 
 export function saveSession(session: WebAuthSession) {
   persistSession(session);
-}
-
-export function getLastTenantId() {
-  return readLastTenantId();
 }
 
 export async function logoutCurrentSession(session: WebAuthSession | null) {

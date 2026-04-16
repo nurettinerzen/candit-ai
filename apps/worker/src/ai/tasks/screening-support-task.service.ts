@@ -85,7 +85,7 @@ export class ScreeningSupportTaskService {
     const rubric = await this.loadRubric(context.tenantId, context.taskRun.id, application.job.roleFamily);
     const screeningMode = this.normalizeScreeningMode(application.job.screeningMode);
     const screeningModeContext = this.buildScreeningModeContext(screeningMode);
-    const promptVersion = "screening_support.mode_aware.v1.tr";
+    const promptVersion = "screening_support.mode_aware.v2.tr";
     const fitScoreContext = this.buildFitScoreContext(latestFitScore);
     const requirementCoverage = this.buildRequirementCoverage(
       application.job.requirements,
@@ -139,6 +139,8 @@ export class ScreeningSupportTaskService {
         "required/unresolved madde, capability'nin hic olmadigi anlamina gelmeyebilir; fit baglaminda kanit varsa bunu kapsam veya derinlik teyidi olarak yorumla.",
         "fitRiskSignals bos ve fit tarafinda missingInformation bos olan direct-fit adayda unresolved maddeleri blocker gibi degil, follow-up gibi yorumla.",
         "Lokasyon, commute veya farkli sehir bilgisi recruiter warning'idir; explicit remote-only veya fiziksel katilimi reddeden acik blocker yoksa recommendedOutcome'u tek basina dusurmesin.",
+        "screeningDecisionContext.operationalWarnings alanini recruiter warning'i olarak ele al; fitStrengthSignals ve exact-role kanitini override etmek icin kullanma.",
+        "Counterfactual dusun: ayni adayda role-fit kaniti ayni kalip yalnizca lokasyon degisiyorsa outcome'u default olarak koru; sadece warning veya follow-up notu degisebilir.",
         "adjacent_fit veya borderline adayda execution teyit ihtiyaci belirginsa varsayilan eksen ADVANCE degil, HOLD olmali.",
         screeningModeContext.systemInstruction,
         "Nihai ise alim karari verme; sadece recruiter icin screening onerisi uret."
@@ -166,7 +168,17 @@ export class ScreeningSupportTaskService {
           shiftType: application.job.shiftType,
           screeningMode,
           jdText: application.job.jdText,
-          requirements: application.job.requirements.map((item) => ({
+          requirements: application.job.requirements
+            .filter((item) => !this.isOperationalRequirementKey(item.key))
+            .map((item) => ({
+              id: item.id,
+              key: item.key,
+              value: item.value,
+              required: item.required
+            })),
+          operationalRequirements: application.job.requirements
+            .filter((item) => this.isOperationalRequirementKey(item.key))
+            .map((item) => ({
             id: item.id,
             key: item.key,
             value: item.value,
@@ -193,6 +205,8 @@ export class ScreeningSupportTaskService {
           "fitStrengthSignals guclu ve fitRiskSignals bos ya da operasyonel warning seviyesindeyse, eksik maddeler yalnizca teyit niteligindeyse ADVANCE'i tercih et",
           "fitBand=direct_fit, interviewReadiness=ready_now, fitRiskSignals bos ve fitScoreContext.missingInformation bos ise; unresolvedRequirements 1-3 adet olsa bile bunlari follow-up olarak yaz ve default sonucu ADVANCE tarafinda tut",
           "location_warning, long_commute veya farkli sehir notlari tek basina outcome dusurme nedeni degildir; bunlari recruiter warning'i olarak yaz",
+          "screeningDecisionContext.operationalWarnings alanindaki notlar, explicit fiziksel katilim imkansizligi veya remote-only reddi yoksa ADVANCE/HOLD/REVIEW sonucunu tek basina degistirmesin",
+          "Ayni adayda yalnizca lokasyon degismis gibi gorunen vakalarda outcome'u mevcut role ait kanita gore koru; warning/follow-up dilini ayarla",
           "fitBand=adjacent_fit veya interviewReadiness=borderline ise; execution teyit ihtiyaci belirginse sonucu ADVANCE yerine HOLD tarafinda tut",
           "Summary bir recruiter'in tek bakista anlayacagi sekilde, mevcut role gore 1-2 temel guclu sinyal ve en buyuk riski yansitsin",
           "Weak-fit adaylarda summary exact mismatch'i acikca adlandirsin; genel ve yumusak bir dil kullanma",
@@ -446,6 +460,7 @@ export class ScreeningSupportTaskService {
       needsValidationRequired: string[];
       uncoveredRequired: string[];
       matchedPreferred: string[];
+      operationalWarnings: string[];
     };
     fitScoreContext: {
       overallScore: number;
@@ -631,8 +646,14 @@ export class ScreeningSupportTaskService {
       confidence: Number(fitScore.confidence),
       categories: this.extractFitScoreCategories(fitScore.subScoresJson),
       strengths: this.toStringList(fitScore.strengthsJson),
-      risks: this.toStringList(fitScore.risksJson),
-      missingInformation: this.toStringList(fitScore.missingInfoJson),
+      risks: this.toStringList(fitScore.risksJson).filter((item) => !this.looksLikeOperationalWarning(item)),
+      operationalWarnings: this.uniqueStrings([
+        ...this.toStringList(fitScore.risksJson).filter((item) => this.looksLikeOperationalWarning(item)),
+        ...this.toStringList(fitScore.missingInfoJson).filter((item) => this.looksLikeOperationalWarning(item))
+      ]).slice(0, 5),
+      missingInformation: this.toStringList(fitScore.missingInfoJson).filter(
+        (item) => !this.looksLikeOperationalWarning(item)
+      ),
       fitBand: this.parseFitBand(reasoning.fitBand),
       interviewReadiness: this.parseInterviewReadiness(reasoning.interviewReadiness),
       fitBandReasoning:
@@ -649,6 +670,7 @@ export class ScreeningSupportTaskService {
       categories: Array<{ key: string; label: string; score: number }>;
       strengths: string[];
       risks: string[];
+      operationalWarnings: string[];
       missingInformation: string[];
       fitBand: "direct_fit" | "adjacent_fit" | "weak_fit" | null;
       interviewReadiness: "ready_now" | "borderline" | "not_for_this_role" | null;
@@ -662,6 +684,7 @@ export class ScreeningSupportTaskService {
       needsValidationRequired: string[];
       uncoveredRequired: string[];
       matchedPreferred: string[];
+      operationalWarnings: string[];
     };
     job: {
       title: string;
@@ -673,6 +696,13 @@ export class ScreeningSupportTaskService {
     const sortedCategories = [...(input.fitScoreContext?.categories ?? [])]
       .filter((item) => !/lokasyon|location/i.test(`${item.key} ${item.label}`))
       .sort((left, right) => right.score - left.score);
+    const operationalWarnings = this.uniqueStrings([
+      ...(input.fitScoreContext?.operationalWarnings ?? []),
+      ...input.requirementCoverage.operationalWarnings
+    ]).slice(0, 5);
+    const fitRiskSignals = this.uniqueStrings(
+      (input.fitScoreContext?.risks ?? []).filter((item) => !this.looksLikeOperationalWarning(item))
+    ).slice(0, 5);
 
     return {
       roleSummary: {
@@ -696,7 +726,8 @@ export class ScreeningSupportTaskService {
         score: item.score
       })),
       fitStrengthSignals: (input.fitScoreContext?.strengths ?? []).slice(0, 5),
-      fitRiskSignals: (input.fitScoreContext?.risks ?? []).slice(0, 5),
+      fitRiskSignals,
+      operationalWarnings,
       unresolvedRequirements: input.requirementCoverage.uncoveredRequired.slice(0, 5),
       matchedRequirements: input.requirementCoverage.matchedRequired.slice(0, 5),
       partialRequirements: input.requirementCoverage.partialRequired.slice(0, 5),
@@ -714,7 +745,7 @@ export class ScreeningSupportTaskService {
         borderline: "Aday tamamen disarida degil ama sonuc kritik teyitlere veya belirgin gap yorumuna bagli.",
         not_for_this_role: "Aday bu ilanin mevcut rolu icin mulakat asamasina tasinmamalidir."
       },
-      requirementValidationGuide: "matchedRequirements acik veya guclu kismi kaniti, partialRequirements kismi kaniti, requirementsNeedingValidation ise capability olabilir ama ayrinti net degil durumunu anlatir. unresolvedRequirements listesi ise belirgin kanit gorulmeyen maddeleri temsil eder; bu liste tek basina disqualify sebebi degil, ozellikle direct-fit adaylarda follow-up olarak ele alinabilir.",
+      requirementValidationGuide: "matchedRequirements acik veya guclu kismi kaniti, partialRequirements kismi kaniti, requirementsNeedingValidation ise capability olabilir ama ayrinti net degil durumunu anlatir. unresolvedRequirements listesi ise core capability tarafinda belirgin kanit gorulmeyen maddeleri temsil eder; bu liste tek basina disqualify sebebi degil, ozellikle direct-fit adaylarda follow-up olarak ele alinabilir. operationalWarnings ise lokasyon ve calisma modeli gibi recruiter warning notlaridir.",
       outcomeCalibrationGuide: {
         advance: "Aday bu exact role direct fit veya guclu direct-adjacent fit ise, cekirdek execution kaniti belirginse ve recruiter'in bu ilan icin gorusmeye almasi makulse ADVANCE kullan.",
         hold: "Aday umut verici ama 1-2 kritik teyit sonucu belirgin bicimde degistirecekse HOLD kullan.",
@@ -728,6 +759,7 @@ export class ScreeningSupportTaskService {
           "Eksik bilgi tek basina REVIEW sebebi degildir.",
           "direct_fit + ready_now + guclu fit score kombinasyonunda yalnizca 1-2 teyit maddesi varsa default eksen ADVANCE olmaya devam edebilir.",
           "Lokasyon warning'i recruiter notudur; explicit remote-only veya fiziksel katilim reddi yoksa tek basina downgrade nedeni yapma.",
+          "operationalWarnings alanini outcome dusurmek icin degil, recruiter follow-up notu olarak kullan.",
           "Genel profesyonellik, alakasiz deneyim veya sadece yonetici title'i ADVANCE icin yeterli degildir.",
           "Guclu direct fit adaylari asiri ihtiyatla asagi cekme.",
           "Adayi daha uygun oldugu baska bir role gore ADVANCE etme.",
@@ -743,9 +775,18 @@ export class ScreeningSupportTaskService {
     profileJson: unknown
   ) {
     const evidenceCorpus = this.buildRequirementEvidenceCorpus(profileJson);
-    const required = requirements.filter((item) => item.required);
+    const coreRequired = requirements.filter(
+      (item) => item.required && !this.isOperationalRequirementKey(item.key)
+    );
+    const operationalRequired = requirements.filter(
+      (item) => item.required && this.isOperationalRequirementKey(item.key)
+    );
     const preferred = requirements.filter((item) => !item.required);
-    const requiredStates = required.map((item) => ({
+    const requiredStates = coreRequired.map((item) => ({
+      item,
+      status: this.evaluateRequirementEvidence(item, evidenceCorpus)
+    }));
+    const operationalStates = operationalRequired.map((item) => ({
       item,
       status: this.evaluateRequirementEvidence(item, evidenceCorpus)
     }));
@@ -771,12 +812,15 @@ export class ScreeningSupportTaskService {
       .map(({ item }) => item.value);
 
     return {
-      requiredCount: required.length,
+      requiredCount: coreRequired.length,
       matchedRequired,
       partialRequired,
       needsValidationRequired,
       uncoveredRequired,
-      matchedPreferred
+      matchedPreferred,
+      operationalWarnings: operationalStates
+        .map(({ item, status }) => this.describeOperationalRequirement(item.value, item.key, status))
+        .filter(Boolean)
     };
   }
 
@@ -1162,6 +1206,45 @@ export class ScreeningSupportTaskService {
       seen.add(key);
       return true;
     });
+  }
+
+  private isOperationalRequirementKey(key: string) {
+    const normalized = key
+      .toLocaleLowerCase("tr-TR")
+      .replace(/ç/g, "c")
+      .replace(/ğ/g, "g")
+      .replace(/ı/g, "i")
+      .replace(/ö/g, "o")
+      .replace(/ş/g, "s")
+      .replace(/ü/g, "u");
+
+    return normalized === "location"
+      || normalized === "work_model"
+      || /lokasyon|location|work_model|calisma modeli|calisma_modeli|remote|hibrit/.test(normalized);
+  }
+
+  private describeOperationalRequirement(
+    value: string,
+    key: string,
+    status: "proven" | "partial" | "needs_validation" | "absent"
+  ) {
+    if (status === "proven") {
+      return "";
+    }
+
+    if (/location|lokasyon/i.test(key)) {
+      return `Lokasyon ve fiziksel katilim konusu recruiter tarafinda teyit edilmeli: ${value}.`;
+    }
+
+    if (/work_model|remote|hibrit|calisma modeli/i.test(key)) {
+      return `Calisma modeli ve ofis ritmi recruiter tarafinda teyit edilmeli: ${value}.`;
+    }
+
+    return `Operasyonel uygunluk teyidi gerekli: ${value}.`;
+  }
+
+  private looksLikeOperationalWarning(value: string) {
+    return /lokasyon|location|sehir|ilce|ulasim|commute|remote|hibrit|ofis|tasinma|relocation/i.test(value);
   }
 
   private textsOverlap(left: string, right: string) {

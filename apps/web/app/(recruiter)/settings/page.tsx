@@ -3,11 +3,23 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageTitleWithGuide } from "../../../components/page-guide";
+import { PasswordField, PasswordRequirements } from "../../../components/password-field";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { useUiText } from "../../../components/site-language-provider";
 import { apiClient } from "../../../lib/api-client";
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_POLICY_ERROR_MESSAGE,
+  getPasswordPolicyStatus
+} from "../../../lib/auth/password-policy";
 import { getRoleLabel, isInternalAdminSession } from "../../../lib/auth/policy";
-import { resendEmailVerification, resolveActiveSession, saveSession } from "../../../lib/auth/session";
+import {
+  changePasswordForCurrentSession,
+  deleteCurrentAccount,
+  resendEmailVerification,
+  resolveActiveSession,
+  saveSession
+} from "../../../lib/auth/session";
 import { formatDateOnly } from "../../../lib/format";
 import type { BillingOverviewReadModel, MemberDirectoryItem } from "../../../lib/types";
 
@@ -37,8 +49,14 @@ export default function SettingsPage() {
   const { t, locale } = useUiText();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const currentSession = useMemo(() => resolveActiveSession(), []);
+  const [currentSession, setCurrentSession] = useState(() => resolveActiveSession());
   const isInternalAdmin = isInternalAdminSession(currentSession);
+  const isOwner = Boolean(
+    currentSession?.roles
+      .split(",")
+      .map((role) => role.trim())
+      .includes("owner")
+  );
 
   const [members, setMembers] = useState<MemberDirectoryItem[]>([]);
   const [billing, setBilling] = useState<BillingOverviewReadModel | null>(null);
@@ -54,11 +72,23 @@ export default function SettingsPage() {
   const [memberActionPreviewUrl, setMemberActionPreviewUrl] = useState("");
   const [verificationNotice, setVerificationNotice] = useState("");
   const [verificationPreviewUrl, setVerificationPreviewUrl] = useState("");
+  const [securityNotice, setSecurityNotice] = useState("");
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [deleteAccountForm, setDeleteAccountForm] = useState({
+    currentPassword: "",
+    confirmationText: ""
+  });
   const [inviteForm, setInviteForm] = useState({
     fullName: "",
     email: "",
     role: "staff" as "manager" | "staff"
   });
+  const deleteAccountConfirmationPlaceholder =
+    locale === "en" ? "delete my account" : "hesabimi sil";
 
   const memberRoleOptions = useMemo(
     () =>
@@ -160,6 +190,7 @@ export default function SettingsPage() {
   async function handleResendOwnVerification() {
     setBusyKey("verify-email");
     setError("");
+    setSecurityNotice("");
     setVerificationNotice("");
     setVerificationPreviewUrl("");
 
@@ -188,6 +219,91 @@ export default function SettingsPage() {
         verificationError instanceof Error
           ? verificationError.message
           : t("Doğrulama e-postası tekrar gönderilemedi.")
+      );
+    } finally {
+      setBusyKey("");
+    }
+  }
+
+  async function handlePasswordChange(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!getPasswordPolicyStatus(passwordForm.newPassword).isValid) {
+      setError(t(PASSWORD_POLICY_ERROR_MESSAGE));
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setError(locale === "en" ? "Password confirmation does not match." : "Şifre tekrarı eşleşmiyor.");
+      return;
+    }
+
+    setBusyKey("password:change");
+    setError("");
+    setSecurityNotice("");
+
+    try {
+      const nextSession = await changePasswordForCurrentSession(currentSession, {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+      setCurrentSession(nextSession);
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      });
+      setSecurityNotice(
+        locale === "en"
+          ? "Your password was updated. Other active sessions were signed out."
+          : "Şifreniz güncellendi. Diğer aktif oturumlar kapatıldı."
+      );
+    } catch (changeError) {
+      setError(
+        changeError instanceof Error
+          ? changeError.message
+          : t("Şifre değiştirilemedi.")
+      );
+    } finally {
+      setBusyKey("");
+    }
+  }
+
+  async function handleDeleteAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!isOwner) {
+      setError(
+        locale === "en"
+          ? "Only the account owner can delete the workspace."
+          : "Çalışma alanını yalnızca hesap sahibi silebilir."
+      );
+      return;
+    }
+
+    if (
+      !window.confirm(
+        locale === "en"
+          ? "This will permanently delete the entire workspace, all members, candidates, interviews, uploaded CVs, and billing data. Continue?"
+          : "Bu işlem tüm çalışma alanını, üyeleri, adayları, mülakatları, yüklenen CV dosyalarını ve faturalandırma verilerini kalıcı olarak silecek. Devam etmek istiyor musunuz?"
+      )
+    ) {
+      return;
+    }
+
+    setBusyKey("account:delete");
+    setError("");
+    setSecurityNotice("");
+
+    try {
+      await deleteCurrentAccount(currentSession, deleteAccountForm);
+      setCurrentSession(null);
+      window.location.assign("/");
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : t("Hesap silinemedi.")
       );
     } finally {
       setBusyKey("");
@@ -303,6 +419,10 @@ export default function SettingsPage() {
         currentSession.userId === result.previousOwnerUserId
       ) {
         saveSession({
+          ...currentSession,
+          roles: "manager"
+        });
+        setCurrentSession({
           ...currentSession,
           roles: "manager"
         });
@@ -435,6 +555,7 @@ export default function SettingsPage() {
       {error ? <NoticeBox tone="danger" message={error} /> : null}
       {memberActionNotice ? <NoticeBox tone="success" message={memberActionNotice} /> : null}
       {verificationNotice ? <NoticeBox tone="success" message={verificationNotice} /> : null}
+      {securityNotice ? <NoticeBox tone="success" message={securityNotice} /> : null}
       {billingLoadError ? <NoticeBox tone="danger" message={billingLoadError} /> : null}
 
       {memberActionPreviewUrl ? (
@@ -485,6 +606,75 @@ export default function SettingsPage() {
           </div>
         </section>
       ) : null}
+
+      <section className="panel" style={{ display: "grid", gap: 16 }}>
+        <div>
+          <h2 style={{ margin: "0 0 6px" }}>
+            {locale === "en" ? "Security" : "Güvenlik"}
+          </h2>
+          <p className="small text-muted" style={{ margin: 0 }}>
+            {locale === "en"
+              ? "Update your password and close older sessions from one place."
+              : "Şifrenizi güncelleyin ve eski oturumları tek yerden kapatın."}
+          </p>
+        </div>
+
+        <form style={{ display: "grid", gap: 12 }} onSubmit={handlePasswordChange}>
+          <div className="inline-grid" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <PasswordField
+              label={locale === "en" ? "Current password" : "Mevcut şifre"}
+              showLabel={false}
+              value={passwordForm.currentPassword}
+              onChange={(event) =>
+                setPasswordForm((prev) => ({ ...prev, currentPassword: event.target.value }))
+              }
+              autoComplete="current-password"
+              placeholder={locale === "en" ? "Current password" : "Mevcut şifre"}
+              required
+              inputClassName="input"
+              useDefaultInputStyle={false}
+            />
+            <PasswordField
+              label={locale === "en" ? "New password" : "Yeni şifre"}
+              showLabel={false}
+              value={passwordForm.newPassword}
+              onChange={(event) =>
+                setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))
+              }
+              autoComplete="new-password"
+              minLength={PASSWORD_MIN_LENGTH}
+              placeholder={locale === "en" ? "New password" : "Yeni şifre"}
+              required
+              inputClassName="input"
+              useDefaultInputStyle={false}
+            />
+            <PasswordField
+              label={locale === "en" ? "Repeat new password" : "Yeni şifre tekrar"}
+              showLabel={false}
+              value={passwordForm.confirmPassword}
+              onChange={(event) =>
+                setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))
+              }
+              autoComplete="new-password"
+              minLength={PASSWORD_MIN_LENGTH}
+              placeholder={locale === "en" ? "Repeat new password" : "Yeni şifre tekrar"}
+              required
+              inputClassName="input"
+              useDefaultInputStyle={false}
+            />
+          </div>
+
+          <PasswordRequirements password={passwordForm.newPassword} />
+
+          <button type="submit" className="ghost-button" disabled={busyKey === "password:change"}>
+            {busyKey === "password:change"
+              ? t("Hazırlanıyor...")
+              : locale === "en"
+                ? "Update password"
+                : "Şifreyi güncelle"}
+          </button>
+        </form>
+      </section>
 
       <section className="panel">
         <h2 style={{ margin: "0 0 6px" }}>
@@ -700,6 +890,68 @@ export default function SettingsPage() {
           </p>
         ) : null}
       </section>
+
+      {isOwner ? (
+        <section className="panel" style={{ display: "grid", gap: 16, borderColor: "rgba(239,68,68,0.24)" }}>
+          <div>
+            <h2 style={{ margin: "0 0 6px", color: "var(--danger, #ef4444)" }}>
+              {locale === "en" ? "Delete workspace" : "Hesabı sil"}
+            </h2>
+            <p className="small text-muted" style={{ margin: 0 }}>
+              {locale === "en"
+                ? "This permanently removes the full workspace, members, uploaded files, interviews, and billing records from the application."
+                : "Bu işlem tüm çalışma alanını, üyeleri, yüklenen dosyaları, mülakatları ve uygulamadaki faturalandırma kayıtlarını kalıcı olarak siler."}
+            </p>
+            <p className="small text-muted" style={{ margin: "8px 0 0" }}>
+              {locale === "en"
+                ? `Type ${deleteAccountConfirmationPlaceholder} to confirm.`
+                : `Onaylamak için ${deleteAccountConfirmationPlaceholder} yazın.`}
+            </p>
+          </div>
+
+          <form
+            className="inline-grid"
+            style={{ gridTemplateColumns: "1fr 1fr auto", gap: 12 }}
+            onSubmit={handleDeleteAccount}
+          >
+            <PasswordField
+              label={locale === "en" ? "Current password" : "Mevcut şifre"}
+              showLabel={false}
+              value={deleteAccountForm.currentPassword}
+              onChange={(event) =>
+                setDeleteAccountForm((prev) => ({
+                  ...prev,
+                  currentPassword: event.target.value
+                }))
+              }
+              autoComplete="current-password"
+              placeholder={locale === "en" ? "Current password" : "Mevcut şifre"}
+              required
+              inputClassName="input"
+              useDefaultInputStyle={false}
+            />
+            <input
+              className="input"
+              value={deleteAccountForm.confirmationText}
+              onChange={(event) =>
+                setDeleteAccountForm((prev) => ({
+                  ...prev,
+                  confirmationText: event.target.value
+                }))
+              }
+              placeholder={deleteAccountConfirmationPlaceholder}
+              required
+            />
+            <button type="submit" className="danger-button" disabled={busyKey === "account:delete"}>
+              {busyKey === "account:delete"
+                ? t("Hazırlanıyor...")
+                : locale === "en"
+                  ? "Delete permanently"
+                  : "Kalıcı olarak sil"}
+            </button>
+          </form>
+        </section>
+      ) : null}
     </section>
   );
 }

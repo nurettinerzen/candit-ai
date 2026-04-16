@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   GoneException,
   Injectable,
@@ -25,7 +26,13 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { SecurityEventsService } from "../security-events/security-events.service";
-import { hashPassword, verifyPassword } from "./password";
+import { FileStorageService } from "../storage/file-storage.service";
+import {
+  PASSWORD_POLICY_ERROR_MESSAGE,
+  hashPassword,
+  isPasswordPolicySatisfied,
+  verifyPassword
+} from "./password";
 
 type AccessTokenPayload = {
   sub: string;
@@ -143,6 +150,8 @@ const EMAIL_VERIFICATION_REQUIRED_CODE = "EMAIL_VERIFICATION_REQUIRED";
 const AUTH_EMAIL_VERIFICATION_REQUIRED_FLAG = "auth.email_verification.required";
 const AUTH_EMAIL_VERIFICATION_SEND_EMAIL_FLAG = "auth.email_verification.send_email";
 const PASSWORD_RESET_LABEL = "Sifremi sifirla";
+const DELETE_ACCOUNT_CONFIRMATION_TR = "hesabimi sil";
+const DELETE_ACCOUNT_CONFIRMATION_EN = "delete my account";
 
 function addDays(base: Date, days: number) {
   return new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
@@ -171,6 +180,23 @@ function normalizeSlugPart(value: string) {
     .replace(/-{2,}/g, "-");
 }
 
+function normalizeDeleteAccountConfirmation(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .replace(/\s+/g, " ");
+}
+
+function normalizeEmailAddress(value: string) {
+  return value.trim().toLowerCase();
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -181,40 +207,40 @@ export class AuthService {
     @Inject(FeatureFlagsService) private readonly featureFlagsService: FeatureFlagsService,
     @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
     @Inject(SecurityEventsService)
-    private readonly securityEventsService: SecurityEventsService
+    private readonly securityEventsService: SecurityEventsService,
+    @Inject(FileStorageService)
+    private readonly fileStorageService: FileStorageService
   ) {}
 
   async login(
-    input: { email: string; password: string; tenantId?: string },
+    input: { email: string; password: string },
     meta: SessionClientMeta = {}
   ) {
-    const normalizedEmail = input.email.toLowerCase().trim();
-    const resolvedTenantId = await this.resolveLoginTenantId(normalizedEmail, input.tenantId);
-
-    const user = await this.prisma.user.findUnique({
-      where: {
-        tenantId_email: {
-          tenantId: resolvedTenantId,
-          email: normalizedEmail
-        }
-      },
-      select: {
-        id: true,
-        tenantId: true,
-        email: true,
-        fullName: true,
-        role: true,
-        status: true,
-        deletedAt: true,
-        passwordHash: true,
-        emailVerifiedAt: true,
-        avatarUrl: true
+    const normalizedEmail = normalizeEmailAddress(input.email);
+    const user = await this.findUniqueUserByEmail(
+      normalizedEmail,
+      "Kullanıcı bulunamadı.",
+      "Bu e-posta birden fazla hesapta kayıtlı. Lütfen destek ekibiyle iletişime geçin."
+    ).catch(async (error) => {
+      if (error instanceof UnauthorizedException) {
+        await this.reportSecurityEvent({
+          source: "auth.login",
+          code: "auth.login.user_not_found",
+          message: "Taninmayan kullanici ile giris denemesi engellendi.",
+          severity: SecurityEventSeverity.WARNING,
+          ipAddress: meta.ipAddress,
+          userAgent: meta.userAgent,
+          metadata: {
+            email: normalizedEmail
+          }
+        });
       }
+
+      throw error;
     });
 
     if (!user || user.deletedAt) {
       await this.reportSecurityEvent({
-        tenantId: resolvedTenantId,
         source: "auth.login",
         code: "auth.login.user_not_found",
         message: "Taninmayan kullanici ile giris denemesi engellendi.",
@@ -327,11 +353,17 @@ export class AuthService {
   ) {
     const companyName = input.companyName.trim();
     const fullName = input.fullName.trim();
-    const email = input.email.toLowerCase().trim();
+    const email = normalizeEmailAddress(input.email);
 
     if (!companyName || !fullName) {
       throw new BadRequestException("Sirket adi ve ad soyad zorunludur.");
     }
+
+    if (!isPasswordPolicySatisfied(input.password)) {
+      throw new BadRequestException(PASSWORD_POLICY_ERROR_MESSAGE);
+    }
+
+    await this.assertEmailAvailableForNewAccount(email);
 
     const tenantId = await this.generateTenantId(companyName);
     const passwordHash = await hashPassword(input.password);
@@ -435,6 +467,10 @@ export class AuthService {
 
     if (invitation.user.status === UserStatus.DISABLED) {
       throw new ForbiddenException("Pasif kullanici daveti kabul edemez.");
+    }
+
+    if (!isPasswordPolicySatisfied(input.password)) {
+      throw new BadRequestException(PASSWORD_POLICY_ERROR_MESSAGE);
     }
 
     const now = new Date();
@@ -855,31 +891,19 @@ export class AuthService {
     };
   }
 
-  async requestPasswordReset(input: { email: string; tenantId?: string }) {
-    const normalizedEmail = input.email.toLowerCase().trim();
+  async requestPasswordReset(input: { email: string }) {
+    const normalizedEmail = normalizeEmailAddress(input.email);
 
     try {
-      const tenantId = await this.resolveLoginTenantId(normalizedEmail, input.tenantId);
-      const user = await this.prisma.user.findUnique({
-        where: {
-          tenantId_email: {
-            tenantId,
-            email: normalizedEmail
-          }
-        },
-        select: {
-          id: true,
-          tenantId: true,
-          email: true,
-          fullName: true,
-          role: true,
-          status: true,
-          deletedAt: true,
-          passwordHash: true,
-          emailVerifiedAt: true,
-          avatarUrl: true
-        }
-      });
+      const users = await this.findUsersByEmail(normalizedEmail);
+
+      if (users.length > 1) {
+        throw new BadRequestException(
+          "Bu e-posta birden fazla hesapta kayıtlı. Şifre yenileme için destek ekibiyle iletişime geçin."
+        );
+      }
+
+      const [user] = users;
 
       if (!user || user.deletedAt || user.status !== UserStatus.ACTIVE || !user.passwordHash) {
         return {
@@ -966,6 +990,10 @@ export class AuthService {
       throw new ForbiddenException("Bu kullanici sifre sifirlama islemi yapamaz.");
     }
 
+    if (!isPasswordPolicySatisfied(input.password)) {
+      throw new BadRequestException(PASSWORD_POLICY_ERROR_MESSAGE);
+    }
+
     const now = new Date();
     const passwordHash = await hashPassword(input.password);
 
@@ -1031,6 +1059,248 @@ export class AuthService {
     });
 
     return this.issueSessionForUserId(token.user.id, meta);
+  }
+
+  async changePassword(
+    input: {
+      userId: string;
+      tenantId: string;
+      sessionId?: string;
+      currentPassword: string;
+      newPassword: string;
+    },
+    meta: SessionClientMeta = {}
+  ) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: input.userId,
+        tenantId: input.tenantId,
+        deletedAt: null
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        email: true,
+        fullName: true,
+        role: true,
+        status: true,
+        deletedAt: true,
+        passwordHash: true,
+        emailVerifiedAt: true,
+        avatarUrl: true
+      }
+    });
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new NotFoundException("Kullanici bulunamadi.");
+    }
+
+    if (!user.passwordHash) {
+      throw new ForbiddenException("Bu hesap icin sifre degistirme kullanilamiyor.");
+    }
+
+    const currentPasswordMatches = await verifyPassword(
+      user.passwordHash,
+      input.currentPassword
+    );
+
+    if (!currentPasswordMatches) {
+      await this.reportSecurityEvent({
+        tenantId: user.tenantId,
+        userId: user.id,
+        sessionId: input.sessionId,
+        source: "auth.password.change",
+        code: "auth.password.change.invalid_current_password",
+        message: "Hatali mevcut sifre ile parola degistirme denemesi reddedildi.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent
+      });
+      throw new UnauthorizedException("Mevcut sifreniz hatali.");
+    }
+
+    if (input.currentPassword === input.newPassword) {
+      throw new BadRequestException("Yeni sifre mevcut sifreyle ayni olamaz.");
+    }
+
+    if (!isPasswordPolicySatisfied(input.newPassword)) {
+      throw new BadRequestException(PASSWORD_POLICY_ERROR_MESSAGE);
+    }
+
+    const now = new Date();
+    const passwordHash = await hashPassword(input.newPassword);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: {
+          id: user.id
+        },
+        data: {
+          passwordHash,
+          passwordSetAt: now,
+          emailVerifiedAt: user.emailVerifiedAt ?? now
+        }
+      });
+
+      await tx.authActionToken.updateMany({
+        where: {
+          userId: user.id,
+          type: AuthActionTokenType.PASSWORD_RESET,
+          consumedAt: null,
+          revokedAt: null
+        },
+        data: {
+          revokedAt: now
+        }
+      });
+
+      await tx.authSession.updateMany({
+        where: {
+          userId: user.id,
+          status: AuthSessionStatus.ACTIVE
+        },
+        data: {
+          status: AuthSessionStatus.REVOKED,
+          revokedAt: now,
+          revokedReason: "password_changed"
+        }
+      });
+
+      await tx.authRefreshToken.updateMany({
+        where: {
+          userId: user.id,
+          revokedAt: null
+        },
+        data: {
+          revokedAt: now,
+          revokedReason: "password_changed"
+        }
+      });
+    });
+
+    return this.issueSessionForUserId(user.id, meta);
+  }
+
+  async deleteCurrentAccount(
+    input: {
+      userId: string;
+      tenantId: string;
+      roles: AppRole[];
+      currentPassword: string;
+      confirmationText: string;
+      actorEmail?: string;
+    },
+    _meta: SessionClientMeta = {}
+  ) {
+    if (!input.roles.includes("owner")) {
+      throw new ForbiddenException("Tum hesabi yalnizca hesap sahibi silebilir.");
+    }
+
+    const normalizedConfirmation = normalizeDeleteAccountConfirmation(input.confirmationText);
+    if (
+      normalizedConfirmation !== DELETE_ACCOUNT_CONFIRMATION_TR &&
+      normalizedConfirmation !== DELETE_ACCOUNT_CONFIRMATION_EN
+    ) {
+      throw new BadRequestException("Onay metni eslesmiyor.");
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: input.userId,
+        tenantId: input.tenantId,
+        deletedAt: null
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        email: true,
+        fullName: true,
+        role: true,
+        status: true,
+        deletedAt: true,
+        passwordHash: true,
+        emailVerifiedAt: true,
+        avatarUrl: true
+      }
+    });
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new NotFoundException("Kullanici bulunamadi.");
+    }
+
+    if (!user.passwordHash) {
+      throw new ForbiddenException("Bu hesap icin parola dogrulamasi yapilamadi.");
+    }
+
+    const passwordMatches = await verifyPassword(user.passwordHash, input.currentPassword);
+    if (!passwordMatches) {
+      throw new UnauthorizedException("Mevcut sifreniz hatali.");
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tenant.delete({
+        where: {
+          id: input.tenantId
+        }
+      });
+
+      await tx.screeningTemplate.deleteMany({
+        where: {
+          tenantId: input.tenantId
+        }
+      });
+
+      await tx.interviewTemplate.deleteMany({
+        where: {
+          tenantId: input.tenantId
+        }
+      });
+
+      await tx.featureFlagOverride.deleteMany({
+        where: {
+          tenantId: input.tenantId
+        }
+      });
+
+      await tx.integrationSyncState.deleteMany({
+        where: {
+          tenantId: input.tenantId
+        }
+      });
+
+      await tx.webhookEvent.deleteMany({
+        where: {
+          tenantId: input.tenantId
+        }
+      });
+
+      await tx.workflowJob.deleteMany({
+        where: {
+          tenantId: input.tenantId
+        }
+      });
+
+      await tx.deadLetterJob.deleteMany({
+        where: {
+          tenantId: input.tenantId
+        }
+      });
+
+      await tx.billingTrialClaim.deleteMany({
+        where: {
+          OR: [
+            {
+              firstTenantId: input.tenantId
+            },
+            {
+              firstUserId: user.id
+            }
+          ]
+        }
+      });
+    });
+
+    await this.fileStorageService.removeTenantArtifacts(input.tenantId);
   }
 
   async sendEmailVerification(input: { userId: string; tenantId: string }) {
@@ -1179,7 +1449,6 @@ export class AuthService {
 
   async resolveGoogleAuth(input: {
     intent: "login" | "signup";
-    tenantId?: string;
     companyName?: string;
     profile: GoogleIdentityProfile;
   }) {
@@ -1187,10 +1456,12 @@ export class AuthService {
       throw new ForbiddenException("Google hesabi dogrulanmamis e-posta dondurdu.");
     }
 
-    const normalizedEmail = input.profile.email.toLowerCase().trim();
-    const resolvedTenantId = input.tenantId?.trim()
-      ? input.tenantId.trim()
-      : await this.resolveTenantIdForOauthEmail(normalizedEmail, input.intent);
+    const normalizedEmail = normalizeEmailAddress(input.profile.email);
+
+    const resolvedTenantId = await this.resolveTenantIdForOauthEmail(
+      normalizedEmail,
+      input.intent
+    );
 
     const existingIdentity = await this.prisma.userIdentity.findUnique({
       where: {
@@ -1662,7 +1933,7 @@ export class AuthService {
 
     if (users.length > 1) {
       throw new BadRequestException(
-        "Bu Google hesabi birden fazla sirket hesabina bagli. Lutfen tenant kodu ile giris yapin."
+        "Bu Google hesabı birden fazla hesaba bağlı. Lütfen destek ekibiyle iletişime geçin."
       );
     }
 
@@ -1795,6 +2066,8 @@ export class AuthService {
     providerSubject: string;
     companyName?: string;
   }) {
+    await this.assertEmailAvailableForNewAccount(input.email);
+
     const fallbackCompanyName =
       input.companyName && input.companyName.length >= 2
         ? input.companyName
@@ -1973,37 +2246,65 @@ export class AuthService {
     return createHash("sha256").update(rawToken).digest("hex");
   }
 
-  private async resolveLoginTenantId(email: string, tenantId?: string) {
-    const normalizedTenantId = tenantId?.trim();
-
-    if (normalizedTenantId) {
-      return normalizedTenantId;
-    }
-
-    const users = await this.prisma.user.findMany({
+  private async findUsersByEmail(email: string) {
+    return this.prisma.user.findMany({
       where: {
         email,
         deletedAt: null
       },
       select: {
-        tenantId: true
+        id: true,
+        tenantId: true,
+        email: true,
+        fullName: true,
+        role: true,
+        status: true,
+        deletedAt: true,
+        passwordHash: true,
+        emailVerifiedAt: true,
+        avatarUrl: true
       },
-      distinct: ["tenantId"],
+      orderBy: {
+        createdAt: "asc"
+      },
       take: 2
     });
+  }
 
-    if (users.length === 1) {
-      const [user] = users;
-      if (user) {
-        return user.tenantId;
-      }
+  private async findUniqueUserByEmail(
+    email: string,
+    notFoundMessage: string,
+    ambiguousMessage: string
+  ) {
+    const users = await this.findUsersByEmail(email);
+
+    if (users.length === 0) {
+      throw new UnauthorizedException(notFoundMessage);
     }
 
     if (users.length > 1) {
-      throw new BadRequestException("Bu e-posta birden fazla hesaba bagli. Lutfen tenant kodunu girin.");
+      throw new BadRequestException(ambiguousMessage);
     }
 
-    throw new UnauthorizedException("Kullanıcı bulunamadı.");
+    return users[0]!;
+  }
+
+  private async assertEmailAvailableForNewAccount(email: string) {
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        email,
+        deletedAt: null
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (existingUser) {
+      throw new ConflictException(
+        "Bu e-posta adresiyle zaten bir hesap var. Lütfen giriş yapın."
+      );
+    }
   }
 
   private async generateTenantId(companyName: string) {

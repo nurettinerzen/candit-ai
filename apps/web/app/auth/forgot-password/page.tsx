@@ -7,26 +7,20 @@ import { useUiText } from "../../../components/site-language-provider";
 import { requestPasswordReset } from "../../../lib/auth/session";
 
 export default function ForgotPasswordPage() {
-  const { locale, t } = useUiText();
+  const { t } = useUiText();
   const [email, setEmail] = useState("");
-  const [tenantId, setTenantId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<{
     previewUrl?: string | null;
   } | null>(null);
-  const emailPlaceholder = locale === "en" ? "name@company.com" : "is@sirketiniz.com";
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      const response = await requestPasswordReset({
-        email,
-        tenantId: tenantId.trim() || undefined
-      });
+      const response = await requestPasswordReset({ email });
       setResult({
         previewUrl: response.previewUrl ?? null
       });
@@ -44,8 +38,8 @@ export default function ForgotPasswordPage() {
   return (
     <AuthShell
       badge={t("Şifre sıfırlama")}
-      title={t("Yeni parola bağlantısı iste")}
-      description={t("E-posta adresini yaz, varsa tenant kodunu ekle; sana yeni şifre oluşturma bağlantısı hazırlayalım.")}
+      title={t("Şifrenizi sıfırlayın")}
+      description={t("Kayıtlı e-posta adresinizi girin. Hesabınız varsa, şifrenizi yenilemeniz için size bir bağlantı gönderelim.")}
       footer={
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <Link href="/auth/login" style={{ color: "inherit", textDecoration: "none" }}>
@@ -62,39 +56,28 @@ export default function ForgotPasswordPage() {
         {result ? (
           <AuthNotice
             tone="success"
-            message={t("Bağlantı hazırlandı. Hesabın varsa e-posta kutuna veya lokal preview linkine bakabilirsin.")}
+            message={t("Hesabınız varsa, şifre sıfırlama bağlantısını e-posta kutunuza gönderdik.")}
           />
         ) : null}
 
         <label style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("E-posta")}</span>
+          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Kayıtlı e-posta adresi")}</span>
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder={emailPlaceholder}
             required
             style={inputStyle}
           />
         </label>
 
-        <label style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Tenant kodu")} <span style={{ color: "#64748b" }}>({t("opsiyonel")})</span></span>
-          <input
-            value={tenantId}
-            onChange={(event) => setTenantId(event.target.value)}
-            placeholder="acme-hiring"
-            style={inputStyle}
-          />
-        </label>
-
         <button type="submit" disabled={loading} style={primaryButtonStyle}>
-          {loading ? t("Hazırlanıyor...") : t("Şifre sıfırlama bağlantısı gönder")}
+          {loading ? t("Hazırlanıyor...") : t("Sıfırlama bağlantısını gönder")}
         </button>
 
         {result?.previewUrl ? (
           <a href={result.previewUrl} style={secondaryButtonStyle}>
-            {t("Lokal reset bağlantısını aç")}
+            {t("Geliştirme bağlantısını aç")}
           </a>
         ) : null}
       </form>
@@ -115,22 +98,27 @@ const inputStyle: CSSProperties = {
 };
 
 const primaryButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   width: "100%",
   border: "none",
   borderRadius: 16,
-  background: "linear-gradient(135deg, #0ea5e9, #f97316)",
+  background: "#5046e5",
   color: "#fff",
   fontSize: 15,
   fontWeight: 700,
   padding: "14px 18px",
   cursor: "pointer",
-  fontFamily: "inherit"
+  fontFamily: "inherit",
+  textDecoration: "none"
 };
 
 const secondaryButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
+  gap: 10,
   width: "100%",
   borderRadius: 16,
   border: "1px solid rgba(148,163,184,0.18)",

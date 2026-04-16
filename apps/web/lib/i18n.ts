@@ -2259,6 +2259,14 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Ana sayfaya dön": "Back to home",
   "Hesap oluştur": "Create account",
   "Şifre en az 8 karakter olmalıdır.": "Password must be at least 8 characters.",
+  "Şifreniz en az 8 karakter olmalıdır.": "Your password must be at least 8 characters.",
+  "En az bir büyük ve bir küçük harf içermelidir.":
+    "It must include at least one uppercase and one lowercase letter.",
+  "En az bir özel karakter içermelidir.": "It must include at least one special character.",
+  "Şifreniz en az 8 karakter olmalı, en az bir büyük harf, bir küçük harf ve bir özel karakter içermelidir.":
+    "Your password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a special character.",
+  "Şifreyi göster": "Show password",
+  "Şifreyi gizle": "Hide password",
   "Şifre tekrar alanı eşleşmiyor.": "Password confirmation does not match.",
   "Hesap oluşturulamadı.": "Account could not be created.",
   "Hesap Oluştur": "Create Account",
@@ -4408,7 +4416,6 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Zaten hesabınız var mı? Giriş yapın": "Already have an account? Sign in",
   "Ad soyad": "Full name",
   "Şirket adı": "Company name",
-  "Şirket e-posta adresi önerilir": "A company email address is recommended",
   "Şifre tekrar": "Confirm password",
   "Hesap Oluştur": "Create account",
   "Hesap oluşturuluyor...": "Creating account...",
@@ -4428,16 +4435,21 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Doğrulama bağlantısını aç": "Open verification link",
   "Şifre sıfırlama": "Password reset",
   "Yeni parola bağlantısı iste": "Request a reset link",
-  "E-posta adresini yaz, varsa tenant kodunu ekle; sana yeni şifre oluşturma bağlantısı hazırlayalım.":
-    "Enter your email address and, if needed, your tenant code so we can prepare a password reset link.",
+  "Şifrenizi sıfırlayın": "Reset your password",
+  "Kayıtlı e-posta adresinizi girin. Hesabınız varsa, şifrenizi yenilemeniz için size bir bağlantı gönderelim.":
+    "Enter the email address on your account. If it exists, we will send you a link to reset your password.",
   "Giriş ekranına dön": "Back to login",
   "Yeni hesap oluştur": "Create a new account",
   "Bağlantı hazırlandı. Hesabın varsa e-posta kutuna veya lokal preview linkine bakabilirsin.":
     "The link is ready. If your account exists, check your inbox or the local preview link.",
-  "Tenant kodu": "Tenant code",
+  "Hesabınız varsa, şifre sıfırlama bağlantısını e-posta kutunuza gönderdik.":
+    "If your account exists, we sent the password reset link to your inbox.",
+  "Kayıtlı e-posta adresi": "Email address on your account",
   opsiyonel: "optional",
   "Şifre sıfırlama bağlantısı gönder": "Send reset link",
+  "Sıfırlama bağlantısını gönder": "Send reset link",
   "Lokal reset bağlantısını aç": "Open local reset link",
+  "Geliştirme bağlantısını aç": "Open development link",
   "Parola yenile": "Reset password",
   "Yeni şifreni belirle": "Set your new password",
   "Bağlantı geçerliyse yeni parolanı kaydedeceğiz ve hesabını tekrar açacağız.":

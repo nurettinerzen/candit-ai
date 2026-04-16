@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { AuthNotice, AuthShell } from "../../../components/auth-shell";
+import { PasswordField, PasswordRequirements } from "../../../components/password-field";
 import { useUiText } from "../../../components/site-language-provider";
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_POLICY_ERROR_MESSAGE,
+  getPasswordPolicyStatus
+} from "../../../lib/auth/password-policy";
 import { resetPasswordWithToken, resolvePasswordReset } from "../../../lib/auth/session";
 
 function ResetPasswordPageContent() {
@@ -64,8 +70,8 @@ function ResetPasswordPageContent() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (password.length < 8) {
-      setError(t("Şifre en az 8 karakter olmalıdır."));
+    if (!getPasswordPolicyStatus(password).isValid) {
+      setError(t(PASSWORD_POLICY_ERROR_MESSAGE));
       return;
     }
 
@@ -127,29 +133,27 @@ function ResetPasswordPageContent() {
 
         {pending ? (
           <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }}>
-            <label style={{ display: "grid", gap: 8 }}>
-              <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Yeni şifre")}</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                minLength={8}
-                required
-                style={inputStyle}
-              />
-            </label>
+            <PasswordField
+              label={t("Yeni şifre")}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="new-password"
+              minLength={PASSWORD_MIN_LENGTH}
+              required
+              inputStyle={inputStyle}
+            />
 
-            <label style={{ display: "grid", gap: 8 }}>
-              <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Şifre tekrar")}</span>
-              <input
-                type="password"
-                value={passwordConfirm}
-                onChange={(event) => setPasswordConfirm(event.target.value)}
-                minLength={8}
-                required
-                style={inputStyle}
-              />
-            </label>
+            <PasswordField
+              label={t("Şifre tekrar")}
+              value={passwordConfirm}
+              onChange={(event) => setPasswordConfirm(event.target.value)}
+              autoComplete="new-password"
+              minLength={PASSWORD_MIN_LENGTH}
+              required
+              inputStyle={inputStyle}
+            />
+
+            <PasswordRequirements password={password} />
 
             <button type="submit" disabled={submitting} style={primaryButtonStyle}>
               {submitting ? t("Kaydediliyor...") : t("Yeni şifreyi kaydet")}

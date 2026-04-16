@@ -80,6 +80,8 @@ type RequirementCoverage = {
   uncoveredRequired: string[];
   matchedPreferred: string[];
   coverageRatio: number;
+  operationalRequirements: RequirementAssessmentDetail[];
+  operationalWarnings: string[];
 };
 
 type RequirementAssessmentDetail = {
@@ -594,7 +596,7 @@ export class ApplicantFitScoringTaskService {
       );
     }
 
-    const promptVersion = "applicant_fit_scoring.v12.tr";
+    const promptVersion = "applicant_fit_scoring.v13.tr";
 
     // 3. Load parsed CV profile
     const profileJson = toRecord(latestCvProfile.profileJson);
@@ -641,6 +643,12 @@ export class ApplicantFitScoringTaskService {
       profileJson,
       cvDocumentContext
     );
+    const coreRequirementAssessment = requirementAssessment.filter(
+      (item) => !this.isOperationalRequirementKey(item.key)
+    );
+    const operationalRequirementAssessment = requirementAssessment.filter(
+      (item) => this.isOperationalRequirementKey(item.key)
+    );
     const candidateEvidenceSnapshot = this.buildCandidateEvidenceSnapshot({
       extractedFacts,
       jobContext,
@@ -683,6 +691,7 @@ export class ApplicantFitScoringTaskService {
         "Guclu direct-fit adaylar tipik olarak 72-88 bandinda gorunebilir; istisnai cok guclu adaylar 90+ olabilir.",
         "Weak-fit veya acikca alakasiz adaylar 0-39 bandinda rahatlikla kalabilir; doktor, avukat gibi rolden kopuk profilleri yumusatma.",
         "Lokasyon riski recruiter warning'i olarak ele alinmali; overallScore ve lokasyon disi kategori skorlarini tek basina dusurmemeli. Lokasyon avantaji da weak-fit adayi kurtarmamali.",
+        "Counterfactual dusun: ayni CV ve ayni role ait role-fit kaniti sabit kalip yalnizca aday lokasyonu degisiyorsa, non-location kategori skorlarini, fitBand'i ve interviewReadiness'i koru; yalnizca lokasyon kategorisi ve operasyonel warning notu degisebilir.",
         "Ajans kokenli guclu paid/performance adaylarini, kampanya, butce ve optimizasyon kaniti varsa direct-fit olarak okumaktan cekinme.",
         "Manager veya lead title tek basina negatif degildir; yakin gecmiste hands-on execution kaniti varsa puani gereksiz bastirma.",
         "Recent title zaten Performance Marketing Manager, Senior Performance Marketing Specialist veya benzeri direct role ise; hands-on Google/Meta/LinkedIn kampanya ve optimizasyon kaniti varken adayi collaboration detaylari yuzunden adjacent_fit'e itme.",
@@ -706,7 +715,16 @@ export class ApplicantFitScoringTaskService {
           locationText: application.job.locationText,
           shiftType: application.job.shiftType,
           jdText: application.job.jdText,
-          requirements: application.job.requirements.map((r) => ({
+          requirements: application.job.requirements
+            .filter((r) => !this.isOperationalRequirementKey(r.key))
+            .map((r) => ({
+              key: r.key,
+              value: r.value,
+              required: r.required
+            })),
+          operationalRequirements: application.job.requirements
+            .filter((r) => this.isOperationalRequirementKey(r.key))
+            .map((r) => ({
             key: r.key,
             value: r.value,
             required: r.required
@@ -739,20 +757,18 @@ export class ApplicantFitScoringTaskService {
             (item): item is string => typeof item === "string"
           ),
           principles: [
-            "Lokasyon puani, rolun fiziksel bulunma ihtiyaci ile adayin gercek ulasim/yer degistirme uygunlugunu yansitsin",
+            "Lokasyon kategorisi operasyonel uygunluk notudur; overallScore'un ana ekseni role, beceri ve execution uyumudur",
             "Rol uzaktan ise salt farkli sehirde olmayi risk olarak buyutme; hibrit veya ofis gereksinimi varsa bile lokasyonu once operasyonel warning olarak yorumla",
-            "Same city tek bir torba degildir; commute siddeti, ofise kac gun gidildigi ve adayin duzenli katilim/relocation esnekligi birlikte yorumlanmali",
-            "Benzer vakalarda benzer puanlar ver; ayni derecede uzak adaylara tutarli davran",
-            "Elindeki veri yetersizse bunu eksik bilgi veya uyari olarak belirt, ama puani metinle celistirme",
-            "Lokasyon warning'i overallScore'u veya rol-fit skorunu dusurmemeli; recruiter icin ayri operasyonel not olarak tasinmali"
+            "Ayni CV'de yalnizca locationText degisirse, non-location kategori skorlarini, fitBand'i ve readiness'i sabit tut; lokasyon degisikligi role-fit kanitini yeniden yazmaz",
+            "Elindeki veri yetersizse bunu warning veya follow-up olarak belirt; capability skorlarini lokasyon belirsizligi yuzunden cezalandirma",
+            "Benzer vakalarda benzer warning dili kullan; lokasyonu role-fit gerekcesi gibi yazma"
           ]
         },
-        locationAnalysis: {
-          scoreHint: locationAnalysis.score,
-          reasoning: locationAnalysis.reasoning,
-          strengths: locationAnalysis.strengths,
-          risks: locationAnalysis.risks,
-          missingInformation: locationAnalysis.missingInformation,
+        operationalLocationNote: {
+          locationCategoryScoreHint: locationAnalysis.score,
+          recruiterWarning: locationAnalysis.reasoning,
+          recruiterRisks: locationAnalysis.risks,
+          recruiterMissingInfo: locationAnalysis.missingInformation,
           presenceMode: locationAnalysis.presenceMode,
           mismatchLevel: locationAnalysis.mismatchLevel,
           candidateFlexibility: locationAnalysis.candidateFlexibility,
@@ -761,7 +777,12 @@ export class ApplicantFitScoringTaskService {
           locationConfidence: locationAnalysis.locationConfidence,
           localitySummary: locationAnalysis.localitySummary,
           jobLocationText: locationAnalysis.jobLocationText,
-          candidateLocationText: locationAnalysis.candidateLocationText
+          candidateLocationText: locationAnalysis.candidateLocationText,
+          usePolicy: [
+            "Bu alan core role-fit girdisi degil, operasyonel warning baglamidir",
+            "Non-location kategori skorlarini bu notla yeniden puanlama",
+            "Lokasyon degisse bile role, beceri ve execution kaniti sabit kalir"
+          ]
         },
         requirementCoverage: {
           requiredCount: requirementCoverage.requiredCount,
@@ -770,7 +791,8 @@ export class ApplicantFitScoringTaskService {
           needsValidationRequired: requirementCoverage.needsValidationRequired,
           uncoveredRequired: requirementCoverage.uncoveredRequired,
           matchedPreferred: requirementCoverage.matchedPreferred,
-          coverageRatio: requirementCoverage.coverageRatio
+          coverageRatio: requirementCoverage.coverageRatio,
+          operationalWarnings: requirementCoverage.operationalWarnings
         },
         recruiterContext: {
           roleDemandSummary: this.buildRoleDemandSummary({
@@ -788,7 +810,7 @@ export class ApplicantFitScoringTaskService {
             roleFamily: application.job.roleFamily,
             reminder: "Adayi tam olarak bu role gore puanla; daha junior, daha genel veya komsu baska bir role uygunlugu overallScore'u yukari tasimak icin kullanma.",
             mustHaveRequirements: application.job.requirements
-              .filter((item) => item.required)
+              .filter((item) => item.required && !this.isOperationalRequirementKey(item.key))
               .map((item) => item.value)
               .slice(0, 6),
             evaluationQuestions: [
@@ -797,8 +819,9 @@ export class ApplicantFitScoringTaskService {
               "Aday yalnizca komsu bir pazarlama profili mi, yoksa bu role dogrudan baglanan bir profil mi?"
             ]
           },
-          requirementAssessment,
-          requirementAssessmentGuide: "requirementAssessment.status alaninda 'proven' acik guclu kaniti, 'partial' capability'nin kismen gorundugunu, 'needs_validation' acik ayrintinin net olmadigini, 'absent' ise belirgin kanit gorulmedigini anlatir. needs_validation capability yok demek degildir; broader CV evidence ve cvDocumentContext ile birlikte yorumlanmalidir.",
+          requirementAssessment: coreRequirementAssessment,
+          operationalRequirementAssessment,
+          requirementAssessmentGuide: "requirementAssessment yalnizca core capability requirement'larini icerir. status alaninda 'proven' acik guclu kaniti, 'partial' capability'nin kismen gorundugunu, 'needs_validation' acik ayrintinin net olmadigini, 'absent' ise belirgin kanit gorulmedigini anlatir. needs_validation capability yok demek degildir; broader CV evidence ve cvDocumentContext ile birlikte yorumlanmalidir. operationalRequirementAssessment ise lokasyon/calisma modeli gibi recruiter warning notlaridir ve core fit yerine gecmez.",
           candidateEvidenceSnapshot
         },
         instructions: [
@@ -818,13 +841,15 @@ export class ApplicantFitScoringTaskService {
           "recruiterContext.scoreCalibrationGuide ve recruiterContext.exactRoleBoundary alanlarini aktif kullan",
           "recruiterContext.requirementAssessmentGuide alanindaki needs_validation durumunu capability yokmus gibi cezalandirma",
           "Once recruiterContext.roleDemandSummary ve recruiterContext.candidateEvidenceSnapshot icindeki role yakin kanitlari oku, sonra rubric'e gore karar ver",
-          "locationAnalysis ve requirementCoverage alanlarini gercek degerlendirme girdisi olarak kullan",
-          "Sadece lokasyon sorunu var diye deneyim veya beceri puanini keyfi dusurme; lokasyon etkisini ilgili boyutlarda ve risklerde tut",
-          "Lokasyonu varsayilan olarak operasyonel warning gibi ele al; role-fit'i ancak fiziksel katilim pratikte imkansiz gorunuyorsa anlamli sekilde etkilesin",
-          "Ayni il farkli ilce, farkli sehir ama tasinmaya acik veya yabanci ulke ama relocation sinyali var gibi vakalarda once role-fit'i koru; lokasyonu warning ve teyit ekseninde isle",
+          "requirementCoverage alanindaki matched/partial/uncovered maddeleri core capability coverage olarak kullan; operationalWarnings alanini ise score'u degil recruiter warning anlatisini beslemek icin kullan",
+          "operationalLocationNote yalnizca lokasyon kategorisi ve recruiter warning narrative'i icindir; role, beceri, execution ve egitim skorlarini bununla yeniden puanlama",
+          "Sadece lokasyon sorunu var diye deneyim veya beceri puanini keyfi dusurme; lokasyon etkisini lokasyon kategorisinde ve warning notlarinda tut",
+          "Lokasyonu varsayilan olarak operasyonel warning gibi ele al; role-fit'i ancak fiziksel katilim pratikte acikca imkansiz gorunuyorsa sinirli sekilde etkilesin",
+          "Ayni il farkli ilce, farkli sehir veya farkli ulke vakalarinda once role-fit'i koru; lokasyonu warning ve teyit ekseninde isle",
           "Lokasyon avantaji guclu bir strength gibi abartilmasin; lokasyon genelde artidan cok operasyonel uygunluk sinyalidir",
-          "Hibrit veya ofis rolde farkli ulke ya da farkli sehir + tasinma esnekligi yok kombinasyonu ciddi lokasyon riskidir; ama bu tek basina cok guclu direct-fit adayi weak-fit yapmaz",
+          "Hibrit veya ofis rolde farkli ulke ya da farkli sehir bilgisi operasyonel risktir; ama bu tek basina cok guclu direct-fit adayi weak-fit yapmaz",
           "Ayni sehir farkli ilce vakalarinda commuteSeverity alanini aktif kullan; light/moderate commute ile extreme commute'i ayni kefeye koyma",
+          "Counterfactual kontrolu uygula: ayni adayda sadece lokasyon degisti diye fitBand veya non-location skorlar degismemeli",
           "0-15 bandini acikca role alakasiz profiller icin kullan; doktor, avukat gibi rolden kopuk profilleri yumusatma",
           "16-39 bandini zayif veya fazla junior profiller icin rahatlikla kullan",
           "40-68 bandini adjacent veya kismen uygun profiller icin kullan; bu bantta hafif iyimser olabilirsin ama direct-fit gibi davranma",
@@ -879,18 +904,12 @@ export class ApplicantFitScoringTaskService {
           locationAnalysis
         );
     const mergedMissingInfo = this.sanitizeMissingInformation(
-      this.uniqueList([
-        ...mergedScores.missingInformation,
-        ...locationAnalysis.missingInformation
-      ]),
+      this.uniqueList(mergedScores.missingInformation),
       locationAnalysis
     );
 
     const topLevelRisks = this.sanitizeRisks(
-      this.uniqueList([
-        ...(aiData?.risks ?? []),
-        ...locationAnalysis.risks
-      ]),
+      this.uniqueList(aiData?.risks ?? []),
       mergedMissingInfo,
       locationAnalysis
     );
@@ -1471,8 +1490,12 @@ export class ApplicantFitScoringTaskService {
     cvDocumentContext: Record<string, unknown> | null
   ): RequirementCoverage {
     const details = this.buildRequirementAssessmentDetails(requirements, profileJson, cvDocumentContext);
-    const required = requirements.filter((item) => item.required);
-    const requiredDetails = details.filter((item) => item.required);
+    const requiredDetails = details.filter(
+      (item) => item.required && !this.isOperationalRequirementKey(item.key)
+    );
+    const operationalRequirements = details.filter(
+      (item) => item.required && this.isOperationalRequirementKey(item.key)
+    );
     const preferredDetails = details.filter((item) => !item.required);
     const matchedRequired = requiredDetails
       .filter((item) => item.status === "proven" || item.status === "partial")
@@ -1495,16 +1518,20 @@ export class ApplicantFitScoringTaskService {
       if (item.status === "needs_validation") return sum + 0.35;
       return sum;
     }, 0);
-    const coverageRatio = required.length === 0 ? 1 : weightedMatches / required.length;
+    const coverageRatio = requiredDetails.length === 0 ? 1 : weightedMatches / requiredDetails.length;
 
     return {
-      requiredCount: required.length,
+      requiredCount: requiredDetails.length,
       matchedRequired,
       partialRequired,
       needsValidationRequired,
       uncoveredRequired,
       matchedPreferred,
-      coverageRatio
+      coverageRatio,
+      operationalRequirements,
+      operationalWarnings: operationalRequirements
+        .map((item) => this.describeOperationalRequirement(item))
+        .filter(Boolean)
     };
   }
 
@@ -1674,7 +1701,14 @@ export class ApplicantFitScoringTaskService {
     return {
       title: input.jobContext.title,
       roleFamily: input.jobContext.roleFamily,
-      coreRequirements: input.requirements.filter((item) => item.required).map((item) => item.value).slice(0, 6),
+      coreRequirements: input.requirements
+        .filter((item) => item.required && !this.isOperationalRequirementKey(item.key))
+        .map((item) => item.value)
+        .slice(0, 6),
+      operationalRequirements: input.requirements
+        .filter((item) => item.required && this.isOperationalRequirementKey(item.key))
+        .map((item) => item.value)
+        .slice(0, 4),
       preferredSignals: input.requirements.filter((item) => !item.required).map((item) => item.value).slice(0, 4),
       workModelExpectation:
         input.locationAnalysis.presenceMode === "remote"
@@ -1682,7 +1716,7 @@ export class ApplicantFitScoringTaskService {
           : input.locationAnalysis.presenceMode === "hybrid"
             ? `Rol hibrit; haftalik ${input.locationAnalysis.officeDaysPerWeek ?? 3} gun civari fiziksel katilim bekleniyor.`
             : "Rol yerinde/fiziksel katilim bekliyor.",
-      locationExpectation: `Operasyonel warning notu: ${input.locationAnalysis.reasoning}`,
+      locationExpectation: `Operasyonel warning notu: ${input.locationAnalysis.reasoning} Bu not role-fit skorunu degil, recruiter follow-up alanini beslemelidir.`,
       locationCalibrationNotes: [
         `Commute siddeti: ${input.locationAnalysis.commuteSeverity}`,
         `Aday esnekligi: ${input.locationAnalysis.candidateFlexibility}`,
@@ -1817,15 +1851,17 @@ export class ApplicantFitScoringTaskService {
       adjacentSignals,
       certificationSignals: certifications.slice(0, 4),
       languageSignals: languages.slice(0, 4),
-      locationSignalSummary: {
-        scoreHint: input.locationAnalysis.score,
-        reasoning: input.locationAnalysis.reasoning,
+      operationalLocationNote: {
+        recruiterWarning: input.locationAnalysis.reasoning,
+        locationCategoryScoreHint: input.locationAnalysis.score,
         commuteSeverity: input.locationAnalysis.commuteSeverity,
         officeDaysPerWeek: input.locationAnalysis.officeDaysPerWeek,
         candidateFlexibility: input.locationAnalysis.candidateFlexibility,
         locationConfidence: input.locationAnalysis.locationConfidence,
-        localitySummary: input.locationAnalysis.localitySummary
+        localitySummary: input.locationAnalysis.localitySummary,
+        usePolicy: "Bu alan role-fit skorunu degil, recruiter warning anlatimini besler."
       },
+      operationalRequirementWarnings: input.requirementCoverage.operationalWarnings.slice(0, 4),
       cvDocumentSummary: {
         hasDocumentText: Boolean(input.cvDocumentContext?.textExcerpt),
         extractionStatus: typeof input.cvDocumentContext?.status === "string" ? input.cvDocumentContext.status : null,
@@ -2530,31 +2566,32 @@ export class ApplicantFitScoringTaskService {
     return /lokasyon|location/i.test(category.key) || /lokasyon|location/i.test(category.label);
   }
 
-  private composeOverallAssessment(baseAssessment: string, locationAnalysis: LocationFitAnalysis) {
-    const base = baseAssessment.trim();
-    if (!locationAnalysis.reasoning) {
-      return base;
+  private composeOverallAssessment(baseAssessment: string, _locationAnalysis: LocationFitAnalysis) {
+    return baseAssessment.trim();
+  }
+
+  private isOperationalRequirementKey(key: string) {
+    const normalized = normalizeTurkishText(key ?? "");
+    return normalized === "location"
+      || normalized === "work_model"
+      || /lokasyon|location|work_model|calisma modeli|calisma_modeli|remote|hibrit/.test(normalized);
+  }
+
+  private describeOperationalRequirement(detail: RequirementAssessmentDetail) {
+    if (detail.status === "proven") {
+      return "";
     }
 
-    if (normalizeTurkishText(base).includes(normalizeTurkishText(locationAnalysis.reasoning))) {
-      return base;
+    const normalizedKey = normalizeTurkishText(detail.key);
+    if (/lokasyon|location/.test(normalizedKey)) {
+      return `Lokasyon ve fiziksel katilim konusu recruiter tarafinda teyit edilmeli: ${detail.value}.`;
     }
 
-    const shouldAppendLocation =
-      locationAnalysis.presenceMode !== "remote"
-      && (
-        locationAnalysis.mismatchLevel === "cross_country"
-        || locationAnalysis.candidateFlexibility === "remote_only"
-        || locationAnalysis.candidateFlexibility === "relocation_resistant"
-        || locationAnalysis.commuteSeverity === "severe"
-        || locationAnalysis.commuteSeverity === "extreme"
-      );
-
-    if (!shouldAppendLocation) {
-      return base;
+    if (/work_model|calisma modeli|calisma_modeli|remote|hibrit/.test(normalizedKey)) {
+      return `Calisma modeli ve ofis ritmi recruiter tarafinda teyit edilmeli: ${detail.value}.`;
     }
 
-    return `${base} ${locationAnalysis.reasoning}`.trim();
+    return `Operasyonel uygunluk teyidi gerekli: ${detail.value}.`;
   }
 
   private analyzeLocationFit(input: {

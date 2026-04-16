@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Req, Res, UnauthorizedException , Inject} from "@nestjs/common";
+import { Body, Controller, Get, Inject, Post, Query, Req, Res, UnauthorizedException } from "@nestjs/common";
 import { IsEmail, IsOptional, IsString, MinLength } from "class-validator";
 import type { Request, Response } from "express";
 import { CurrentContext } from "../../common/decorators/current-context.decorator";
@@ -12,10 +12,6 @@ import { AuthService } from "./auth.service";
 class LoginRequest {
   @IsEmail()
   email!: string;
-
-  @IsString()
-  @IsOptional()
-  tenantId!: string;
 
   @IsString()
   @MinLength(8)
@@ -67,10 +63,6 @@ class SignupRequest {
 class ForgotPasswordRequest {
   @IsEmail()
   email!: string;
-
-  @IsString()
-  @IsOptional()
-  tenantId?: string;
 }
 
 class ResolveTokenRequest {
@@ -85,6 +77,25 @@ class ResetPasswordRequest {
   @IsString()
   @MinLength(8)
   password!: string;
+}
+
+class ChangePasswordRequest {
+  @IsString()
+  @MinLength(8)
+  currentPassword!: string;
+
+  @IsString()
+  @MinLength(8)
+  newPassword!: string;
+}
+
+class DeleteAccountRequest {
+  @IsString()
+  @MinLength(8)
+  currentPassword!: string;
+
+  @IsString()
+  confirmationText!: string;
 }
 
 function parseCookieHeader(raw: string | undefined) {
@@ -206,6 +217,70 @@ export class AuthController {
     }
 
     return result;
+  }
+
+  @Post("password/change")
+  async changePassword(
+    @CurrentUser() user: RequestUser,
+    @Body() body: ChangePasswordRequest,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.authService.changePassword(
+      {
+        userId: user.userId,
+        tenantId: user.tenantId,
+        sessionId: user.sessionId,
+        currentPassword: body.currentPassword,
+        newPassword: body.newPassword
+      },
+      {
+        ipAddress: request.ip,
+        userAgent: request.header("user-agent") ?? undefined
+      }
+    );
+
+    if (this.runtimeConfig.authTokenTransport === "cookie") {
+      this.writeAuthCookies(response, result.accessToken, result.refreshToken);
+
+      return {
+        user: result.user,
+        session: result.session
+      };
+    }
+
+    return result;
+  }
+
+  @Post("account/delete")
+  async deleteCurrentAccount(
+    @CurrentUser() user: RequestUser,
+    @Body() body: DeleteAccountRequest,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    await this.authService.deleteCurrentAccount(
+      {
+        userId: user.userId,
+        tenantId: user.tenantId,
+        roles: user.roles,
+        currentPassword: body.currentPassword,
+        confirmationText: body.confirmationText,
+        actorEmail: user.email
+      },
+      {
+        ipAddress: request.ip,
+        userAgent: request.header("user-agent") ?? undefined
+      }
+    );
+
+    if (this.runtimeConfig.authTokenTransport === "cookie") {
+      this.clearAuthCookies(response);
+    }
+
+    return {
+      ok: true
+    };
   }
 
   @Post("email-verification/resend")

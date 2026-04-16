@@ -31,7 +31,6 @@ export class GoogleAuthController {
   @Public()
   authorize(
     @Query("intent") rawIntent: string | undefined,
-    @Query("tenantId") tenantId: string | undefined,
     @Query("companyName") companyName: string | undefined,
     @Query("returnTo") returnTo: string | undefined,
     @Res() response: ExpressResponse
@@ -48,7 +47,6 @@ export class GoogleAuthController {
     const state = Buffer.from(
       JSON.stringify({
         intent,
-        tenantId: tenantId?.trim() || null,
         companyName: companyName?.trim() || null,
         returnTo: normalizeReturnTo(returnTo)
       })
@@ -81,7 +79,6 @@ export class GoogleAuthController {
 
     let decodedState: {
       intent: "login" | "signup";
-      tenantId?: string | null;
       companyName?: string | null;
       returnTo: string;
     };
@@ -174,7 +171,6 @@ export class GoogleAuthController {
 
       const user = await this.authService.resolveGoogleAuth({
         intent,
-        tenantId: decodedState.tenantId ?? undefined,
         companyName: decodedState.companyName ?? undefined,
         profile: {
           subject: profile.sub,

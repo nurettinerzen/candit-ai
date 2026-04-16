@@ -5,7 +5,7 @@ import {
 } from "@nestjs/common";
 import { createHash } from "crypto";
 import { existsSync } from "fs";
-import { mkdir, readFile, unlink, writeFile } from "fs/promises";
+import { mkdir, readFile, rm, unlink, writeFile } from "fs/promises";
 import { dirname, extname, join, resolve } from "path";
 import {
   CV_ALLOWED_EXTENSIONS,
@@ -164,6 +164,26 @@ export class FileStorageService {
       await unlink(this.resolveStoragePath(storageKey));
     } catch {
       // orphan cleanup is best-effort
+    }
+  }
+
+  async removeTenantArtifacts(tenantId: string) {
+    const normalizedTenantId = tenantId.trim().replace(/\\/g, "/").replace(/^\/+/, "");
+    if (!normalizedTenantId) {
+      throw new BadRequestException("Tenant kimligi zorunludur.");
+    }
+
+    const absolutePath = resolve(this.storageRoot, normalizedTenantId);
+    if (!absolutePath.startsWith(this.storageRoot)) {
+      throw new BadRequestException("Gecersiz tenant storage yolu.");
+    }
+
+    try {
+      await rm(absolutePath, { recursive: true, force: true });
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Tenant dosyalari silinemedi: ${(error as Error).message}`
+      );
     }
   }
 
