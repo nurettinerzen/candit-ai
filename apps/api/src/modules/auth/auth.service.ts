@@ -22,6 +22,7 @@ import {
 } from "@prisma/client";
 import { RuntimeConfigService } from "../../config/runtime-config.service";
 import { PrismaService } from "../../prisma/prisma.service";
+import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { SecurityEventsService } from "../security-events/security-events.service";
 import { hashPassword, verifyPassword } from "./password";
@@ -124,8 +125,23 @@ type InvitationRecord = {
   };
 };
 
+type EmailVerificationFlowState = {
+  enabled: boolean;
+  required: boolean;
+  deliveryEnabled: boolean;
+};
+
+type EmailVerificationDispatchResult = EmailVerificationFlowState & {
+  ok: boolean;
+  expiresAt?: string;
+  previewUrl: string | null;
+};
+
 const REFRESH_TOKEN_ROTATED_REASON = "rotated";
 const EMAIL_VERIFICATION_LABEL = "Email adresini dogrula";
+const EMAIL_VERIFICATION_REQUIRED_CODE = "EMAIL_VERIFICATION_REQUIRED";
+const AUTH_EMAIL_VERIFICATION_REQUIRED_FLAG = "auth.email_verification.required";
+const AUTH_EMAIL_VERIFICATION_SEND_EMAIL_FLAG = "auth.email_verification.send_email";
 const PASSWORD_RESET_LABEL = "Sifremi sifirla";
 
 function addDays(base: Date, days: number) {
@@ -162,6 +178,7 @@ export class AuthService {
     @Inject(JwtService) private readonly jwtService: JwtService,
     @Inject(ConfigService) private readonly configService: ConfigService,
     @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService,
+    @Inject(FeatureFlagsService) private readonly featureFlagsService: FeatureFlagsService,
     @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
     @Inject(SecurityEventsService)
     private readonly securityEventsService: SecurityEventsService
@@ -264,6 +281,43 @@ export class AuthService {
       throw new UnauthorizedException("E-posta veya sifre hatali.");
     }
 
+    const emailVerificationState = await this.resolveEmailVerificationState();
+
+    if (emailVerificationState.required && !user.emailVerifiedAt) {
+      await this.reportSecurityEvent({
+        tenantId: user.tenantId,
+        userId: user.id,
+        source: "auth.login",
+        code: "auth.login.email_verification_required",
+        message: "E-posta dogrulamasi tamamlanmadan giris denemesi reddedildi.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        metadata: {
+          email: user.email
+        }
+      });
+
+      const emailVerification = await this.sendEmailVerificationForUser(
+        user,
+        emailVerificationState
+      ).catch(
+        (): EmailVerificationDispatchResult => ({
+          ok: false,
+          ...emailVerificationState,
+          previewUrl: null
+        })
+      );
+
+      throw new ForbiddenException({
+        message: emailVerificationState.deliveryEnabled
+          ? "E-posta adresinizi doğrulamadan giriş yapamazsınız. Gelen kutunuzu kontrol edin."
+          : "E-posta doğrulaması gerekiyor. Doğrulama bağlantısını açtıktan sonra tekrar giriş yapın.",
+        code: EMAIL_VERIFICATION_REQUIRED_CODE,
+        emailVerification
+      });
+    }
+
     return this.issueSessionForUser(user, meta);
   }
 
@@ -325,10 +379,17 @@ export class AuthService {
       });
     });
     const result = await this.issueSessionForUser(user, meta);
-    const emailVerification = await this.sendEmailVerificationForUser(user).catch(() => ({
-      ok: false,
-      previewUrl: null
-    }));
+    const emailVerificationState = await this.resolveEmailVerificationState();
+    const emailVerification = await this.sendEmailVerificationForUser(
+      user,
+      emailVerificationState
+    ).catch(
+      (): EmailVerificationDispatchResult => ({
+        ok: false,
+        ...emailVerificationState,
+        previewUrl: null
+      })
+    );
 
     return {
       ...result,
@@ -607,6 +668,15 @@ export class AuthService {
       throw new UnauthorizedException("Kullanici oturumu gecersiz.");
     }
 
+    if (
+      !tokenRecord.user.emailVerifiedAt &&
+      (await this.isEmailVerificationRequired())
+    ) {
+      throw new ForbiddenException(
+        "E-posta adresinizi doğrulamadan oturum yenileyemezsiniz."
+      );
+    }
+
     const roles = this.toAppRoles(tokenRecord.user.role);
 
     const rotatedToken = await this.prisma.$transaction(async (tx) => {
@@ -715,6 +785,15 @@ export class AuthService {
     if (session.user.deletedAt || session.user.status !== UserStatus.ACTIVE) {
       await this.revokeSession(payload.sid, "user_disabled_or_deleted");
       throw new UnauthorizedException("Kullanici oturumu gecersiz.");
+    }
+
+    if (
+      !session.user.emailVerifiedAt &&
+      (await this.isEmailVerificationRequired())
+    ) {
+      throw new ForbiddenException(
+        "E-posta adresinizi doğrulamadan bu alana erişemezsiniz."
+      );
     }
 
     void this.prisma.authSession
@@ -1351,10 +1430,24 @@ export class AuthService {
     }
   }
 
-  private async sendEmailVerificationForUser(user: AuthUserRecord) {
+  private async sendEmailVerificationForUser(
+    user: AuthUserRecord,
+    state?: EmailVerificationFlowState
+  ): Promise<EmailVerificationDispatchResult> {
+    const emailVerificationState = state ?? (await this.resolveEmailVerificationState());
+
     if (user.emailVerifiedAt) {
       return {
         ok: true,
+        ...emailVerificationState,
+        previewUrl: null
+      };
+    }
+
+    if (!emailVerificationState.enabled) {
+      return {
+        ok: true,
+        ...emailVerificationState,
         previewUrl: null
       };
     }
@@ -1371,30 +1464,56 @@ export class AuthService {
       `/auth/verify-email?token=${encodeURIComponent(token.rawToken)}`
     );
 
-    await this.notificationsService.send({
-      tenantId: user.tenantId,
-      channel: "email",
-      to: user.email,
-      subject: "Candit.ai e-posta dogrulama baglantisi",
-      body: [
-        `Merhaba ${user.fullName},`,
-        "",
-        "Hesabinizin e-posta adresini dogrulamak icin asagidaki baglantiyi kullanabilirsiniz."
-      ].join("\n"),
-      metadata: {
-        primaryLink: verificationUrl,
-        primaryCtaLabel: EMAIL_VERIFICATION_LABEL
-      },
-      templateKey: "auth_email_verification",
-      eventType: "auth.email_verification_requested",
-      requestedBy: user.id
-    });
+    if (emailVerificationState.deliveryEnabled) {
+      await this.notificationsService.send({
+        tenantId: user.tenantId,
+        channel: "email",
+        to: user.email,
+        subject: "Candit.ai e-posta dogrulama baglantisi",
+        body: [
+          `Merhaba ${user.fullName},`,
+          "",
+          "Hesabinizin e-posta adresini dogrulamak icin asagidaki baglantiyi kullanabilirsiniz."
+        ].join("\n"),
+        metadata: {
+          primaryLink: verificationUrl,
+          primaryCtaLabel: EMAIL_VERIFICATION_LABEL
+        },
+        templateKey: "auth_email_verification",
+        eventType: "auth.email_verification_requested",
+        requestedBy: user.id
+      });
+    }
 
     return {
       ok: true,
+      ...emailVerificationState,
       expiresAt: token.expiresAt.toISOString(),
       previewUrl: this.runtimeConfig.isProduction ? null : verificationUrl
     };
+  }
+
+  private async resolveEmailVerificationState(): Promise<EmailVerificationFlowState> {
+    const [required, deliveryEnabled] = await Promise.all([
+      this.featureFlagsService.isGlobalEnabled(
+        AUTH_EMAIL_VERIFICATION_REQUIRED_FLAG,
+        false
+      ),
+      this.featureFlagsService.isGlobalEnabled(
+        AUTH_EMAIL_VERIFICATION_SEND_EMAIL_FLAG,
+        false
+      )
+    ]);
+
+    return {
+      enabled: required || deliveryEnabled,
+      required,
+      deliveryEnabled
+    };
+  }
+
+  private async isEmailVerificationRequired() {
+    return this.featureFlagsService.isGlobalEnabled(AUTH_EMAIL_VERIFICATION_REQUIRED_FLAG, false);
   }
 
   private async createActionToken(input: {

@@ -13,6 +13,9 @@ export type JobRequirementInput = {
   required?: boolean;
 };
 
+export const JOB_SCREENING_MODES = ["WIDE_POOL", "BALANCED", "STRICT"] as const;
+export type JobScreeningMode = (typeof JOB_SCREENING_MODES)[number];
+
 type JobDraftOutline = {
   headline: string;
   openingParagraph: string;
@@ -52,6 +55,7 @@ export type UpdateJobInput = {
   status?: JobStatus;
   jdText?: string;
   aiDraftText?: string;
+  screeningMode?: JobScreeningMode;
   requirements?: JobRequirementInput[];
 };
 
@@ -276,6 +280,7 @@ export class JobsService {
           roleFamily: input.roleFamily,
           locationText: input.locationText,
           shiftType: input.shiftType,
+          screeningMode: input.screeningMode,
           salaryMin: this.toDecimal(input.salaryMin),
           salaryMax: this.toDecimal(input.salaryMax),
           status: input.status,
@@ -317,6 +322,7 @@ export class JobsService {
             status: input.status !== undefined,
             locationText: input.locationText !== undefined,
             shiftType: input.shiftType !== undefined,
+            screeningMode: input.screeningMode !== undefined,
             salaryMin: input.salaryMin !== undefined,
             salaryMax: input.salaryMax !== undefined,
             jdText: input.jdText !== undefined,
@@ -325,12 +331,14 @@ export class JobsService {
           before: {
             status: current.status,
             title: current.title,
-            roleFamily: current.roleFamily
+            roleFamily: current.roleFamily,
+            screeningMode: current.screeningMode
           },
           after: {
             status: job.status,
             title: job.title,
-            roleFamily: job.roleFamily
+            roleFamily: job.roleFamily,
+            screeningMode: job.screeningMode
           }
         }
       }),

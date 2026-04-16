@@ -125,7 +125,7 @@ export const BILLING_PLAN_CATALOG: Record<BillingPlanKey, BillingPlanDefinition>
     key: "GROWTH",
     label: "Growth",
     description:
-      "Düzenli işe alım yapan küçük ekipler için. Daha fazla hacim, aylık dahil kullanım, takvim entegrasyonu ve raporlama.",
+      "Düzenli işe alım yapan küçük ekipler için. Daha fazla hacim, aylık dahil kullanım ve gelişmiş raporlama.",
     monthlyAmountCents: 1299900,
     currency: "try",
     billingModel: "subscription",
@@ -135,7 +135,7 @@ export const BILLING_PLAN_CATALOG: Record<BillingPlanKey, BillingPlanDefinition>
     aiInterviewsIncluded: 50,
     features: {
       advancedReporting: true,
-      calendarIntegrations: true,
+      calendarIntegrations: false,
       brandedCandidateExperience: false,
       customIntegrations: false
     },
@@ -146,7 +146,7 @@ export const BILLING_PLAN_CATALOG: Record<BillingPlanKey, BillingPlanDefinition>
     key: "ENTERPRISE",
     label: "Kurumsal",
     description:
-      "Büyük ekipler için özel kota, markalı aday deneyimi, özel entegrasyon ve SLA.",
+      "Büyük ekipler için özel kota, markalı aday deneyimi ve SLA.",
     monthlyAmountCents: null,
     currency: "usd",
     billingModel: "custom",
@@ -156,7 +156,7 @@ export const BILLING_PLAN_CATALOG: Record<BillingPlanKey, BillingPlanDefinition>
     aiInterviewsIncluded: 0,
     features: {
       advancedReporting: true,
-      calendarIntegrations: true,
+      calendarIntegrations: false,
       brandedCandidateExperience: true,
       customIntegrations: true
     },
@@ -167,58 +167,58 @@ export const BILLING_PLAN_CATALOG: Record<BillingPlanKey, BillingPlanDefinition>
 export const BILLING_ADDON_CATALOG: Record<BillingAddonKey, BillingAddonDefinition> = {
   JOB_CREDIT_PACK_1: {
     key: "JOB_CREDIT_PACK_1",
-    label: "İlan Kredisi Paketi 1",
-    description: "Satın alma tarihinden itibaren 90 gün geçerli +1 ilan kredisi.",
-    amountCents: 149900,
+    label: "1 İlan Kredisi",
+    description: "Satın alma tarihinden itibaren 90 gün geçerli 1 ilan kredisi.",
+    amountCents: 79900,
     currency: "try",
     quotaKey: "ACTIVE_JOBS",
     quantity: 1
   },
   JOB_CREDIT_PACK_3: {
     key: "JOB_CREDIT_PACK_3",
-    label: "İlan Kredisi Paketi 3",
-    description: "Satın alma tarihinden itibaren 90 gün geçerli +3 ilan kredisi.",
-    amountCents: 399900,
+    label: "3 İlan Kredisi",
+    description: "Satın alma tarihinden itibaren 90 gün geçerli 3 ilan kredisi.",
+    amountCents: 199900,
     currency: "try",
     quotaKey: "ACTIVE_JOBS",
     quantity: 3
   },
   CANDIDATE_PROCESSING_PACK_50: {
     key: "CANDIDATE_PROCESSING_PACK_50",
-    label: "Aday Değerlendirme Kredisi 50",
+    label: "50 Aday Değerlendirme Kredisi",
     description:
-      "Satın alma tarihinden itibaren 90 gün geçerli +50 aday değerlendirme kredisi.",
-    amountCents: 129900,
+      "Satın alma tarihinden itibaren 90 gün geçerli 50 aday değerlendirme kredisi.",
+    amountCents: 69900,
     currency: "try",
     quotaKey: "CANDIDATE_PROCESSING",
     quantity: 50
   },
   CANDIDATE_PROCESSING_PACK_100: {
     key: "CANDIDATE_PROCESSING_PACK_100",
-    label: "Aday Değerlendirme Kredisi 100",
+    label: "100 Aday Değerlendirme Kredisi",
     description:
-      "Satın alma tarihinden itibaren 90 gün geçerli +100 aday değerlendirme kredisi.",
-    amountCents: 239900,
+      "Satın alma tarihinden itibaren 90 gün geçerli 100 aday değerlendirme kredisi.",
+    amountCents: 109900,
     currency: "try",
     quotaKey: "CANDIDATE_PROCESSING",
     quantity: 100
   },
   INTERVIEW_PACK_10: {
     key: "INTERVIEW_PACK_10",
-    label: "AI Mülakat Kredisi 10",
+    label: "10 AI Mülakat Kredisi",
     description:
-      "Satın alma tarihinden itibaren 90 gün geçerli +10 AI mülakat kredisi.",
-    amountCents: 149900,
+      "Satın alma tarihinden itibaren 90 gün geçerli 10 AI mülakat kredisi.",
+    amountCents: 99900,
     currency: "try",
     quotaKey: "AI_INTERVIEWS",
     quantity: 10
   },
   INTERVIEW_PACK_25: {
     key: "INTERVIEW_PACK_25",
-    label: "AI Mülakat Kredisi 25",
+    label: "25 AI Mülakat Kredisi",
     description:
-      "Satın alma tarihinden itibaren 90 gün geçerli +25 AI mülakat kredisi.",
-    amountCents: 329900,
+      "Satın alma tarihinden itibaren 90 gün geçerli 25 AI mülakat kredisi.",
+    amountCents: 199900,
     currency: "try",
     quotaKey: "AI_INTERVIEWS",
     quantity: 25
@@ -238,7 +238,7 @@ export const FREE_TRIAL_DEFINITION: BillingTrialDefinition = {
   aiInterviewsIncluded: 3,
   features: {
     advancedReporting: false,
-    calendarIntegrations: true,
+    calendarIntegrations: false,
     brandedCandidateExperience: false,
     customIntegrations: false
   },

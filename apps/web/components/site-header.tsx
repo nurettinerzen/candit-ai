@@ -3,7 +3,7 @@
 import { useUiText } from "./site-language-provider";
 import styles from "./public-site.module.css";
 import { LanguagePill } from "./language-pill";
-import { PUBLIC_TOP_NAV } from "../lib/public-site-data";
+import { PUBLIC_SITE_BRAND_SUBTITLE, PUBLIC_TOP_NAV } from "../lib/public-site-data";
 
 const SITE_BRAND = "Candit.ai";
 
@@ -23,7 +23,7 @@ export function SiteHeader({ activeHref }: { activeHref?: string }) {
           </span>
           <span className={styles.brandCopy}>
             <strong>{SITE_BRAND}</strong>
-            <span>{t("AI destekli işe alım platformu")}</span>
+            <span>{t(PUBLIC_SITE_BRAND_SUBTITLE)}</span>
           </span>
         </a>
 
@@ -42,13 +42,13 @@ export function SiteHeader({ activeHref }: { activeHref?: string }) {
         <div className={styles.headerActions}>
           <LanguagePill />
           <a href="/auth/login" className={styles.headerTextAction}>
-            {t("Giriş Yap")}
+            {t("Giriş")}
           </a>
           <a
             href="/auth/signup"
             className={cn(styles.button, styles.buttonPrimary)}
           >
-            <span>{t("Ücretsiz Deneyin")}</span>
+            <span>{t("Ücretsiz deneme")}</span>
           </a>
         </div>
       </div>

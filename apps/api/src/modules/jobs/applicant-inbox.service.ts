@@ -13,6 +13,8 @@ import { AuditWriterService } from "../audit/audit-writer.service";
 import { CandidatesService } from "../candidates/candidates.service";
 import { deriveInterviewInvitationState } from "../interviews/interview-invitation-state.util";
 
+type JobScreeningMode = "WIDE_POOL" | "BALANCED" | "STRICT";
+
 function deriveCandidateNameFromFilename(originalName: string) {
   const base = originalName.replace(/\.[^.]+$/, "");
   const normalized = base
@@ -504,6 +506,7 @@ export class ApplicantInboxService {
         status: job.status,
         locationText: job.locationText,
         shiftType: job.shiftType,
+        screeningMode: job.screeningMode as JobScreeningMode,
         salaryMin: job.salaryMin ? Number(job.salaryMin) : null,
         salaryMax: job.salaryMax ? Number(job.salaryMax) : null,
         jdText: job.jdText,
@@ -633,6 +636,7 @@ export class ApplicantInboxService {
     }>;
     source: string;
     externalSource?: string;
+    screeningMode?: JobScreeningMode;
     createdBy: string;
     traceId?: string;
   }) {
@@ -646,6 +650,17 @@ export class ApplicantInboxService {
 
     if (job.status === "ARCHIVED") {
       throw new BadRequestException("Arşivli ilana yeni aday veya CV eklenemez.");
+    }
+
+    const screeningMode = (input.screeningMode ?? job.screeningMode ?? "BALANCED") as JobScreeningMode;
+
+    if (screeningMode !== job.screeningMode) {
+      await this.prisma.job.update({
+        where: { id: job.id },
+        data: {
+          screeningMode
+        }
+      });
     }
 
     const items: Array<{
@@ -743,6 +758,7 @@ export class ApplicantInboxService {
       metadata: {
         source: input.source,
         externalSource: input.externalSource ?? null,
+        screeningMode,
         imported: importedCount,
         queued: queuedCount,
         total: input.files.length

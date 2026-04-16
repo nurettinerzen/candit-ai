@@ -58,6 +58,7 @@ import type {
   PublicInterviewSessionView,
   Job,
   JobRequirement,
+  ScreeningMode,
   JobStatus,
   MeetingProvider,
   MemberDirectoryItem,
@@ -626,6 +627,7 @@ export const apiClient = {
     files: File[];
     source: string;
     externalSource?: string;
+    screeningMode?: ScreeningMode;
   }) {
     const formData = new FormData();
     for (const file of payload.files) {
@@ -634,6 +636,9 @@ export const apiClient = {
     formData.append("source", payload.source);
     if (payload.externalSource) {
       formData.append("externalSource", payload.externalSource);
+    }
+    if (payload.screeningMode) {
+      formData.append("screeningMode", payload.screeningMode);
     }
 
     return request<BulkCvUploadResult>(`jobs/${jobId}/applicants/bulk-cv-upload`, {
@@ -833,10 +838,12 @@ export const apiClient = {
       body: {}
     });
   },
-  updateMemberRole(userId: string, payload: { role: "manager" | "staff" }) {
+  updateMemberRole(userId: string, payload: { role: "owner" | "manager" | "staff" }) {
     return request<{
       userId: string;
-      role: "manager" | "staff";
+      role: "owner" | "manager" | "staff";
+      previousOwnerUserId?: string;
+      nextOwnerUserId?: string;
     }>(`members/${userId}/role`, {
       method: "PATCH",
       body: payload
@@ -860,6 +867,13 @@ export const apiClient = {
       body: {}
     });
   },
+  deleteMember(userId: string) {
+    return request<{
+      userId: string;
+    }>(`members/${userId}`, {
+      method: "DELETE"
+    });
+  },
   billingOverview() {
     return request<BillingOverviewReadModel>("billing/overview");
   },
@@ -867,6 +881,13 @@ export const apiClient = {
     return request<{
       checkoutUrl: string | null;
       sessionId: string;
+      flow?:
+        | "stripe_checkout"
+        | "customer_portal"
+        | "scheduled"
+        | "local_activation"
+        | "subscription_updated"
+        | "unchanged";
     }>("billing/checkout/plan", {
       method: "POST",
       body: payload
@@ -876,6 +897,7 @@ export const apiClient = {
     return request<{
       checkoutUrl: string | null;
       sessionId: string;
+      flow?: "stripe_checkout" | "local_activation";
     }>("billing/checkout/addon", {
       method: "POST",
       body: payload
@@ -919,8 +941,44 @@ export const apiClient = {
       body: {}
     });
   },
+  scheduleBillingSubscriptionCancellation() {
+    return request<{
+      checkoutUrl: null;
+      sessionId: string;
+      flow?: "scheduled_cancellation" | "unchanged";
+    }>("billing/subscription/cancel", {
+      method: "POST",
+      body: {}
+    });
+  },
+  resumeBillingSubscriptionCancellation() {
+    return request<{
+      checkoutUrl: null;
+      sessionId: string;
+      flow?: "subscription_updated" | "unchanged";
+    }>("billing/subscription/resume", {
+      method: "POST",
+      body: {}
+    });
+  },
   internalAdminDashboard() {
     return request<InternalAdminDashboardReadModel>("internal-admin/dashboard");
+  },
+  internalAdminAuthFlags() {
+    return request<FeatureFlag[]>("internal-admin/auth-flags");
+  },
+  internalAdminUpdateAuthFlag(
+    key: string,
+    payload: {
+      value: boolean;
+      type?: "BOOLEAN" | "MULTIVARIATE" | "KILL_SWITCH";
+      description?: string;
+    }
+  ) {
+    return request<FeatureFlag>(`internal-admin/auth-flags/${encodeURIComponent(key)}`, {
+      method: "PATCH",
+      body: payload
+    });
   },
   internalAdminPublicLeads(params?: {
     query?: string;

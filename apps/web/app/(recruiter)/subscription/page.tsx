@@ -1,13 +1,16 @@
 "use client";
 
-import type { Route } from "next";
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageTitleWithGuide } from "../../../components/page-guide";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
 import { useUiText } from "../../../components/site-language-provider";
 import { apiClient } from "../../../lib/api-client";
+import { publicContactApi } from "../../../lib/api/public-client";
+import {
+  buildBillingPlanCardModel,
+  formatBillingPlanLabel
+} from "../../../lib/billing-presentation";
 import { formatDateOnly } from "../../../lib/format";
 import { getLocaleTag } from "../../../lib/i18n";
 import type { BillingOverviewReadModel, BillingPlanKey } from "../../../lib/types";
@@ -16,6 +19,30 @@ type BillingQuotaKeyWithAddOns = Exclude<
   BillingOverviewReadModel["addOnCatalog"][number]["quotaKey"],
   undefined | null
 >;
+type PlanActionMode = "current" | "upgrade" | "downgrade";
+type EnterpriseQuoteFormState = {
+  fullName: string;
+  company: string;
+  email: string;
+  phone: string;
+  seats: string;
+  activeJobs: string;
+  candidateProcessing: string;
+  aiInterviews: string;
+  note: string;
+};
+
+const INITIAL_ENTERPRISE_QUOTE_FORM: EnterpriseQuoteFormState = {
+  fullName: "",
+  company: "",
+  email: "",
+  phone: "",
+  seats: "",
+  activeJobs: "",
+  candidateProcessing: "",
+  aiInterviews: "",
+  note: ""
+};
 
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -27,21 +54,6 @@ function formatMoney(amountCents: number, currency: string, localeTag: string) {
     currency: currency.toUpperCase(),
     maximumFractionDigits: 0
   }).format(amountCents / 100);
-}
-
-function formatPlanPrice(
-  plan: BillingOverviewReadModel["planCatalog"][number],
-  localeTag: string
-) {
-  if (plan.billingModel === "prepaid") {
-    return localeTag.startsWith("en") ? "Pay as you go" : "Kullandıkça öde";
-  }
-
-  if (plan.monthlyAmountCents === null) {
-    return localeTag.startsWith("en") ? "Custom quote" : "Özel teklif";
-  }
-
-  return formatMoney(plan.monthlyAmountCents, plan.currency, localeTag);
 }
 
 function formatAddOnPrice(
@@ -62,90 +74,57 @@ function formatAddOnHeadline(
   return t(addOn.label);
 }
 
-function formatBillingStatus(status: string) {
-  switch (status) {
-    case "TRIALING":
-      return "Deneme";
-    case "ACTIVE":
-      return "Aktif";
-    case "PAST_DUE":
-      return "Ödeme gecikti";
-    case "INCOMPLETE":
-      return "Eksik kurulum";
-    case "CANCELED":
-      return "İptal";
-    default:
-      return status;
+function planOrder(planKey: BillingPlanKey) {
+  switch (planKey) {
+    case "FLEX":
+      return 0;
+    case "STARTER":
+      return 1;
+    case "GROWTH":
+      return 2;
+    case "ENTERPRISE":
+      return 3;
   }
 }
 
-function formatPackageLabel(planKey: BillingPlanKey, locale: "tr" | "en") {
-  if (locale === "en") {
-    return planKey === "FLEX"
-      ? "Flex"
-      : planKey === "STARTER"
-        ? "Starter"
-        : planKey === "GROWTH"
-          ? "Growth"
-          : "Enterprise";
+function getPlanActionMode(currentPlanKey: BillingPlanKey, targetPlanKey: BillingPlanKey): PlanActionMode {
+  if (currentPlanKey === targetPlanKey) {
+    return "current";
   }
 
-  return planKey === "FLEX"
-    ? "Esnek"
-    : planKey === "STARTER"
-      ? "Başlangıç"
-      : planKey === "GROWTH"
-        ? "Büyüme"
-        : "Kurumsal";
-}
-
-function formatLifecycleLabel(
-  billing: BillingOverviewReadModel,
-  t: (value: string) => string,
-  locale: "tr" | "en"
-) {
-  if (billing.trial.isActive) {
-    return locale === "en" ? "Active Trial" : "Aktif Deneme";
-  }
-
-  if (billing.trial.isExpired) {
-    return locale === "en" ? "Trial Ended" : "Deneme Süresi Bitti";
-  }
-
-  if (!billing.trial.isEligible) {
-    return locale === "en" ? "Upgrade Required" : "Yükseltme Gerekli";
-  }
-
-  return t(formatBillingStatus(billing.account.status));
+  return planOrder(targetPlanKey) > planOrder(currentPlanKey) ? "upgrade" : "downgrade";
 }
 
 function planActionLabel(
-  currentPlanKey: BillingPlanKey,
-  nextPlanKey: Exclude<BillingPlanKey, "ENTERPRISE">,
-  locale: "tr" | "en",
-  options?: {
-    trialContext?: boolean;
-  }
+  mode: PlanActionMode,
+  locale: "tr" | "en"
 ) {
-  const targetLabel = formatPackageLabel(nextPlanKey, locale);
-
-  if (options?.trialContext) {
-    return locale === "en" ? `Switch to ${targetLabel}` : `${targetLabel} Pakete Geç`;
-  }
-
-  if (currentPlanKey === nextPlanKey) {
-    return locale === "en" ? "Current Plan" : "Mevcut Plan";
-  }
-
   if (locale === "en") {
-    return `Switch to ${targetLabel}`;
+    return mode === "current" ? "Current plan" : mode === "upgrade" ? "Upgrade" : "Downgrade";
   }
 
-  return nextPlanKey === "FLEX"
-    ? "Esnek Pakete Geç"
-    : nextPlanKey === "GROWTH"
-      ? "Büyüme Paketine Geç"
-      : "Başlangıç Paketine Dön";
+  return mode === "current" ? "Mevcut Paket" : mode === "upgrade" ? "Yükselt" : "Düşür";
+}
+
+function buildEnterpriseQuoteMessage(
+  form: EnterpriseQuoteFormState,
+  t: (value: string) => string
+) {
+  const lines = [
+    t("Abonelik sayfasından kurumsal teklif talebi."),
+    "",
+    `${t("Düşünülen kullanıcı sayısı")}: ${form.seats}`,
+    `${t("Düşünülen ilan kredisi")}: ${form.activeJobs}`,
+    `${t("Düşünülen aday değerlendirme kredisi")}: ${form.candidateProcessing}`,
+    `${t("Düşünülen AI mülakat")}: ${form.aiInterviews}`
+  ];
+
+  if (form.note.trim()) {
+    lines.push("");
+    lines.push(`${t("Ek not")}: ${form.note.trim()}`);
+  }
+
+  return lines.join("\n");
 }
 
 export default function SubscriptionPage() {
@@ -163,6 +142,10 @@ export default function SubscriptionPage() {
   const [selectedAddOnKey, setSelectedAddOnKey] = useState<
     BillingOverviewReadModel["addOnCatalog"][number]["key"] | null
   >(null);
+  const [isEnterpriseModalOpen, setIsEnterpriseModalOpen] = useState(false);
+  const [enterpriseForm, setEnterpriseForm] = useState<EnterpriseQuoteFormState>(INITIAL_ENTERPRISE_QUOTE_FORM);
+  const [enterpriseError, setEnterpriseError] = useState("");
+  const [enterpriseSubmitting, setEnterpriseSubmitting] = useState(false);
 
   const loadBilling = useCallback(async () => {
     setLoading(true);
@@ -201,7 +184,7 @@ export default function SubscriptionPage() {
   }, [activeAddOnQuotaKey, billing]);
 
   useEffect(() => {
-    if (!activeAddOnQuotaKey) {
+    if (!activeAddOnQuotaKey && !isEnterpriseModalOpen) {
       return;
     }
 
@@ -209,7 +192,12 @@ export default function SubscriptionPage() {
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setActiveAddOnQuotaKey(null);
+        if (activeAddOnQuotaKey) {
+          setActiveAddOnQuotaKey(null);
+        } else {
+          setIsEnterpriseModalOpen(false);
+          setEnterpriseError("");
+        }
       }
     }
 
@@ -220,7 +208,31 @@ export default function SubscriptionPage() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [activeAddOnQuotaKey]);
+  }, [activeAddOnQuotaKey, isEnterpriseModalOpen]);
+
+  function handleEnterpriseFieldChange(field: keyof EnterpriseQuoteFormState) {
+    return (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setEnterpriseForm((current) => ({
+        ...current,
+        [field]: event.target.value
+      }));
+    };
+  }
+
+  function openEnterpriseModal() {
+    setEnterpriseError("");
+    setActionNotice("");
+    setEnterpriseForm((current) => ({
+      ...current,
+      email: current.email || billing?.account.billingEmail || ""
+    }));
+    setIsEnterpriseModalOpen(true);
+  }
+
+  function closeEnterpriseModal() {
+    setIsEnterpriseModalOpen(false);
+    setEnterpriseError("");
+  }
 
   async function handlePlanCheckout(planKey: Exclude<BillingPlanKey, "ENTERPRISE">) {
     setBusyKey(`plan:${planKey}`);
@@ -237,7 +249,13 @@ export default function SubscriptionPage() {
 
       if (result.checkoutUrl) {
         window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
-        setActionNotice(t("Stripe ödeme sayfası yeni sekmede açıldı."));
+        setActionNotice(
+          result.flow === "customer_portal"
+            ? t("Abonelik yönetim sayfası yeni sekmede açıldı.")
+            : t("Stripe ödeme sayfası yeni sekmede açıldı.")
+        );
+      } else if (result.flow === "scheduled") {
+        setActionNotice(t("Plan değişikliği dönem sonuna planlandı."));
       } else if (planKey === "FLEX") {
         setActionNotice(t("Flex planı aktifleştirildi."));
       } else {
@@ -245,6 +263,54 @@ export default function SubscriptionPage() {
       }
     } catch (checkoutError) {
       setError(toErrorMessage(checkoutError, t("Plan değişikliği başlatılamadı.")));
+    } finally {
+      setBusyKey("");
+    }
+  }
+
+  async function handleBillingPortalOpen() {
+    setBusyKey("portal");
+    setError("");
+    setActionNotice("");
+
+    try {
+      const result = await apiClient.createBillingCustomerPortal();
+      window.open(result.portalUrl, "_blank", "noopener,noreferrer");
+      setActionNotice(t("Stripe müşteri portalı açıldı."));
+    } catch (portalError) {
+      setError(toErrorMessage(portalError, t("Müşteri portalı açılamadı.")));
+    } finally {
+      setBusyKey("");
+    }
+  }
+
+  async function handleScheduleSubscriptionCancellation() {
+    setBusyKey("subscription:cancel");
+    setError("");
+    setActionNotice("");
+
+    try {
+      await apiClient.scheduleBillingSubscriptionCancellation();
+      await loadBilling();
+      setActionNotice(t("Abonelik dönem sonunda iptal edilecek."));
+    } catch (cancelError) {
+      setError(toErrorMessage(cancelError, t("Abonelik iptali planlanamadı.")));
+    } finally {
+      setBusyKey("");
+    }
+  }
+
+  async function handleResumeScheduledCancellation() {
+    setBusyKey("subscription:resume");
+    setError("");
+    setActionNotice("");
+
+    try {
+      await apiClient.resumeBillingSubscriptionCancellation();
+      await loadBilling();
+      setActionNotice(t("Planlanan abonelik iptali kaldırıldı."));
+    } catch (resumeError) {
+      setError(toErrorMessage(resumeError, t("Planlanan iptal kaldırılamadı.")));
     } finally {
       setBusyKey("");
     }
@@ -267,7 +333,11 @@ export default function SubscriptionPage() {
         window.open(result.checkoutUrl, "_blank", "noopener,noreferrer");
         setActionNotice(t("Ek paket ödeme sayfası yeni sekmede açıldı."));
       } else {
-        setActionNotice(t("Ek paket satın alma akışı tamamlandı."));
+        setActionNotice(
+          result.flow === "local_activation"
+            ? t("Ek paket bakiyesi hemen hesabınıza tanımlandı.")
+            : t("Ek paket satın alma akışı tamamlandı.")
+        );
       }
       return true;
     } catch (checkoutError) {
@@ -275,6 +345,43 @@ export default function SubscriptionPage() {
       return false;
     } finally {
       setBusyKey("");
+    }
+  }
+
+  async function handleEnterpriseSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setEnterpriseSubmitting(true);
+    setEnterpriseError("");
+    setError("");
+    setActionNotice("");
+
+    try {
+      await publicContactApi.submit({
+        fullName: enterpriseForm.fullName.trim(),
+        email: enterpriseForm.email.trim(),
+        company: enterpriseForm.company.trim() || undefined,
+        phone: enterpriseForm.phone.trim() || undefined,
+        message: buildEnterpriseQuoteMessage(enterpriseForm, t),
+        sourcePage: "recruiter-subscription-enterprise-quote",
+        landingUrl: typeof window !== "undefined" ? window.location.href : undefined,
+        locale
+      });
+
+      setEnterpriseForm((current) => ({
+        ...INITIAL_ENTERPRISE_QUOTE_FORM,
+        email: current.email.trim()
+      }));
+      setIsEnterpriseModalOpen(false);
+      setActionNotice(t("Kurumsal teklif talebiniz alındı."));
+    } catch (submitError) {
+      setEnterpriseError(
+        toErrorMessage(
+          submitError,
+          t("Kurumsal teklif talebi gönderilemedi.")
+        )
+      );
+    } finally {
+      setEnterpriseSubmitting(false);
     }
   }
 
@@ -316,35 +423,42 @@ export default function SubscriptionPage() {
     );
   }
 
-  const hasTrialContext = billing
-    ? billing.trial.isActive || billing.trial.isExpired || !billing.trial.isEligible
-    : false;
-  const packageLabel = billing ? formatPackageLabel(billing.account.currentPlanKey, locale) : "";
-  const lifecycleLabel = billing ? formatLifecycleLabel(billing, t, locale) : "";
-  const summaryDateLabel = billing?.trial.isActive || billing?.trial.isExpired ? t("Deneme Bitişi") : t("Sonraki Fatura");
+  const packageLabel = billing ? formatBillingPlanLabel(billing.account.currentPlanKey, locale) : "";
+  const summaryDateLabel = locale === "en" ? "Period End" : "Dönem Sonu";
   const summaryDateValue = billing
-    ? formatDateOnly(billing.trial.endsAt ?? billing.account.currentPeriodEnd)
+    ? formatDateOnly(billing.account.currentPeriodEnd)
     : "";
+  const pendingPlanLabel = billing?.account.pendingChange
+    ? formatBillingPlanLabel(billing.account.pendingChange.planKey, locale)
+    : "";
+  const scheduledCancellationDate = billing?.account.scheduledCancellation
+    ? formatDateOnly(billing.account.scheduledCancellation.effectiveAt)
+    : "";
+  const hasStripeSubscription = Boolean(billing?.account.stripeSubscriptionId);
+  const showScheduleCancellationButton = Boolean(
+    hasStripeSubscription &&
+      !billing?.account.pendingChange &&
+      !billing?.account.scheduledCancellation
+  );
+  const showResumeCancellationButton = Boolean(
+    billing?.account.scheduledCancellation?.canResume
+  );
   const pageSubtitle =
     locale === "en"
       ? "Track your package and usage from one place."
       : "Paketinizi ve kullanım durumunuzu tek yerden takip edin.";
   const packageHeading = locale === "en" ? "Package" : "Paket";
-  const lifecycleHeading = locale === "en" ? "Lifecycle" : "Yaşam Döngüsü";
   const plansHeading = locale === "en" ? "Packages" : "Paketler";
   const addOnsHeading = locale === "en" ? "Credit Packs" : "Kredi Paketleri";
-  const planSectionHint = hasTrialContext
-    ? locale === "en"
-      ? "You can switch directly to a paid package during the trial."
-      : "Deneme sırasında isterseniz doğrudan ücretli pakete geçebilirsiniz."
-    : locale === "en"
-      ? "You can upgrade or downgrade your package based on your needs."
-      : "İhtiyacınıza göre paketinizi yükseltebilir veya düşürebilirsiniz.";
+  const planSectionHint =
+    locale === "en"
+      ? "Upgrades apply immediately. Downgrades are scheduled for the end of the current period."
+      : "Yükseltmeler hemen uygulanır. Düşürmeler geçerli dönem sonunda planlanır.";
   const addOnSectionHint =
     locale === "en"
       ? "Included monthly usage resets every period. Purchased credit packs stay active for 90 days."
       : "Paket içindeki aylık kullanım her dönemde sıfırlanır. Satın aldığınız kredi paketleri 90 gün geçerlidir.";
-  const enterpriseCta = locale === "en" ? "Request Enterprise Quote" : "Kurumsal Teklif İste";
+  const enterpriseCta = t("Kurumsal Teklif İste");
 
   return (
     <section className="page-grid">
@@ -377,7 +491,22 @@ export default function SubscriptionPage() {
           <section className="panel subscription-summary-panel">
             <div className="subscription-section-head">
               <h2>{t("Abonelik Özeti")}</h2>
-              {hasTrialContext ? <span className="subscription-summary-badge">{lifecycleLabel}</span> : null}
+              <div className="subscription-summary-actions">
+                {billing.account.stripeCustomerId ? (
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    disabled={busyKey === "portal"}
+                    onClick={() => void handleBillingPortalOpen()}
+                  >
+                    {busyKey === "portal"
+                      ? t("Hazırlanıyor...")
+                      : locale === "en"
+                        ? "Manage billing"
+                        : "Faturalandırmayı yönet"}
+                  </button>
+                ) : null}
+              </div>
             </div>
             <div className="subscription-summary-grid">
               <div className="subscription-summary-item">
@@ -385,34 +514,70 @@ export default function SubscriptionPage() {
                 <strong>{packageLabel}</strong>
               </div>
               <div className="subscription-summary-item">
-                <span>{lifecycleHeading}</span>
-                <strong>{lifecycleLabel}</strong>
-              </div>
-              <div className="subscription-summary-item">
                 <span>{summaryDateLabel}</span>
                 <strong>{summaryDateValue}</strong>
               </div>
+              {billing.account.pendingChange ? (
+                <div className="subscription-summary-item">
+                  <span>{locale === "en" ? "Scheduled Change" : "Planlanan Geçiş"}</span>
+                  <strong>
+                    {pendingPlanLabel} · {formatDateOnly(billing.account.pendingChange.effectiveAt)}
+                  </strong>
+                </div>
+              ) : null}
             </div>
           </section>
 
           <section className="panel">
             <div className="tlx-section-header">
-                <h3 className="tlx-section-title">{t("Kullanım Durumu")}</h3>
-                <span className="tlx-plan-strip-name">{packageLabel}</span>
-              </div>
+              <h3 className="tlx-section-title">{t("Kullanım Durumu")}</h3>
+            </div>
 
             <div className="tlx-usage-list">
               {billing.usage.quotas.map((quota) => (
                 <QuotaRow
                   key={quota.key}
                   quota={quota}
-                  canBuyAddOn={billing.addOnCatalog.some((addOn) => addOn.quotaKey === quota.key)}
-                  onOpenAddOn={() => setActiveAddOnQuotaKey(quota.key as BillingQuotaKeyWithAddOns)}
                 />
               ))}
               <div className="tlx-usage-period">
-                <span>{billing.trial.isActive ? t("Deneme sonu") : t("Dönem sonu")}:</span>
-                <strong>{formatDateOnly(billing.trial.endsAt ?? billing.account.currentPeriodEnd)}</strong>
+                <div className="subscription-period-summary">
+                  <span>{t("Dönem sonu")}:</span>
+                  <strong>{formatDateOnly(billing.account.currentPeriodEnd)}</strong>
+                </div>
+                {showResumeCancellationButton || showScheduleCancellationButton ? (
+                  <div className="subscription-period-actions">
+                    {billing.account.scheduledCancellation ? (
+                      <div className="subscription-period-meta">
+                        <span>{locale === "en" ? "Scheduled cancellation" : "Planlanan iptal"}</span>
+                        <strong>{scheduledCancellationDate}</strong>
+                      </div>
+                    ) : null}
+                    {showResumeCancellationButton ? (
+                      <button
+                        type="button"
+                        className="subscription-danger-button"
+                        disabled={busyKey === "subscription:resume"}
+                        onClick={() => void handleResumeScheduledCancellation()}
+                      >
+                        {busyKey === "subscription:resume"
+                          ? t("Hazırlanıyor...")
+                          : t("İptali geri çek")}
+                      </button>
+                    ) : showScheduleCancellationButton ? (
+                      <button
+                        type="button"
+                        className="subscription-danger-button"
+                        disabled={busyKey === "subscription:cancel"}
+                        onClick={() => void handleScheduleSubscriptionCancellation()}
+                      >
+                        {busyKey === "subscription:cancel"
+                          ? t("Hazırlanıyor...")
+                          : t("Aboneliği iptal et")}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           </section>
@@ -427,66 +592,75 @@ export default function SubscriptionPage() {
 
             <div className="tlx-plan-grid">
               {billing.planCatalog.map((plan) => {
-                const isCurrent = !hasTrialContext && plan.key === billing.account.currentPlanKey;
-                const planName = formatPackageLabel(plan.key, locale);
+                const actionMode = getPlanActionMode(billing.account.currentPlanKey, plan.key);
+                const isCurrent = actionMode === "current";
+                const planCard = buildBillingPlanCardModel(plan, locale, {
+                  enterprisePriceLabel: locale === "en" ? "Contact Us" : "İletişime Geçin"
+                });
                 return (
                   <article
                     key={plan.key}
                     className={`tlx-plan-card${isCurrent ? " tlx-plan-current" : ""}`}
                   >
-                    {isCurrent ? <div className="tlx-plan-current-label">{t("Mevcut Plan")}</div> : null}
+                    {isCurrent ? <div className="tlx-plan-current-label">{locale === "en" ? "Current Plan" : "Mevcut Plan"}</div> : null}
                     <div className="tlx-plan-card-head">
-                      <div className="tlx-plan-card-name">{planName}</div>
+                      <div className="tlx-plan-card-name">{planCard.title}</div>
                       <div
                         className={`tlx-plan-card-price${
-                          plan.billingModel !== "subscription" || plan.monthlyAmountCents === null
+                          planCard.priceDisplay === "text"
                             ? " tlx-plan-card-price-text"
                             : ""
                         }`}
                       >
-                        <strong>{formatPlanPrice(plan, localeTag)}</strong>
-                        {plan.billingModel === "subscription" && plan.monthlyAmountCents !== null ? (
-                          <span> /{locale === "en" ? "mo" : "ay"}</span>
+                        <strong>{planCard.priceAmount}</strong>
+                        {planCard.priceDisplay === "numeric" && planCard.priceSuffix ? (
+                          <span>{planCard.priceSuffix}</span>
                         ) : null}
                       </div>
                     </div>
 
                     <div className="tlx-plan-card-features">
-                      <span>{plan.seatsIncluded || t("Özel")} {t("kullanıcı")}</span>
-                      <span>{plan.activeJobsIncluded || t("Özel")} {t("ilan kredisi")}</span>
-                      <span>{plan.candidateProcessingIncluded || t("Özel")} {t("aday değerlendirme kredisi")}</span>
-                      <span>{plan.aiInterviewsIncluded || t("Özel")} {t("AI mülakat kredisi")}</span>
-                      <span>{plan.features.calendarIntegrations ? t("Takvim entegrasyonları") : t("Takvim entegrasyonu yok")}</span>
-                      <span>{plan.features.advancedReporting ? t("Gelişmiş raporlama") : t("Temel raporlama")}</span>
-                      <span>{t(plan.supportLabel)}</span>
+                      {planCard.featureList.map((feature) => (
+                        <span key={`${plan.key}-${feature}`}>{t(feature)}</span>
+                      ))}
                     </div>
 
                     <div className="tlx-plan-card-action">
                       {plan.key === "ENTERPRISE" ? (
-                        <Link href={"/contact" as Route} className="tlx-plan-btn">
+                        <button type="button" className="tlx-plan-btn" onClick={openEnterpriseModal}>
                           {enterpriseCta}
-                        </Link>
+                        </button>
+                      ) : actionMode === "current" ? (
+                        <span className="tlx-plan-btn tlx-plan-btn-static">
+                          {planActionLabel(actionMode, locale)}
+                        </span>
+                      ) : actionMode === "downgrade" ? (
+                        <button
+                          type="button"
+                          className="tlx-plan-btn"
+                          disabled={busyKey === `plan:${plan.key}`}
+                          onClick={() =>
+                            void handlePlanCheckout(
+                              plan.key as Exclude<BillingPlanKey, "ENTERPRISE">
+                            )
+                          }
+                        >
+                          {busyKey === `plan:${plan.key}`
+                            ? t("Hazırlanıyor...")
+                            : planActionLabel(actionMode, locale)}
+                        </button>
                       ) : (
                         <button
                           type="button"
                           className="tlx-plan-btn"
                           disabled={
-                            (plan.billingModel !== "prepaid" && !billing.stripeReady) ||
-                            isCurrent ||
                             busyKey === `plan:${plan.key}`
                           }
                           onClick={() => void handlePlanCheckout(plan.key as Exclude<BillingPlanKey, "ENTERPRISE">)}
                         >
                           {busyKey === `plan:${plan.key}`
                             ? t("Hazırlanıyor...")
-                            : isCurrent
-                              ? t("Mevcut Plan")
-                              : planActionLabel(
-                                  billing.account.currentPlanKey,
-                                  plan.key as Exclude<BillingPlanKey, "ENTERPRISE">,
-                                  locale,
-                                  { trialContext: hasTrialContext }
-                                )}
+                            : planActionLabel(actionMode, locale)}
                         </button>
                       )}
                     </div>
@@ -500,11 +674,6 @@ export default function SubscriptionPage() {
             <div className="subscription-section-head" style={{ marginBottom: 16 }}>
               <div>
                 <h3 className="tlx-section-title">{addOnsHeading}</h3>
-                <p className="small text-muted" style={{ margin: "6px 0 0" }}>
-                  {locale === "en"
-                    ? "Open a relevant pack directly from the usage row or pick one of the compact options below."
-                    : "İlgili paketi kullanım satırından açabilir veya aşağıdaki kompakt seçeneklerden seçebilirsiniz."}
-                </p>
               </div>
             </div>
 
@@ -512,21 +681,10 @@ export default function SubscriptionPage() {
               {billing.usage.quotas
                 .filter((quota) => billing.addOnCatalog.some((addOn) => addOn.quotaKey === quota.key))
                 .map((quota) => {
-                  const addOns = billing.addOnCatalog.filter((addOn) => addOn.quotaKey === quota.key);
-                  const summary = addOns
-                    .map((addOn) => formatAddOnHeadline(addOn, t))
-                    .join(locale === "en" ? " or " : " veya ");
-
                   return (
                     <article key={quota.key} className="billing-addon-compact-row">
                       <div className="billing-addon-compact-copy">
                         <strong>{t(quota.label)}</strong>
-                        <span>
-                          {summary} •{" "}
-                          {addOns
-                            .map((addOn) => formatAddOnPrice(addOn, localeTag))
-                            .join(" / ")}
-                        </span>
                       </div>
 
                       <button
@@ -574,7 +732,7 @@ export default function SubscriptionPage() {
                     onClick={() => setActiveAddOnQuotaKey(null)}
                     aria-label={locale === "en" ? "Close modal" : "Pencereyi kapat"}
                   >
-                    ×
+                    <span aria-hidden="true">×</span>
                   </button>
                 </div>
 
@@ -595,12 +753,6 @@ export default function SubscriptionPage() {
                   ))}
                 </div>
 
-                <div className="billing-modal-footnote">
-                  {locale === "en"
-                    ? "Dynamic custom quantity is not enabled yet, so checkout uses the ready-made packs above."
-                    : "Dinamik adet girişi henüz açık değil; ödeme akışı yukarıdaki hazır paketlerle çalışıyor."}
-                </div>
-
                 <div className="billing-modal-actions">
                   <button
                     type="button"
@@ -613,9 +765,7 @@ export default function SubscriptionPage() {
                     type="button"
                     className="tlx-plan-btn billing-modal-submit"
                     disabled={
-                      !billing.stripeReady ||
                       !selectedAddOnKey ||
-                      busyKey === selectedAddOnKey ||
                       busyKey === `addon:${selectedAddOnKey}`
                     }
                     onClick={() => void handleSelectedAddOnCheckout()}
@@ -627,6 +777,189 @@ export default function SubscriptionPage() {
                         : "Ödemeye geç"}
                   </button>
                 </div>
+              </div>
+            </div>
+          ) : null}
+
+          {isEnterpriseModalOpen ? (
+            <div
+              className="billing-modal-backdrop"
+              role="presentation"
+              onClick={closeEnterpriseModal}
+            >
+              <div
+                className="billing-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="enterprise-quote-modal-title"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="billing-modal-head">
+                  <div>
+                    <h3 id="enterprise-quote-modal-title">
+                      {t("Kurumsal Teklif İste")}
+                    </h3>
+                    <p>
+                      {t("Ekibinizi ve kullanım ihtiyacınızı paylaşın, size özel teklif hazırlayalım.")}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="billing-modal-close"
+                    onClick={closeEnterpriseModal}
+                    aria-label={t("Pencereyi kapat")}
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+
+                {enterpriseError ? (
+                  <div className="billing-modal-alert billing-modal-alert-error">
+                    {t(enterpriseError)}
+                  </div>
+                ) : null}
+
+                <form className="billing-modal-form" onSubmit={(event) => void handleEnterpriseSubmit(event)}>
+                  <div className="billing-modal-form-grid">
+                    <label className="field">
+                      <span className="field-label">{t("Ad soyad")}</span>
+                      <input
+                        type="text"
+                        className="input"
+                        value={enterpriseForm.fullName}
+                        onChange={handleEnterpriseFieldChange("fullName")}
+                        placeholder={t("Örn: Ayşe Kaya")}
+                        autoComplete="name"
+                        required
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span className="field-label">{t("Şirket adı")}</span>
+                      <input
+                        type="text"
+                        className="input"
+                        value={enterpriseForm.company}
+                        onChange={handleEnterpriseFieldChange("company")}
+                        placeholder={t("Şirket adı")}
+                        autoComplete="organization"
+                        required
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span className="field-label">{t("E-posta")}</span>
+                      <input
+                        type="email"
+                        className="input"
+                        value={enterpriseForm.email}
+                        onChange={handleEnterpriseFieldChange("email")}
+                        placeholder="ornek@sirket.com"
+                        autoComplete="email"
+                        required
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span className="field-label">{t("Telefon")}</span>
+                      <input
+                        type="tel"
+                        className="input"
+                        value={enterpriseForm.phone}
+                        onChange={handleEnterpriseFieldChange("phone")}
+                        placeholder="+90 5xx xxx xx xx"
+                        autoComplete="tel"
+                        required
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span className="field-label">{t("Kullanıcı sayısı")}</span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        className="input"
+                        value={enterpriseForm.seats}
+                        onChange={handleEnterpriseFieldChange("seats")}
+                        placeholder="10"
+                        required
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span className="field-label">{t("İlan kredisi")}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        className="input"
+                        value={enterpriseForm.activeJobs}
+                        onChange={handleEnterpriseFieldChange("activeJobs")}
+                        placeholder="25"
+                        required
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span className="field-label">{t("Aday değerlendirme kredisi")}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        className="input"
+                        value={enterpriseForm.candidateProcessing}
+                        onChange={handleEnterpriseFieldChange("candidateProcessing")}
+                        placeholder="500"
+                        required
+                      />
+                    </label>
+
+                    <label className="field">
+                      <span className="field-label">{t("AI mülakat")}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        className="input"
+                        value={enterpriseForm.aiInterviews}
+                        onChange={handleEnterpriseFieldChange("aiInterviews")}
+                        placeholder="100"
+                        required
+                      />
+                    </label>
+
+                    <label className="field billing-modal-field-wide">
+                      <span className="field-label">{t("Ek not")}</span>
+                      <textarea
+                        rows={4}
+                        className="textarea"
+                        value={enterpriseForm.note}
+                        onChange={handleEnterpriseFieldChange("note")}
+                        placeholder={t("Ekip yapınızı, geçiş takviminizi veya özel ihtiyaçlarınızı kısaca yazın.")}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="billing-modal-actions">
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={closeEnterpriseModal}
+                    >
+                      {t("Vazgeç")}
+                    </button>
+                    <button
+                      type="submit"
+                      className="tlx-plan-btn billing-modal-submit"
+                      disabled={enterpriseSubmitting}
+                    >
+                      {enterpriseSubmitting
+                        ? t("Hazırlanıyor...")
+                        : t("Talebi gönder")}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           ) : null}
@@ -650,21 +983,17 @@ function quotaUnitLabel(quotaKey: BillingOverviewReadModel["addOnCatalog"][numbe
 }
 
 function QuotaRow({
-  quota,
-  canBuyAddOn,
-  onOpenAddOn
+  quota
 }: {
   quota: BillingOverviewReadModel["usage"]["quotas"][number];
-  canBuyAddOn: boolean;
-  onOpenAddOn: () => void;
 }) {
   const { t } = useUiText();
   const accent =
     quota.warningState === "exceeded"
-      ? "var(--danger, #ef4444)"
+      ? "var(--risk)"
       : quota.warningState === "warning"
-        ? "var(--warn, #f59e0b)"
-        : "var(--primary, #5046e5)";
+        ? "var(--warn)"
+        : "var(--primary)";
 
   return (
     <div className="tlx-usage-row">
@@ -683,13 +1012,6 @@ function QuotaRow({
       <div className="tlx-usage-row-value">
         <strong>{quota.used}</strong>/{quota.limit}
       </div>
-      {canBuyAddOn ? (
-        <div className="tlx-usage-row-action">
-          <button type="button" className="ghost-button tlx-usage-buy-button" onClick={onOpenAddOn}>
-            {t("Ek paket al")}
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -26,6 +26,10 @@ export class FitScoringService {
 
     if (!row) return null;
 
+    const reasoningRecord = row.reasoningJson && typeof row.reasoningJson === "object" && !Array.isArray(row.reasoningJson)
+      ? (row.reasoningJson as Record<string, unknown>)
+      : null;
+
     return {
       id: row.id,
       overallScore: normalizeFitScore(row.overallScore),
@@ -40,6 +44,13 @@ export class FitScoringService {
       risks: normalizeFitWarnings(row.risksJson),
       missingInfo: normalizeFitWarnings(row.missingInfoJson),
       reasoning: normalizeReasoning(row.reasoningJson),
+      calibration: {
+        fitBand: typeof reasoningRecord?.fitBand === "string" ? reasoningRecord.fitBand : null,
+        interviewReadiness:
+          typeof reasoningRecord?.interviewReadiness === "string" ? reasoningRecord.interviewReadiness : null,
+        fitBandReasoning:
+          typeof reasoningRecord?.fitBandReasoning === "string" ? reasoningRecord.fitBandReasoning : null
+      },
       createdAt: row.createdAt.toISOString()
     };
   }

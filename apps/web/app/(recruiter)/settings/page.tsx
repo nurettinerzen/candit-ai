@@ -8,7 +8,7 @@ import { useUiText } from "../../../components/site-language-provider";
 import { apiClient } from "../../../lib/api-client";
 import { getRoleLabel, isInternalAdminSession } from "../../../lib/auth/policy";
 import { resendEmailVerification, resolveActiveSession, saveSession } from "../../../lib/auth/session";
-import { formatDate } from "../../../lib/format";
+import { formatDateOnly } from "../../../lib/format";
 import type { BillingOverviewReadModel, MemberDirectoryItem } from "../../../lib/types";
 
 function toErrorMessage(error: unknown, fallback: string) {
@@ -28,8 +28,10 @@ function statusBadge(status: MemberDirectoryItem["status"], locale: "tr" | "en")
 }
 
 function formatOptionalDate(value: string | null) {
-  return value ? formatDate(value) : "—";
+  return value ? formatDateOnly(value) : "—";
 }
+
+type EditableMemberRole = "owner" | "manager" | "staff";
 
 export default function SettingsPage() {
   const { t, locale } = useUiText();
@@ -40,7 +42,7 @@ export default function SettingsPage() {
 
   const [members, setMembers] = useState<MemberDirectoryItem[]>([]);
   const [billing, setBilling] = useState<BillingOverviewReadModel | null>(null);
-  const [memberRoleDrafts, setMemberRoleDrafts] = useState<Record<string, "manager" | "staff">>(
+  const [memberRoleDrafts, setMemberRoleDrafts] = useState<Record<string, EditableMemberRole>>(
     {}
   );
   const [loading, setLoading] = useState(true);
@@ -58,12 +60,22 @@ export default function SettingsPage() {
     role: "staff" as "manager" | "staff"
   });
 
-  const roleOptions = useMemo(
+  const memberRoleOptions = useMemo(
     () =>
       ([
+        { value: "owner", label: getRoleLabel("owner") },
         { value: "manager", label: getRoleLabel("manager") },
         { value: "staff", label: getRoleLabel("staff") }
-      ] as const),
+      ] as const satisfies ReadonlyArray<{ value: EditableMemberRole; label: string }>),
+    []
+  );
+
+  const inviteRoleOptions = useMemo(
+    () =>
+      memberRoleOptions.filter(
+        (option): option is { value: "manager" | "staff"; label: string } =>
+          option.value !== "owner"
+      ),
     []
   );
 
@@ -103,11 +115,7 @@ export default function SettingsPage() {
       if (memberResult.status === "fulfilled") {
         setMembers(memberResult.value);
         setMemberRoleDrafts(
-          Object.fromEntries(
-            memberResult.value
-              .filter((member) => member.role !== "owner")
-              .map((member) => [member.userId, member.role === "manager" ? "manager" : "staff"])
-          )
+          Object.fromEntries(memberResult.value.map((member) => [member.userId, member.role]))
         );
       } else {
         setMembers([]);
@@ -157,15 +165,23 @@ export default function SettingsPage() {
 
     try {
       const result = await resendEmailVerification(currentSession);
-      setVerificationNotice(
-        result.previewUrl
-          ? locale === "en"
-            ? "Verification email prepared again. A local preview link is available."
-            : "Doğrulama e-postası yeniden hazırlandı. Lokal preview linki oluştu."
-          : locale === "en"
-            ? "Verification email sent again."
-            : "Doğrulama e-postası yeniden gönderildi."
-      );
+      if (!result.enabled) {
+        setVerificationNotice(
+          locale === "en"
+            ? "Email verification is currently disabled across the platform."
+            : "E-posta doğrulaması şu anda platform genelinde kapalı."
+        );
+      } else {
+        setVerificationNotice(
+          result.previewUrl
+            ? locale === "en"
+              ? "Verification flow prepared again. A local preview link is available."
+              : "Doğrulama akışı yeniden hazırlandı. Lokal preview linki oluştu."
+            : locale === "en"
+              ? "Verification email sent again."
+              : "Doğrulama e-postası yeniden gönderildi."
+        );
+      }
       setVerificationPreviewUrl(result.previewUrl ?? "");
     } catch (verificationError) {
       setError(
@@ -238,19 +254,69 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleRoleUpdate(member: MemberDirectoryItem) {
-    const nextRole = memberRoleDrafts[member.userId];
-    if (!nextRole || nextRole === member.role) {
+  async function handleRoleChange(member: MemberDirectoryItem, nextRole: EditableMemberRole) {
+    const previousRole = member.role;
+    if (nextRole === previousRole) {
+      return;
+    }
+
+    if (
+      nextRole === "owner" &&
+      !window.confirm(
+        locale === "en"
+          ? `All authority will move to ${member.fullName}. Do you want to continue?`
+          : `${member.fullName} hesabını hesap sahibi yaparsanız tüm yetkiler bu kullanıcıya devredilir. Devam etmek istiyor musunuz?`
+      )
+    ) {
+      setMemberRoleDrafts((prev) => ({
+        ...prev,
+        [member.userId]: previousRole
+      }));
       return;
     }
 
     setBusyKey(`role:${member.userId}`);
     setError("");
+    setMemberActionNotice("");
+    setMemberActionPreviewUrl("");
+    setMemberRoleDrafts((prev) => ({
+      ...prev,
+      [member.userId]: nextRole
+    }));
 
     try {
-      await apiClient.updateMemberRole(member.userId, { role: nextRole });
+      const result = await apiClient.updateMemberRole(member.userId, { role: nextRole });
+
+      setMemberActionNotice(
+        nextRole === "owner"
+          ? locale === "en"
+            ? "Account ownership transferred."
+            : "Hesap sahipliği devredildi."
+          : locale === "en"
+            ? "Role saved automatically."
+            : "Rol otomatik olarak kaydedildi."
+      );
+
+      if (
+        result.previousOwnerUserId &&
+        currentSession &&
+        currentSession.userId === result.previousOwnerUserId
+      ) {
+        saveSession({
+          ...currentSession,
+          roles: "manager"
+        });
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
       await loadAll();
     } catch (roleError) {
+      setMemberRoleDrafts((prev) => ({
+        ...prev,
+        [member.userId]: previousRole
+      }));
       setError(roleError instanceof Error ? roleError.message : t("Rol güncellenemedi."));
     } finally {
       setBusyKey("");
@@ -269,9 +335,20 @@ export default function SettingsPage() {
 
     setBusyKey(`status:${member.userId}`);
     setError("");
+    setMemberActionNotice("");
+    setMemberActionPreviewUrl("");
 
     try {
       await apiClient.updateMemberStatus(member.userId, { status: nextStatus });
+      setMemberActionNotice(
+        nextStatus === "DISABLED"
+          ? locale === "en"
+            ? "User access paused."
+            : "Kullanıcı erişimi pasifleştirildi."
+          : locale === "en"
+            ? "User access restored."
+            : "Kullanıcı erişimi yeniden açıldı."
+      );
       await loadAll();
     } catch (statusError) {
       setError(statusError instanceof Error ? statusError.message : t("Durum güncellenemedi."));
@@ -280,35 +357,33 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleTransferOwnership(member: MemberDirectoryItem) {
+  async function handleDeleteMember(member: MemberDirectoryItem) {
     if (
       !window.confirm(
-        `${member.fullName} ${t("kullanıcısını yeni hesap sahibi yapmak istiyor musunuz?")}`
+        locale === "en"
+          ? `${member.fullName} will be removed from the workspace. Active sessions and pending invitations will also be cleared. Continue?`
+          : `${member.fullName} çalışma alanından silinecek. Aktif oturumları ve bekleyen davetleri de temizlenecek. Devam etmek istiyor musunuz?`
       )
     ) {
       return;
     }
 
-    setBusyKey(`owner:${member.userId}`);
+    setBusyKey(`delete:${member.userId}`);
     setError("");
+    setMemberActionNotice("");
+    setMemberActionPreviewUrl("");
 
     try {
-      const result = await apiClient.transferOwnership(member.userId);
-
-      if (currentSession && currentSession.userId === result.previousOwnerUserId) {
-        saveSession({
-          ...currentSession,
-          roles: "manager"
-        });
-        router.push("/dashboard");
-        router.refresh();
-        return;
-      }
-
+      await apiClient.deleteMember(member.userId);
+      setMemberActionNotice(
+        locale === "en"
+          ? "User removed from the workspace."
+          : "Kullanıcı çalışma alanından silindi."
+      );
       await loadAll();
-    } catch (transferError) {
+    } catch (deleteError) {
       setError(
-        transferError instanceof Error ? transferError.message : t("Sahiplik devredilemedi.")
+        deleteError instanceof Error ? deleteError.message : t("Kullanıcı silinemedi.")
       );
     } finally {
       setBusyKey("");
@@ -326,8 +401,8 @@ export default function SettingsPage() {
   const title = locale === "en" ? "Team and Access" : "Ekip ve Erişim";
   const subtitle =
     locale === "en"
-      ? "Manage email verification, team access, and workspace roles."
-      : "E-posta doğrulamasını, ekip erişimini ve çalışma alanı rollerini yönetin.";
+      ? "Manage team access, roles, and email verification status."
+      : "Ekip erişimini, rolleri ve e-posta doğrulama durumunu yönetin.";
 
   if (loading) {
     return (
@@ -418,7 +493,7 @@ export default function SettingsPage() {
         <p className="small text-muted" style={{ marginBottom: 12 }}>
           {locale === "en"
             ? "Invite managers or staff to this workspace and keep access under one owner account."
-            : "Bu çalışma alanına menajer veya personel davet edin; sahiplik tek owner hesapta kalsın."}
+            : "Bu çalışma alanına menajer veya personel davet edin; hesapta tek bir hesap sahibi bulunsun."}
         </p>
 
         {inviteBlockedReason ? <NoticeBox tone="danger" message={inviteBlockedReason} /> : null}
@@ -469,7 +544,7 @@ export default function SettingsPage() {
               }))
             }
           >
-            {roleOptions.map((option) => (
+            {inviteRoleOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {t(option.label)}
               </option>
@@ -488,7 +563,7 @@ export default function SettingsPage() {
             <p className="small text-muted" style={{ marginTop: 4 }}>
               {locale === "en"
                 ? "One owner controls the workspace. Managers run operations; staff work in the daily flow."
-                : "Çalışma alanında tek bir owner bulunur. Menajer operasyonu yönetir, personel günlük akışta çalışır."}
+                : "Tek bir hesap sahibi bulunur. Menajer operasyonu yönetir, personel günlük akışta çalışır."}
             </p>
           </div>
         </div>
@@ -512,16 +587,19 @@ export default function SettingsPage() {
                   <th>{locale === "en" ? "User" : "Kullanıcı"}</th>
                   <th>{locale === "en" ? "Role" : "Rol"}</th>
                   <th>{t("Durum")}</th>
-                  <th>{locale === "en" ? "Invitation / last login" : "Davet / son giriş"}</th>
+                  <th>{locale === "en" ? "Last login" : "Son giriş"}</th>
+                  <th>{locale === "en" ? "Email verified" : "E-posta doğrulama"}</th>
                   <th>{locale === "en" ? "Actions" : "Aksiyonlar"}</th>
                 </tr>
               </thead>
               <tbody>
                 {members.map((member) => {
                   const status = statusBadge(member.status, locale);
-                  const roleDraft =
-                    memberRoleDrafts[member.userId] ??
-                    (member.role === "manager" ? "manager" : "staff");
+                  const roleDraft = memberRoleDrafts[member.userId] ?? member.role;
+                  const roleBusy = busyKey === `role:${member.userId}`;
+                  const statusBusy = busyKey === `status:${member.userId}`;
+                  const resendBusy = busyKey === `resend:${member.userId}`;
+                  const deleteBusy = busyKey === `delete:${member.userId}`;
 
                   return (
                     <tr key={member.userId}>
@@ -532,62 +610,39 @@ export default function SettingsPage() {
                         </div>
                       </td>
                       <td>
-                        {member.role === "owner" ? (
-                          <span>{t(getRoleLabel(member.role))}</span>
-                        ) : (
-                          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                            <select
-                              className="input"
-                              style={{ minWidth: 180 }}
-                              value={roleDraft}
-                              onChange={(event) =>
-                                setMemberRoleDrafts((prev) => ({
-                                  ...prev,
-                                  [member.userId]: event.target.value as "manager" | "staff"
-                                }))
-                              }
+                        <select
+                          className="input"
+                          style={{ minWidth: 180 }}
+                          value={roleDraft}
+                          disabled={roleBusy || member.role === "owner"}
+                          onChange={(event) =>
+                            void handleRoleChange(
+                              member,
+                              event.target.value as EditableMemberRole
+                            )
+                          }
+                        >
+                          {memberRoleOptions.map((option) => (
+                            <option
+                              key={option.value}
+                              value={option.value}
+                              disabled={option.value === "owner" && member.status !== "ACTIVE"}
                             >
-                              {roleOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {t(option.label)}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              className="ghost-button"
-                              disabled={
-                                busyKey === `role:${member.userId}` || roleDraft === member.role
-                              }
-                              onClick={() => void handleRoleUpdate(member)}
-                            >
-                              {busyKey === `role:${member.userId}`
-                                ? t("Kaydediliyor...")
-                                : t("Kaydet")}
-                            </button>
-                          </div>
-                        )}
+                              {t(option.label)}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td>
                         <StatusBadge ready={status.ready} label={status.label} />
                       </td>
                       <td>
-                        <div className="admin-table-cell-stack">
-                          <span>
-                            {locale === "en" ? "Invite" : "Davet"}:{" "}
-                            {formatOptionalDate(member.invitedAt)}
-                          </span>
-                          <span>
-                            {locale === "en" ? "Last login" : "Son giriş"}:{" "}
-                            {formatOptionalDate(member.lastLoginAt)}
-                          </span>
-                          <span>
-                            {locale === "en" ? "Email verification" : "E-posta doğrulama"}:{" "}
-                            {member.emailVerifiedAt
-                              ? formatOptionalDate(member.emailVerifiedAt)
-                              : t("Bekliyor")}
-                          </span>
-                        </div>
+                        {formatOptionalDate(member.lastLoginAt)}
+                      </td>
+                      <td>
+                        {member.emailVerifiedAt
+                          ? formatOptionalDate(member.emailVerifiedAt)
+                          : t("Bekliyor")}
                       </td>
                       <td>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -595,10 +650,10 @@ export default function SettingsPage() {
                             <button
                               type="button"
                               className="ghost-button"
-                              disabled={busyKey === `status:${member.userId}`}
+                              disabled={statusBusy}
                               onClick={() => void handleStatusUpdate(member)}
                             >
-                              {busyKey === `status:${member.userId}`
+                              {statusBusy
                                 ? t("İşleniyor...")
                                 : member.status === "DISABLED"
                                   ? t("Aktifleştir")
@@ -609,24 +664,22 @@ export default function SettingsPage() {
                             <button
                               type="button"
                               className="ghost-button"
-                              disabled={busyKey === `resend:${member.userId}`}
+                              disabled={resendBusy}
                               onClick={() => void handleResendInvitation(member.userId)}
                             >
-                              {busyKey === `resend:${member.userId}`
+                              {resendBusy
                                 ? t("Gönderiliyor...")
                                 : t("Daveti Tekrar Gönder")}
                             </button>
                           ) : null}
-                          {member.role !== "owner" && member.status === "ACTIVE" ? (
+                          {member.role !== "owner" ? (
                             <button
                               type="button"
                               className="ghost-button"
-                              disabled={busyKey === `owner:${member.userId}`}
-                              onClick={() => void handleTransferOwnership(member)}
+                              disabled={deleteBusy}
+                              onClick={() => void handleDeleteMember(member)}
                             >
-                              {busyKey === `owner:${member.userId}`
-                                ? t("Devrediliyor...")
-                                : t("Owner Yap")}
+                              {deleteBusy ? t("Siliniyor...") : t("Sil")}
                             </button>
                           ) : null}
                         </div>
@@ -638,6 +691,14 @@ export default function SettingsPage() {
             </table>
           </div>
         )}
+
+        {members.length > 0 ? (
+          <p className="small text-muted" style={{ marginTop: 12, textAlign: "right" }}>
+            {locale === "en"
+              ? "Role changes are saved automatically. Selecting Account Owner transfers all authority to that user."
+              : "Rol değişiklikleri otomatik kaydedilir. Hesap Sahibi seçildiğinde tüm yetkiler o kullanıcıya devredilir."}
+          </p>
+        ) : null}
       </section>
     </section>
   );

@@ -454,12 +454,13 @@ export class RuntimeConfigService {
       ...toCsvList(this.configService.get<string>("INTERNAL_ADMIN_EMAIL_ALLOWLIST")),
       ...toCsvList(this.configService.get<string>("INTERNAL_BILLING_ADMIN_EMAIL_ALLOWLIST"))
     ];
+    const defaults = ["info@candit.ai"];
 
     if (configured.length > 0) {
-      return Array.from(new Set(configured));
+      return Array.from(new Set([...defaults, ...configured]));
     }
 
-    return this.isProduction ? [] : ["owner@demo.local"];
+    return defaults;
   }
 
   get internalBillingAdminDomainAllowlist() {
@@ -498,6 +499,10 @@ export class RuntimeConfigService {
     const email = this.emailRuntimeConfig;
     const speech = this.speechRuntimeConfig;
     const stripe = this.stripeBillingConfig;
+    const stripePlanIdsReady = Boolean(
+      stripe.planPriceIds.STARTER && stripe.planPriceIds.GROWTH
+    );
+    const stripeWebhookReady = Boolean(stripe.webhookSecret);
 
     return {
       parsing: {
@@ -532,7 +537,7 @@ export class RuntimeConfigService {
         ready: email.provider !== "resend" || email.resendApiConfigured
       },
       billing: {
-        ready: stripe.apiKeyConfigured
+        ready: stripe.apiKeyConfigured && stripePlanIdsReady && stripeWebhookReady
       },
       elevenLabs: {
         configured: this.elevenLabsConfig.isConfigured,
@@ -576,7 +581,9 @@ export class RuntimeConfigService {
     }
 
     if (!readiness.billing.ready) {
-      warnings.push("STRIPE_SECRET_KEY missing; self-serve billing links cannot be created.");
+      warnings.push(
+        "Stripe billing ayarları eksik; secret key, webhook secret ve temel plan price id'leri tamamlanmadan self-serve abonelik akışları güvenli çalışmaz."
+      );
     }
 
     if (!readiness.elevenLabs.configured) {

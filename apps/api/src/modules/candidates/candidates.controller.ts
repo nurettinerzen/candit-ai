@@ -44,6 +44,10 @@ class CandidateRecordDto {
   @IsString()
   @IsOptional()
   source?: string;
+
+  @IsString()
+  @IsOptional()
+  locationText?: string;
 }
 
 class CandidateImportRequest {
@@ -93,7 +97,8 @@ export class CandidatesController {
       fullName: body.fullName,
       phone: body.phone,
       email: body.email,
-      source: body.source
+      source: body.source,
+      locationText: body.locationText
     });
   }
 

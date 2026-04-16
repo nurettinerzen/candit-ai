@@ -11,6 +11,7 @@ import {
   BillingCheckoutStatus,
   BillingCheckoutType,
   BillingGrantSource,
+  BillingPlanChangeKind,
   BillingPlanKey,
   BillingQuotaKey,
   Prisma,
@@ -51,6 +52,19 @@ type ResolvedBillingState = {
       candidateProcessingIncluded: number;
       aiInterviewsIncluded: number;
     };
+    pendingChange: {
+      planKey: BillingPlanKey;
+      kind: BillingPlanChangeKind;
+      effectiveAt: Date;
+      requestedAt: Date | null;
+      requestedBy: string | null;
+    } | null;
+    scheduledCancellation: {
+      effectiveAt: Date;
+      requestedAt: Date | null;
+      requestedBy: string | null;
+      canResume: boolean;
+    } | null;
   };
   subscription: {
     id: string;
@@ -78,6 +92,10 @@ type ResolvedBillingState = {
   addOnTotals: Record<BillingQuotaKey, number>;
   usage: Record<BillingQuotaKey, number>;
   limits: Record<BillingQuotaKey, number>;
+  access: {
+    isAllowed: boolean;
+    blockReason: string | null;
+  };
 };
 
 function startOfCurrentMonth(date = new Date()) {
@@ -124,6 +142,21 @@ function asNumber(value: unknown, fallback = 0) {
   return fallback;
 }
 
+function asTimestamp(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
 function asString(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
@@ -131,6 +164,12 @@ function asString(value: unknown) {
 function addDaysUtc(date: Date, days: number) {
   const next = new Date(date);
   next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function addMonthsUtc(date: Date, months: number) {
+  const next = new Date(date);
+  next.setUTCMonth(next.getUTCMonth() + months);
   return next;
 }
 
@@ -161,6 +200,35 @@ function diffDaysCeil(from: Date, to: Date) {
 
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function planOrder(planKey: BillingPlanKey) {
+  switch (planKey) {
+    case BillingPlanKey.FLEX:
+      return 0;
+    case BillingPlanKey.STARTER:
+      return 1;
+    case BillingPlanKey.GROWTH:
+      return 2;
+    case BillingPlanKey.ENTERPRISE:
+      return 3;
+    default:
+      return 0;
+  }
+}
+
+function planChangeKindFor(currentPlanKey: BillingPlanKey, targetPlanKey: BillingPlanKey) {
+  if (targetPlanKey === BillingPlanKey.FLEX) {
+    return BillingPlanChangeKind.FLEX_TRANSITION;
+  }
+
+  return planOrder(targetPlanKey) > planOrder(currentPlanKey)
+    ? BillingPlanChangeKind.UPGRADE
+    : BillingPlanChangeKind.DOWNGRADE;
+}
+
+function isDowngradePlanChange(currentPlanKey: BillingPlanKey, targetPlanKey: BillingPlanKey) {
+  return planOrder(targetPlanKey) < planOrder(currentPlanKey);
 }
 
 function quotaLimitForDisplay(input: {
@@ -247,6 +315,32 @@ function buildFeatureSnapshot(value: unknown, fallback: BillingPlanDefinition["f
   };
 }
 
+function serializeScheduledCancellation(input: {
+  effectiveAt: Date;
+  requestedAt: Date | null;
+  requestedBy: string | null;
+}) {
+  return {
+    effectiveAt: input.effectiveAt.toISOString(),
+    requestedAt: input.requestedAt?.toISOString() ?? null,
+    requestedBy: input.requestedBy ?? null
+  };
+}
+
+function parseScheduledCancellation(value: unknown) {
+  const record = asRecord(value);
+  const effectiveAt = parseOptionalDate(record.effectiveAt);
+  if (!effectiveAt) {
+    return null;
+  }
+
+  return {
+    effectiveAt,
+    requestedAt: parseOptionalDate(record.requestedAt),
+    requestedBy: asString(record.requestedBy)
+  };
+}
+
 function quotaLabel(key: BillingQuotaKey) {
   switch (key) {
     case BillingQuotaKey.SEATS:
@@ -260,6 +354,31 @@ function quotaLabel(key: BillingQuotaKey) {
     default:
       return key;
   }
+}
+
+function resolveStripeSubscriptionPeriodBounds(subscription: StripeSubscription) {
+  const primaryItem = subscription.items?.data?.[0];
+  const periodStartTimestamp =
+    asTimestamp(primaryItem?.current_period_start) ??
+    asTimestamp(subscription.current_period_start) ??
+    asTimestamp(subscription.billing_cycle_anchor) ??
+    asTimestamp(subscription.start_date) ??
+    asTimestamp(subscription.created);
+  const periodEndTimestamp =
+    asTimestamp(primaryItem?.current_period_end) ??
+    asTimestamp(subscription.current_period_end) ??
+    asTimestamp(subscription.trial_end);
+
+  if (periodStartTimestamp === null || periodEndTimestamp === null) {
+    throw new BadRequestException("Stripe abonelik dönem bilgisi okunamadı.");
+  }
+
+  return {
+    periodStartTimestamp,
+    periodEndTimestamp,
+    periodStart: new Date(periodStartTimestamp * 1000),
+    periodEnd: new Date(periodEndTimestamp * 1000)
+  };
 }
 
 @Injectable()
@@ -348,6 +467,19 @@ export class BillingService {
       );
     }
 
+    if (!state.access.isAllowed && state.access.blockReason) {
+      warnings.unshift(state.access.blockReason);
+    }
+
+    if (state.account.pendingChange) {
+      const pendingPlan = BILLING_PLAN_CATALOG[state.account.pendingChange.planKey];
+      const pendingLabel =
+        state.account.pendingChange.kind === BillingPlanChangeKind.UPGRADE
+          ? `${pendingPlan.label} planına geçiş hazırlanıyor.`
+          : `${pendingPlan.label} planına geçiş ${state.account.pendingChange.effectiveAt.toISOString().slice(0, 10)} tarihinde uygulanacak.`;
+      warnings.push(pendingLabel);
+    }
+
     const recentCheckouts = isInternalBillingAdmin
       ? await this.prisma.billingCheckoutSession.findMany({
           where: { tenantId },
@@ -371,7 +503,7 @@ export class BillingService {
       : [];
 
     return {
-      stripeReady: this.runtimeConfig.stripeBillingConfig.apiKeyConfigured,
+      stripeReady: this.runtimeConfig.providerReadiness.billing.ready,
       viewer: {
         isInternalBillingAdmin
       },
@@ -379,11 +511,30 @@ export class BillingService {
         tenantId: state.account.tenantId,
         billingEmail: state.account.billingEmail,
         stripeCustomerId: state.account.stripeCustomerId,
+        stripeSubscriptionId: state.account.stripeSubscriptionId,
         currentPlanKey: state.account.currentPlanKey,
         status: state.account.status,
         currentPeriodStart: state.account.currentPeriodStart.toISOString(),
         currentPeriodEnd: state.account.currentPeriodEnd.toISOString(),
-        features: state.account.features
+        features: state.account.features,
+        pendingChange: state.account.pendingChange
+          ? {
+              planKey: state.account.pendingChange.planKey,
+              kind: state.account.pendingChange.kind,
+              effectiveAt: state.account.pendingChange.effectiveAt.toISOString(),
+              requestedAt: state.account.pendingChange.requestedAt?.toISOString() ?? null,
+              requestedBy: state.account.pendingChange.requestedBy
+            }
+          : null,
+        scheduledCancellation: state.account.scheduledCancellation
+          ? {
+              effectiveAt: state.account.scheduledCancellation.effectiveAt.toISOString(),
+              requestedAt:
+                state.account.scheduledCancellation.requestedAt?.toISOString() ?? null,
+              requestedBy: state.account.scheduledCancellation.requestedBy,
+              canResume: state.account.scheduledCancellation.canResume
+            }
+          : null
       },
       currentPlan,
       trial: {
@@ -403,6 +554,7 @@ export class BillingService {
       planCatalog: Object.values(BILLING_PLAN_CATALOG),
       addOnCatalog: Object.values(BILLING_ADDON_CATALOG),
       warnings,
+      access: state.access,
       recentCheckouts: recentCheckouts.map((session) => ({
         ...session,
         createdAt: session.createdAt.toISOString(),
@@ -418,7 +570,7 @@ export class BillingService {
   async assertCanPublishJob(tenantId: string, options?: { jobId?: string }) {
     if (options?.jobId) {
       const state = await this.resolveBillingState(tenantId);
-      this.assertTrialAccessAvailable(state);
+      this.assertBillingAccessAvailable(state);
       const periodKey = state.account.currentPeriodStart.toISOString().slice(0, 10);
       const existingUsage = await this.prisma.billingUsageEvent.findUnique({
         where: {
@@ -447,7 +599,7 @@ export class BillingService {
 
   async assertFeatureEnabled(tenantId: string, featureKey: BillingFeatureKey) {
     const state = await this.resolveBillingState(tenantId);
-    this.assertTrialAccessAvailable(state);
+    this.assertBillingAccessAvailable(state);
 
     if (state.account.features[featureKey]) {
       return;
@@ -507,6 +659,29 @@ export class BillingService {
     billingEmail?: string;
   }) {
     const plan = BILLING_PLAN_CATALOG[input.planKey];
+    const state = await this.resolveBillingState(input.tenantId);
+
+    if (state.account.currentPlanKey === input.planKey) {
+      if (
+        state.account.status === BillingAccountStatus.ACTIVE &&
+        !state.account.pendingChange
+      ) {
+        return {
+          checkoutUrl: null,
+          sessionId: `plan:${state.account.id}:current`,
+          flow: "unchanged"
+        };
+      }
+
+      if (state.account.pendingChange) {
+        return this.cancelPendingPlanChange({
+          state,
+          requestedBy: input.requestedBy,
+          billingEmail: input.billingEmail
+        });
+      }
+    }
+
     if (plan.billingModel === "prepaid") {
       return this.activateFlexPlan({
         tenantId: input.tenantId,
@@ -515,7 +690,56 @@ export class BillingService {
       });
     }
 
-    const state = await this.resolveBillingState(input.tenantId);
+    if (isDowngradePlanChange(state.account.currentPlanKey, input.planKey)) {
+      if (
+        state.account.stripeSubscriptionId &&
+        this.runtimeConfig.providerReadiness.billing.ready
+      ) {
+        const metadata = await this.scheduleManagedStripePlanChange({
+          state,
+          requestedBy: input.requestedBy,
+          targetPlanKey: input.planKey,
+          billingEmail: input.billingEmail
+        });
+
+        return this.schedulePlanChange({
+          tenantId: input.tenantId,
+          requestedBy: input.requestedBy,
+          targetPlanKey: input.planKey,
+          billingEmail: input.billingEmail,
+          metadata
+        });
+      }
+
+      return this.schedulePlanChange({
+        tenantId: input.tenantId,
+        requestedBy: input.requestedBy,
+        targetPlanKey: input.planKey,
+        billingEmail: input.billingEmail
+      });
+    }
+
+    if (
+      !this.runtimeConfig.providerReadiness.billing.ready &&
+      !this.runtimeConfig.isProduction
+    ) {
+      return this.activateLocalRecurringPlan({
+        tenantId: input.tenantId,
+        requestedBy: input.requestedBy,
+        planKey: input.planKey as Exclude<BillingPlanKey, "FLEX" | "ENTERPRISE">,
+        billingEmail: input.billingEmail
+      });
+    }
+
+    if (state.account.stripeSubscriptionId) {
+      return this.updateManagedStripePlanNow({
+        state,
+        requestedBy: input.requestedBy,
+        planKey: input.planKey as Exclude<BillingPlanKey, "FLEX" | "ENTERPRISE">,
+        billingEmail: input.billingEmail
+      });
+    }
+
     const stripe = this.getStripeClient();
     const customer = await this.findOrCreateStripeCustomer(
       state.account.stripeCustomerId,
@@ -524,17 +748,12 @@ export class BillingService {
     );
     const urls = this.buildCheckoutUrls();
     const lineItem = this.buildPlanLineItem(plan);
-    const metadata = {
+    const metadata = this.buildPlanSubscriptionMetadata({
       tenantId: input.tenantId,
       requestedBy: input.requestedBy,
-      checkoutType: BillingCheckoutType.PLAN_SUBSCRIPTION,
-      planKey: input.planKey,
-      seatsIncluded: String(plan.seatsIncluded),
-      activeJobsIncluded: String(plan.activeJobsIncluded),
-      candidateProcessingIncluded: String(plan.candidateProcessingIncluded),
-      aiInterviewsIncluded: String(plan.aiInterviewsIncluded),
-      featuresJson: JSON.stringify(plan.features)
-    };
+      planKey: input.planKey as Exclude<BillingPlanKey, "FLEX" | "ENTERPRISE">,
+      billingEmail: input.billingEmail ?? state.account.billingEmail
+    });
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -577,7 +796,186 @@ export class BillingService {
 
     return {
       checkoutUrl: session.url,
-      sessionId: session.id
+      sessionId: session.id,
+      flow: "stripe_checkout"
+    };
+  }
+
+  async scheduleSubscriptionCancellation(input: {
+    tenantId: string;
+    requestedBy: string;
+  }) {
+    let state = await this.resolveBillingState(input.tenantId);
+
+    if (!state.account.stripeSubscriptionId || state.account.currentPlanKey === BillingPlanKey.FLEX) {
+      throw new BadRequestException("Dönem sonunda iptal edilebilecek aktif bir abonelik bulunamadı.");
+    }
+
+    if (state.account.scheduledCancellation) {
+      return {
+        checkoutUrl: null,
+        sessionId: `cancel:${state.account.id}:scheduled`,
+        flow: "scheduled_cancellation"
+      };
+    }
+
+    if (state.account.pendingChange) {
+      await this.cancelPendingPlanChange({
+        state,
+        requestedBy: input.requestedBy,
+        billingEmail: state.account.billingEmail ?? undefined
+      });
+      state = await this.resolveBillingState(input.tenantId);
+    }
+
+    const now = new Date();
+    const stripe = this.getStripeClient();
+    const currentSubscription = await stripe.subscriptions.retrieve(
+      state.account.stripeSubscriptionId
+    );
+    const updatedSubscription = await stripe.subscriptions.update(
+      state.account.stripeSubscriptionId,
+      {
+        cancel_at_period_end: true,
+        metadata: {
+          ...asRecord(currentSubscription.metadata),
+          scheduledCancellationRequestedAt: now.toISOString(),
+          scheduledCancellationRequestedBy: input.requestedBy
+        }
+      }
+    );
+
+    await this.upsertSubscriptionFromStripe({
+      tenantId: state.account.tenantId,
+      accountId: state.account.id,
+      stripeSubscription: updatedSubscription,
+      metadata: asRecord(updatedSubscription.metadata),
+      fallbackPlanKey: state.account.currentPlanKey
+    });
+
+    return {
+      checkoutUrl: null,
+      sessionId: updatedSubscription.id,
+      flow: "scheduled_cancellation"
+    };
+  }
+
+  async resumeScheduledCancellation(input: {
+    tenantId: string;
+  }) {
+    const state = await this.resolveBillingState(input.tenantId);
+
+    if (!state.account.stripeSubscriptionId || !state.account.scheduledCancellation) {
+      return {
+        checkoutUrl: null,
+        sessionId: `cancel:${state.account.id}:unchanged`,
+        flow: "unchanged"
+      };
+    }
+
+    const updatedSubscription = await this.getStripeClient().subscriptions.update(
+      state.account.stripeSubscriptionId,
+      {
+        cancel_at_period_end: false
+      }
+    );
+
+    await this.upsertSubscriptionFromStripe({
+      tenantId: state.account.tenantId,
+      accountId: state.account.id,
+      stripeSubscription: updatedSubscription,
+      metadata: asRecord(updatedSubscription.metadata),
+      fallbackPlanKey: state.account.currentPlanKey
+    });
+
+    return {
+      checkoutUrl: null,
+      sessionId: updatedSubscription.id,
+      flow: "subscription_updated"
+    };
+  }
+
+  private async activateLocalRecurringPlan(input: {
+    tenantId: string;
+    requestedBy: string;
+    planKey: Exclude<BillingPlanKey, "FLEX" | "ENTERPRISE">;
+    billingEmail?: string;
+  }) {
+    const plan = BILLING_PLAN_CATALOG[input.planKey];
+    const state = await this.resolveBillingState(input.tenantId);
+    const now = new Date();
+    const periodStart = now;
+    const periodEnd = addMonthsUtc(periodStart, 1);
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.appendSubscriptionSnapshot(tx, {
+        accountId: state.account.id,
+        tenantId: input.tenantId,
+        planKey: input.planKey,
+        status: BillingAccountStatus.ACTIVE,
+        billingEmail: input.billingEmail ?? state.account.billingEmail,
+        periodStart,
+        periodEnd,
+        seatsIncluded: plan.seatsIncluded,
+        activeJobsIncluded: plan.activeJobsIncluded,
+        candidateProcessingIncluded: plan.candidateProcessingIncluded,
+        aiInterviewsIncluded: plan.aiInterviewsIncluded,
+        features: plan.features,
+        stripeSubscriptionId: null,
+        stripeCustomerId: state.account.stripeCustomerId,
+        metadata: {
+          source: "local_recurring_activation"
+        },
+        createdBy: input.requestedBy
+      });
+
+      await tx.tenantBillingAccount.update({
+        where: {
+          id: state.account.id
+        },
+        data: {
+          billingEmail: input.billingEmail ?? state.account.billingEmail,
+          currentPlanKey: input.planKey,
+          status: BillingAccountStatus.ACTIVE,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          stripeSubscriptionId: null,
+          featuresJson: plan.features,
+          planSnapshotJson: buildPlanSnapshot(plan),
+          pendingPlanKey: null,
+          pendingChangeKind: null,
+          pendingChangeEffectiveAt: null,
+          pendingChangeRequestedAt: null,
+          pendingChangeRequestedBy: null,
+          pendingChangeMetadataJson: Prisma.DbNull
+        }
+      });
+
+      await tx.billingCheckoutSession.create({
+        data: {
+          tenantId: input.tenantId,
+          accountId: state.account.id,
+          checkoutType: BillingCheckoutType.PLAN_SUBSCRIPTION,
+          status: BillingCheckoutStatus.COMPLETED,
+          planKey: input.planKey,
+          label: `${plan.label} planı`,
+          billingEmail: input.billingEmail ?? state.account.billingEmail,
+          amountCents: plan.monthlyAmountCents,
+          currency: plan.currency,
+          payloadJson: {
+            localActivation: true,
+            planKey: input.planKey
+          },
+          createdBy: input.requestedBy,
+          completedAt: now
+        }
+      });
+    });
+
+    return {
+      checkoutUrl: null,
+      sessionId: `local:${state.account.id}:${now.getTime()}`,
+      flow: "local_activation"
     };
   }
 
@@ -590,18 +988,46 @@ export class BillingService {
 
     if (
       state.account.currentPlanKey === BillingPlanKey.FLEX &&
-      state.account.status === BillingAccountStatus.ACTIVE
+      state.account.status === BillingAccountStatus.ACTIVE &&
+      !state.account.pendingChange
     ) {
       return {
         checkoutUrl: null,
-        sessionId: `flex:${state.account.id}:current`
+        sessionId: `flex:${state.account.id}:current`,
+        flow: "unchanged"
       };
     }
 
-    if (state.account.stripeSubscriptionId) {
-      throw new BadRequestException(
-        "Aktif abonelikten Flex plana geçmeden önce mevcut Stripe aboneliğinizi müşteri portalından yönetin."
-      );
+    if (
+      state.account.currentPlanKey !== BillingPlanKey.FLEX &&
+      state.account.status === BillingAccountStatus.ACTIVE
+    ) {
+      if (
+        state.account.stripeSubscriptionId &&
+        this.runtimeConfig.providerReadiness.billing.ready
+      ) {
+        const metadata = await this.scheduleManagedStripePlanChange({
+          state,
+          requestedBy: input.requestedBy,
+          targetPlanKey: BillingPlanKey.FLEX,
+          billingEmail: input.billingEmail
+        });
+
+        return this.schedulePlanChange({
+          tenantId: input.tenantId,
+          requestedBy: input.requestedBy,
+          targetPlanKey: BillingPlanKey.FLEX,
+          billingEmail: input.billingEmail,
+          metadata
+        });
+      }
+
+      return this.schedulePlanChange({
+        tenantId: input.tenantId,
+        requestedBy: input.requestedBy,
+        targetPlanKey: BillingPlanKey.FLEX,
+        billingEmail: input.billingEmail
+      });
     }
 
     const plan = BILLING_PLAN_CATALOG.FLEX;
@@ -610,44 +1036,25 @@ export class BillingService {
     const periodEnd = startOfNextMonth(now);
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.tenantBillingSubscription.updateMany({
-        where: {
-          tenantId: input.tenantId,
-          canceledAt: null,
-          status: {
-            in: [
-              BillingAccountStatus.TRIALING,
-              BillingAccountStatus.ACTIVE,
-              BillingAccountStatus.PAST_DUE,
-              BillingAccountStatus.INCOMPLETE
-            ]
-          }
+      await this.appendSubscriptionSnapshot(tx, {
+        tenantId: input.tenantId,
+        accountId: state.account.id,
+        planKey: BillingPlanKey.FLEX,
+        status: BillingAccountStatus.ACTIVE,
+        billingEmail: input.billingEmail ?? state.account.billingEmail,
+        periodStart,
+        periodEnd,
+        seatsIncluded: plan.seatsIncluded,
+        activeJobsIncluded: plan.activeJobsIncluded,
+        candidateProcessingIncluded: plan.candidateProcessingIncluded,
+        aiInterviewsIncluded: plan.aiInterviewsIncluded,
+        features: plan.features,
+        stripeSubscriptionId: null,
+        stripeCustomerId: state.account.stripeCustomerId,
+        metadata: {
+          source: "flex_activation"
         },
-        data: {
-          status: BillingAccountStatus.CANCELED,
-          canceledAt: now
-        }
-      });
-
-      await tx.tenantBillingSubscription.create({
-        data: {
-          tenantId: input.tenantId,
-          accountId: state.account.id,
-          planKey: BillingPlanKey.FLEX,
-          status: BillingAccountStatus.ACTIVE,
-          billingEmail: input.billingEmail ?? state.account.billingEmail,
-          periodStart,
-          periodEnd,
-          seatsIncluded: plan.seatsIncluded,
-          activeJobsIncluded: plan.activeJobsIncluded,
-          candidateProcessingIncluded: plan.candidateProcessingIncluded,
-          aiInterviewsIncluded: plan.aiInterviewsIncluded,
-          featuresJson: plan.features,
-          metadataJson: {
-            source: "flex_activation"
-          },
-          createdBy: input.requestedBy
-        }
+        createdBy: input.requestedBy
       });
 
       await tx.tenantBillingAccount.update({
@@ -658,8 +1065,15 @@ export class BillingService {
           status: BillingAccountStatus.ACTIVE,
           currentPeriodStart: periodStart,
           currentPeriodEnd: periodEnd,
+          stripeSubscriptionId: null,
           featuresJson: plan.features,
-          planSnapshotJson: buildPlanSnapshot(plan)
+          planSnapshotJson: buildPlanSnapshot(plan),
+          pendingPlanKey: null,
+          pendingChangeKind: null,
+          pendingChangeEffectiveAt: null,
+          pendingChangeRequestedAt: null,
+          pendingChangeRequestedBy: null,
+          pendingChangeMetadataJson: Prisma.DbNull
         }
       });
 
@@ -686,8 +1100,389 @@ export class BillingService {
 
     return {
       checkoutUrl: null,
-      sessionId: `flex:${state.account.id}:${now.getTime()}`
+      sessionId: `flex:${state.account.id}:${now.getTime()}`,
+      flow: "local_activation"
     };
+  }
+
+  private async schedulePlanChange(input: {
+    tenantId: string;
+    requestedBy: string;
+    targetPlanKey: BillingPlanKey;
+    billingEmail?: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    const state = await this.resolveBillingState(input.tenantId);
+    const now = new Date();
+    const effectiveAt = state.account.currentPeriodEnd;
+    const changeKind = planChangeKindFor(state.account.currentPlanKey, input.targetPlanKey);
+
+    await this.prisma.tenantBillingAccount.update({
+      where: {
+        id: state.account.id
+      },
+      data: {
+        billingEmail: input.billingEmail ?? state.account.billingEmail,
+        pendingPlanKey: input.targetPlanKey,
+        pendingChangeKind: changeKind,
+        pendingChangeEffectiveAt: effectiveAt,
+        pendingChangeRequestedAt: now,
+        pendingChangeRequestedBy: input.requestedBy,
+        pendingChangeMetadataJson: {
+          source: "self_serve_plan_change",
+          currentPlanKey: state.account.currentPlanKey,
+          ...(input.metadata ?? {})
+        }
+      }
+    });
+
+    return {
+      checkoutUrl: null,
+      sessionId: `scheduled:${state.account.id}:${effectiveAt.getTime()}`,
+      flow: "scheduled"
+    };
+  }
+
+  private async cancelPendingPlanChange(input: {
+    state: ResolvedBillingState;
+    requestedBy: string;
+    billingEmail?: string;
+  }) {
+    if (
+      input.state.account.stripeSubscriptionId &&
+      this.runtimeConfig.providerReadiness.billing.ready
+    ) {
+      const subscription = await this.clearManagedStripePlanChange(
+        input.state.account.stripeSubscriptionId
+      );
+
+      await this.upsertSubscriptionFromStripe({
+        tenantId: input.state.account.tenantId,
+        accountId: input.state.account.id,
+        stripeSubscription: subscription,
+        metadata: asRecord(subscription.metadata),
+        fallbackPlanKey: input.state.account.currentPlanKey
+      });
+    }
+
+    await this.prisma.tenantBillingAccount.update({
+      where: {
+        id: input.state.account.id
+      },
+      data: {
+        billingEmail: input.billingEmail ?? input.state.account.billingEmail,
+        pendingPlanKey: null,
+        pendingChangeKind: null,
+        pendingChangeEffectiveAt: null,
+        pendingChangeRequestedAt: null,
+        pendingChangeRequestedBy: null,
+        pendingChangeMetadataJson: Prisma.DbNull
+      }
+    });
+
+    return {
+      checkoutUrl: null,
+      sessionId: `plan:${input.state.account.id}:pending-cleared`,
+      flow: "subscription_updated"
+    };
+  }
+
+  private async updateManagedStripePlanNow(input: {
+    state: ResolvedBillingState;
+    requestedBy: string;
+    planKey: Exclude<BillingPlanKey, "FLEX" | "ENTERPRISE">;
+    billingEmail?: string;
+  }) {
+    const stripeSubscriptionId = input.state.account.stripeSubscriptionId;
+    if (!stripeSubscriptionId) {
+      throw new BadRequestException("Stripe abonelik kaydı bulunamadı.");
+    }
+
+    const subscription = await this.clearManagedStripePlanChange(stripeSubscriptionId);
+    const item = subscription.items?.data?.[0];
+
+    if (!item?.id) {
+      throw new BadRequestException("Stripe abonelik kalemi bulunamadı.");
+    }
+
+    const priceId = this.getManagedPlanPriceId(input.planKey);
+    const metadata = this.buildPlanSubscriptionMetadata({
+      tenantId: input.state.account.tenantId,
+      requestedBy: input.requestedBy,
+      planKey: input.planKey,
+      billingEmail: input.billingEmail ?? input.state.account.billingEmail
+    });
+
+    const updatedSubscription = await this.getStripeClient().subscriptions.update(
+      stripeSubscriptionId,
+      {
+        billing_cycle_anchor: "unchanged",
+        cancel_at_period_end: false,
+        proration_behavior: "always_invoice",
+        payment_behavior: "allow_incomplete",
+        items: [
+          {
+            id: item.id,
+            price: priceId,
+            quantity: 1
+          }
+        ],
+        metadata
+      }
+    );
+
+    await this.upsertSubscriptionFromStripe({
+      tenantId: input.state.account.tenantId,
+      accountId: input.state.account.id,
+      stripeSubscription: updatedSubscription,
+      metadata: asRecord(updatedSubscription.metadata),
+      fallbackPlanKey: input.planKey
+    });
+
+    await this.prisma.tenantBillingAccount.update({
+      where: {
+        id: input.state.account.id
+      },
+      data: {
+        billingEmail: input.billingEmail ?? input.state.account.billingEmail,
+        pendingPlanKey: null,
+        pendingChangeKind: null,
+        pendingChangeEffectiveAt: null,
+        pendingChangeRequestedAt: null,
+        pendingChangeRequestedBy: null,
+        pendingChangeMetadataJson: Prisma.DbNull
+      }
+    });
+
+    return {
+      checkoutUrl: null,
+      sessionId: updatedSubscription.id,
+      flow: "subscription_updated"
+    };
+  }
+
+  private async scheduleManagedStripePlanChange(input: {
+    state: ResolvedBillingState;
+    requestedBy: string;
+    targetPlanKey: BillingPlanKey;
+    billingEmail?: string;
+  }) {
+    const stripeSubscriptionId = input.state.account.stripeSubscriptionId;
+    if (!stripeSubscriptionId) {
+      throw new BadRequestException("Stripe abonelik kaydı bulunamadı.");
+    }
+
+    const subscription = await this.clearManagedStripePlanChange(stripeSubscriptionId);
+    const currentItem = subscription.items?.data?.[0];
+
+    if (!currentItem) {
+      throw new BadRequestException("Stripe abonelik kalemi bulunamadı.");
+    }
+
+    const { periodStartTimestamp, periodEndTimestamp, periodEnd } =
+      resolveStripeSubscriptionPeriodBounds(subscription);
+    const effectiveAt = periodEnd;
+
+    if (input.targetPlanKey === BillingPlanKey.FLEX) {
+      await this.getStripeClient().subscriptions.update(subscription.id, {
+        cancel_at_period_end: true
+      });
+
+      return {
+        stripeMode: "cancel_at_period_end",
+        stripeSubscriptionId: subscription.id,
+        effectiveAt: effectiveAt.toISOString()
+      };
+    }
+
+    const targetPriceId = this.getManagedPlanPriceId(
+      input.targetPlanKey as Exclude<BillingPlanKey, "FLEX" | "ENTERPRISE">
+    );
+    const currentPlanKey = input.state.account.currentPlanKey as Exclude<
+      BillingPlanKey,
+      "FLEX" | "ENTERPRISE"
+    >;
+    const currentMetadata = this.buildPlanSubscriptionMetadata({
+      tenantId: input.state.account.tenantId,
+      requestedBy: input.requestedBy,
+      planKey: currentPlanKey,
+      billingEmail: input.billingEmail ?? input.state.account.billingEmail
+    });
+    const targetMetadata = this.buildPlanSubscriptionMetadata({
+      tenantId: input.state.account.tenantId,
+      requestedBy: input.requestedBy,
+      planKey: input.targetPlanKey as Exclude<BillingPlanKey, "FLEX" | "ENTERPRISE">,
+      billingEmail: input.billingEmail ?? input.state.account.billingEmail
+    });
+
+    const schedule = await this.getStripeClient().subscriptionSchedules.create({
+      from_subscription: subscription.id
+    });
+
+    await this.getStripeClient().subscriptionSchedules.update(schedule.id, {
+      end_behavior: "release",
+      phases: [
+        {
+          start_date: periodStartTimestamp,
+          end_date: periodEndTimestamp,
+          items: [
+            {
+              price: currentItem.price?.id ?? this.getManagedPlanPriceId(currentPlanKey),
+              quantity: currentItem.quantity ?? 1
+            }
+          ],
+          metadata: currentMetadata
+        },
+        {
+          start_date: periodEndTimestamp,
+          duration: {
+            interval: "month",
+            interval_count: 1
+          },
+          items: [
+            {
+              price: targetPriceId,
+              quantity: 1
+            }
+          ],
+          metadata: targetMetadata
+        }
+      ]
+    });
+
+    return {
+      stripeMode: "subscription_schedule",
+      scheduleId: schedule.id,
+      stripeSubscriptionId: subscription.id,
+      targetStripePriceId: targetPriceId,
+      effectiveAt: effectiveAt.toISOString()
+    };
+  }
+
+  private async clearManagedStripePlanChange(stripeSubscriptionId: string) {
+    const stripe = this.getStripeClient();
+    let subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    const scheduleId =
+      typeof subscription.schedule === "string"
+        ? subscription.schedule
+        : subscription.schedule?.id ?? null;
+
+    if (scheduleId) {
+      await stripe.subscriptionSchedules.release(scheduleId);
+      subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    }
+
+    if (subscription.cancel_at_period_end) {
+      subscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+        cancel_at_period_end: false
+      });
+    }
+
+    return subscription;
+  }
+
+  private async appendSubscriptionSnapshot(
+    tx: Prisma.TransactionClient | PrismaService,
+    input: {
+      tenantId: string;
+      accountId: string;
+      planKey: BillingPlanKey;
+      status: BillingAccountStatus;
+      billingEmail: string | null;
+      periodStart: Date;
+      periodEnd: Date;
+      seatsIncluded: number;
+      activeJobsIncluded: number;
+      candidateProcessingIncluded: number;
+      aiInterviewsIncluded: number;
+      features: Record<BillingFeatureKey, boolean>;
+      stripeSubscriptionId: string | null;
+      stripeCustomerId: string | null;
+      stripePriceId?: string | null;
+      metadata?: Record<string, unknown>;
+      createdBy?: string | null;
+    }
+  ) {
+    const latest = await tx.tenantBillingSubscription.findFirst({
+      where: {
+        accountId: input.accountId
+      },
+      orderBy: [{ createdAt: "desc" }]
+    });
+
+    const isSameSnapshot =
+      latest &&
+      latest.planKey === input.planKey &&
+      latest.status === input.status &&
+      latest.periodStart.getTime() === input.periodStart.getTime() &&
+      latest.periodEnd.getTime() === input.periodEnd.getTime() &&
+      latest.stripeSubscriptionId === input.stripeSubscriptionId &&
+      latest.seatsIncluded === input.seatsIncluded &&
+      latest.activeJobsIncluded === input.activeJobsIncluded &&
+      latest.candidateProcessingIncluded === input.candidateProcessingIncluded &&
+      latest.aiInterviewsIncluded === input.aiInterviewsIncluded;
+
+    if (isSameSnapshot) {
+      return tx.tenantBillingSubscription.update({
+        where: {
+          id: latest.id
+        },
+        data: {
+          billingEmail: input.billingEmail,
+          stripePriceId: input.stripePriceId ?? null,
+          stripeCustomerId: input.stripeCustomerId,
+          featuresJson: input.features,
+          metadataJson: toJsonValue(input.metadata),
+          canceledAt: input.status === BillingAccountStatus.CANCELED ? new Date() : null
+        }
+      });
+    }
+
+    if (
+      latest &&
+      latest.canceledAt === null &&
+      latest.status !== BillingAccountStatus.CANCELED &&
+      (
+        latest.status !== input.status ||
+        latest.planKey !== input.planKey ||
+        latest.periodStart.getTime() !== input.periodStart.getTime() ||
+        latest.periodEnd.getTime() !== input.periodEnd.getTime()
+      )
+    ) {
+      await tx.tenantBillingSubscription.update({
+        where: {
+          id: latest.id
+        },
+        data: {
+          canceledAt: new Date(),
+          status: BillingAccountStatus.CANCELED
+        }
+      });
+    }
+
+    return tx.tenantBillingSubscription.create({
+      data: {
+        tenantId: input.tenantId,
+        accountId: input.accountId,
+        planKey: input.planKey,
+        status: input.status,
+        stripeSubscriptionId: input.stripeSubscriptionId,
+        stripePriceId: input.stripePriceId ?? null,
+        stripeCheckoutSessionId: null,
+        stripeCustomerId: input.stripeCustomerId,
+        billingEmail: input.billingEmail,
+        periodStart: input.periodStart,
+        periodEnd: input.periodEnd,
+        seatsIncluded: input.seatsIncluded,
+        activeJobsIncluded: input.activeJobsIncluded,
+        candidateProcessingIncluded: input.candidateProcessingIncluded,
+        aiInterviewsIncluded: input.aiInterviewsIncluded,
+        featuresJson: input.features,
+        metadataJson: toJsonValue(input.metadata),
+        createdBy: input.createdBy,
+        canceledAt: input.status === BillingAccountStatus.CANCELED ? new Date() : null
+      }
+    });
   }
 
   async createAddOnCheckoutSession(input: {
@@ -698,6 +1493,19 @@ export class BillingService {
   }) {
     const addOn = BILLING_ADDON_CATALOG[input.addOnKey];
     const state = await this.resolveBillingState(input.tenantId);
+
+    if (
+      !this.runtimeConfig.providerReadiness.billing.ready &&
+      !this.runtimeConfig.isProduction
+    ) {
+      return this.grantLocalAddOn({
+        tenantId: input.tenantId,
+        requestedBy: input.requestedBy,
+        addOnKey: input.addOnKey,
+        billingEmail: input.billingEmail ?? state.account.billingEmail
+      });
+    }
+
     const stripe = this.getStripeClient();
     const customer = await this.findOrCreateStripeCustomer(
       state.account.stripeCustomerId,
@@ -755,7 +1563,66 @@ export class BillingService {
 
     return {
       checkoutUrl: session.url,
-      sessionId: session.id
+      sessionId: session.id,
+      flow: "stripe_checkout"
+    };
+  }
+
+  private async grantLocalAddOn(input: {
+    tenantId: string;
+    requestedBy: string;
+    addOnKey: BillingAddonKey;
+    billingEmail?: string | null;
+  }) {
+    const addOn = BILLING_ADDON_CATALOG[input.addOnKey];
+    const state = await this.resolveBillingState(input.tenantId);
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      if (addOn.quotaKey && addOn.quantity) {
+        await tx.billingQuotaGrant.create({
+          data: {
+            tenantId: input.tenantId,
+            accountId: state.account.id,
+            quotaKey: addOn.quotaKey as BillingQuotaKey,
+            source: BillingGrantSource.ADDON,
+            label: addOn.label,
+            quantity: addOn.quantity,
+            expiresAt: addDaysUtc(now, BILLING_ADDON_ROLLOVER_DAYS),
+            createdBy: input.requestedBy,
+            metadataJson: {
+              source: "local_addon_activation",
+              addOnKey: input.addOnKey
+            }
+          }
+        });
+      }
+
+      await tx.billingCheckoutSession.create({
+        data: {
+          tenantId: input.tenantId,
+          accountId: state.account.id,
+          checkoutType: BillingCheckoutType.ADDON_PURCHASE,
+          status: BillingCheckoutStatus.COMPLETED,
+          addOnKey: input.addOnKey,
+          label: addOn.label,
+          billingEmail: input.billingEmail ?? null,
+          amountCents: addOn.amountCents,
+          currency: addOn.currency,
+          payloadJson: {
+            localActivation: true,
+            addOnKey: input.addOnKey
+          },
+          createdBy: input.requestedBy,
+          completedAt: now
+        }
+      });
+    });
+
+    return {
+      checkoutUrl: null,
+      sessionId: `addon:${state.account.id}:${now.getTime()}`,
+      flow: "local_activation"
     };
   }
 
@@ -864,8 +1731,14 @@ export class BillingService {
     }
 
     const stripe = this.getStripeClient();
+    const stripeConfig = this.runtimeConfig.stripeBillingConfig;
     const portal = await stripe.billingPortal.sessions.create({
       customer: state.account.stripeCustomerId,
+      ...(stripeConfig.portalConfigurationId
+        ? {
+            configuration: stripeConfig.portalConfigurationId
+          }
+        : {}),
       return_url: `${this.runtimeConfig.publicWebBaseUrl}/subscription`
     });
 
@@ -1143,6 +2016,16 @@ export class BillingService {
       metadata: asRecord(subscription.metadata),
       fallbackPlanKey: existingSub?.planKey ?? existingAccount.currentPlanKey
     });
+
+    const syncedAccount = await this.loadBillingAccountById(existingAccount.id);
+    if (
+      syncedAccount.pendingPlanKey &&
+      syncedAccount.pendingChangeEffectiveAt &&
+      syncedAccount.pendingChangeEffectiveAt.getTime() <= Date.now() &&
+      !syncedAccount.stripeSubscriptionId
+    ) {
+      await this.applyPendingPlanChange(existingAccount.id);
+    }
   }
 
   private async handleInvoicePaymentFailed(invoice: StripeInvoice) {
@@ -1195,90 +2078,122 @@ export class BillingService {
       input.metadata.aiInterviewsIncluded,
       catalogPlan.aiInterviewsIncluded
     );
-    const periodStart = new Date(input.stripeSubscription.current_period_start * 1000);
-    const periodEnd = new Date(input.stripeSubscription.current_period_end * 1000);
+    const { periodStart, periodEnd } =
+      resolveStripeSubscriptionPeriodBounds(input.stripeSubscription);
     const status = accountStatusFromStripe(input.stripeSubscription.status);
 
-    await this.prisma.tenantBillingSubscription.upsert({
-      where: {
-        stripeSubscriptionId: input.stripeSubscription.id
-      },
-      update: {
-        tenantId: input.tenantId,
-        accountId: input.accountId,
-        planKey,
-        status,
-        stripePriceId: currentPriceId,
-        stripeCheckoutSessionId: null,
-        stripeCustomerId:
-          typeof input.stripeSubscription.customer === "string"
-            ? input.stripeSubscription.customer
-            : null,
-        billingEmail: asString(input.metadata.billingEmail),
-        periodStart,
-        periodEnd,
-        seatsIncluded,
-        activeJobsIncluded,
-        candidateProcessingIncluded,
-        aiInterviewsIncluded,
-        featuresJson: features,
-        metadataJson: toJsonValue(input.metadata),
-        canceledAt:
-          input.stripeSubscription.status === "canceled" ? new Date() : null
-      },
-      create: {
-        tenantId: input.tenantId,
-        accountId: input.accountId,
-        planKey,
-        status,
-        stripeSubscriptionId: input.stripeSubscription.id,
-        stripePriceId: currentPriceId,
-        stripeCheckoutSessionId: null,
-        stripeCustomerId:
-          typeof input.stripeSubscription.customer === "string"
-            ? input.stripeSubscription.customer
-            : null,
-        billingEmail: asString(input.metadata.billingEmail),
-        periodStart,
-        periodEnd,
-        seatsIncluded,
-        activeJobsIncluded,
-        candidateProcessingIncluded,
-        aiInterviewsIncluded,
-        featuresJson: features,
-        metadataJson: toJsonValue(input.metadata),
-        createdBy: asString(input.metadata.requestedBy),
-        canceledAt:
-          input.stripeSubscription.status === "canceled" ? new Date() : null
-      }
-    });
+    await this.prisma.$transaction(async (tx) => {
+      const currentAccount = await tx.tenantBillingAccount.findUniqueOrThrow({
+        where: { id: input.accountId }
+      });
 
-    await this.prisma.tenantBillingAccount.update({
-      where: { id: input.accountId },
-      data: {
+      await this.appendSubscriptionSnapshot(tx, {
+        tenantId: input.tenantId,
+        accountId: input.accountId,
+        planKey,
+        status,
+        stripeSubscriptionId: input.stripeSubscription.id,
+        stripePriceId: currentPriceId,
         stripeCustomerId:
           typeof input.stripeSubscription.customer === "string"
             ? input.stripeSubscription.customer
-            : undefined,
-        stripeSubscriptionId: input.stripeSubscription.id,
-        currentPlanKey: planKey,
-        status,
-        currentPeriodStart: periodStart,
-        currentPeriodEnd: periodEnd,
-        featuresJson: features,
-        planSnapshotJson: {
-          seatsIncluded,
-          activeJobsIncluded,
-          candidateProcessingIncluded,
-          aiInterviewsIncluded
+            : null,
+        billingEmail: asString(input.metadata.billingEmail),
+        periodStart,
+        periodEnd,
+        seatsIncluded,
+        activeJobsIncluded,
+        candidateProcessingIncluded,
+        aiInterviewsIncluded,
+        features,
+        metadata: input.metadata,
+        createdBy: asString(input.metadata.requestedBy)
+      });
+
+      const metadataPendingPlanKey = this.safePlanKey(
+        asString(asRecord(input.metadata.pendingChange).planKey)
+      );
+      const pendingPlanKey =
+        metadataPendingPlanKey && metadataPendingPlanKey !== planKey
+          ? metadataPendingPlanKey
+          : currentAccount.pendingPlanKey && currentAccount.pendingPlanKey !== planKey
+            ? currentAccount.pendingPlanKey
+            : null;
+      const existingScheduledCancellation = parseScheduledCancellation(
+        asRecord(currentAccount.pendingChangeMetadataJson).scheduledCancellation
+      );
+      const scheduledCancellation =
+        input.stripeSubscription.cancel_at_period_end && !pendingPlanKey
+          ? {
+              effectiveAt: periodEnd,
+              requestedAt:
+                parseOptionalDate(input.metadata.scheduledCancellationRequestedAt) ??
+                existingScheduledCancellation?.requestedAt ??
+                new Date(),
+              requestedBy:
+                asString(input.metadata.scheduledCancellationRequestedBy) ??
+                existingScheduledCancellation?.requestedBy ??
+                null
+            }
+          : null;
+
+      await tx.tenantBillingAccount.update({
+        where: { id: input.accountId },
+        data: {
+          stripeCustomerId:
+            typeof input.stripeSubscription.customer === "string"
+              ? input.stripeSubscription.customer
+              : undefined,
+          stripeSubscriptionId:
+            status === BillingAccountStatus.CANCELED ? null : input.stripeSubscription.id,
+          currentPlanKey: planKey,
+          status,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          featuresJson: features,
+          planSnapshotJson: {
+            seatsIncluded,
+            activeJobsIncluded,
+            candidateProcessingIncluded,
+            aiInterviewsIncluded
+          },
+          pendingPlanKey,
+          pendingChangeKind: pendingPlanKey ? planChangeKindFor(planKey, pendingPlanKey) : null,
+          pendingChangeEffectiveAt:
+            pendingPlanKey
+              ? currentAccount.pendingChangeEffectiveAt ?? periodEnd
+              : null,
+          pendingChangeRequestedAt:
+            pendingPlanKey
+              ? currentAccount.pendingChangeRequestedAt ?? new Date()
+              : null,
+          pendingChangeRequestedBy:
+            pendingPlanKey
+              ? currentAccount.pendingChangeRequestedBy ?? asString(input.metadata.requestedBy)
+              : null,
+          pendingChangeMetadataJson:
+            pendingPlanKey
+              ? toJsonValue({
+                  source: "stripe_subscription_metadata",
+                  planKey: pendingPlanKey,
+                  previousMetadata: currentAccount.pendingChangeMetadataJson ?? null
+                })
+              : scheduledCancellation
+                ? toJsonValue({
+                    source: "stripe_subscription_cancellation",
+                    scheduledCancellation: serializeScheduledCancellation(
+                      scheduledCancellation
+                    )
+                  })
+                : Prisma.DbNull
         }
-      }
+      });
     });
   }
 
   private async assertQuota(tenantId: string, quotaKey: BillingQuotaKey, delta: number) {
     const state = await this.resolveBillingState(tenantId);
-    this.assertTrialAccessAvailable(state);
+    this.assertBillingAccessAvailable(state);
     const used = state.usage[quotaKey] ?? 0;
     const limit = state.limits[quotaKey] ?? 0;
 
@@ -1299,16 +2214,14 @@ export class BillingService {
     throw new BadRequestException(messageByQuota[quotaKey]);
   }
 
-  private assertTrialAccessAvailable(state: ResolvedBillingState) {
-    if (state.trial.isExpired) {
-      throw new BadRequestException(
-        "Ücretsiz deneme süreniz sona erdi. Yeni işlem başlatmak için ücretli plana geçin."
-      );
+  private assertBillingAccessAvailable(state: ResolvedBillingState) {
+    if (state.access.isAllowed) {
+      return;
     }
 
-    if (!state.trial.isEligible && state.trial.blockReason) {
-      throw new BadRequestException(state.trial.blockReason);
-    }
+    throw new BadRequestException(
+      state.access.blockReason ?? "Abonelik durumunuz yeni işlem başlatmaya uygun değil."
+    );
   }
 
   private async recordUsageEvent(input: {
@@ -1319,7 +2232,7 @@ export class BillingService {
     uniqueKey: string;
   }) {
     const state = await this.resolveBillingState(input.tenantId);
-    this.assertTrialAccessAvailable(state);
+    this.assertBillingAccessAvailable(state);
     const used = state.usage[input.quotaKey] ?? 0;
     const included = this.includedForQuota(state.subscription, input.quotaKey);
     const addOnConsumptionDelta =
@@ -1431,8 +2344,344 @@ export class BillingService {
     }
   }
 
+  private buildBillingAccess(state: {
+    status: BillingAccountStatus;
+    trial: ResolvedBillingState["trial"];
+  }) {
+    if (state.trial.isExpired) {
+      return {
+        isAllowed: false,
+        blockReason:
+          "Ücretsiz deneme süreniz sona erdi. Yeni işlem başlatmak için ücretli plana geçin."
+      };
+    }
+
+    if (!state.trial.isEligible && state.trial.blockReason) {
+      return {
+        isAllowed: false,
+        blockReason: state.trial.blockReason
+      };
+    }
+
+    if (state.status === BillingAccountStatus.PAST_DUE) {
+      return {
+        isAllowed: false,
+        blockReason:
+          "Ödemeniz başarısız görünüyor. Yeni işlem başlatmadan önce faturalandırma durumunuzu güncelleyin."
+      };
+    }
+
+    if (state.status === BillingAccountStatus.INCOMPLETE) {
+      return {
+        isAllowed: false,
+        blockReason:
+          "Abonelik etkinleştirme süreci henüz tamamlanmadı. Devam etmek için ödeme kurulumunu tamamlayın."
+      };
+    }
+
+    if (state.status === BillingAccountStatus.CANCELED) {
+      return {
+        isAllowed: false,
+        blockReason:
+          "Aboneliğiniz sona erdi. Yeni işlem başlatmak için bir plan seçin."
+      };
+    }
+
+    return {
+      isAllowed: true,
+      blockReason: null
+    };
+  }
+
+  private async loadBillingAccountById(accountId: string) {
+    return this.prisma.tenantBillingAccount.findUniqueOrThrow({
+      where: {
+        id: accountId
+      }
+    });
+  }
+
+  private async applyPendingPlanChange(accountId: string) {
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      const account = await tx.tenantBillingAccount.findUniqueOrThrow({
+        where: {
+          id: accountId
+        }
+      });
+
+      if (
+        !account.pendingPlanKey ||
+        !account.pendingChangeKind ||
+        !account.pendingChangeEffectiveAt ||
+        account.pendingChangeEffectiveAt.getTime() > now.getTime()
+      ) {
+        return;
+      }
+
+      const targetPlan = BILLING_PLAN_CATALOG[account.pendingPlanKey];
+      const effectiveAt = account.pendingChangeEffectiveAt;
+      const periodStart =
+        account.pendingPlanKey === BillingPlanKey.FLEX ? startOfCurrentMonth(now) : effectiveAt;
+      const periodEnd =
+        account.pendingPlanKey === BillingPlanKey.FLEX
+          ? startOfNextMonth(now)
+          : addMonthsUtc(effectiveAt, 1);
+      const nextStripeSubscriptionId =
+        account.pendingPlanKey === BillingPlanKey.FLEX ? null : account.stripeSubscriptionId;
+
+      await this.appendSubscriptionSnapshot(tx, {
+        tenantId: account.tenantId,
+        accountId: account.id,
+        planKey: account.pendingPlanKey,
+        status: BillingAccountStatus.ACTIVE,
+        billingEmail: account.billingEmail,
+        periodStart,
+        periodEnd,
+        seatsIncluded: targetPlan.seatsIncluded,
+        activeJobsIncluded: targetPlan.activeJobsIncluded,
+        candidateProcessingIncluded: targetPlan.candidateProcessingIncluded,
+        aiInterviewsIncluded: targetPlan.aiInterviewsIncluded,
+        features: targetPlan.features,
+        stripeSubscriptionId: nextStripeSubscriptionId,
+        stripeCustomerId: account.stripeCustomerId,
+        metadata: {
+          source: "pending_plan_change",
+          previousPlanKey: account.currentPlanKey,
+          effectiveAt: effectiveAt.toISOString()
+        },
+        createdBy: account.pendingChangeRequestedBy
+      });
+
+      await tx.tenantBillingAccount.update({
+        where: {
+          id: account.id
+        },
+        data: {
+          currentPlanKey: account.pendingPlanKey,
+          status: BillingAccountStatus.ACTIVE,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          stripeSubscriptionId: nextStripeSubscriptionId,
+          featuresJson: targetPlan.features,
+          planSnapshotJson: buildPlanSnapshot(targetPlan),
+          pendingPlanKey: null,
+          pendingChangeKind: null,
+          pendingChangeEffectiveAt: null,
+          pendingChangeRequestedAt: null,
+          pendingChangeRequestedBy: null,
+          pendingChangeMetadataJson: Prisma.DbNull,
+          lastReconciledAt: now
+        }
+      });
+    });
+
+    return this.loadBillingAccountById(accountId);
+  }
+
+  private async rollLocalRecurringPeriod(accountId: string) {
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      const account = await tx.tenantBillingAccount.findUniqueOrThrow({
+        where: {
+          id: accountId
+        }
+      });
+
+      if (
+        account.currentPlanKey === BillingPlanKey.FLEX ||
+        account.status !== BillingAccountStatus.ACTIVE ||
+        account.stripeSubscriptionId ||
+        !account.currentPeriodEnd ||
+        account.currentPeriodEnd.getTime() > now.getTime()
+      ) {
+        return;
+      }
+
+      const snapshot = asRecord(account.planSnapshotJson);
+      const plan = BILLING_PLAN_CATALOG[account.currentPlanKey];
+      let periodStart = account.currentPeriodStart ?? account.currentPeriodEnd;
+      let periodEnd = account.currentPeriodEnd;
+
+      while (periodEnd.getTime() <= now.getTime()) {
+        periodStart = periodEnd;
+        periodEnd = addMonthsUtc(periodEnd, 1);
+      }
+
+      await this.appendSubscriptionSnapshot(tx, {
+        tenantId: account.tenantId,
+        accountId: account.id,
+        planKey: account.currentPlanKey,
+        status: BillingAccountStatus.ACTIVE,
+        billingEmail: account.billingEmail,
+        periodStart,
+        periodEnd,
+        seatsIncluded: asNumber(snapshot.seatsIncluded, plan.seatsIncluded),
+        activeJobsIncluded: asNumber(snapshot.activeJobsIncluded, plan.activeJobsIncluded),
+        candidateProcessingIncluded: asNumber(
+          snapshot.candidateProcessingIncluded,
+          plan.candidateProcessingIncluded
+        ),
+        aiInterviewsIncluded: asNumber(snapshot.aiInterviewsIncluded, plan.aiInterviewsIncluded),
+        features: buildFeatureSnapshot(account.featuresJson, plan.features),
+        stripeSubscriptionId: null,
+        stripeCustomerId: account.stripeCustomerId,
+        metadata: {
+          source: "local_period_rollover"
+        },
+        createdBy: "system:billing.reconcile"
+      });
+
+      await tx.tenantBillingAccount.update({
+        where: {
+          id: account.id
+        },
+        data: {
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          lastReconciledAt: now
+        }
+      });
+    });
+
+    return this.loadBillingAccountById(accountId);
+  }
+
+  private async reconcileBillingAccount(account: TenantBillingAccount) {
+    let nextAccount = account;
+    const now = new Date();
+
+    if (
+      nextAccount.pendingPlanKey &&
+      nextAccount.pendingChangeEffectiveAt &&
+      nextAccount.pendingChangeEffectiveAt.getTime() <= now.getTime() &&
+      !nextAccount.stripeSubscriptionId
+    ) {
+      nextAccount = await this.applyPendingPlanChange(nextAccount.id);
+    }
+
+    if (
+      nextAccount.currentPlanKey !== BillingPlanKey.FLEX &&
+      nextAccount.status === BillingAccountStatus.ACTIVE &&
+      nextAccount.currentPeriodEnd &&
+      nextAccount.currentPeriodEnd.getTime() <= now.getTime() &&
+      !nextAccount.stripeSubscriptionId
+    ) {
+      nextAccount = await this.rollLocalRecurringPeriod(nextAccount.id);
+    }
+
+    const needsStripeSync =
+      Boolean(nextAccount.stripeSubscriptionId && this.runtimeConfig.providerReadiness.billing.ready) &&
+      (
+        (nextAccount.currentPeriodEnd &&
+          nextAccount.currentPeriodEnd.getTime() <= now.getTime()) ||
+        nextAccount.status === BillingAccountStatus.PAST_DUE ||
+        nextAccount.status === BillingAccountStatus.INCOMPLETE
+      );
+
+    if (needsStripeSync && nextAccount.stripeSubscriptionId) {
+      try {
+        const subscription = await this.getStripeClient().subscriptions.retrieve(
+          nextAccount.stripeSubscriptionId
+        );
+        await this.upsertSubscriptionFromStripe({
+          tenantId: nextAccount.tenantId,
+          accountId: nextAccount.id,
+          stripeSubscription: subscription,
+          metadata: asRecord(subscription.metadata)
+        });
+        nextAccount = await this.loadBillingAccountById(nextAccount.id);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          /No such subscription/i.test(error.message)
+        ) {
+          await this.prisma.tenantBillingAccount.update({
+            where: {
+              id: nextAccount.id
+            },
+            data: {
+              status: BillingAccountStatus.CANCELED,
+              stripeSubscriptionId: null,
+              lastReconciledAt: now
+            }
+          });
+          nextAccount = await this.loadBillingAccountById(nextAccount.id);
+        } else {
+          throw error;
+        }
+      }
+    } else if (nextAccount.lastReconciledAt === null) {
+      nextAccount = await this.prisma.tenantBillingAccount.update({
+        where: {
+          id: nextAccount.id
+        },
+        data: {
+          lastReconciledAt: now
+        }
+      });
+    }
+
+    return nextAccount;
+  }
+
+  private async reconcileOpenCheckoutSessions(tenantId: string) {
+    if (!this.runtimeConfig.providerReadiness.billing.ready) {
+      return false;
+    }
+
+    const openCheckouts = await this.prisma.billingCheckoutSession.findMany({
+      where: {
+        tenantId,
+        status: BillingCheckoutStatus.OPEN,
+        stripeCheckoutSessionId: {
+          not: null
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      },
+      take: 5
+    });
+
+    if (openCheckouts.length === 0) {
+      return false;
+    }
+
+    const stripe = this.getStripeClient();
+    let reconciled = false;
+
+    for (const checkout of openCheckouts) {
+      if (!checkout.stripeCheckoutSessionId) {
+        continue;
+      }
+
+      const session = await stripe.checkout.sessions.retrieve(checkout.stripeCheckoutSessionId);
+
+      if (session.status === "complete") {
+        await this.handleCheckoutSessionCompleted(session);
+        reconciled = true;
+        continue;
+      }
+
+      if (session.status === "expired") {
+        await this.handleCheckoutSessionExpired(session);
+        reconciled = true;
+      }
+    }
+
+    return reconciled;
+  }
+
   private async resolveBillingState(tenantId: string): Promise<ResolvedBillingState> {
-    const account = await this.ensureBillingAccount(tenantId);
+    let baseAccount = await this.ensureBillingAccount(tenantId);
+    const reconciledCheckout = await this.reconcileOpenCheckoutSessions(tenantId);
+    if (reconciledCheckout) {
+      baseAccount = await this.ensureBillingAccount(tenantId);
+    }
+    const account = await this.reconcileBillingAccount(baseAccount);
     const subscription =
       (await this.prisma.tenantBillingSubscription.findFirst({
         where: {
@@ -1448,6 +2697,13 @@ export class BillingService {
           }
         },
         orderBy: [{ periodEnd: "desc" }, { createdAt: "desc" }]
+      })) ??
+      (await this.prisma.tenantBillingSubscription.findFirst({
+        where: {
+          tenantId,
+          accountId: account.id
+        },
+        orderBy: [{ createdAt: "desc" }]
       })) ??
       (await this.ensureDefaultSubscription(account));
 
@@ -1503,6 +2759,29 @@ export class BillingService {
     );
     const daysRemaining =
       trialIsActive && trialEndsAt ? diffDaysCeil(now, trialEndsAt) : 0;
+    const pendingChangeMetadata = asRecord(account.pendingChangeMetadataJson);
+    const pendingChange =
+      account.pendingPlanKey &&
+      account.pendingChangeKind &&
+      account.pendingChangeEffectiveAt
+        ? {
+            planKey: account.pendingPlanKey,
+            kind: account.pendingChangeKind,
+            effectiveAt: account.pendingChangeEffectiveAt,
+            requestedAt: account.pendingChangeRequestedAt ?? null,
+            requestedBy: account.pendingChangeRequestedBy ?? null
+          }
+        : null;
+    const scheduledCancellationBase =
+      !pendingChange && account.stripeSubscriptionId
+        ? parseScheduledCancellation(pendingChangeMetadata.scheduledCancellation)
+        : null;
+    const scheduledCancellation = scheduledCancellationBase
+      ? {
+          ...scheduledCancellationBase,
+          canResume: true
+        }
+      : null;
 
     const [seatsUsed, jobCreditsAgg, candidateProcessingAgg, aiInterviewsAgg, grants] =
       await Promise.all([
@@ -1607,6 +2886,20 @@ export class BillingService {
         addOnRemaining: addOnTotals[BillingQuotaKey.AI_INTERVIEWS]
       })
     };
+    const trial = {
+      isActive: trialIsActive,
+      isExpired: trialIsExpired,
+      isEligible: trialIsEligible,
+      blockReason: trialBlockReason,
+      startedAt: trialStartedAt,
+      endsAt: trialEndsAt,
+      daysRemaining,
+      config: FREE_TRIAL_DEFINITION
+    };
+    const access = this.buildBillingAccess({
+      status: account.status,
+      trial
+    });
 
     return {
       account: {
@@ -1634,7 +2927,9 @@ export class BillingService {
             snapshot.aiInterviewsIncluded,
             subscription.aiInterviewsIncluded
           )
-        }
+        },
+        pendingChange,
+        scheduledCancellation
       },
       subscription: {
         id: subscription.id,
@@ -1649,19 +2944,11 @@ export class BillingService {
         aiInterviewsIncluded: subscription.aiInterviewsIncluded,
         features: buildFeatureSnapshot(subscription.featuresJson, fallbackPlan.features)
       },
-      trial: {
-        isActive: trialIsActive,
-        isExpired: trialIsExpired,
-        isEligible: trialIsEligible,
-        blockReason: trialBlockReason,
-        startedAt: trialStartedAt,
-        endsAt: trialEndsAt,
-        daysRemaining,
-        config: FREE_TRIAL_DEFINITION
-      },
+      trial,
       addOnTotals,
       usage,
-      limits
+      limits,
+      access
     };
   }
 
@@ -2135,6 +3422,40 @@ export class BillingService {
     const matched = entries.find(([, configuredPriceId]) => configuredPriceId === priceId);
 
     return matched ? (matched[0] as BillingPlanKey) : null;
+  }
+
+  private getManagedPlanPriceId(planKey: Exclude<BillingPlanKey, "FLEX" | "ENTERPRISE">) {
+    const priceId = this.runtimeConfig.stripeBillingConfig.planPriceIds[planKey];
+
+    if (!priceId) {
+      throw new BadRequestException(
+        `${planKey} planı için Stripe price id yapılandırması eksik.`
+      );
+    }
+
+    return priceId;
+  }
+
+  private buildPlanSubscriptionMetadata(input: {
+    tenantId: string;
+    requestedBy: string;
+    planKey: Exclude<BillingPlanKey, "FLEX" | "ENTERPRISE">;
+    billingEmail?: string | null;
+  }) {
+    const plan = BILLING_PLAN_CATALOG[input.planKey];
+
+    return {
+      tenantId: input.tenantId,
+      requestedBy: input.requestedBy,
+      checkoutType: BillingCheckoutType.PLAN_SUBSCRIPTION,
+      planKey: input.planKey,
+      billingEmail: input.billingEmail ?? "",
+      seatsIncluded: String(plan.seatsIncluded),
+      activeJobsIncluded: String(plan.activeJobsIncluded),
+      candidateProcessingIncluded: String(plan.candidateProcessingIncluded),
+      aiInterviewsIncluded: String(plan.aiInterviewsIncluded),
+      featuresJson: JSON.stringify(plan.features)
+    };
   }
 
   private safePlanKey(value: string | null) {

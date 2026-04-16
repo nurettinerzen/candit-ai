@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, ForbiddenException, Get, Inject, Param, Patch, Post, Query } from "@nestjs/common";
 import {
   IsBoolean,
   IsEmail,
@@ -14,6 +14,7 @@ import {
 import {
   BillingAccountStatus,
   BillingPlanKey,
+  FeatureFlagType,
   PublicLeadStatus,
   TenantStatus
 } from "@prisma/client";
@@ -22,6 +23,13 @@ import { Permissions } from "../../common/decorators/permissions.decorator";
 import type { RequestUser } from "../../common/interfaces/request-user.interface";
 import { BILLING_PLAN_CATALOG } from "../billing/billing-catalog";
 import { InternalAdminService } from "./internal-admin.service";
+
+const FLAG_TYPES = ["BOOLEAN", "MULTIVARIATE", "KILL_SWITCH"] as const;
+const GLOBAL_AUTH_FLAG_KEYS = [
+  "auth.email_verification.required",
+  "auth.email_verification.send_email"
+] as const;
+type FlagType = (typeof FLAG_TYPES)[number];
 
 class AdminAccountQuery {
   @IsOptional()
@@ -209,6 +217,19 @@ class CreateEnterpriseCustomerBody {
   note?: string;
 }
 
+class UpdateGlobalAuthFlagBody {
+  @IsIn(FLAG_TYPES)
+  @IsOptional()
+  type?: FlagType;
+
+  @IsBoolean()
+  value!: boolean;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+}
+
 @Controller("internal-admin")
 export class InternalAdminController {
   constructor(@Inject(InternalAdminService) private readonly internalAdminService: InternalAdminService) {}
@@ -217,6 +238,32 @@ export class InternalAdminController {
   @Permissions("tenant.manage")
   dashboard(@CurrentUser() user: RequestUser) {
     return this.internalAdminService.getDashboard(user.email);
+  }
+
+  @Get("auth-flags")
+  @Permissions("tenant.manage")
+  authFlags(@CurrentUser() user: RequestUser) {
+    return this.internalAdminService.listGlobalAuthFlags(user.email);
+  }
+
+  @Patch("auth-flags/:key")
+  @Permissions("tenant.manage")
+  updateAuthFlag(
+    @CurrentUser() user: RequestUser,
+    @Param("key") key: string,
+    @Body() body: UpdateGlobalAuthFlagBody
+  ) {
+    if (!GLOBAL_AUTH_FLAG_KEYS.includes(key as (typeof GLOBAL_AUTH_FLAG_KEYS)[number])) {
+      throw new ForbiddenException("Bu global auth flag anahtari desteklenmiyor.");
+    }
+
+    return this.internalAdminService.updateGlobalAuthFlag({
+      key,
+      actorEmail: user.email,
+      value: body.value,
+      type: (body.type as FeatureFlagType | undefined) ?? FeatureFlagType.BOOLEAN,
+      description: body.description
+    });
   }
 
   @Get("red-alert")

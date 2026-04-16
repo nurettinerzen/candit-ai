@@ -6,7 +6,7 @@ import {
   NotFoundException,
   Inject
 } from "@nestjs/common";
-import { AuditActorType, Prisma, Role, UserStatus } from "@prisma/client";
+import { AuditActorType, AuthSessionStatus, Prisma, Role, UserStatus } from "@prisma/client";
 import { RuntimeConfigService } from "../../config/runtime-config.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -14,13 +14,31 @@ import { AuthService } from "../auth/auth.service";
 import { BillingService } from "../billing/billing.service";
 
 type MemberRoleInput = "manager" | "staff";
+type EditableMemberRoleInput = "owner" | "manager" | "staff";
 
 function toInvitationLink(baseUrl: string, token: string) {
   return `${baseUrl}/auth/invitations/accept?token=${encodeURIComponent(token)}`;
 }
 
-function asRole(role: MemberRoleInput): Role {
-  return role === "manager" ? Role.MANAGER : Role.STAFF;
+function asRole(role: EditableMemberRoleInput): Role {
+  switch (role) {
+    case "owner":
+      return Role.OWNER;
+    case "manager":
+      return Role.MANAGER;
+    case "staff":
+    default:
+      return Role.STAFF;
+  }
+}
+
+function buildDeletedUserEmail(email: string, userId: string) {
+  const [localPart, domainPart] = email.toLowerCase().trim().split("@");
+  const safeLocal = (localPart || "deleted").replace(/[^a-z0-9._+-]/g, "") || "deleted";
+  const safeDomain =
+    (domainPart || "deleted.local").replace(/[^a-z0-9.-]/g, "") || "deleted.local";
+
+  return `${safeLocal}+deleted-${userId.toLowerCase()}@${safeDomain}`;
 }
 
 function toApiRole(role: Role): "owner" | "manager" | "staff" {
@@ -377,7 +395,7 @@ export class MembersService {
     tenantId: string;
     actorUserId: string;
     userId: string;
-    role: MemberRoleInput;
+    role: EditableMemberRoleInput;
     traceId?: string;
   }) {
     const nextRole = asRole(input.role);
@@ -398,15 +416,31 @@ export class MembersService {
       throw new NotFoundException("Kullanıcı bulunamadı.");
     }
 
-    if (user.role === Role.OWNER) {
-      throw new ForbiddenException("Hesap sahibi rolü bu ekrandan degistirilemez.");
-    }
-
     if (user.role === nextRole) {
       return {
         userId: user.id,
         role: toApiRole(user.role)
       };
+    }
+
+    if (nextRole === Role.OWNER) {
+      const transfer = await this.transferOwnership({
+        tenantId: input.tenantId,
+        actorUserId: input.actorUserId,
+        userId: input.userId,
+        traceId: input.traceId
+      });
+
+      return {
+        userId: user.id,
+        role: "owner" as const,
+        previousOwnerUserId: transfer.previousOwnerUserId,
+        nextOwnerUserId: transfer.nextOwnerUserId
+      };
+    }
+
+    if (user.role === Role.OWNER) {
+      throw new ForbiddenException("Hesap sahibi rolü başka bir kullanıcı seçilmeden kaldırılamaz.");
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -451,6 +485,131 @@ export class MembersService {
     return {
       userId: user.id,
       role: toApiRole(nextRole)
+    };
+  }
+
+  async removeMember(input: {
+    tenantId: string;
+    actorUserId: string;
+    userId: string;
+    traceId?: string;
+  }) {
+    if (input.userId === input.actorUserId) {
+      throw new ForbiddenException("Kendi hesabınızı bu ekrandan silemezsiniz.");
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: input.userId,
+        tenantId: input.tenantId,
+        deletedAt: null
+      },
+      select: {
+        id: true,
+        role: true,
+        email: true,
+        fullName: true
+      }
+    });
+
+    if (!user) {
+      throw new NotFoundException("Kullanıcı bulunamadı.");
+    }
+
+    if (user.role === Role.OWNER) {
+      throw new ForbiddenException("Hesap sahibi silinemez. Önce sahipliği devredin.");
+    }
+
+    const now = new Date();
+    const deletedEmail = buildDeletedUserEmail(user.email, user.id);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.authSession.updateMany({
+        where: {
+          userId: user.id,
+          status: AuthSessionStatus.ACTIVE
+        },
+        data: {
+          status: AuthSessionStatus.REVOKED,
+          revokedAt: now,
+          revokedReason: "member_deleted"
+        }
+      });
+
+      await tx.authRefreshToken.updateMany({
+        where: {
+          userId: user.id,
+          revokedAt: null
+        },
+        data: {
+          revokedAt: now,
+          revokedReason: "member_deleted"
+        }
+      });
+
+      await tx.authActionToken.updateMany({
+        where: {
+          OR: [{ userId: user.id }, { email: user.email }],
+          revokedAt: null
+        },
+        data: {
+          revokedAt: now
+        }
+      });
+
+      await tx.memberInvitation.updateMany({
+        where: {
+          tenantId: input.tenantId,
+          userId: user.id,
+          acceptedAt: null,
+          revokedAt: null
+        },
+        data: {
+          revokedAt: now
+        }
+      });
+
+      await tx.userIdentity.deleteMany({
+        where: {
+          userId: user.id
+        }
+      });
+
+      await tx.user.update({
+        where: {
+          id: user.id
+        },
+        data: {
+          status: UserStatus.DISABLED,
+          deletedAt: now,
+          email: deletedEmail,
+          passwordHash: null,
+          passwordSetAt: null,
+          emailVerifiedAt: null,
+          avatarUrl: null,
+          lastLoginAt: null
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: input.tenantId,
+          actorUserId: input.actorUserId,
+          actorType: AuditActorType.USER,
+          action: "member.deleted",
+          entityType: "User",
+          entityId: user.id,
+          traceId: input.traceId,
+          metadata: {
+            deletedUserEmail: user.email,
+            deletedUserName: user.fullName
+          } satisfies Prisma.InputJsonValue
+        }
+      });
+    });
+
+    return {
+      userId: user.id
     };
   }
 

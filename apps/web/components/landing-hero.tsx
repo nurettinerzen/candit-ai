@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useMemo } from "react";
+import { PUBLIC_SITE_BRAND_SUBTITLE } from "../lib/public-site-data";
 import { useUiText } from "./site-language-provider";
 import "./landing-hero.css";
 
@@ -396,7 +397,7 @@ export function LandingHero() {
             <span className="lp-hero-line lp-active" data-index="0">{t("Ön Eleme.")}</span>
             <span className="lp-hero-line" data-index="1">{t("Kaynak Bulma.")}</span>
             <span className="lp-hero-line" data-index="2">{t("Mülakat.")}</span>
-            <span className="lp-hero-tagline">{t("Yapay zekâ destekli işe alım platformu.")}</span>
+            <span className="lp-hero-tagline">{t(PUBLIC_SITE_BRAND_SUBTITLE)}</span>
           </div>
           <div className="lp-hero-bottom">
             <p className="lp-hero-sub">

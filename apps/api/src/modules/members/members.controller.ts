@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Inject } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Inject } from "@nestjs/common";
 import { IsEmail, IsIn, IsString, MinLength } from "class-validator";
 import { CurrentContext } from "../../common/decorators/current-context.decorator";
 import { CurrentTenant } from "../../common/decorators/current-tenant.decorator";
@@ -9,6 +9,7 @@ import type { RequestUser } from "../../common/interfaces/request-user.interface
 import { MembersService } from "./members.service";
 
 const MEMBER_ROLES = ["manager", "staff"] as const;
+const EDITABLE_MEMBER_ROLES = ["owner", "manager", "staff"] as const;
 const MEMBER_STATUSES = ["ACTIVE", "DISABLED"] as const;
 
 class InviteMemberBody {
@@ -24,8 +25,8 @@ class InviteMemberBody {
 }
 
 class UpdateMemberRoleBody {
-  @IsIn(MEMBER_ROLES)
-  role!: (typeof MEMBER_ROLES)[number];
+  @IsIn(EDITABLE_MEMBER_ROLES)
+  role!: (typeof EDITABLE_MEMBER_ROLES)[number];
 }
 
 class UpdateMemberStatusBody {
@@ -91,6 +92,22 @@ export class MembersController {
       actorUserId: user.userId,
       userId,
       role: body.role,
+      traceId: requestContext?.traceId
+    });
+  }
+
+  @Delete(":userId")
+  @Permissions("user.manage")
+  remove(
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() user: RequestUser,
+    @CurrentContext() requestContext: RequestContext | undefined,
+    @Param("userId") userId: string
+  ) {
+    return this.membersService.removeMember({
+      tenantId,
+      actorUserId: user.userId,
+      userId,
       traceId: requestContext?.traceId
     });
   }

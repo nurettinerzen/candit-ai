@@ -9,7 +9,8 @@ import { formatAuthErrorMessage } from "../../../lib/auth/error";
 import {
   getAuthProviders,
   getGoogleAuthAuthorizeUrl,
-  loginWithPassword
+  loginWithPassword,
+  readAuthFlowError
 } from "../../../lib/auth/session";
 
 function resolveNextPath(raw: string | null) {
@@ -32,6 +33,7 @@ function LoginPageContent() {
   const [loading, setLoading] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [error, setError] = useState("");
+  const [verificationPreviewUrl, setVerificationPreviewUrl] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +62,7 @@ function LoginPageContent() {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setVerificationPreviewUrl("");
 
     try {
       await loginWithPassword({
@@ -68,7 +71,9 @@ function LoginPageContent() {
       });
       window.location.assign(nextPath);
     } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : t("Giriş başarısız."));
+      const authFlowError = readAuthFlowError(loginError);
+      setError(authFlowError?.message ?? (loginError instanceof Error ? loginError.message : t("Giriş başarısız.")));
+      setVerificationPreviewUrl(authFlowError?.emailVerification?.previewUrl ?? "");
     } finally {
       setLoading(false);
     }
@@ -104,6 +109,16 @@ function LoginPageContent() {
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }}>
         {oauthError ? <AuthNotice tone="danger" message={oauthError} /> : null}
         {error ? <AuthNotice tone="danger" message={error} /> : null}
+        {verificationPreviewUrl ? (
+          <AuthNotice
+            tone="info"
+            message={
+              locale === "en"
+                ? "Development mode: a fresh verification preview link is ready below."
+                : "Geliştirme modunda yeni bir doğrulama preview bağlantısı aşağıda hazır."
+            }
+          />
+        ) : null}
 
         <label style={{ display: "grid", gap: 8 }}>
           <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("E-posta")}</span>
@@ -134,6 +149,12 @@ function LoginPageContent() {
         <button type="submit" disabled={loading} style={primaryButtonStyle}>
           {loading ? t("Giriş yapılıyor...") : t("Giriş Yap")}
         </button>
+
+        {verificationPreviewUrl ? (
+          <a href={verificationPreviewUrl} style={secondaryButtonStyle}>
+            {t("Doğrulama bağlantısını aç")}
+          </a>
+        ) : null}
       </form>
 
       <div style={{ display: "grid", gap: 12, marginTop: 18 }}>

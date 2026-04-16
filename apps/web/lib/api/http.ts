@@ -6,7 +6,7 @@ import {
 } from "../auth/session";
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PATCH";
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
   query?: Record<string, string | number | undefined>;
 };

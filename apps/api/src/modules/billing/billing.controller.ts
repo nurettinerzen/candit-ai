@@ -190,6 +190,24 @@ export class BillingController {
     return this.billingService.createCustomerPortalSession({ tenantId });
   }
 
+  @Post("subscription/cancel")
+  @Permissions("tenant.manage")
+  scheduleSubscriptionCancellation(
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() user: RequestUser
+  ) {
+    return this.billingService.scheduleSubscriptionCancellation({
+      tenantId,
+      requestedBy: user.userId
+    });
+  }
+
+  @Post("subscription/resume")
+  @Permissions("tenant.manage")
+  resumeScheduledCancellation(@CurrentTenant() tenantId: string) {
+    return this.billingService.resumeScheduledCancellation({ tenantId });
+  }
+
   @Public()
   @Post("webhooks/stripe")
   stripeWebhook(

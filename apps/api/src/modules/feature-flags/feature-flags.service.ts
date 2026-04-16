@@ -3,6 +3,21 @@ import { FeatureFlagType, Prisma } from "@prisma/client";
 import { RuntimeConfigService } from "../../config/runtime-config.service";
 import { PrismaService } from "../../prisma/prisma.service";
 
+const GLOBAL_AUTH_FLAG_DEFAULTS = [
+  {
+    key: "auth.email_verification.required",
+    type: FeatureFlagType.BOOLEAN,
+    value: true,
+    description: "Global olarak e-posta dogrulanmadan giris ve korumali erisim acilamaz."
+  },
+  {
+    key: "auth.email_verification.send_email",
+    type: FeatureFlagType.BOOLEAN,
+    value: true,
+    description: "Global olarak dogrulama baglantisini e-posta kanaliyla gonderir."
+  }
+] as const;
+
 @Injectable()
 export class FeatureFlagsService {
   constructor(
@@ -73,6 +88,96 @@ export class FeatureFlagsService {
         }
       }
     });
+
+    if (!flag) {
+      return defaultValue;
+    }
+
+    if (typeof flag.value === "boolean") {
+      return flag.value;
+    }
+
+    if (
+      typeof flag.value === "object" &&
+      flag.value !== null &&
+      "enabled" in flag.value &&
+      typeof (flag.value as { enabled?: unknown }).enabled === "boolean"
+    ) {
+      return (flag.value as { enabled: boolean }).enabled;
+    }
+
+    return defaultValue;
+  }
+
+  async listGlobal(keys?: string[]) {
+    await this.ensureGlobalDefaults();
+
+    const flags = await this.prisma.featureFlag.findMany({
+      where: {
+        tenantId: null,
+        ...(keys && keys.length > 0
+          ? {
+              key: {
+                in: keys
+              }
+            }
+          : {})
+      },
+      orderBy: [{ key: "asc" }, { updatedAt: "desc" }]
+    });
+
+    const latestByKey = new Map<string, (typeof flags)[number]>();
+    for (const flag of flags) {
+      if (!latestByKey.has(flag.key)) {
+        latestByKey.set(flag.key, flag);
+      }
+    }
+
+    return Array.from(latestByKey.values());
+  }
+
+  async updateGlobal(
+    key: string,
+    input: { type?: FeatureFlagType; value: Prisma.InputJsonValue; description?: string }
+  ) {
+    await this.ensureGlobalDefaults();
+
+    const existing = await this.prisma.featureFlag.findFirst({
+      where: {
+        tenantId: null,
+        key
+      },
+      orderBy: {
+        updatedAt: "desc"
+      }
+    });
+
+    if (!existing) {
+      return this.prisma.featureFlag.create({
+        data: {
+          tenantId: null,
+          key,
+          type: input.type ?? FeatureFlagType.BOOLEAN,
+          value: input.value,
+          description: input.description
+        }
+      });
+    }
+
+    return this.prisma.featureFlag.update({
+      where: {
+        id: existing.id
+      },
+      data: {
+        type: input.type,
+        value: input.value,
+        description: input.description
+      }
+    });
+  }
+
+  async isGlobalEnabled(key: string, defaultValue = false) {
+    const [flag] = await this.listGlobal([key]);
 
     if (!flag) {
       return defaultValue;
@@ -196,25 +301,46 @@ export class FeatureFlagsService {
       }
     ];
 
-    await this.prisma.$transaction(
-      defaults.map((flag) =>
-        this.prisma.featureFlag.upsert({
-          where: {
-            tenantId_key: {
-              tenantId,
-              key: flag.key
-            }
-          },
-          create: {
-            tenantId,
-            key: flag.key,
-            type: flag.type,
-            value: flag.value,
-            description: flag.description
-          },
-          update: {}
-        })
-      )
-    );
+    await this.prisma.featureFlag.createMany({
+      data: defaults.map((flag) => ({
+        tenantId,
+        key: flag.key,
+        type: flag.type,
+        value: flag.value,
+        description: flag.description
+      })),
+      skipDuplicates: true
+    });
+  }
+
+  private async ensureGlobalDefaults() {
+    const existing = await this.prisma.featureFlag.findMany({
+      where: {
+        tenantId: null,
+        key: {
+          in: GLOBAL_AUTH_FLAG_DEFAULTS.map((flag) => flag.key)
+        }
+      },
+      select: {
+        key: true
+      }
+    });
+
+    const existingKeys = new Set(existing.map((flag) => flag.key));
+    const missing = GLOBAL_AUTH_FLAG_DEFAULTS.filter((flag) => !existingKeys.has(flag.key));
+
+    if (missing.length === 0) {
+      return;
+    }
+
+    await this.prisma.featureFlag.createMany({
+      data: missing.map((flag) => ({
+        tenantId: null,
+        key: flag.key,
+        type: flag.type,
+        value: flag.value,
+        description: flag.description
+      }))
+    });
   }
 }

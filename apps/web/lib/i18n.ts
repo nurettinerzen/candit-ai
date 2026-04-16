@@ -374,6 +374,7 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "Hesap Sahibi": "Owner",
   Menajer: "Manager",
   "Uzman / Personel": "Specialist / Staff",
+  "Personel": "Staff",
   "Tarih": "Date",
   "Kaynak": "Source",
   "Reddedilen": "Rejected",
@@ -2598,8 +2599,10 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   // Header / footer nav
   "Çözümler": "Solutions",
   "Fiyatlar": "Pricing",
+  "Paketler": "Plans",
   "Kaynaklar": "Resources",
   "AI destekli işe alım platformu": "AI-powered hiring platform",
+  "Ön eleme, kaynak bulma ve mülakat": "Pre-screening, sourcing, and interviews",
 
   // Footer column titles
   "Şirket": "Company",
@@ -2931,14 +2934,22 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   // Pricing page
   "Şeffaf Fiyatlandırma": "Transparent Pricing",
   "İhtiyacınıza uygun planı seçin": "Choose the plan that fits your needs",
+  "Sonraki adım": "Next step",
+  "Ücretsiz deneme": "Free trial",
   "Ücretsiz deneme ile başlayıp, büyüdükçe ölçeklendirin. Gizli ücret yok, sürpriz yok.":
     "Start with a free trial and scale as you grow. No hidden fees, no surprises.",
+  "Kullandıkça öde, aylık paketler veya kurumsal kurulum arasından seçim yapın. İhtiyacınıza göre ilerleyin.":
+    "Choose between pay-as-you-go, monthly packages, or an enterprise setup. Move forward based on your needs.",
+  "14 günlük deneme": "14-day trial",
   "Ücretsiz deneme — Kredi kartı gerekmez": "Free trial — No credit card required",
   "En Popüler": "Most Popular",
   "Ücretsiz": "Free",
+  "İletişime geçin": "Contact us",
   "İletişime Geçin": "Contact Us",
+  "Fiyat İste": "Request pricing",
   "/ay": "/mo",
   "Özel fiyatlandırma": "Custom pricing",
+  "Kredi ihtiyacınıza göre ekleyin": "Add credits as you need them",
   "Aşım": "Overage",
   "Platformu keşfedin. 14 gün boyunca temel özellikleri deneyin.": "Explore the platform. Try core features for 14 days.",
   "14 gün ücretsiz — Kredi kartı gerekmez": "14 days free — No credit card required",
@@ -2951,10 +2962,10 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "For teams without steady hiring. Start with 1 user and move forward by purchasing job credits, candidate evaluation credits, and AI interview credits.",
   "Tek recruiter ile düzenli işe alım yapan ekipler için. Düşük hacim, net operasyon ve aylık dahil kullanım.":
     "For teams hiring regularly with a single recruiter. Low volume, clear operations, and monthly included usage.",
-  "Düzenli işe alım yapan küçük ekipler için. Daha fazla hacim, aylık dahil kullanım, takvim entegrasyonu ve raporlama.":
-    "For small teams hiring regularly. More volume, monthly included usage, calendar integrations, and reporting.",
-  "Büyük ekipler için özel kota, markalı aday deneyimi, özel entegrasyon ve SLA.":
-    "For larger teams with custom quotas, branded candidate experience, bespoke integrations, and SLA.",
+  "Düzenli işe alım yapan küçük ekipler için. Daha fazla hacim, aylık dahil kullanım ve gelişmiş raporlama.":
+    "For small teams hiring regularly. More volume, monthly included usage, and advanced reporting.",
+  "Büyük ekipler için özel kota, markalı aday deneyimi ve SLA.":
+    "For larger teams with custom quotas, branded candidate experience, and SLA.",
   "Kurumsal": "Enterprise",
   "Büyük ekipler için özel kota, branded deneyim, SLA ve entegrasyonlar.":
     "Custom quotas, branded experience, SLA, and integrations for large teams.",
@@ -2964,6 +2975,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Try 1 job credit, candidate evaluation, and AI interview flows for 14 days. No credit card required.",
   "1 kullanıcı": "1 user",
   "2 kullanıcı": "2 users",
+  "Kredi bazlı kullanım": "Credit-based usage",
   "1 ilan kredisi": "1 job credit",
   "2 ilan kredisi": "2 job credits",
   "10 ilan kredisi": "10 job credits",
@@ -2976,6 +2988,29 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "15 AI mülakat kredisi": "15 AI interview credits",
   "50 AI mülakat kredisi": "50 AI interview credits",
   "Özel AI mülakat kredisi": "Custom AI interview credits",
+  "İhtiyaca göre ilan kredisi": "Job credits based on your needs",
+  "İhtiyaca göre aday değerlendirme": "Candidate evaluation based on your needs",
+  "İhtiyaca göre AI mülakat": "AI interviews based on your needs",
+  "CV analizi + fit score": "CV analysis + fit score",
+  "AI rapor + öneri çıktıları": "AI reports + recommendation outputs",
+  "CV analizi ve uygunluk skoru": "CV analysis and fit score",
+  "AI mülakat daveti ve değerlendirme raporu": "AI interview invitation and evaluation report",
+  "Aday ve başvuru takibi": "Candidate and application tracking",
+  "Recruiter notları ve durum güncelleme": "Recruiter notes and stage updates",
+  "AI rapor ve öneri çıktıları": "AI report and recommendation outputs",
+  "İnsan onaylı karar akışı": "Human-approved decision workflow",
+  "Karşılaştırmalı aday değerlendirme görünürlüğü": "Comparative candidate evaluation visibility",
+  "Aday havuzu ve süreç panosu": "Candidate pool and pipeline dashboard",
+  "Audit log görünürlüğü": "Audit log visibility",
+  "Özel kullanıcı ve kota yapısı": "Custom seat and quota structure",
+  "AI screening, mülakat ve rapor akışları": "AI screening, interview, and report workflows",
+  "Rol bazlı erişim ve yönetim kontrolü": "Role-based access and admin control",
+  "İnsan onaylı kritik karar akışları": "Human-approved critical decision workflows",
+  "Audit log ve yönetim görünürlüğü": "Audit log and admin visibility",
+  "Kuruma özel onboarding + SLA": "Custom onboarding + SLA",
+  "Esnek ilan kredisi": "Flexible job credits",
+  "Esnek aday değerlendirme kredisi": "Flexible candidate evaluation credits",
+  "Esnek AI mülakat kredisi": "Flexible AI interview credits",
   "İlan kredisi satın al": "Buy job credits",
   "Aday değerlendirme kredisi satın al": "Buy candidate evaluation credits",
   "AI mülakat kredisi satın al": "Buy AI interview credits",
@@ -3004,6 +3039,10 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Özel işe alıştırma + SLA": "Custom onboarding + SLA",
   "Ücretsiz Deneyin": "Try Free",
   "Bize Ulaşın": "Contact Us",
+  "Kredi kartı gerekmez. Hesap açın ve ilk akışınızı gerçek kullanımda görün.":
+    "No credit card required. Create an account and see your first workflow in real usage.",
+  "1 ilan kredisi, 25 aday değerlendirme kredisi ve 3 AI mülakat kredisiyle hesabınızı canlı akışta test edin. Kredi kartı gerekmez.":
+    "Test your live workflow with 1 job credit, 25 candidate evaluation credits, and 3 AI interview credits. No credit card required.",
   "Planınızı yükseltmeden, sadece ihtiyacınız olan ek kotayı satın alın.":
     "Buy just the extra quota you need without upgrading your plan.",
   "Ek Paketler": "Add-on Packs",
@@ -3012,28 +3051,28 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Buy extra candidate processing and AI interview quota during busy periods without changing your plan.",
   "Flex planda doğrudan, Starter ve Growth planda ise ek kapasite olarak kredi paketleri satın alın.":
     "Buy credit packs directly on Flex, or as extra capacity on Starter and Growth.",
-  "İlan Kredisi Paketi 1": "Job Credit Pack 1",
-  "İlan Kredisi Paketi 3": "Job Credit Pack 3",
-  "Aday Değerlendirme Kredisi 50": "Candidate Evaluation Credit Pack 50",
-  "Aday Değerlendirme Kredisi 100": "Candidate Evaluation Credit Pack 100",
-  "AI Mülakat Kredisi 10": "AI Interview Credit Pack 10",
-  "AI Mülakat Kredisi 25": "AI Interview Credit Pack 25",
-  "Satın alma tarihinden itibaren 90 gün geçerli +1 ilan kredisi.":
-    "Valid for 90 days from purchase: +1 job credit.",
-  "Satın alma tarihinden itibaren 90 gün geçerli +3 ilan kredisi.":
-    "Valid for 90 days from purchase: +3 job credits.",
-  "Satın alma tarihinden itibaren 90 gün geçerli +50 aday değerlendirme kredisi.":
-    "Valid for 90 days from purchase: +50 candidate evaluation credits.",
-  "Satın alma tarihinden itibaren 90 gün geçerli +100 aday değerlendirme kredisi.":
-    "Valid for 90 days from purchase: +100 candidate evaluation credits.",
-  "Satın alma tarihinden itibaren 90 gün geçerli +10 AI mülakat kredisi.":
-    "Valid for 90 days from purchase: +10 AI interview credits.",
-  "Satın alma tarihinden itibaren 90 gün geçerli +25 AI mülakat kredisi.":
-    "Valid for 90 days from purchase: +25 AI interview credits.",
-  "Ek aday işleme: 1.099₺ / 50 aday": "Extra candidate processing: 1,099₺ / 50 candidates",
-  "Ek aday işleme: 1.999₺ / 100 aday": "Extra candidate processing: 1,999₺ / 100 candidates",
-  "Ek AI mülakat: 1.199₺ / 10 mülakat": "Extra AI interviews: 1,199₺ / 10 interviews",
-  "Ek AI mülakat: 2.499₺ / 25 mülakat": "Extra AI interviews: 2,499₺ / 25 interviews",
+  "1 İlan Kredisi": "1 Job Credit",
+  "3 İlan Kredisi": "3 Job Credits",
+  "50 Aday Değerlendirme Kredisi": "50 Candidate Evaluation Credits",
+  "100 Aday Değerlendirme Kredisi": "100 Candidate Evaluation Credits",
+  "10 AI Mülakat Kredisi": "10 AI Interview Credits",
+  "25 AI Mülakat Kredisi": "25 AI Interview Credits",
+  "Satın alma tarihinden itibaren 90 gün geçerli 1 ilan kredisi.":
+    "Valid for 90 days from purchase: 1 job credit.",
+  "Satın alma tarihinden itibaren 90 gün geçerli 3 ilan kredisi.":
+    "Valid for 90 days from purchase: 3 job credits.",
+  "Satın alma tarihinden itibaren 90 gün geçerli 50 aday değerlendirme kredisi.":
+    "Valid for 90 days from purchase: 50 candidate evaluation credits.",
+  "Satın alma tarihinden itibaren 90 gün geçerli 100 aday değerlendirme kredisi.":
+    "Valid for 90 days from purchase: 100 candidate evaluation credits.",
+  "Satın alma tarihinden itibaren 90 gün geçerli 10 AI mülakat kredisi.":
+    "Valid for 90 days from purchase: 10 AI interview credits.",
+  "Satın alma tarihinden itibaren 90 gün geçerli 25 AI mülakat kredisi.":
+    "Valid for 90 days from purchase: 25 AI interview credits.",
+  "Ek aday işleme: 699₺ / 50 aday": "Extra candidate processing: 699₺ / 50 candidates",
+  "Ek aday işleme: 1.099₺ / 100 aday": "Extra candidate processing: 1,099₺ / 100 candidates",
+  "Ek AI mülakat: 999₺ / 10 mülakat": "Extra AI interviews: 999₺ / 10 interviews",
+  "Ek AI mülakat: 1.999₺ / 25 mülakat": "Extra AI interviews: 1,999₺ / 25 interviews",
   "Mevcut plana eklenir, dönem içinde aktif olur": "Added to current plan, active within the period",
   "Plana Ekle": "Add to Plan",
   "Ek paket detayları": "Add-on pack details",
@@ -3209,13 +3248,18 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Ekibimize doğrudan ulaşın, size en kısa sürede yardımcı olalım.":
     "Reach out to our team directly, and let us help you as soon as possible.",
   "Hesap Oluşturun": "Create Your Account",
+  "Hesap açılışı": "Account setup",
   "Dakikalar içinde ücretsiz hesabınızı açın.": "Open your free account in minutes.",
+  "Ücretsiz hesabınızı birkaç dakika içinde açın.": "Open your free account in a few minutes.",
   "Pozisyon Ekleyin": "Add a Position",
+  "Pozisyon tanımı": "Position definition",
   "İş ilanınızı ve mülakat sorularınızı tanımlayın.": "Define your job posting and interview questions.",
   "Mülakat Linki Paylaşın": "Share Interview Link",
+  "Mülakat linki": "Interview link",
   "Adaylara mülakat linkini gönderin, başvurular otomatik başlasın.":
     "Send the interview link to candidates, let applications start automatically.",
   "Sonuçları Değerlendirin": "Evaluate Results",
+  "Sonuç değerlendirme": "Result review",
   "AI raporlarıyla en uygun adayları hızlıca belirleyin.": "Quickly identify the most suitable candidates with AI reports.",
   "Güvenlik & Uyumluluk": "Security & Compliance",
   "Veri güvenliği, KVKK ve GDPR uyumluluğu": "Data security, KVKK and GDPR compliance",
@@ -3349,9 +3393,26 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Bize Mesaj Gönderin": "Send Us a Message",
   "Formu doldurarak bize ulaşın. Pilot hedefiniz, mevcut işe alım akışınız ve ihtiyaç duyduğunuz otomasyonları paylaşın.":
     "Reach out by filling out the form. Share your pilot goals, current hiring workflow, and the automations you need.",
+  "Formu doldurun; demo, pilot planı veya entegrasyon ihtiyacınızı birkaç cümleyle paylaşın.":
+    "Fill out the form and share your demo, pilot, or integration needs in a few lines.",
   "Mesajı Gönder": "Send Message",
   "Mesajınız ulaştı": "Your message was received",
   "Ekibimiz kısa süre içinde size dönüş yapacak.": "Our team will get back to you shortly.",
+  "Örn: Ayşe Kaya": "e.g. Jane Doe",
+  "Konu": "Subject",
+  "Demo, pilot, entegrasyon...": "Demo, pilot, integration...",
+  "Ekibimizle doğrudan bağlantı kurun": "Connect directly with our team",
+  "Form üzerinden gönderdiğiniz notlar doğrudan ekibimize düşer. Demo, pilot planı veya entegrasyon soruları için size uygun şekilde dönüş yaparız.":
+    "Notes you send through the form go straight to our team. We reply in the right way for demo, pilot planning, or integration questions.",
+  "Çalışma saatleri": "Working hours",
+  "Pazartesi - Cuma • 09:00 - 18:00": "Monday - Friday • 09:00 - 18:00",
+  "Yardımcı olabileceğimiz başlıklar": "Topics we can help with",
+  "Demo planı": "Demo planning",
+  "Pilot kapsamı": "Pilot scope",
+  "Entegrasyon soruları": "Integration questions",
+  "Mesajınıza mümkün olduğunca hızlı döneriz.": "We reply as quickly as we can.",
+  "Özellikle pilot hedefiniz ve mevcut akışınızdan kısaca bahsetmeniz, ilk yanıtı daha net hazırlamamızı sağlar.":
+    "Sharing your pilot goal and current workflow briefly helps us prepare a clearer first response.",
   "Ön eleme akışı": "Pre-screening workflow",
   "Kesintisiz mülakat": "Non-stop interviews",
   "Dakikalar": "Minutes",
@@ -3503,6 +3564,9 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Takım üyeleri, entegrasyonlar ve ürün ayarlarını içeriden yönetin.":
     "Manage team members, integrations, and product settings from within.",
   "Pilotu başlatın": "Start the pilot",
+  "Temel ayarlar": "Core settings",
+  "Pilot başlangıcı": "Pilot kickoff",
+  "Destek kanalı": "Support channel",
   "İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın.":
     "Run posting, candidate, and interview flows with your real use cases.",
   "Destek gerekiyorsa yazın": "Write to us if you need support",
@@ -3510,8 +3574,11 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Our team is ready to help you during setup and onboarding.",
   "Kayıt": "Registration",
   "Doğrudan hesap oluşturun": "Create an account directly",
+  "Doğrudan hesap açılışı": "Direct account setup",
   "Hemen hesap oluşturun ve AI destekli işe alım platformunu denemeye başlayın. Kurulum desteği için ekibimiz her zaman yanınızda.":
     "Create an account now and start trying the AI-powered hiring platform. Our team is always by your side for setup support.",
+  "Ücretsiz hesap açılışıyla AI destekli işe alım platformunu deneyebilirsiniz. Kurulum desteğinde ekibimiz yanınızda.":
+    "With a free account setup, you can try the AI-powered hiring platform. Our team is with you for setup support.",
   "Owner hesabı": "Owner account",
   "E-posta doğrulama": "Email verification",
   "İlk workspace kurulumu": "First workspace setup",
@@ -3838,9 +3905,123 @@ function normalizeWhitespace(value: string) {
 Object.assign(EN_PHRASE_TRANSLATIONS, {
   // Public-site regression fixes
   "Şirket adı": "Company name",
+  "Ön eleme, kaynak bulma ve mülakat süreçlerini AI ile hızlandırın.":
+    "Accelerate pre-screening, sourcing, and interview workflows with AI.",
+  "Ön eleme, kaynak bulma ve mülakat süreçlerini AI ile hızlandırın. Aday değerlendirme ve işe alım akışlarını tek yerde yönetin.":
+    "Accelerate pre-screening, sourcing, and interview workflows with AI. Manage candidate evaluation and hiring workflows in one place.",
+  "Kurumsal Teklif İste": "Request Enterprise Quote",
+  "Ekibinizi ve kullanım ihtiyacınızı paylaşın, size özel teklif hazırlayalım.":
+    "Share your team and usage needs, and we will prepare a tailored quote.",
+  "Kurumsal teklif talebiniz alındı.": "Your enterprise quote request has been received.",
+  "Kurumsal teklif talebi gönderilemedi.": "Enterprise quote request could not be sent.",
+  "Abonelik sayfasından kurumsal teklif talebi.": "Enterprise quote request from the subscription page.",
+  "Abonelik yönetim sayfası yeni sekmede açıldı.":
+    "Subscription management page opened in a new tab.",
+  "Plan değişikliği dönem sonuna planlandı.":
+    "The plan change was scheduled for the end of the current period.",
+  "Abonelik dönem sonunda iptal edilecek.":
+    "The subscription will be canceled at the end of the current period.",
+  "Abonelik iptali planlanamadı.": "The subscription cancellation could not be scheduled.",
+  "Dönem sonunda iptal edilebilecek aktif bir abonelik bulunamadı.":
+    "No active subscription is available to cancel at period end.",
+  "Planlanan abonelik iptali kaldırıldı.":
+    "The scheduled subscription cancellation was removed.",
+  "Planlanan iptal kaldırılamadı.":
+    "The scheduled cancellation could not be removed.",
+  "Aboneliği iptal et": "Cancel subscription",
+  "İptali geri çek": "Undo cancellation",
+  "Planlanan İptal": "Scheduled Cancellation",
+  "Ek paket bakiyesi hemen hesabınıza tanımlandı.":
+    "The add-on balance was applied to your account immediately.",
+  "Yükseltmeler hemen uygulanır. Düşürmeler geçerli dönem sonunda planlanır.":
+    "Upgrades apply immediately. Downgrades are scheduled for the end of the current period.",
+  "Abonelik Özeti": "Subscription Summary",
+  "Dönem Sonu": "Period End",
+  "Planlanan Geçiş": "Scheduled Change",
+  "Ödemeye geç": "Proceed to checkout",
+  "Paketinizi ve kullanım durumunuzu tek yerden takip edin.":
+    "Track your plan and usage status from one place.",
+  "Yükselt": "Upgrade",
+  "Düşür": "Downgrade",
+  "Yayınla": "Publish",
+  "İlan arşivlenemedi.": "Job could not be archived.",
+  "İlan yeniden yayınlanamadı.": "Job could not be published again.",
+  "İlan yayınlanamadı.": "Job could not be published.",
+  "İşlem tamamlanamadı.": "The action could not be completed.",
+  "Kaynak bulma projesi şu an açılamadı.":
+    "The sourcing project could not be opened right now.",
+  "Adaylar silinemedi.": "Candidates could not be deleted.",
+  "aday": "candidate",
+  "AI mülakat daveti gönderildi.": "AI interview invitation sent.",
+  "AI mülakat daveti gönderildi. Direkt görüşme linki hazır.":
+    "AI interview invitation sent. The direct interview link is ready.",
+  "AI mülakat ve rapor hazır. Recruiter kararını verebilir.":
+    "AI interview and report are ready. The recruiter can make a decision.",
+  "AI Ön Eleme Tamamlandı": "AI Pre-screening Completed",
+  "Akış Kapandı": "Flow Closed",
+  "Düşük Uyum Riski": "Low Match Risk",
+  "Fit score ve screening hazır. Recruiter değerlendirmesi yapılabilir.":
+    "Fit score and screening are ready. Recruiter evaluation can begin.",
+  "Fit score ve screening hazır. Recruiter değerlendirmesine geçilebilir.":
+    "Fit score and screening are ready. The flow can move to recruiter evaluation.",
+  "Recruiter Değerlendirmesi": "Recruiter Evaluation",
+  "Düşünülen kullanıcı sayısı": "Requested users",
+  "Düşünülen ilan kredisi": "Requested job credits",
+  "Düşünülen aday değerlendirme kredisi": "Requested candidate evaluation credits",
+  "Düşünülen AI mülakat": "Requested AI interviews",
+  "Kullanıcı sayısı": "User count",
+  "Aday değerlendirme kredisi": "Candidate evaluation credits",
+  "Ek not": "Additional note",
+  "Ekip yapınızı, geçiş takviminizi veya özel ihtiyaçlarınızı kısaca yazın.":
+    "Briefly share your team structure, transition timeline, or any special requirements.",
+  "Talebi gönder": "Send request",
+  "Pencereyi kapat": "Close modal",
+  "Kurulum akışı": "Setup flow",
+  "Formu doldurun; demo, pilot planı veya işe alım akış ihtiyacınızı birkaç cümleyle paylaşın.":
+    "Fill out the form and share your demo, pilot plan, or hiring workflow needs in a few lines.",
+  "Form üzerinden gönderdiğiniz notlar doğrudan ekibimize düşer. Demo, pilot planı veya işe alım akışı soruları için size uygun şekilde dönüş yaparız.":
+    "Notes you send through the form go straight to our team. We reply in the right way for demo, pilot planning, or hiring workflow questions.",
+  "AI mülakat, aday tarama, iş ilanı yönetimi ve analitik araçları tek platformda. Hızlı kurulum, net operasyon görünürlüğü ve ölçeklenebilir otomasyon.":
+    "AI interviews, candidate screening, job management, and analytics tools on a single platform. Fast setup, clear operational visibility, and scalable automation.",
+  "Dashboard, güvenlik ve yönetim katmanlarıyla ekibiniz ve yöneticileriniz aynı veriden karar verir.":
+    "With dashboard, security, and management layers, your team and leaders make decisions from the same data.",
+  "Özellikler, kurulum ve kullanım hakkında en çok sorulan sorular.":
+    "The most common questions about features, setup, and usage.",
+  "Çözümler, kurulum süreci ve fiyatlandırma hakkında en sık sorulan sorular.":
+    "The most common questions about solutions, setup, and pricing.",
+  "API kullanımı hakkında destek mi gerekiyor?":
+    "Need support with API usage?",
+  "Teknik ekibimiz API erişimi ve webhook akışı konusunda size yardımcı olmaya hazır.":
+    "Our technical team is ready to help you with API access and webhook flow.",
+  "Kontrollü API akışları için temel uç noktalar":
+    "Core endpoints for controlled API flows",
+  "Desteklenen webhook sağlayıcılarından gelen olayları işler.":
+    "Processes incoming events from supported webhook providers.",
+  "Pilot API detaylarını paylaşmak istiyorum.":
+    "I want to share pilot API details.",
+  "Takım üyeleri, çalışma alanı ayarları ve ürün yapılandırmasını içeriden yönetin.":
+    "Manage team members, workspace settings, and product configuration from inside the product.",
+  "Şu an standart bir ATS veya takvim entegrasyonu sunmuyoruz. API ve webhook ihtiyaçlarını pilot kapsamına göre birlikte değerlendiriyoruz.":
+    "We do not currently offer a standard ATS or calendar integration. We evaluate API and webhook needs together based on the pilot scope.",
+  "Planlama ve Akış Sertleştirmesi": "Scheduling and workflow hardening",
+  "Mülakat planlama tarafında temel hazırlıklar ve yedek akışlar güçlendirildi.":
+    "Core interview scheduling preparation and fallback workflows were strengthened.",
+  "Planlama akışı güncellendi": "Scheduling flow updated",
+  "Toplantı akışı bağlamı netleştirildi": "Meeting flow context clarified",
+  "Pilot planlama ihtiyaçları için operasyon akışı sertleştirildi":
+    "Operational flow for pilot scheduling needs was hardened",
+  "Bu ayar, birazdan kuyruğa alacağınız CV'lerde AI screening asistanının ne kadar iyimser veya seçici davranacağını belirler.":
+    "This setting determines how optimistic or selective the AI screening assistant behaves for the CVs you are about to queue.",
+  "Daha iyimser davranır. Yakın uyumlu ve umut veren adayları daha uzun süre oyunda tutar.":
+    "Behaves more optimistically. Keeps closely matched and promising candidates in play longer.",
+  "Varsayılan dengeli moddur. Açık uyumsuzlukları ayıklar ama gereksiz sertleşmez.":
+    "This is the default balanced mode. It filters out clear mismatches without becoming unnecessarily strict.",
+  "Daha seçici davranır. Rol uyumu ve execution kanıtı daha net adayları öne çıkarır.":
+    "Behaves more selectively. Prioritizes candidates with clearer role fit and execution evidence.",
   "Rol / Ekip": "Role / Team",
   Mesaj: "Message",
   "Örn: Nurettin Erzen": "Example: Nurettin Erzen",
+  "Demo, pilot, işe alım akışı...": "Demo, pilot, hiring workflow...",
   "İK, kurucu, işe alım lideri...": "HR, founder, hiring lead...",
   "İşe alım süreçleriniz, pilot hedefiniz ve ihtiyacınız olan akışlar hakkında kısa bilgi verin.":
     "Share a short note about your hiring processes, pilot goals, and the workflows you need.",
@@ -4206,6 +4387,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
 Object.assign(EN_PHRASE_TRANSLATIONS, {
   "14 gün ücretsiz deneyin": "Try free for 14 days",
   "Kredi kartı gerekmez. Hemen hesap oluşturun ve tüm özellikleri keşfedin.": "No credit card required. Create your account and explore all features.",
+  "Kurulum Desteği": "Setup Support",
+  "Pilot başlangıcı, onboarding ve ilk akış kurulumu": "Pilot kickoff, onboarding, and first workflow setup",
 });
 
 Object.assign(EN_PHRASE_TRANSLATIONS, {

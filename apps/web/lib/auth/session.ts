@@ -15,14 +15,20 @@ import {
 } from "./session-store";
 import type { WebAuthSession } from "./types";
 
+export type AuthEmailVerificationPayload = {
+  ok?: boolean;
+  enabled?: boolean;
+  required?: boolean;
+  deliveryEnabled?: boolean;
+  expiresAt?: string;
+  previewUrl?: string | null;
+};
+
 type AuthResponsePayload = {
   accessToken?: string;
   refreshToken?: string;
-  emailVerification?: {
-    ok?: boolean;
-    expiresAt?: string;
-    previewUrl?: string | null;
-  };
+  code?: string;
+  emailVerification?: AuthEmailVerificationPayload;
   session?: { id?: string };
   user?: {
     id?: string;
@@ -33,8 +39,46 @@ type AuthResponsePayload = {
     emailVerifiedAt?: string | null;
     avatarUrl?: string | null;
   };
-  message?: string;
+  message?: string | string[];
 };
+
+export type AuthFlowError = Error & {
+  code?: string;
+  emailVerification?: AuthEmailVerificationPayload;
+};
+
+function resolveErrorMessage(message: string | string[] | undefined, fallback: string) {
+  if (typeof message === "string" && message.trim().length > 0) {
+    return message;
+  }
+
+  if (Array.isArray(message)) {
+    const flattened = message
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter(Boolean)
+      .join(" ");
+
+    if (flattened.length > 0) {
+      return flattened;
+    }
+  }
+
+  return fallback;
+}
+
+function createAuthError(payload: AuthResponsePayload, fallback: string): AuthFlowError {
+  const error = new Error(resolveErrorMessage(payload.message, fallback)) as AuthFlowError;
+
+  if (payload.code) {
+    error.code = payload.code;
+  }
+
+  if (payload.emailVerification) {
+    error.emailVerification = payload.emailVerification;
+  }
+
+  return error;
+}
 
 function buildSessionFromPayload(
   payload: AuthResponsePayload,
@@ -173,7 +217,7 @@ export async function loginWithPassword(input: {
   const payload = (await response.json()) as AuthResponsePayload;
 
   if (!response.ok || !payload.user?.id || !payload.user.tenantId) {
-    throw new Error(payload?.message ?? `Giriş başarısız (${response.status}).`);
+    throw createAuthError(payload, `Giriş başarısız (${response.status}).`);
   }
 
   const isCookieTransport = AUTH_TOKEN_TRANSPORT === "cookie";
@@ -213,7 +257,7 @@ export async function resolveInvitation(token: string) {
   };
 
   if (!response.ok || !payload.invitation) {
-    throw new Error(payload.message ?? `Davet doğrulanamadı (${response.status}).`);
+    throw new Error(resolveErrorMessage(payload.message, `Davet doğrulanamadı (${response.status}).`));
   }
 
   return payload.invitation;
@@ -237,7 +281,7 @@ export async function acceptInvitation(input: {
   const payload = (await response.json()) as AuthResponsePayload;
 
   if (!response.ok || !payload.user?.id || !payload.user.tenantId) {
-    throw new Error(payload.message ?? `Davet kabul edilemedi (${response.status}).`);
+    throw new Error(resolveErrorMessage(payload.message, `Davet kabul edilemedi (${response.status}).`));
   }
 
   const isCookieTransport = AUTH_TOKEN_TRANSPORT === "cookie";
@@ -258,11 +302,7 @@ export async function signupWithPassword(input: {
   password: string;
 }): Promise<{
   session: WebAuthSession;
-  emailVerification?: {
-    ok?: boolean;
-    expiresAt?: string;
-    previewUrl?: string | null;
-  };
+  emailVerification?: AuthEmailVerificationPayload;
 }> {
   const response = await fetch(`${API_BASE_URL}/auth/signup`, {
     method: "POST",
@@ -277,7 +317,7 @@ export async function signupWithPassword(input: {
   const payload = (await response.json()) as AuthResponsePayload;
 
   if (!response.ok || !payload.user?.id || !payload.user.tenantId) {
-    throw new Error(payload.message ?? `Hesap olusturulamadi (${response.status}).`);
+    throw createAuthError(payload, `Hesap olusturulamadi (${response.status}).`);
   }
 
   const isCookieTransport = AUTH_TOKEN_TRANSPORT === "cookie";
@@ -312,7 +352,9 @@ export async function requestPasswordReset(input: { email: string; tenantId?: st
   };
 
   if (!response.ok) {
-    throw new Error(payload.message ?? `Sifre sifirlama talebi basarisiz (${response.status}).`);
+    throw new Error(
+      resolveErrorMessage(payload.message, `Sifre sifirlama talebi basarisiz (${response.status}).`)
+    );
   }
 
   return payload;
@@ -338,7 +380,12 @@ export async function resolvePasswordReset(token: string) {
   };
 
   if (!response.ok || !payload.reset) {
-    throw new Error(payload.message ?? `Sifre sifirlama baglantisi dogrulanamadi (${response.status}).`);
+    throw new Error(
+      resolveErrorMessage(
+        payload.message,
+        `Sifre sifirlama baglantisi dogrulanamadi (${response.status}).`
+      )
+    );
   }
 
   return payload.reset;
@@ -361,7 +408,7 @@ export async function resetPasswordWithToken(input: {
   const payload = (await response.json()) as AuthResponsePayload;
 
   if (!response.ok || !payload.user?.id || !payload.user.tenantId) {
-    throw new Error(payload.message ?? `Sifre sifirlanamadi (${response.status}).`);
+    throw new Error(resolveErrorMessage(payload.message, `Sifre sifirlanamadi (${response.status}).`));
   }
 
   const isCookieTransport = AUTH_TOKEN_TRANSPORT === "cookie";
@@ -388,17 +435,27 @@ export async function resendEmailVerification(session: WebAuthSession | null) {
   });
 
   const payload = (await response.json()) as {
-    ok?: boolean;
-    expiresAt?: string;
-    previewUrl?: string | null;
-    message?: string;
-  };
+    message?: string | string[];
+  } & AuthEmailVerificationPayload;
 
   if (!response.ok) {
-    throw new Error(payload.message ?? `Dogrulama e-postasi gonderilemedi (${response.status}).`);
+    throw new Error(resolveErrorMessage(payload.message, `Dogrulama e-postasi gonderilemedi (${response.status}).`));
   }
 
   return payload;
+}
+
+export function readAuthFlowError(error: unknown): AuthFlowError | null {
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+
+  const candidate = error as Partial<AuthFlowError>;
+  if (typeof candidate.message !== "string") {
+    return null;
+  }
+
+  return candidate as AuthFlowError;
 }
 
 export async function confirmEmailVerification(token: string) {
@@ -420,7 +477,7 @@ export async function confirmEmailVerification(token: string) {
   };
 
   if (!response.ok) {
-    throw new Error(payload.message ?? `E-posta dogrulanamadi (${response.status}).`);
+    throw new Error(resolveErrorMessage(payload.message, `E-posta dogrulanamadi (${response.status}).`));
   }
 
   return payload;
@@ -440,7 +497,9 @@ export async function exchangeGoogleOauthToken(token: string): Promise<WebAuthSe
   const payload = (await response.json()) as AuthResponsePayload;
 
   if (!response.ok || !payload.user?.id || !payload.user.tenantId) {
-    throw new Error(payload.message ?? `Google oturumu tamamlanamadi (${response.status}).`);
+    throw new Error(
+      resolveErrorMessage(payload.message, `Google oturumu tamamlanamadi (${response.status}).`)
+    );
   }
 
   const isCookieTransport = AUTH_TOKEN_TRANSPORT === "cookie";

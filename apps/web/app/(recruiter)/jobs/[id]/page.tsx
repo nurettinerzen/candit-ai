@@ -25,7 +25,8 @@ import type {
   JobInboxReadModel,
   JobInboxApplicant,
   QuickActionType,
-  ApplicationStage
+  ApplicationStage,
+  ScreeningMode
 } from "../../../../lib/types";
 import { toFitScorePercent } from "../../../../lib/fit-score";
 import { JobStatusChip } from "../../../../components/stage-chip";
@@ -616,7 +617,12 @@ export default function JobDetailPage() {
     }
   };
 
-  const handleBulkCvUpload = async (files: File[], source: string, externalSource?: string) => {
+  const handleBulkCvUpload = async (
+    files: File[],
+    source: string,
+    externalSource: string | undefined,
+    screeningMode: ScreeningMode
+  ) => {
     if (job?.status === "ARCHIVED") {
       setBulkCvUploadOpen(false);
       setActionMessage("");
@@ -627,7 +633,8 @@ export default function JobDetailPage() {
     const result = await apiClient.bulkUploadApplicantCvs(jobId, {
       files,
       source,
-      externalSource
+      externalSource,
+      screeningMode
     });
 
     const queued = result.items.filter((item) => item.status === "queued").length;
@@ -774,6 +781,7 @@ export default function JobDetailPage() {
   };
 
   const job = data?.job;
+  const activeScreeningMode: ScreeningMode = job?.screeningMode ?? "BALANCED";
   const isArchivedJob = job?.status === "ARCHIVED";
   const stats = data?.stats;
   const commandCenter = data?.commandCenter;
@@ -898,7 +906,7 @@ export default function JobDetailPage() {
               <button
                 type="button"
                 className="ghost-button"
-                style={{ fontSize: 12, color: "var(--warn, #f59e0b)" }}
+                style={{ fontSize: 12, color: "var(--warn)" }}
                 onClick={async () => {
                   if (!confirm(t("İlan arşivlenecek ve yeni başvuru kabul edilmeyecek. Onaylıyor musunuz?"))) return;
                   setActionError("");
@@ -919,7 +927,7 @@ export default function JobDetailPage() {
               <button
                 type="button"
                 className="ghost-button"
-                style={{ fontSize: 12, color: "var(--success, #22c55e)" }}
+                style={{ fontSize: 12, color: "var(--success)" }}
                 onClick={async () => {
                   if (!ensurePublishCapacity()) {
                     return;
@@ -945,7 +953,7 @@ export default function JobDetailPage() {
               <button
                 type="button"
                 className="ghost-button"
-                style={{ fontSize: 12, color: "var(--success, #22c55e)" }}
+                style={{ fontSize: 12, color: "var(--success)" }}
                 onClick={async () => {
                   if (!ensurePublishCapacity()) {
                     return;
@@ -981,7 +989,7 @@ export default function JobDetailPage() {
         {activeJobsQuota && !canPublishJob && job?.status !== "PUBLISHED" ? (
           <div
             className="panel nested-panel"
-            style={{ marginTop: 12, borderColor: "rgba(239,68,68,0.35)" }}
+            style={{ marginTop: 12, borderColor: "var(--risk-border)" }}
           >
             <strong style={{ display: "block", marginBottom: 6 }}>{translateUiText("İlan krediniz dolu", locale)}</strong>
             <p className="small" style={{ margin: 0 }}>
@@ -1107,14 +1115,14 @@ export default function JobDetailPage() {
                     className="ghost-button applicant-filter-bulk-btn"
                     onClick={() => void handleBulkDelete()}
                     disabled={bulkApproving || bulkDeleting}
-                    style={{ color: "var(--danger, #ef4444)", borderColor: "rgba(239,68,68,0.35)" }}
+                    style={{ color: "var(--risk)", borderColor: "var(--risk-border)" }}
                   >
                     {bulkDeleting ? t("Siliniyor...") : `${t("Sil")} (${selectedIds.size})`}
                   </button>
                 </div>
               )}
               {bulkResult && (
-                <span className="text-sm" style={{ color: bulkResult.fail > 0 ? "var(--danger)" : "var(--success)" }}>
+                <span className="text-sm" style={{ color: bulkResult.fail > 0 ? "var(--risk)" : "var(--success)" }}>
                   {t(bulkResult.label)}: {bulkResult.ok} {t("başarılı")}{bulkResult.fail > 0 ? `, ${bulkResult.fail} ${t("hata")}` : ""}
                 </span>
               )}
@@ -1129,10 +1137,10 @@ export default function JobDetailPage() {
                 style={{
                   marginTop: 12,
                   padding: "12px 16px",
-                  background: "var(--success-light, #ecfdf5)",
-                  border: "1px solid var(--success-border, rgba(16, 185, 129, 0.25))",
+                  background: "var(--success-light)",
+                  border: "1px solid var(--success-border)",
                   borderRadius: 8,
-                  color: "var(--success-text, #065f46)",
+                  color: "var(--success-text)",
                   fontSize: 13
                 }}
               >
@@ -1216,7 +1224,7 @@ export default function JobDetailPage() {
                             className="clickable-row"
                             onClick={() => setSelectedApplicant(a)}
                             style={{
-                              borderLeft: attention ? "3px solid var(--warn, #f59e0b)" : undefined,
+                              borderLeft: attention ? "3px solid var(--warn)" : undefined,
                             }}
                           >
                             <td onClick={(e) => e.stopPropagation()}>
@@ -1274,7 +1282,7 @@ export default function JobDetailPage() {
                                     <span
                                       key={tag}
                                       style={{
-                                        color: "var(--danger, #ef4444)",
+                                        color: "var(--risk)",
                                         fontSize: 12,
                                         fontWeight: 600,
                                         whiteSpace: "nowrap",
@@ -1350,6 +1358,7 @@ export default function JobDetailPage() {
       <BulkCvUploadModal
         open={bulkCvUploadOpen}
         onClose={() => setBulkCvUploadOpen(false)}
+        screeningMode={activeScreeningMode}
         onSubmit={handleBulkCvUpload}
       />
 

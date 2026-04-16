@@ -8,6 +8,7 @@ export type AppUserRole = "owner" | "manager" | "staff";
 export type MemberStatus = "ACTIVE" | "INVITED" | "DISABLED";
 
 export type JobStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+export type ScreeningMode = "WIDE_POOL" | "BALANCED" | "STRICT";
 
 export type MemberDirectoryItem = {
   userId: string;
@@ -87,6 +88,7 @@ export type Job = {
   status: JobStatus;
   locationText: string | null;
   shiftType: string | null;
+  screeningMode: ScreeningMode;
   salaryMin: string | null;
   salaryMax: string | null;
   jdText: string | null;
@@ -850,11 +852,25 @@ export type BillingOverviewReadModel = {
     tenantId: string;
     billingEmail: string | null;
     stripeCustomerId: string | null;
+    stripeSubscriptionId: string | null;
     currentPlanKey: BillingPlanKey;
     status: string;
     currentPeriodStart: string;
     currentPeriodEnd: string;
     features: Record<BillingFeatureKey, boolean>;
+    pendingChange: {
+      planKey: BillingPlanKey;
+      kind: "UPGRADE" | "DOWNGRADE" | "FLEX_TRANSITION";
+      effectiveAt: string;
+      requestedAt: string | null;
+      requestedBy: string | null;
+    } | null;
+    scheduledCancellation: {
+      effectiveAt: string;
+      requestedAt: string | null;
+      requestedBy: string | null;
+      canResume: boolean;
+    } | null;
   };
   currentPlan: BillingPlanDefinition & {
     seatsIncluded: number;
@@ -879,6 +895,10 @@ export type BillingOverviewReadModel = {
   planCatalog: BillingPlanDefinition[];
   addOnCatalog: BillingAddonDefinition[];
   warnings: string[];
+  access: {
+    isAllowed: boolean;
+    blockReason: string | null;
+  };
   recentCheckouts: BillingCheckoutHistoryItem[];
 };
 

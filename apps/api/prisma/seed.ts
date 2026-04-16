@@ -6,6 +6,8 @@ import { dirname, join, resolve } from "path";
 import {
   ApplicationStage,
   AuditActorType,
+  BillingAccountStatus,
+  BillingPlanKey,
   FeatureFlagType,
   InterviewMode,
   InterviewSessionStatus,
@@ -13,7 +15,7 @@ import {
   Role,
   UserStatus,
   WorkflowStatus,
-  type Prisma
+  Prisma
 } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/modules/auth/password";
@@ -35,6 +37,14 @@ function hoursAgo(hours: number) {
 
 function hoursFromNow(hours: number) {
   return new Date(Date.now() + hours * 60 * 60 * 1000);
+}
+
+function startOfCurrentMonth(date = new Date()) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1, 0, 0, 0, 0));
+}
+
+function startOfNextMonth(date = new Date()) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1, 0, 0, 0, 0));
 }
 
 function candidateInterviewUrl(sessionId: keyof typeof sessionAccessTokens) {
@@ -95,12 +105,21 @@ async function upsertUsers() {
   const defaultPassword = process.env.DEV_LOGIN_PASSWORD ?? "demo12345";
   const passwordHash = await hashPassword(defaultPassword);
   const passwordSetAt = new Date();
+
+  // Legacy duplicate internal-admin kaydini kaldirip owner hesabi info@candit.ai'a tasiyoruz.
+  await prisma.user.delete({
+    where: {
+      id: "usr_internal_admin_demo"
+    }
+  }).catch(() => undefined);
+
   const users = [
     {
       id: "usr_admin_demo",
-      email: "owner@demo.local",
-      fullName: "Demo Owner",
-      role: Role.OWNER
+      email: "info@candit.ai",
+      fullName: "Candit Super Admin",
+      role: Role.OWNER,
+      emailVerifiedAt: passwordSetAt
     },
     {
       id: "usr_recruiter_demo",
@@ -126,7 +145,8 @@ async function upsertUsers() {
         role: user.role,
         status: UserStatus.ACTIVE,
         passwordHash,
-        passwordSetAt
+        passwordSetAt,
+        emailVerifiedAt: user.emailVerifiedAt ?? null
       },
       create: {
         id: user.id,
@@ -136,10 +156,133 @@ async function upsertUsers() {
         role: user.role,
         status: UserStatus.ACTIVE,
         passwordHash,
-        passwordSetAt
+        passwordSetAt,
+        emailVerifiedAt: user.emailVerifiedAt ?? null
       },
     });
   }
+}
+
+async function upsertDemoBillingAccount() {
+  const now = new Date();
+  const currentPeriodStart = startOfCurrentMonth(now);
+  const currentPeriodEnd = startOfNextMonth(now);
+  const starterFeatures = {
+    advancedReporting: false,
+    calendarIntegrations: false,
+    brandedCandidateExperience: false,
+    customIntegrations: false
+  };
+  const starterSnapshot = {
+    seatsIncluded: 1,
+    activeJobsIncluded: 2,
+    candidateProcessingIncluded: 100,
+    aiInterviewsIncluded: 15
+  };
+
+  const account = await prisma.tenantBillingAccount.upsert({
+    where: { tenantId },
+    update: {
+      billingEmail: "info@candit.ai",
+      currentPlanKey: BillingPlanKey.STARTER,
+      status: BillingAccountStatus.ACTIVE,
+      currentPeriodStart,
+      currentPeriodEnd,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      lastCheckoutSessionId: null,
+      pendingPlanKey: null,
+      pendingChangeKind: null,
+      pendingChangeEffectiveAt: null,
+      pendingChangeRequestedAt: null,
+      pendingChangeRequestedBy: null,
+      pendingChangeMetadataJson: Prisma.DbNull,
+      lastReconciledAt: now,
+      currency: "try",
+      featuresJson: starterFeatures,
+      planSnapshotJson: starterSnapshot
+    },
+    create: {
+      id: "acc_demo_billing",
+      tenantId,
+      billingEmail: "info@candit.ai",
+      currentPlanKey: BillingPlanKey.STARTER,
+      status: BillingAccountStatus.ACTIVE,
+      currentPeriodStart,
+      currentPeriodEnd,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      lastCheckoutSessionId: null,
+      lastReconciledAt: now,
+      currency: "try",
+      featuresJson: starterFeatures,
+      planSnapshotJson: starterSnapshot
+    }
+  });
+
+  await prisma.tenantBillingSubscription.updateMany({
+    where: {
+      tenantId,
+      accountId: account.id,
+      id: {
+        not: "sub_demo_starter_active"
+      }
+    },
+    data: {
+      status: BillingAccountStatus.CANCELED,
+      canceledAt: now
+    }
+  });
+
+  await prisma.tenantBillingSubscription.upsert({
+    where: { id: "sub_demo_starter_active" },
+    update: {
+      tenantId,
+      accountId: account.id,
+      planKey: BillingPlanKey.STARTER,
+      status: BillingAccountStatus.ACTIVE,
+      stripeSubscriptionId: null,
+      stripePriceId: null,
+      stripeCheckoutSessionId: null,
+      stripeCustomerId: null,
+      billingEmail: "info@candit.ai",
+      periodStart: currentPeriodStart,
+      periodEnd: currentPeriodEnd,
+      seatsIncluded: starterSnapshot.seatsIncluded,
+      activeJobsIncluded: starterSnapshot.activeJobsIncluded,
+      candidateProcessingIncluded: starterSnapshot.candidateProcessingIncluded,
+      aiInterviewsIncluded: starterSnapshot.aiInterviewsIncluded,
+      featuresJson: starterFeatures,
+      metadataJson: {
+        source: "demo_seed_starter"
+      },
+      createdBy: "system:seed",
+      canceledAt: null
+    },
+    create: {
+      id: "sub_demo_starter_active",
+      tenantId,
+      accountId: account.id,
+      planKey: BillingPlanKey.STARTER,
+      status: BillingAccountStatus.ACTIVE,
+      stripeSubscriptionId: null,
+      stripePriceId: null,
+      stripeCheckoutSessionId: null,
+      stripeCustomerId: null,
+      billingEmail: "info@candit.ai",
+      periodStart: currentPeriodStart,
+      periodEnd: currentPeriodEnd,
+      seatsIncluded: starterSnapshot.seatsIncluded,
+      activeJobsIncluded: starterSnapshot.activeJobsIncluded,
+      candidateProcessingIncluded: starterSnapshot.candidateProcessingIncluded,
+      aiInterviewsIncluded: starterSnapshot.aiInterviewsIncluded,
+      featuresJson: starterFeatures,
+      metadataJson: {
+        source: "demo_seed_starter"
+      },
+      createdBy: "system:seed"
+    }
+  });
 }
 
 async function upsertFeatureFlags() {
@@ -3673,6 +3816,7 @@ async function seed() {
   });
 
   await upsertUsers();
+  await upsertDemoBillingAccount();
   await upsertFeatureFlags();
   await upsertIntegrationConnections();
   await upsertPromptTemplatesAndRubrics();
@@ -3692,7 +3836,7 @@ async function seed() {
   console.log("Seed tamamlandi.");
   console.log("Tenant ID:", tenantId);
   console.log("Demo kullanicilar:");
-  console.log("- owner@demo.local (owner)");
+  console.log("- info@candit.ai (owner + internal super admin)");
   console.log("- manager@demo.local (manager)");
   console.log("- staff@demo.local (staff)");
   console.log("Sifre (.env DEV_LOGIN_PASSWORD): demo12345");

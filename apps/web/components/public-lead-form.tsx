@@ -6,6 +6,7 @@ import styles from "./public-site.module.css";
 import { useUiText } from "./site-language-provider";
 
 type PublicLeadFormProps = {
+  eyebrow?: string | null;
   title: string;
   body: string;
   submitLabel: string;
@@ -18,8 +19,7 @@ type FormState = {
   fullName: string;
   email: string;
   company: string;
-  role: string;
-  phone: string;
+  topic: string;
   message: string;
   website: string;
 };
@@ -28,8 +28,7 @@ const INITIAL_STATE: FormState = {
   fullName: "",
   email: "",
   company: "",
-  role: "",
-  phone: "",
+  topic: "",
   message: "",
   website: ""
 };
@@ -40,6 +39,7 @@ function getUtmValue(url: URL, key: string) {
 }
 
 export function PublicLeadForm({
+  eyebrow,
   title,
   body,
   submitLabel,
@@ -74,8 +74,7 @@ export function PublicLeadForm({
         fullName: form.fullName,
         email: form.email,
         company: form.company || undefined,
-        role: form.role || undefined,
-        phone: form.phone || undefined,
+        role: form.topic || undefined,
         message: form.message,
         sourcePage,
         landingUrl: currentUrl?.toString(),
@@ -107,7 +106,7 @@ export function PublicLeadForm({
 
   return (
     <form className={styles.formCard} onSubmit={handleSubmit}>
-      <span className={styles.eyebrow}>{t(title)}</span>
+      {eyebrow ? <span className={styles.eyebrow}>{t(eyebrow)}</span> : null}
       <h3>{t(title)}</h3>
       <p>{t(body)}</p>
 
@@ -131,7 +130,7 @@ export function PublicLeadForm({
           <span>{t("Ad Soyad")}</span>
           <input
             type="text"
-            placeholder={t("Örn: Nurettin Erzen")}
+            placeholder={t("Örn: Ayşe Kaya")}
             value={form.fullName}
             onChange={handleChange("fullName")}
             required
@@ -143,7 +142,7 @@ export function PublicLeadForm({
           <span>{t("E-posta")}</span>
           <input
             type="email"
-            placeholder="ornek@sirket.com"
+            placeholder="name@company.com"
             value={form.email}
             onChange={handleChange("email")}
             required
@@ -163,23 +162,12 @@ export function PublicLeadForm({
         </label>
 
         <label className={styles.field}>
-          <span>{t("Rol / Ekip")}</span>
+          <span>{t("Konu")}</span>
           <input
             type="text"
-            placeholder={t("İK, kurucu, işe alım lideri...")}
-            value={form.role}
-            onChange={handleChange("role")}
-          />
-        </label>
-
-        <label className={styles.field}>
-          <span>{t("Telefon")}</span>
-          <input
-            type="tel"
-            placeholder="+90 5xx xxx xx xx"
-            value={form.phone}
-            onChange={handleChange("phone")}
-            autoComplete="tel"
+            placeholder={t("Demo, pilot, işe alım akışı...")}
+            value={form.topic}
+            onChange={handleChange("topic")}
           />
         </label>
 

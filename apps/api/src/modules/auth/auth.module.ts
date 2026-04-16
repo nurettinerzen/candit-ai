@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { RuntimeConfigModule } from "../../config/runtime-config.module";
+import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { SecurityEventsModule } from "../security-events/security-events.module";
 import { AuthController } from "./auth.controller";
@@ -13,6 +14,7 @@ import { SessionResolverService } from "./session-resolver.service";
   imports: [
     ConfigModule,
     RuntimeConfigModule,
+    FeatureFlagsModule,
     NotificationsModule,
     SecurityEventsModule,
     JwtModule.registerAsync({

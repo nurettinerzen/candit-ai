@@ -301,11 +301,11 @@ export default function CandidatesPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "var(--text-dim)", letterSpacing: "0.3px" }}>{t("Aday")}</th>
-                <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "var(--text-dim)", letterSpacing: "0.3px" }}>{t("İlan")}</th>
-                <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "var(--text-dim)", letterSpacing: "0.3px" }}>{t("Kaynak")}</th>
-                <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "var(--text-dim)", letterSpacing: "0.3px" }}>{t("Durum")}</th>
-                <th style={{ padding: "10px 16px", textAlign: "right", fontSize: 11, textTransform: "uppercase", fontWeight: 600, color: "var(--text-dim)", letterSpacing: "0.3px" }}>{t("Tarih")}</th>
+                <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-dim)", letterSpacing: "0.01em" }}>{t("Aday")}</th>
+                <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-dim)", letterSpacing: "0.01em" }}>{t("İlan")}</th>
+                <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-dim)", letterSpacing: "0.01em" }}>{t("Kaynak")}</th>
+                <th style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-dim)", letterSpacing: "0.01em" }}>{t("Durum")}</th>
+                <th style={{ padding: "10px 16px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "var(--text-dim)", letterSpacing: "0.01em" }}>{t("Tarih")}</th>
               </tr>
             </thead>
             <tbody>

@@ -8,6 +8,7 @@
     "build": "corepack pnpm --filter @ai-interviewer/domain build && nest build",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "node ../../scripts/run-ts-tests.mjs src",
+    "smoke:billing": "node scripts/billing-smoke.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts"

@@ -105,6 +105,9 @@ type AiCategoryScore = {
 
 type AiFitScoringOutput = {
   overallScore: number;
+  fitBand: "direct_fit" | "adjacent_fit" | "weak_fit";
+  interviewReadiness: "ready_now" | "borderline" | "not_for_this_role";
+  fitBandReasoning: string;
   categoryScores: AiCategoryScore[];
   overallAssessment: string;
   strengths: string[];
@@ -148,10 +151,10 @@ const DEFAULT_RUBRICS: Record<string, FitScoringRubric> = {
       {
         key: "lokasyon_ve_calisma_modeli_uyumu",
         label: "Lokasyon ve Calisma Modeli Uyumu",
-        weight: 0.1,
+        weight: 0,
         description: "Adayin lokasyonu, hibrit/ofis/remote ritmi ve fiziksel katilim beklentisi ile uyumu",
         deterministicSignals: ["locationSignals", "contactInfo", "recentRoles", "workHistorySignals"],
-        scoringGuidance: "Ayni il/uygun ilce, hibrit veya ofis katilimina aciklik, tasinma veya ulasim esnekligi yuksek puan getirir; lokasyon bu boyutta degerlendirilir ama deneyim puaninin yerine gecmez"
+        scoringGuidance: "Lokasyon operasyonel bir warning boyutudur. Adayin lokasyonu, tasinma veya ulasim esnekligi recruiter icin ayri not olarak gorunmeli; overall fit skorunu veya diger kategori skorlarini dusuren ana eksen olmamalidir"
       },
       {
         key: "egitim_ve_sertifika_uyumu",
@@ -461,6 +464,9 @@ function fitScoringOutputSchema(schemaName: string) {
     additionalProperties: false,
     required: [
       "overallScore",
+      "fitBand",
+      "interviewReadiness",
+      "fitBandReasoning",
       "categoryScores",
       "overallAssessment",
       "strengths",
@@ -471,6 +477,15 @@ function fitScoringOutputSchema(schemaName: string) {
     ],
     properties: {
       overallScore: { type: "number" },
+      fitBand: {
+        type: "string",
+        enum: ["direct_fit", "adjacent_fit", "weak_fit"]
+      },
+      interviewReadiness: {
+        type: "string",
+        enum: ["ready_now", "borderline", "not_for_this_role"]
+      },
+      fitBandReasoning: { type: "string" },
       categoryScores: {
         type: "array",
         items: {
@@ -579,7 +594,7 @@ export class ApplicantFitScoringTaskService {
       );
     }
 
-    const promptVersion = "applicant_fit_scoring.v9.tr";
+    const promptVersion = "applicant_fit_scoring.v12.tr";
 
     // 3. Load parsed CV profile
     const profileJson = toRecord(latestCvProfile.profileJson);
@@ -654,33 +669,27 @@ export class ApplicantFitScoringTaskService {
       promptVersion,
       preferProviderKey: context.taskRun.providerKey,
       systemPrompt: [
-        "Sen bir profesyonel IK uzmani CV degerlendirme asistanisin.",
+        "Sen recruiter kalitesinde bir CV degerlendirme asistanisin.",
         "Turkce cikti uret.",
-        "Adayi rolin ihtiyacina gore butuncul degerlendir.",
-        "Once rolun cekirdek isini ve kritik execution beklentisini anla, sonra adayi direct fit / adjacent fit / weak fit mantigiyla icten ice konumlandir.",
+        "Adayi yalnizca bu ilanin mevcut title, seniority ve execution ihtiyacina gore degerlendir.",
+        "Asimetrik kalibrasyon kullan: acikca alakasiz veya weak-fit adaylari sert sekilde asagida tut; direct-fit guclu adaylari da gereksiz ihtiyatla orta banda bastirma.",
+        "Bu urunde false negative maliyeti guclu adaylarda yuksektir; role dogrudan uyan, interview-worthy adaylari gorunur kil.",
+        "Adjacent adaylari tamamen alakasiz gibi okuma; ama cekirdek execution kaniti yoksa direct-fit gibi de puanlama.",
+        "fitBand alaninda direct_fit, adjacent_fit veya weak_fit sec; interviewReadiness alaninda ready_now, borderline veya not_for_this_role sec.",
+        "Once fit bandini ve readiness seviyesini zihninde netlestir, sonra overallScore'u buna uygun ver.",
         "Sana verilen rubric kategorilerini sabit kabul et; kategori uydurma, kategori atlama veya etiket degistirme.",
-        "Tum adaylari ayni rol rubric'i ile degerlendir ki adaylar arasi karsilastirma tutarli olsun.",
-        "overallScore alani 0-100 arasi genel uyum skorudur.",
-        "Guclu yonleri, uyarilari ve eksik bilgileri ayri ayri ver.",
-        "Guclu yonler sadece adayin bu rol icin ayirt edici avantajlarini temsil etsin.",
-        "Uyarilar sadece role etkisi olabilecek dikkat noktalarini temsil etsin.",
-        "Ayni temayi birden fazla maddede ya da farkli listelerde tekrar etme.",
-        "CV'de zaten dogrudan kaniti olan bir capability'yi ayni anda missingInformation listesine yazma; ancak yalnizca derinlik veya kapsam eksikse bunu daha spesifik ifade et.",
-        "Skorlar, yazili degerlendirme ile tutarli olsun; belirgin uyumsuzluk varsa orta-yuksek puan verme.",
-        "overallScore, kategori skorlarinin agirlikli ortalamasi ile genel recruiter yargisinin tutarli bir bileskesi olmali; detay skorlarla celisen asiri dusuk veya asiri yuksek genel skor verme.",
-        "Hibrit veya ofis rolde farkli sehir ya da ulkede olan ve tasinma esnekligi gorunmeyen adaylara orta-yuksek puan verme.",
-        "cvDocumentContext varsa, parse ozetine sigmayan somut beceri ve deneyim kanitlarini oradan da tara.",
-        "Skor verirken rol uygunlugunu olc; genel profesyonellik, genel iletisim veya alakasiz alanda gecen yil sayisini rol uyumu gibi puanlama.",
-        "Eksik bilgi, recruiter'in soruyla tamamlayabilecegi bosluktur.",
-        "Uyari, role etkisi olabilecek ama nihai karari otomatik belirlemeyen dikkat noktasi olsun.",
-        "Pozisyonda fiziksel bulunma veya duzenli ulasim onemliyse lokasyon/ulasim uyumunu acikca yorumla.",
-        "Role acik katkisi olmayan genel veya varsayilan nitelikleri guclu yon olarak one cikarma.",
-        "Deneyim puaninda yalnizca role veya ilan gereksinimine dogrudan baglanan deneyimi say; alakasiz sektorde gecen uzun yil sayisini tek basina avantaj yazma.",
-        "Acikca alakasiz meslek gecmisi olan adaylari sirf profesyonel gorunuyor diye orta banda tasima.",
-        "CRM, lifecycle, SEO, analytics, brand veya content gibi komsu profiller transfer edilebilir olabilir; bunlari tamamen alakasiz gibi okuma ama cekirdek paid/performance/social execution varsa onunla ayni seviyede de puanlama.",
-        "Guclu direct fit adaylari da gereksiz cekingenlikle orta banda bastirma; rolin cekirdek execution ihtiyaci karsilaniyorsa interview-worthy olacak kadar yuksek puan vermekten cekinme.",
-        "Ham teknik notlar veya 'x sinyal' gibi ic aciklamalar yazma.",
-        "candidateEvidenceSnapshot.provenCapabilityHints alaninda listelenen capability'leri capability yokmus gibi yeniden missingInformation'a yazma; en fazla kapsam, olcek veya derinlik teyidi iste.",
+        "OverallScore bu exact role icin bugun recruiter gorusmesine degerlik derecesini yansitsin.",
+        "OverallScore ve her category score 0-100 arasi ayni olcekte verilmeli; 1-10 veya 1-5 olcegi kullanma.",
+        "Guclu direct-fit adaylar tipik olarak 72-88 bandinda gorunebilir; istisnai cok guclu adaylar 90+ olabilir.",
+        "Weak-fit veya acikca alakasiz adaylar 0-39 bandinda rahatlikla kalabilir; doktor, avukat gibi rolden kopuk profilleri yumusatma.",
+        "Lokasyon riski recruiter warning'i olarak ele alinmali; overallScore ve lokasyon disi kategori skorlarini tek basina dusurmemeli. Lokasyon avantaji da weak-fit adayi kurtarmamali.",
+        "Ajans kokenli guclu paid/performance adaylarini, kampanya, butce ve optimizasyon kaniti varsa direct-fit olarak okumaktan cekinme.",
+        "Manager veya lead title tek basina negatif degildir; yakin gecmiste hands-on execution kaniti varsa puani gereksiz bastirma.",
+        "Recent title zaten Performance Marketing Manager, Senior Performance Marketing Specialist veya benzeri direct role ise; hands-on Google/Meta/LinkedIn kampanya ve optimizasyon kaniti varken adayi collaboration detaylari yuzunden adjacent_fit'e itme.",
+        "Capability'nin varligi ile derinligini ayir: capability varsa yokmus gibi puanlama; kapsam zayifsa bunu reasoning ve missingInformation tarafinda belirt.",
+        "Eksik bilgi ile risk ayni sey degildir; missingInformation tek basina agir bir ceza mekanizmasi olmasin.",
+        "cvDocumentContext, requirementAssessment ve candidateEvidenceSnapshot icindeki role yakin kanitlari aktif kullan.",
+        "Skorlar, kategori aciklamalari, guclu yonler ve riskler birbirleriyle tutarli olsun.",
         "Nihai karar verme, sadece degerlendirme yap."
       ].join(" "),
       userPrompt: JSON.stringify({
@@ -731,10 +740,11 @@ export class ApplicantFitScoringTaskService {
           ),
           principles: [
             "Lokasyon puani, rolun fiziksel bulunma ihtiyaci ile adayin gercek ulasim/yer degistirme uygunlugunu yansitsin",
-            "Rol uzaktan ise salt farkli sehirde olmayi risk olarak buyutme; hibrit veya ofis gereksinimi varsa o zaman lokasyonu daha fazla dikkate al",
+            "Rol uzaktan ise salt farkli sehirde olmayi risk olarak buyutme; hibrit veya ofis gereksinimi varsa bile lokasyonu once operasyonel warning olarak yorumla",
             "Same city tek bir torba degildir; commute siddeti, ofise kac gun gidildigi ve adayin duzenli katilim/relocation esnekligi birlikte yorumlanmali",
             "Benzer vakalarda benzer puanlar ver; ayni derecede uzak adaylara tutarli davran",
-            "Elindeki veri yetersizse bunu eksik bilgi veya uyari olarak belirt, ama puani metinle celistirme"
+            "Elindeki veri yetersizse bunu eksik bilgi veya uyari olarak belirt, ama puani metinle celistirme",
+            "Lokasyon warning'i overallScore'u veya rol-fit skorunu dusurmemeli; recruiter icin ayri operasyonel not olarak tasinmali"
           ]
         },
         locationAnalysis: {
@@ -773,46 +783,57 @@ export class ApplicantFitScoringTaskService {
             locationAnalysis
           }),
           scoreCalibrationGuide: this.buildScoreCalibrationGuide(jobContext),
+          exactRoleBoundary: {
+            title: application.job.title,
+            roleFamily: application.job.roleFamily,
+            reminder: "Adayi tam olarak bu role gore puanla; daha junior, daha genel veya komsu baska bir role uygunlugu overallScore'u yukari tasimak icin kullanma.",
+            mustHaveRequirements: application.job.requirements
+              .filter((item) => item.required)
+              .map((item) => item.value)
+              .slice(0, 6),
+            evaluationQuestions: [
+              "Aday bu exact role icin bugun mulakat almaya deger mi?",
+              "Adayda rolun cekirdek paid/performance/social execution kaniti var mi?",
+              "Aday yalnizca komsu bir pazarlama profili mi, yoksa bu role dogrudan baglanan bir profil mi?"
+            ]
+          },
           requirementAssessment,
           requirementAssessmentGuide: "requirementAssessment.status alaninda 'proven' acik guclu kaniti, 'partial' capability'nin kismen gorundugunu, 'needs_validation' acik ayrintinin net olmadigini, 'absent' ise belirgin kanit gorulmedigini anlatir. needs_validation capability yok demek degildir; broader CV evidence ve cvDocumentContext ile birlikte yorumlanmalidir.",
           candidateEvidenceSnapshot
         },
         instructions: [
           "overallScore 0-100 arasi sayi olmali",
+          "fitBand alanini zorunlu doldur: direct_fit, adjacent_fit veya weak_fit",
+          "interviewReadiness alanini zorunlu doldur: ready_now, borderline veya not_for_this_role",
+          "fitBandReasoning alaninda adayin neden bu banda ve readiness seviyesine yerlestigini 1-2 cumleyle acikla",
           "categoryScores alaninda SADECE rubric.categories icindeki kategorileri kullan",
-          "Tum rubric kategorileri icin birer skor nesnesi uret; key alanlari rubric key ile birebir ayni olsun",
-          "label alanlarini rubric label ile ayni tut",
-          "Her boyut icin key kisa bir slug, label ise recruiter'in gorecegi Turkce baslik olsun",
-          "confidence alani 0-1 arasi olmali — HER ADAY ICIN FARKLI OLMALI, sabit bir deger yazma",
-          "confidence degerlendirmesi icin su kurallari uygula: CV'de acik kanit ve detayli bilgi varsa 0.80-0.95 arasi; orta duzeyde bilgi varsa 0.55-0.75 arasi; CV kisitli veya belirsiz bilgi iceriyorsa 0.25-0.50 arasi; veri neredeyse yoksa 0.10-0.25 arasi ver",
-          "Farkli adaylar farkli veri kalitesine sahiptir — her adayin confidence degeri gercekten farkli olmali, hepsine benzer deger verme",
+          "Tum rubric kategorileri icin skor nesnesi uret; key alanlari rubric key ile ayni olsun, label alanlari rubric label ile ayni olsun",
+          "confidence alani 0-1 arasi olmali ve her adayda veri kalitesine gore degismeli",
           "strengths ve risks Turkce olmali",
-          "overallAssessment Turkce bir ozet cumlesi olmali",
-          "Guclu yonler, role gore ayirt edici ve karar kalitesini artiran kanita dayali noktalar olsun",
-          "Eksik bilgi, CV'de acikca yer almayan ve recruiter'in soruyla tamamlayabilecegi maddeler olsun",
-          "Uyarilar, eksik bilginin tekrari degil; rolde negatif etki yaratabilecek somut uyumsuzluk veya zayifliklari anlatsin",
-          "Ayni seyi iki farkli maddede veya farkli listelerde tekrar etme",
-          "Lokasyon, deneyim, liderlik gibi ayni temayi hem arti hem eksi yonde yazma; en dogru listede bir kez yaz",
-          "Skor ile yazdigin aciklamalar birbiriyle mantikli ve orantili olsun",
-          "Hibrit veya ofis gerektiren rolde farkli ulke ya da farkli sehir + tasinma esnekligi yok kombinasyonuna 60 ustu overallScore verme",
-          "locationAnalysis.scoreHint yalnizca recruiter baglamidir; aynen kopyalanacak bir kural degil, commuteSeverity + officeDaysPerWeek + candidateFlexibility ile birlikte yorumlanmali",
-          "Ayni sehir farkli ilce vakalarinda commuteSeverity alanini aktif kullan; light/moderate commute ile extreme commute'i ayni kefeye koyma",
-          "Lokasyon riski, direct role-fit ve hands-on kaniti guclu adayi tek basina oldurmemeli; bu risk esasen lokasyon kategorisi, genel riskler ve confidence tarafina yansimalidir",
-          "cvDocumentContext icindeki somut rol kanitlari, parse ozetinde eksik kalsa bile degerlendirmeye dahil edilmeli",
-          "locationAnalysis ve requirementCoverage alanlarini recruiter baglami olarak dikkate al; bunlar sadece sonradan yazilmis teknik notlar degil, gercek degerlendirme girdileridir",
-          "overallScore ile kategori skorlarinin agirlikli ortalamasi arasinda 15 puandan fazla fark olusturma",
+          "overallAssessment Turkce, recruiter'in hizla anlayacagi bir ozet olmali",
+          "Guclu yonler role gore ayirt edici ve interview kararini destekleyen kanitlar olsun",
+          "Uyarilar eksik bilginin tekrari olmasin; role etkisi olan somut risk veya uyumsuzluklari anlatsin",
+          "Ayni capability'yi strength ve missingInformation listelerinde tekrar etme",
+          "Skor ile yazdigin aciklamalar mantikli ve orantili olsun",
+          "recruiterContext.scoreCalibrationGuide ve recruiterContext.exactRoleBoundary alanlarini aktif kullan",
+          "recruiterContext.requirementAssessmentGuide alanindaki needs_validation durumunu capability yokmus gibi cezalandirma",
           "Once recruiterContext.roleDemandSummary ve recruiterContext.candidateEvidenceSnapshot icindeki role yakin kanitlari oku, sonra rubric'e gore karar ver",
-          "recruiterContext.scoreCalibrationGuide alanindaki skor mantigini aktif olarak uygula; ozellikle direct fit ile weak fit arasindaki farki puana yansit",
-          "recruiterContext.requirementAssessmentGuide alanini dikkate al; needs_validation statusunu capability yokmus gibi cezalandirma",
-          "Adjacent profilleri (ornegin CRM/lifecycle, brand, SEO, analytics) tamamen alakasiz gibi okumama; ama cekirdek kanal/execution kaniti yoksa birebir uyumlu gibi de puanlama",
-          "Sadece lokasyon sorunu var diye deneyim veya beceri puanini keyfi dusurme; lokasyon ve calisma modeli etkisini ilgili boyutlarda tut",
-          "Aday role dogrudan uyuyorsa sirf bazi eksik bilgiler var diye otomatik orta banda kacma; eksik bilgiyi missingInformation'da tut, puani gereksiz ezme",
-          "0-20 bandini acikca role alakasiz veya ciddi uyumsuz profiller icin kullan; doktor, avukat gibi bu role baglanmayan gecmisler burada kalmali",
-          "70-84 bandini net interview-worthy direct fit adaylari icin rahatlikla kullan; role dogrudan baglanan hands-on pazarlama execution kaniti varsa bu band dogaldir",
-          "85+ ancak rolle cok kuvvetli kanit, tutarli execution ve dusuk kritik risk kombinasyonunda kullan",
-          "45-65 bandi adjacent veya kismen uygun profiller icindir; dogrudan uyumlu adayi bu banda gereksiz hapsetme",
-          "Missing information tek basina puani yuksekten ortaya dusuren bir ceza mekanizmasi olmasin",
-          "Bir adayda ayni capability hem strength hem missingInformation olarak tekrarlanmamali; dogrudan kanit varsa strength tarafinda tut, eksik yazacaksan derinlik ve kapsam acigini ayri belirt",
+          "locationAnalysis ve requirementCoverage alanlarini gercek degerlendirme girdisi olarak kullan",
+          "Sadece lokasyon sorunu var diye deneyim veya beceri puanini keyfi dusurme; lokasyon etkisini ilgili boyutlarda ve risklerde tut",
+          "Lokasyonu varsayilan olarak operasyonel warning gibi ele al; role-fit'i ancak fiziksel katilim pratikte imkansiz gorunuyorsa anlamli sekilde etkilesin",
+          "Ayni il farkli ilce, farkli sehir ama tasinmaya acik veya yabanci ulke ama relocation sinyali var gibi vakalarda once role-fit'i koru; lokasyonu warning ve teyit ekseninde isle",
+          "Lokasyon avantaji guclu bir strength gibi abartilmasin; lokasyon genelde artidan cok operasyonel uygunluk sinyalidir",
+          "Hibrit veya ofis rolde farkli ulke ya da farkli sehir + tasinma esnekligi yok kombinasyonu ciddi lokasyon riskidir; ama bu tek basina cok guclu direct-fit adayi weak-fit yapmaz",
+          "Ayni sehir farkli ilce vakalarinda commuteSeverity alanini aktif kullan; light/moderate commute ile extreme commute'i ayni kefeye koyma",
+          "0-15 bandini acikca role alakasiz profiller icin kullan; doktor, avukat gibi rolden kopuk profilleri yumusatma",
+          "16-39 bandini zayif veya fazla junior profiller icin rahatlikla kullan",
+          "40-68 bandini adjacent veya kismen uygun profiller icin kullan; bu bantta hafif iyimser olabilirsin ama direct-fit gibi davranma",
+          "69-88 bandini net interview-worthy direct fit adaylari icin rahatlikla kullan; role dogrudan baglanan hands-on execution kaniti varsa yuksek puan vermekten cekinme",
+          "89+ ancak rolle cok kuvvetli kanit, tutarli execution ve dusuk kritik risk kombinasyonunda kullan",
+          "Ajans kokenli guclu paid/performance adaylarini, kampanya, butce ve optimizasyon kaniti varsa direct-fit olarak puanlayabilirsin",
+          "Manager veya lead title tek basina negatif degildir; hands-on execution kaniti varsa direct-fit skorunu gereksiz bastirma",
+          "Exact role title + hands-on paid/performance execution + B2B lead generation kaniti olan adayda, tekil collaboration detayi eksigi varsa role-fit kategorisini 70 altina indirme",
+          "Missing information tek basina puani yuksekten ortaya indiren bir ceza mekanizmasi olmasin",
           "Her kategori reasoning alaninda mumkun oldugunca somut kanit veya somut eksik kanit belirt"
         ]
       })
@@ -953,6 +974,9 @@ export class ApplicantFitScoringTaskService {
         missingInfoJson: missingInfo as unknown as Prisma.InputJsonValue,
         reasoningJson: {
           overallAssessment,
+          fitBand: mergedScores.fitBand,
+          interviewReadiness: mergedScores.interviewReadiness,
+          fitBandReasoning: mergedScores.fitBandReasoning,
           uncertaintyReasons,
           providerMode: aiResult.mode,
           rubricSource
@@ -977,6 +1001,11 @@ export class ApplicantFitScoringTaskService {
         confidence: overallConfidence,
         categoryScores: sanitizedCategoryScores,
         overallAssessment,
+        calibration: {
+          fitBand: mergedScores.fitBand,
+          interviewReadiness: mergedScores.interviewReadiness,
+          fitBandReasoning: mergedScores.fitBandReasoning
+        },
         missingInformation: missingInfo,
         uncertainty: {
           level: uncertaintyLevel,
@@ -1147,6 +1176,9 @@ export class ApplicantFitScoringTaskService {
       reasoning: string;
     }>;
     overallAssessment: string;
+    fitBand: AiFitScoringOutput["fitBand"] | null;
+    interviewReadiness: AiFitScoringOutput["interviewReadiness"] | null;
+    fitBandReasoning: string | null;
     missingInformation: string[];
     confidence: number;
     uncertaintyReasons: string[];
@@ -1203,6 +1235,9 @@ export class ApplicantFitScoringTaskService {
         aiData?.overallAssessment ?? "CV profili deterministik sinyallerle degerlendirildi.",
         locationAnalysis
       ),
+      fitBand: aiData?.fitBand ?? null,
+      interviewReadiness: aiData?.interviewReadiness ?? null,
+      fitBandReasoning: aiData?.fitBandReasoning ?? null,
       missingInformation: this.uniqueList([
         ...(aiData?.missingInformation ?? []),
         ...locationAnalysis.missingInformation
@@ -1238,6 +1273,9 @@ export class ApplicantFitScoringTaskService {
       reasoning: string;
     }>;
     overallAssessment: string;
+    fitBand: AiFitScoringOutput["fitBand"] | null;
+    interviewReadiness: AiFitScoringOutput["interviewReadiness"] | null;
+    fitBandReasoning: string | null;
     missingInformation: string[];
     confidence: number;
     uncertaintyReasons: string[];
@@ -1282,6 +1320,9 @@ export class ApplicantFitScoringTaskService {
       categoryScores,
       overallAssessment: input.aiData.overallAssessment
         || "Aday, role ve ilandaki gereksinimlere gore AI-first recruiter mantigi ile degerlendirildi.",
+      fitBand: input.aiData.fitBand,
+      interviewReadiness: input.aiData.interviewReadiness,
+      fitBandReasoning: input.aiData.fitBandReasoning || input.aiData.overallAssessment || null,
       missingInformation: input.aiData.missingInformation,
       confidence: input.aiData.confidence,
       uncertaintyReasons: input.aiData.uncertainty.reasons
@@ -1290,14 +1331,15 @@ export class ApplicantFitScoringTaskService {
 
   private parseAiOutput(output: Record<string, unknown>): AiFitScoringOutput | null {
     try {
-      const categoryScores = toArray(output.categoryScores)
+      const overallScore = this.clampScore(toNumberValue(output.overallScore, 50));
+      const rawCategoryScores = toArray(output.categoryScores)
         .map((entry) => {
           const rec = toRecord(entry);
           const label = toStringValue(rec.label, "").trim();
           return {
             key: this.slugifyDimensionKey(toStringValue(rec.key, label || "dimension")),
             label: label || "Degerlendirme Boyutu",
-            score: this.clampScore(toNumberValue(rec.score, 50)),
+            score: toNumberValue(rec.score, 50),
             confidence: toNumberValue(rec.confidence, 0.5),
             strengths: toArray(rec.strengths).filter((s): s is string => typeof s === "string"),
             risks: toArray(rec.risks).filter((s): s is string => typeof s === "string"),
@@ -1305,9 +1347,13 @@ export class ApplicantFitScoringTaskService {
           };
         })
         .filter((cs) => cs.label.length > 0);
+      const categoryScores = this.normalizeAiCategoryScoreScale(rawCategoryScores, overallScore);
 
       return {
-        overallScore: this.clampScore(toNumberValue(output.overallScore, 50)),
+        overallScore,
+        fitBand: this.parseFitBand(output.fitBand),
+        interviewReadiness: this.parseInterviewReadiness(output.interviewReadiness),
+        fitBandReasoning: toStringValue(output.fitBandReasoning, ""),
         categoryScores,
         overallAssessment: toStringValue(output.overallAssessment, ""),
         strengths: toArray(output.strengths).filter((s): s is string => typeof s === "string"),
@@ -1325,6 +1371,64 @@ export class ApplicantFitScoringTaskService {
     }
   }
 
+  private normalizeAiCategoryScoreScale(
+    categoryScores: Array<{
+      key: string;
+      label: string;
+      score: number;
+      confidence: number;
+      strengths: string[];
+      risks: string[];
+      reasoning: string;
+    }>,
+    overallScore: number
+  ) {
+    const scores = categoryScores
+      .map((item) => item.score)
+      .filter((value) => typeof value === "number" && Number.isFinite(value));
+
+    if (scores.length < 3) {
+      return categoryScores.map((item) => ({
+        ...item,
+        score: this.clampScore(item.score)
+      }));
+    }
+
+    const maxScore = Math.max(...scores);
+    const averageScore = scores.reduce((sum, value) => sum + value, 0) / scores.length;
+    const likelyTenPointScale = maxScore <= 10 && averageScore <= 10 && overallScore >= 35 && overallScore >= averageScore * 3;
+
+    if (!likelyTenPointScale) {
+      return categoryScores.map((item) => ({
+        ...item,
+        score: this.clampScore(item.score)
+      }));
+    }
+
+    return categoryScores.map((item) => ({
+      ...item,
+      score: this.clampScore(item.score * 10)
+    }));
+  }
+
+  private parseFitBand(value: unknown): AiFitScoringOutput["fitBand"] {
+    const normalized = toStringValue(value, "").trim().toLocaleLowerCase("tr-TR");
+    if (normalized === "direct_fit" || normalized === "adjacent_fit" || normalized === "weak_fit") {
+      return normalized;
+    }
+
+    return "adjacent_fit";
+  }
+
+  private parseInterviewReadiness(value: unknown): AiFitScoringOutput["interviewReadiness"] {
+    const normalized = toStringValue(value, "").trim().toLocaleLowerCase("tr-TR");
+    if (normalized === "ready_now" || normalized === "borderline" || normalized === "not_for_this_role") {
+      return normalized;
+    }
+
+    return "borderline";
+  }
+
   // ── Weighted overall score ──
 
   private calculateWeightedOverall(
@@ -1335,6 +1439,10 @@ export class ApplicantFitScoringTaskService {
     let weightedSum = 0;
 
     for (const category of categories) {
+      if (this.isLocationCategory(category)) {
+        continue;
+      }
+
       const cs = categoryScores.find((s) => s.key === category.key);
       if (cs) {
         weightedSum += cs.score * category.weight;
@@ -1354,11 +1462,7 @@ export class ApplicantFitScoringTaskService {
     }>;
     categories: RubricCategory[];
   }) {
-    if (input.aiOverallScore === null || Number.isNaN(input.aiOverallScore)) {
-      return this.calculateWeightedOverall(input.categoryScores, input.categories);
-    }
-
-    return this.clampScore(input.aiOverallScore);
+    return this.calculateWeightedOverall(input.categoryScores, input.categories);
   }
 
   private buildRequirementCoverage(
@@ -1578,7 +1682,7 @@ export class ApplicantFitScoringTaskService {
           : input.locationAnalysis.presenceMode === "hybrid"
             ? `Rol hibrit; haftalik ${input.locationAnalysis.officeDaysPerWeek ?? 3} gun civari fiziksel katilim bekleniyor.`
             : "Rol yerinde/fiziksel katilim bekliyor.",
-      locationExpectation: input.locationAnalysis.reasoning,
+      locationExpectation: `Operasyonel warning notu: ${input.locationAnalysis.reasoning}`,
       locationCalibrationNotes: [
         `Commute siddeti: ${input.locationAnalysis.commuteSeverity}`,
         `Aday esnekligi: ${input.locationAnalysis.candidateFlexibility}`,
@@ -1594,19 +1698,34 @@ export class ApplicantFitScoringTaskService {
       return {
         scoringPhilosophy: "Skor genel profesyonelligi degil, bu roldeki ise alinabilirlik derecesini olcmeli.",
         overallScoreAnchors: [
-          "0-20: Rolle acikca alakasiz gecmis. Ornek: doktor, avukat veya ilgisiz operasyon gecmisi; pazarlama execution kaniti yok.",
-          "21-39: Cok zayif uyum. Genel transfer edilebilir yetenekler var ama cekirdek kanal veya kampanya deneyimi yok.",
-          "40-59: Adjacent veya kismi uyum. CRM, brand, SEO, analytics ya da content gibi yakin alanlardan geliyor ama cekirdek paid/performance/social execution eksik.",
-          "60-69: Iyi sinir aday. Role yakin ve gorusmeye deger olabilir ama hala belirgin gap veya teyit ihtiyaci var.",
-          "70-84: Guclu direct fit. Role dogrudan baglanan hands-on deneyim, ilgili kanal becerileri ve interview-worthy seviye mevcut.",
-          "85-100: Cok guclu fit. Direct fit, tutarli execution kaniti, guclu sonuc alma sinyalleri ve dusuk kritik risk birlikte gorunuyor."
+          "0-15: Rolle acikca alakasiz gecmis. Ornek: doktor, avukat veya ilgisiz operasyon gecmisi; pazarlama execution kaniti yok.",
+          "16-39: Cok zayif uyum. Genel transfer edilebilir yetenekler olabilir ama cekirdek kanal veya kampanya deneyimi yok.",
+          "40-54: Dusuk adjacent uyum. Yakin alan sinyali var ama role dogrudan execution kaniti zayif.",
+          "55-68: Umut veren adjacent veya sinir aday. Role yakin, gorusmeye deger olabilir ama hala belirgin gap veya teyit ihtiyaci var.",
+          "69-88: Guclu direct fit. Role dogrudan baglanan hands-on deneyim, ilgili kanal becerileri ve interview-worthy seviye mevcut.",
+          "89-100: Cok guclu fit. Direct fit, tutarli execution kaniti, guclu sonuc alma sinyalleri ve dusuk kritik risk birlikte gorunuyor."
         ],
         categoryAnchors: [
           "Rol ve deneyim uyumu: Sadece role dogrudan baglanan yil ve gorevleri say; alakasiz alandaki uzun gecmis puani sisirmesin.",
           "Beceri ve arac uyumu: Google Ads, Meta Ads, LinkedIn Ads, GA4, GTM, paid social, reporting, campaign setup gibi cekirdek arac ve execution kanitlari yuksek puan sebebidir.",
           "Uygulama ve sonuc kaniti: Kampanya kurma, optimize etme, butce yonetme, lead generation veya olculebilir etki kaniti puani yukselten ana unsurdur.",
-          "Lokasyon ve calisma modeli uyumu: Hibrit/ofis ritmine uyum, ulasim veya tasinma esnekligi bu boyutta degerlendirilir; deneyim ve becerinin yerine gecmez.",
+          "Lokasyon ve calisma modeli uyumu: Skoru belirleyen eksen degil, operasyonel warning boyutudur; deneyim ve becerinin yerine gecmez.",
           "Egitim ve sertifika uyumu: Dusuk agirlikli destek boyutudur; role-fit guclu adayi tek basina yukari veya asagi tasimaz."
+        ],
+        calibrationExamples: [
+          "1-2 yil staj veya junior growth gecmisi + temel Meta/GA4 bilgisi + lokal aday: bu exact rolde genelde 16-39 bandinda kalir.",
+          "Icerik/brand odakli ama paid/performance execution kaniti zayif aday: genelde 40-54 bandinda kalir.",
+          "CRM/lifecycle veya analytics adjacent aday, B2B ve lead gen sinyali var ama butce/paid execution eksik: genelde 55-68 bandinda kalir.",
+          "Ajans kokenli paid/performance aday, yakin donemde kampanya, butce ve optimizasyonu bizzat yonetmis ise genelde 72-88 bandinda olmalidir.",
+          "Performance Marketing Manager title tasiyan ama hala kampanya hesaplarini bizzat optimize eden aday, direct-fit olarak 72+ bandinda kalabilir.",
+          "Direct paid/performance marketer, aranan kanallar ve execution kaniti guclu, lokal veya makul commute aday: genelde 72-88 bandinda olmalidir.",
+          "Direct fit cok guclu ama lokasyon ciddi riskli aday: direct-fit kaniti ve overall fit korunur; lokasyon recruiter warning'i ve operasyonel teyit ekseninde ele alinir."
+        ],
+        criticalReminders: [
+          "Adayi daha uygun oldugu baska bir role gore degil, bu exact role gore puanla.",
+          "Kanitin varligi ile derinligini ayir; capability varsa 'yok' gibi puanlama.",
+          "Lokasyon avantaji weak-fit adayi kurtaramaz; lokasyon riski de strong direct-fit adayi tek basina ezmemeli.",
+          "Lokasyon genelde warning ve operasyonel uygunluk sinyalidir; overall fit skorunun ana ekseni rol-fit'tir."
         ]
       };
     }
@@ -1864,10 +1983,6 @@ export class ApplicantFitScoringTaskService {
       .filter(Boolean)
       .filter((item) => !this.looksLikeIrrelevantCertificationStrength(item, jobContext))
       .filter((item) => !this.looksRoleIrrelevantStrength(item, jobContext));
-
-    if (locationAnalysis.score >= 80) {
-      return normalized;
-    }
 
     return normalized.filter((item) => !this.looksLikeLocationSignal(item, locationAnalysis));
   }
@@ -2402,10 +2517,10 @@ export class ApplicantFitScoringTaskService {
         {
           key: "lokasyon_uyumu",
           label: "Lokasyon Uyumu",
-          weight: 0.08,
+          weight: 0,
           description: "Aday lokasyonunun is yeriyle il ve ilce-bolge bazinda uyumu",
           deterministicSignals: ["locationSignals"],
-          scoringGuidance: "Ayni ilce veya ayni bolge yuksek, ayni il farkli bolge orta, farkli il dusuk puan"
+          scoringGuidance: "Lokasyon operasyonel bir warning boyutudur; ayni ilce veya ayni bolge olumlu operasyonel sinyal olabilir ama overall fit skorunu etkilemez. Farkli il veya ulke ise recruiter warning'i ve fiziksel uygunluk teyidi odakli ele alinir"
         }
       ]
     };
@@ -2422,6 +2537,20 @@ export class ApplicantFitScoringTaskService {
     }
 
     if (normalizeTurkishText(base).includes(normalizeTurkishText(locationAnalysis.reasoning))) {
+      return base;
+    }
+
+    const shouldAppendLocation =
+      locationAnalysis.presenceMode !== "remote"
+      && (
+        locationAnalysis.mismatchLevel === "cross_country"
+        || locationAnalysis.candidateFlexibility === "remote_only"
+        || locationAnalysis.candidateFlexibility === "relocation_resistant"
+        || locationAnalysis.commuteSeverity === "severe"
+        || locationAnalysis.commuteSeverity === "extreme"
+      );
+
+    if (!shouldAppendLocation) {
       return base;
     }
 
@@ -2881,7 +3010,7 @@ export class ApplicantFitScoringTaskService {
     }
 
     if (
-      /yer degistirmeyi dusunmuyorum|yer degistirmem|tasinmayi dusunmuyorum|tasinma planim bulunmuyor|tasinamam|hibrit calismayi dusunmuyorum|ofise duzenli gelemem|duzenli ofise gelemem|yalnizca bulundugum sehirde/.test(
+      /yer degistirmeyi dusunmuyorum|yer degistirmem|tasinmayi dusunmuyorum|tasinma dusunmuyorum|tasinma planim bulunmuyor|tasinma istemiyorum|tasinma istegim yok|tasinma dusunmuyor|tasinamam|hibrit calismayi dusunmuyorum|ofise duzenli gelemem|duzenli ofise gelemem|yalnizca bulundugum sehirde|bulundugum sehirde kalmak istiyorum|ofis duzenine acik degilim|kalici bir ofis duzenine acik degilim/.test(
         corpus
       )
     ) {

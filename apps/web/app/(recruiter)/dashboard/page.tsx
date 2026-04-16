@@ -333,7 +333,7 @@ export default function RecruiterOverviewPage() {
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(124,115,250,0.3)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
               >
-                <p style={{ margin: "0 0 6px", fontSize: 12, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                <p style={{ margin: "0 0 6px", fontSize: 12, color: "var(--text-dim)", letterSpacing: "0.01em" }}>
                   {t(kpi.label)}
                 </p>
                 <strong style={{ fontSize: 28, fontWeight: 700, color: kpi.color, letterSpacing: "-1px" }}>
@@ -558,8 +558,7 @@ export default function RecruiterOverviewPage() {
 const thStyle: React.CSSProperties = {
   padding: "8px 0",
   fontSize: 11,
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
+  letterSpacing: "0.01em",
   color: "var(--text-dim)",
   fontWeight: 600
 };
@@ -656,8 +655,7 @@ function InterviewStat({
           marginBottom: 6,
           fontSize: 11,
           color: "var(--text-dim)",
-          textTransform: "uppercase",
-          letterSpacing: "0.04em"
+          letterSpacing: "0.01em"
         }}
       >
         {label}

@@ -105,7 +105,7 @@ const ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
 export const ROLE_LABELS: Record<AppRole, string> = {
   owner: "Hesap Sahibi",
   manager: "Menajer",
-  staff: "Uzman / Personel"
+  staff: "Personel"
 };
 
 type RoutePolicy = {
@@ -174,7 +174,7 @@ export function canPerformAction(session: WebAuthSession | null, permission: App
 }
 
 export function isInternalAdminSession(session: WebAuthSession | null) {
-  return canPerformAction(session, "tenant.manage") && isInternalAdminEmail(session?.email);
+  return isInternalAdminEmail(session?.email);
 }
 
 export function isInternalOnlyRoute(pathname: string) {

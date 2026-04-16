@@ -310,27 +310,51 @@
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
+  position: relative;
+  isolation: isolate;
   transition:
-    transform 0.22s ease,
-    box-shadow 0.22s ease,
-    border-color 0.22s ease,
-    background 0.22s ease;
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.24s ease,
+    background 0.24s ease;
   white-space: nowrap;
 }
 
 .button:hover {
-  transform: translateY(-1px);
+  transform: translateY(-3px);
+}
+
+.button:active {
+  transform: translateY(0);
 }
 
 .buttonPrimary {
   background: linear-gradient(135deg, #5046e5 0%, #6554ff 54%, #9057ff 100%);
-  box-shadow: 0 18px 46px rgba(73, 104, 255, 0.28);
+  box-shadow: 0 4px 18px rgba(80, 70, 229, 0.28);
   color: white;
   min-width: 148px;
 }
 
+.buttonPrimary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #5046e5, #8b5cf6);
+  filter: blur(20px);
+  opacity: 0;
+  z-index: -1;
+  transform: translateY(6px) scaleX(0.88);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .buttonPrimary:hover {
-  box-shadow: 0 22px 56px rgba(73, 104, 255, 0.34);
+  box-shadow: 0 6px 22px rgba(80, 70, 229, 0.22);
+}
+
+.buttonPrimary:hover::after {
+  opacity: 0.75;
+  transform: translateY(10px) scaleX(0.92);
 }
 
 .buttonSecondary {
@@ -340,8 +364,9 @@
 }
 
 .buttonSecondary:hover {
-  background: rgba(106, 124, 255, 0.08);
-  border-color: rgba(106, 124, 255, 0.24);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
 .buttonBlock {
@@ -1313,6 +1338,128 @@
   height: fit-content;
 }
 
+/* ─── Contact Info Panel ────────────────────────────── */
+.contactInfoPanel {
+  display: grid;
+  gap: 18px;
+  padding-top: 6px;
+}
+
+.contactInfoTitle {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #e8edf4;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.contactInfoBody {
+  font-size: 14px;
+  color: #8fa3bc;
+  line-height: 1.72;
+  margin: 0;
+}
+
+.contactMiniGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.contactMiniCard {
+  display: grid;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.contactDetailIconWrap {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(80,70,229,0.15);
+  color: #a78bfa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.contactMiniLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a5b9;
+  margin-bottom: 6px;
+}
+
+.contactMiniValue {
+  display: block;
+  font-size: 15px;
+  color: #e8edf4;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.contactSupportCard,
+.contactSupportNote {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.contactSupportCard {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.contactSupportCard h4 {
+  margin: 0 0 14px;
+  font-size: 15px;
+  color: #e8edf4;
+  letter-spacing: -0.02em;
+}
+
+.contactPillList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.contactPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(80, 70, 229, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  color: #d9def7;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.contactSupportNote {
+  background: linear-gradient(180deg, rgba(14, 22, 40, 0.72), rgba(9, 16, 30, 0.92));
+}
+
+.contactSupportNote strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #f8fafc;
+  font-size: 14px;
+}
+
+.contactSupportNote p {
+  margin: 0;
+  font-size: 12px;
+  color: #8ea0b5;
+  line-height: 1.65;
+}
+
 .formAlert {
   display: grid;
   gap: 6px;
@@ -1667,7 +1814,8 @@
   .articleGrid,
   .showcaseStats,
   .compactStats,
-  .formGrid {
+  .formGrid,
+  .contactMiniGrid {
     grid-template-columns: 1fr;
   }
 
@@ -1829,7 +1977,7 @@
 .prCardsGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 22px;
+  gap: 18px;
   max-width: 1120px;
   margin: 0 auto;
   align-items: stretch;
@@ -1839,42 +1987,25 @@
 .prPlanCard {
   position: relative;
   border-radius: 24px;
-  padding: 32px 28px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
+  padding: 0;
+  background: linear-gradient(180deg, rgba(24, 28, 47, 0.94), rgba(20, 24, 42, 0.96));
+  border: 1px solid rgba(134, 148, 196, 0.16);
   transition:
     border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   overflow: visible;
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 
 .prPlanCard::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 24px;
-  background: radial-gradient(
-    500px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(99, 118, 255, 0.18),
-    transparent 40%
-  );
-  opacity: 0;
-  transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-  pointer-events: none;
+  content: none;
 }
 
 .prPlanCard:hover {
-  border-color: rgba(111, 130, 255, 0.22);
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
-  transform: translateY(-4px);
-}
-
-.prPlanCard:hover::before {
-  opacity: 1;
+  border-color: rgba(111, 130, 255, 0.28);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.28);
 }
 
 /* Popular card highlight */
@@ -1888,8 +2019,7 @@
 .prPlanCardPopular:hover {
   box-shadow:
     0 0 0 1px rgba(99, 118, 255, 0.4),
-    0 16px 56px rgba(99, 118, 255, 0.16);
-  transform: translateY(-6px);
+    0 16px 44px rgba(99, 118, 255, 0.14);
 }
 
 /* Popular badge */
@@ -1899,6 +2029,7 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
+  pointer-events: none;
 }
 
 .prPopularBadge {
@@ -1917,14 +2048,19 @@
 
 /* Plan header */
 .prPlanHeader {
+  padding: 42px 24px 22px;
+  min-height: 148px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 0;
 }
 
 .prPlanName {
   font-size: 18px;
   font-weight: 700;
-  margin: 0 0 8px;
+  margin: 0;
   letter-spacing: -0.02em;
 }
 
@@ -1940,7 +2076,8 @@
   display: flex;
   align-items: baseline;
   justify-content: center;
-  min-height: 48px;
+  min-height: 44px;
+  gap: 4px;
 }
 
 .prPriceFree {
@@ -1951,45 +2088,41 @@
 }
 
 .prPriceContact {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.04em;
+  line-height: 1.1;
 }
 
 .prPriceAmount {
-  font-size: 32px;
+  font-size: 31px;
   font-weight: 800;
   letter-spacing: -0.06em;
+  line-height: 1;
 }
 
 .prPricePeriod {
   color: #8396aa;
   font-size: 14px;
-  margin-left: 4px;
-}
-
-.prSubPrice {
-  min-height: 20px;
-  margin-top: 8px;
-  font-size: 12px;
-  color: #8396aa;
+  line-height: 1;
 }
 
 /* Divider */
 .prDivider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.06);
-  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0 24px;
 }
 
 /* Feature list */
 .prFeatureList {
   list-style: none;
-  padding: 0;
-  margin: 0 0 32px;
+  padding: 22px 24px 0;
+  margin: 0;
   display: grid;
   gap: 12px;
   flex-grow: 1;
+  align-content: start;
 }
 
 .prFeatureItem {
@@ -2015,6 +2148,7 @@
 
 /* CTA button */
 .prCardCta {
+  padding: 22px 24px 24px;
   margin-top: auto;
 }
 
@@ -2256,8 +2390,8 @@
   margin: 0 auto;
   text-align: center;
   border-radius: 28px;
-  padding: 56px 40px;
-  background: linear-gradient(135deg, rgba(80, 70, 229, 0.1), rgba(124, 241, 220, 0.04));
+  padding: 44px 36px;
+  background: linear-gradient(135deg, rgba(80, 70, 229, 0.1), rgba(109, 76, 255, 0.05));
   border: 1px solid rgba(99, 118, 255, 0.15);
   overflow: hidden;
 }
@@ -2295,6 +2429,46 @@
   margin-right: auto;
   position: relative;
   z-index: 1;
+}
+
+.prTrialSection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 32px;
+  align-items: center;
+  max-width: 980px;
+  text-align: left;
+}
+
+.prTrialCopy,
+.prTrialAction {
+  position: relative;
+  z-index: 1;
+}
+
+.prTrialEyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(99, 118, 255, 0.14);
+  border: 1px solid rgba(99, 118, 255, 0.22);
+  color: #d9def7;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.prTrialSection .prCtaBody {
+  max-width: 620px;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+}
+
+.prTrialAction {
+  justify-self: end;
 }
 
 .prGlowBtn {
@@ -2364,7 +2538,7 @@
 
 @media (max-width: 768px) {
   .prPlanCard {
-    padding: 24px 20px;
+    min-height: 100%;
   }
 
   .prAddonCard {
@@ -2373,6 +2547,20 @@
 
   .prCtaSection {
     padding: 40px 24px;
+  }
+
+  .prTrialSection {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .prTrialSection .prCtaBody {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .prTrialAction {
+    justify-self: center;
   }
 
   .prTableWrap {
@@ -3017,6 +3205,7 @@
 .ftGlowBtn {
   position: relative;
   z-index: 1;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3026,34 +3215,44 @@
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.26s ease, background 0.22s ease;
+}
+
+.ftGlowBtn:hover {
+  transform: translateY(-3px);
+}
+
+.ftGlowBtn:active {
+  transform: translateY(0);
 }
 
 .ftGlowBtn::after {
   content: '';
   position: absolute;
-  inset: -2px;
+  inset: 0;
   border-radius: inherit;
   background: linear-gradient(135deg, var(--ft-accent), var(--ft-accent-light));
+  filter: blur(18px);
   opacity: 0;
   z-index: -1;
-  filter: blur(14px);
-  transition: opacity 0.3s var(--ft-ease);
+  transform: translateY(6px) scaleX(0.88);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ftGlowBtn:hover::after {
-  opacity: 0.6;
+  opacity: 0.7;
+  transform: translateY(10px) scaleX(0.92);
   animation: ftGlowPulse 2s ease-in-out infinite;
 }
 
 .ftGlowBtnPrimary {
-  background: #5046e5;
+  background: linear-gradient(135deg, #5046e5 0%, #6554ff 60%, #8b5cf6 100%);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(5, 23, 82, 0.2);
+  box-shadow: 0 4px 16px rgba(80, 70, 229, 0.25);
 }
 
 .ftGlowBtnPrimary:hover {
-  background: #4338ca;
+  box-shadow: 0 6px 20px rgba(80, 70, 229, 0.18);
 }
 
 .ftGlowBtnOutline {
@@ -3066,17 +3265,22 @@
   background: #5046e5;
   color: #fff;
   border-color: #5046e5;
-  box-shadow: 0 4px 16px rgba(5, 23, 82, 0.15);
+  box-shadow: 0 4px 16px rgba(80, 70, 229, 0.15);
 }
 
 .ftCtaBtnWhite {
   background: #fff;
   color: #0f172a;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.ftCtaBtnWhite::after {
+  background: linear-gradient(135deg, #5046e5, #8b5cf6) !important;
 }
 
 .ftCtaBtnWhite:hover {
-  background: #f1f5f9;
+  background: #f8f7ff;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
 }
 
 .ftCtaBtnGhost {
@@ -3087,6 +3291,7 @@
 
 .ftCtaBtnGhost:hover {
   background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.45);
 }
 
 .ftSection {

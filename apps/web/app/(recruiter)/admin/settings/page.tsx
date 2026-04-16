@@ -58,6 +58,22 @@ const ADMIN_FLAG_KEYS = [
   "ai.auto_reject.enabled"
 ] as const;
 
+const AUTH_FLAG_DISPLAY: Record<string, { name: string; desc: string }> = {
+  "auth.email_verification.send_email": {
+    name: "Doğrulama e-postası gönder",
+    desc: "Tüm tenantlarda doğrulama linkini e-posta kanalıyla hazırlar ve gönderir."
+  },
+  "auth.email_verification.required": {
+    name: "E-posta doğrulamasını zorunlu kıl",
+    desc: "Açıldığında tüm sistemde doğrulanmamış kullanıcılar giriş yapamaz."
+  }
+};
+
+const GLOBAL_AUTH_FLAG_KEYS = [
+  "auth.email_verification.send_email",
+  "auth.email_verification.required"
+] as const;
+
 function toBoolean(value: unknown) {
   if (typeof value === "boolean") {
     return value;
@@ -95,11 +111,13 @@ export default function InternalAdminSettingsPage() {
   const [aiData, setAiData] = useState<AiSupportCenterReadModel | null>(null);
   const [infra, setInfra] = useState<InfrastructureReadinessReadModel | null>(null);
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
+  const [authFlags, setAuthFlags] = useState<FeatureFlag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [healthLoadError, setHealthLoadError] = useState("");
   const [aiLoadError, setAiLoadError] = useState("");
   const [infraLoadError, setInfraLoadError] = useState("");
+  const [authFlagLoadError, setAuthFlagLoadError] = useState("");
   const [busyKey, setBusyKey] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -109,12 +127,14 @@ export default function InternalAdminSettingsPage() {
     setHealthLoadError("");
     setAiLoadError("");
     setInfraLoadError("");
+    setAuthFlagLoadError("");
 
     try {
-      const [healthResult, aiResult, infraResult] = await Promise.allSettled([
+      const [healthResult, aiResult, infraResult, authFlagResult] = await Promise.allSettled([
         apiClient.getProviderHealth(),
         apiClient.aiSupportCenterReadModel(),
-        apiClient.infrastructureReadinessReadModel()
+        apiClient.infrastructureReadinessReadModel(),
+        apiClient.internalAdminAuthFlags()
       ]);
 
       if (healthResult.status === "fulfilled") {
@@ -154,6 +174,23 @@ export default function InternalAdminSettingsPage() {
           )
         );
       }
+
+      if (authFlagResult.status === "fulfilled") {
+        setAuthFlags(authFlagResult.value);
+      } else {
+        setAuthFlags([]);
+        setAuthFlagLoadError(
+          translateInternalAdminMessage(
+            toErrorMessage(
+              authFlagResult.reason,
+              locale === "en"
+                ? "Global auth settings could not be loaded."
+                : "Global auth ayarları yüklenemedi."
+            ),
+            locale
+          )
+        );
+      }
     } catch (loadError) {
       setError(translateInternalAdminMessage(toErrorMessage(loadError, copy.internalOnly), locale));
     } finally {
@@ -171,6 +208,14 @@ export default function InternalAdminSettingsPage() {
         (flag): flag is FeatureFlag => Boolean(flag)
       ),
     [flags]
+  );
+
+  const globalAuthFlags = useMemo(
+    () =>
+      GLOBAL_AUTH_FLAG_KEYS.map((key) => authFlags.find((flag) => flag.key === key)).filter(
+        (flag): flag is FeatureFlag => Boolean(flag)
+      ),
+    [authFlags]
   );
 
   const warnings = useMemo(
@@ -273,6 +318,40 @@ export default function InternalAdminSettingsPage() {
     }
   }
 
+  async function toggleAuthFlag(flag: FeatureFlag, nextValue: boolean) {
+    setBusyKey(`auth-flag:${flag.key}`);
+    setError("");
+    setSuccess("");
+
+    try {
+      const updated = await apiClient.internalAdminUpdateAuthFlag(flag.key, {
+        value: nextValue,
+        type: flag.type,
+        description: flag.description ?? undefined
+      });
+      setAuthFlags((prev) => prev.map((item) => (item.key === updated.key ? updated : item)));
+      setSuccess(
+        locale === "en"
+          ? "Global auth rollout updated."
+          : "Global auth rollout ayarı güncellendi."
+      );
+    } catch (toggleError) {
+      setError(
+        translateInternalAdminMessage(
+          toErrorMessage(
+            toggleError,
+            locale === "en"
+              ? "Global auth settings could not be updated."
+              : "Global auth ayarları güncellenemedi."
+          ),
+          locale
+        )
+      );
+    } finally {
+      setBusyKey("");
+    }
+  }
+
   if (loading) {
     return (
       <section className="page-grid">
@@ -329,6 +408,80 @@ export default function InternalAdminSettingsPage() {
           </ul>
         </section>
       ) : null}
+
+      <section className="panel">
+        <h2 style={{ margin: "0 0 6px" }}>
+          {locale === "en" ? "Global Authentication Rollout" : "Global Kimlik Doğrulama Rollout'u"}
+        </h2>
+        <p className="small text-muted" style={{ marginBottom: 12 }}>
+          {locale === "en"
+            ? "These switches affect every tenant. Keep both off during test phases, then enable email sending first and make verification required only at go-live."
+            : "Bu anahtarlar tüm tenantları etkiler. Test aşamalarında ikisini de kapalı tutun; önce e-posta gönderimini açın, zorunluluğu ise ancak canlıya çıkarken açın."}
+        </p>
+
+        {authFlagLoadError ? (
+          <ErrorState
+            error={authFlagLoadError}
+            actions={
+              <button type="button" className="ghost-button" onClick={() => void loadPage()}>
+                {copy.retry}
+              </button>
+            }
+          />
+        ) : globalAuthFlags.length === 0 ? (
+          <EmptyState
+            message={
+              locale === "en"
+                ? "No global auth rollout settings found."
+                : "Global auth rollout ayarı bulunamadı."
+            }
+          />
+        ) : (
+          <div className="table-scroll">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>{locale === "en" ? "Setting" : "Ayar"}</th>
+                  <th>{copy.status}</th>
+                  <th>{copy.action}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {globalAuthFlags.map((flag) => {
+                  const boolValue = toBoolean(flag.value);
+                  const display = AUTH_FLAG_DISPLAY[flag.key];
+
+                  return (
+                    <tr key={flag.id}>
+                      <td>
+                        <div className="admin-table-cell-stack">
+                          <strong>{display?.name ?? flag.key}</strong>
+                          <span>{display?.desc ?? flag.description ?? ""}</span>
+                        </div>
+                      </td>
+                      <td>{boolValue ? t("Açık") : t("Kapalı")}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="ghost-button"
+                          disabled={busyKey === `auth-flag:${flag.key}`}
+                          onClick={() => void toggleAuthFlag(flag, !Boolean(boolValue))}
+                        >
+                          {busyKey === `auth-flag:${flag.key}`
+                            ? t("Güncelleniyor...")
+                            : boolValue
+                              ? t("Kapat")
+                              : t("Aç")}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <section className="panel">
         <h2 style={{ margin: "0 0 6px" }}>{t("AI Davranış Kuralları")}</h2>

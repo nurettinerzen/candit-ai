@@ -93,7 +93,7 @@ function createDefaultForm(): EnterpriseFormState {
     candidateProcessingIncluded: "1000",
     aiInterviewsIncluded: "250",
     advancedReporting: true,
-    calendarIntegrations: true,
+    calendarIntegrations: false,
     brandedCandidateExperience: false,
     customIntegrations: false,
     note: ""
@@ -531,9 +531,7 @@ export default function InternalAdminEnterprisePage() {
                 {(
                   [
                     { key: "advancedReporting", label: copy.advancedReporting },
-                    { key: "calendarIntegrations", label: copy.calendarIntegrations },
-                    { key: "brandedCandidateExperience", label: copy.brandedCandidateExperience },
-                    { key: "customIntegrations", label: copy.customIntegrations }
+                    { key: "brandedCandidateExperience", label: copy.brandedCandidateExperience }
                   ] as const
                 ).map(({ key, label }) => (
                   <label key={key} className="admin-check-row">

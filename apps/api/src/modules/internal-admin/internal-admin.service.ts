@@ -9,6 +9,7 @@ import {
   AiTaskStatus,
   BillingAccountStatus,
   BillingGrantSource,
+  FeatureFlagType,
   BillingPlanKey,
   BillingQuotaKey,
   IntegrationConnectionStatus,
@@ -25,7 +26,15 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { AuthService } from "../auth/auth.service";
 import { BILLING_PLAN_CATALOG, buildPlanSnapshot } from "../billing/billing-catalog";
 import { BillingService } from "../billing/billing.service";
+import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { NotificationsService } from "../notifications/notifications.service";
+
+const GLOBAL_AUTH_FLAG_KEYS = [
+  "auth.email_verification.required",
+  "auth.email_verification.send_email"
+] as const;
+const AUTH_EMAIL_VERIFICATION_REQUIRED_FLAG = "auth.email_verification.required";
+const AUTH_EMAIL_VERIFICATION_SEND_EMAIL_FLAG = "auth.email_verification.send_email";
 
 type AdminAlertCategory = "APPLICATION" | "SECURITY" | "ASSISTANT" | "OPERATIONS";
 type AdminAlertSeverity = "critical" | "warning";
@@ -159,6 +168,7 @@ export class InternalAdminService {
     @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService,
     @Inject(BillingService) private readonly billingService: BillingService,
     @Inject(AuthService) private readonly authService: AuthService,
+    @Inject(FeatureFlagsService) private readonly featureFlagsService: FeatureFlagsService,
     @Inject(NotificationsService) private readonly notificationsService: NotificationsService
   ) {}
 
@@ -168,6 +178,47 @@ export class InternalAdminService {
     }
 
     throw new ForbiddenException("Bu alan yalnızca iç yönetim ekibi için açıktır.");
+  }
+
+  async listGlobalAuthFlags(viewerEmail?: string | null) {
+    this.assertInternalAdmin(viewerEmail);
+    return this.featureFlagsService.listGlobal([...GLOBAL_AUTH_FLAG_KEYS]);
+  }
+
+  async updateGlobalAuthFlag(input: {
+    key: string;
+    actorEmail?: string | null;
+    value: Prisma.InputJsonValue;
+    type?: FeatureFlagType;
+    description?: string;
+  }) {
+    this.assertInternalAdmin(input.actorEmail);
+
+    if (!GLOBAL_AUTH_FLAG_KEYS.includes(input.key as (typeof GLOBAL_AUTH_FLAG_KEYS)[number])) {
+      throw new BadRequestException("Bu global auth flag anahtari desteklenmiyor.");
+    }
+
+    const [requiredEnabled, sendEmailEnabled] = await Promise.all([
+      this.featureFlagsService.isGlobalEnabled(AUTH_EMAIL_VERIFICATION_REQUIRED_FLAG, false),
+      this.featureFlagsService.isGlobalEnabled(AUTH_EMAIL_VERIFICATION_SEND_EMAIL_FLAG, false)
+    ]);
+
+    const nextRequiredEnabled =
+      input.key === AUTH_EMAIL_VERIFICATION_REQUIRED_FLAG ? input.value === true : requiredEnabled;
+    const nextSendEmailEnabled =
+      input.key === AUTH_EMAIL_VERIFICATION_SEND_EMAIL_FLAG ? input.value === true : sendEmailEnabled;
+
+    if (nextRequiredEnabled && !nextSendEmailEnabled) {
+      throw new BadRequestException(
+        "E-posta doğrulamasını zorunlu kılmadan önce doğrulama e-postası gönderimini açın."
+      );
+    }
+
+    return this.featureFlagsService.updateGlobal(input.key, {
+      value: input.value,
+      type: input.type,
+      description: input.description
+    });
   }
 
   async getDashboard(viewerEmail?: string | null) {
@@ -1062,6 +1113,13 @@ export class InternalAdminService {
               currentPeriodEnd: periodEnd,
               stripeSubscriptionId: null,
               lastCheckoutSessionId: null,
+              pendingPlanKey: null,
+              pendingChangeKind: null,
+              pendingChangeEffectiveAt: null,
+              pendingChangeRequestedAt: null,
+              pendingChangeRequestedBy: null,
+              pendingChangeMetadataJson: Prisma.DbNull,
+              lastReconciledAt: now,
               featuresJson: input.features,
               planSnapshotJson: snapshot
             }
@@ -1074,6 +1132,7 @@ export class InternalAdminService {
               status: input.status,
               currentPeriodStart: periodStart,
               currentPeriodEnd: periodEnd,
+              lastReconciledAt: now,
               featuresJson: input.features,
               planSnapshotJson: snapshot
             }
@@ -1432,7 +1491,7 @@ export class InternalAdminService {
     let sessionId: string | null = null;
     let linkSent = false;
 
-    if (this.runtimeConfig.stripeBillingConfig.apiKeyConfigured) {
+    if (this.runtimeConfig.providerReadiness.billing.ready) {
       const checkout = await this.billingService.createEnterpriseOfferCheckoutSession({
         tenantId: tenant.id,
         requestedBy: input.actorUserId,
@@ -1467,7 +1526,7 @@ export class InternalAdminService {
       checkoutUrl,
       sessionId,
       linkSent,
-      stripeReady: this.runtimeConfig.stripeBillingConfig.apiKeyConfigured
+      stripeReady: this.runtimeConfig.providerReadiness.billing.ready
     };
   }
 

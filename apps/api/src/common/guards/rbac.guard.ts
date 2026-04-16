@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import type { Permission } from "@ai-interviewer/domain";
+import { RuntimeConfigService } from "../../config/runtime-config.service";
 import { ROLE_PERMISSIONS } from "../constants/rbac";
 import { REQUIRED_PERMISSIONS } from "../decorators/permissions.decorator";
 import { IS_PUBLIC_ROUTE } from "../decorators/public.decorator";
@@ -8,7 +9,10 @@ import type { RequestWithContext } from "../interfaces/request-with-context.inte
 
 @Injectable()
 export class RbacGuard implements CanActivate {
-  constructor(@Inject(Reflector) private readonly reflector: Reflector) {}
+  constructor(
+    @Inject(Reflector) private readonly reflector: Reflector,
+    @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const isPublicRoute = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_ROUTE, [
@@ -31,6 +35,11 @@ export class RbacGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<RequestWithContext>();
+
+    if (this.runtimeConfig.isInternalAdmin(request.user?.email)) {
+      return true;
+    }
+
     const roles = request.user?.roles ?? [];
 
     const grantedPermissions = new Set(

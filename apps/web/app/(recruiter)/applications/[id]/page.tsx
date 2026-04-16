@@ -815,8 +815,7 @@ export default function ApplicationDetailPage() {
                               style={{
                                 fontSize: 12,
                                 fontWeight: 700,
-                                letterSpacing: "0.02em",
-                                textTransform: "uppercase",
+                                letterSpacing: "0.01em",
                                 color: recommendationBanner?.color ?? "var(--primary, #7c73fa)",
                                 marginBottom: 4
                               }}

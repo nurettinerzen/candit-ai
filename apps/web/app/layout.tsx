@@ -8,7 +8,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Candit.ai",
-  description: "AI destekli işe alım platformu"
+  description: "Ön eleme, kaynak bulma ve mülakat süreçlerini AI ile hızlandırın."
 };
 
 const sansFont = Plus_Jakarta_Sans({

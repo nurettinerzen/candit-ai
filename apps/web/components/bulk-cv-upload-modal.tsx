@@ -1,13 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useUiText } from "./site-language-provider";
 import { SOURCE_LABELS } from "../lib/constants";
+import type { ScreeningMode } from "../lib/types";
 
 type BulkCvUploadModalProps = {
   open: boolean;
   onClose: () => void;
-  onSubmit: (files: File[], source: string, externalSource?: string) => Promise<void>;
+  screeningMode: ScreeningMode;
+  onSubmit: (
+    files: File[],
+    source: string,
+    externalSource: string | undefined,
+    screeningMode: ScreeningMode
+  ) => Promise<void>;
 };
 
 const IMPORT_SOURCES = [
@@ -34,11 +41,17 @@ function dedupeFiles(files: File[]) {
   });
 }
 
-export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModalProps) {
+export function BulkCvUploadModal({
+  open,
+  onClose,
+  onSubmit,
+  screeningMode
+}: BulkCvUploadModalProps) {
   const { locale, t } = useUiText();
   const [files, setFiles] = useState<File[]>([]);
   const [source, setSource] = useState("kariyer_net");
   const [externalSource, setExternalSource] = useState("");
+  const [selectedScreeningMode, setSelectedScreeningMode] = useState<ScreeningMode>(screeningMode);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -60,6 +73,9 @@ export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModal
           dropTitle: "Drop CV files here",
           dropSubtitle: "Supported formats: PDF, DOC, DOCX, TXT",
           source: "Source",
+          screeningMode: "Screening Mode",
+          screeningModeHelp:
+            "This setting changes how optimistic or selective the AI screening assistant behaves for the CVs you are about to queue.",
           externalSource: "External Source Name",
           externalSourcePlaceholder: "Source name",
           selectedFiles: `${files.length} files selected`,
@@ -80,6 +96,9 @@ export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModal
           dropTitle: "CV dosyalarını buraya bırakın",
           dropSubtitle: "Desteklenen formatlar: PDF, DOC, DOCX, TXT",
           source: "Kaynak",
+          screeningMode: "Screening Modu",
+          screeningModeHelp:
+            "Bu ayar, birazdan kuyruğa alacağınız CV'lerde AI screening asistanının ne kadar iyimser veya seçici davranacağını belirler.",
           externalSource: "Dış Kaynak Adı",
           externalSourcePlaceholder: "Kaynak adı",
           selectedFiles: `${files.length} dosya seçildi`,
@@ -89,6 +108,63 @@ export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModal
           submitBusy: "Kuyruğa alınıyor...",
           submitIdle: `${files.length} CV Yükle`
         };
+
+  const screeningModeOptions =
+    locale === "en"
+      ? [
+          {
+            value: "WIDE_POOL" as ScreeningMode,
+            label: "Wide Pool",
+            description: "More optimistic. Keeps adjacent and promising candidates in play longer."
+          },
+          {
+            value: "BALANCED" as ScreeningMode,
+            label: "Balanced",
+            description: "Balanced default. Protects against clear mismatches without over-filtering."
+          },
+          {
+            value: "STRICT" as ScreeningMode,
+            label: "Strict",
+            description: "More selective. Advances only when role-fit and execution signals are clearer."
+          }
+        ]
+      : [
+          {
+            value: "WIDE_POOL" as ScreeningMode,
+            label: "Geniş Havuz",
+            description: "Daha iyimser davranır. Yakın uyumlu ve umut veren adayları daha uzun süre oyunda tutar."
+          },
+          {
+            value: "BALANCED" as ScreeningMode,
+            label: "Dengeli",
+            description: "Varsayılan dengeli moddur. Açık uyumsuzlukları ayıklar ama gereksiz sertleşmez."
+          },
+          {
+            value: "STRICT" as ScreeningMode,
+            label: "Sıkı Eleme",
+            description: "Daha seçici davranır. Rol uyumu ve execution kanıtı daha net adayları öne çıkarır."
+          }
+        ];
+
+  const selectedScreeningModeOption =
+    screeningModeOptions.find((item) => item.value === selectedScreeningMode)
+    ?? screeningModeOptions.find((item) => item.value === "BALANCED")
+    ?? {
+      value: "BALANCED" as ScreeningMode,
+      label: locale === "en" ? "Balanced" : "Dengeli",
+      description:
+        locale === "en"
+          ? "Balanced default. Protects against clear mismatches without over-filtering."
+          : "Varsayılan dengeli moddur. Açık uyumsuzlukları ayıklar ama gereksiz sertleşmez."
+    };
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setSelectedScreeningMode(screeningMode);
+  }, [open, screeningMode]);
 
   if (!open) return null;
 
@@ -115,7 +191,7 @@ export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModal
     setSubmitting(true);
     setError("");
     try {
-      await onSubmit(files, source, externalSource || undefined);
+      await onSubmit(files, source, externalSource || undefined, selectedScreeningMode);
       setFiles([]);
       setExternalSource("");
       onClose();
@@ -204,6 +280,24 @@ export function BulkCvUploadModal({ open, onClose, onSubmit }: BulkCvUploadModal
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="form-row" style={{ marginTop: 16 }}>
+            <label>{labels.screeningMode}</label>
+            <select
+              className="form-select"
+              value={selectedScreeningMode}
+              onChange={(event) => setSelectedScreeningMode(event.target.value as ScreeningMode)}
+            >
+              {screeningModeOptions.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-sm text-muted" style={{ marginTop: 8 }}>
+              {labels.screeningModeHelp} {selectedScreeningModeOption.description}
+            </p>
           </div>
 
           {source === "other" ? (

@@ -119,20 +119,21 @@ export const DEMO_SESSION_DEFAULTS = {
   tenantId: process.env.NEXT_PUBLIC_DEV_TENANT_ID ?? "ten_demo",
   userId: process.env.NEXT_PUBLIC_DEV_USER_ID ?? "usr_admin_demo",
   roles: process.env.NEXT_PUBLIC_DEV_ROLES ?? "owner",
-  userLabel: process.env.NEXT_PUBLIC_DEV_USER_LABEL ?? "Demo Hesap Sahibi",
-  email: process.env.NEXT_PUBLIC_DEV_USER_EMAIL ?? "owner@demo.local"
+  userLabel: process.env.NEXT_PUBLIC_DEV_USER_LABEL ?? "Candit Super Admin",
+  email: process.env.NEXT_PUBLIC_DEV_USER_EMAIL ?? "info@candit.ai"
 };
 
 const INTERNAL_ADMIN_EMAIL_ALLOWLIST = (() => {
+  const defaults = ["info@candit.ai"];
   const configured = [
     ...toCsvList(process.env.NEXT_PUBLIC_INTERNAL_ADMIN_EMAIL_ALLOWLIST),
     ...toCsvList(process.env.NEXT_PUBLIC_INTERNAL_BILLING_ADMIN_EMAIL_ALLOWLIST)
   ];
   if (configured.length > 0) {
-    return Array.from(new Set(configured));
+    return Array.from(new Set([...defaults, ...configured]));
   }
 
-  return WEB_RUNTIME_MODE === "development" ? ["owner@demo.local"] : [];
+  return defaults;
 })();
 
 const INTERNAL_ADMIN_DOMAIN_ALLOWLIST = [

@@ -7,6 +7,7 @@ import { AuthNotice, AuthShell } from "../../../components/auth-shell";
 import { useUiText } from "../../../components/site-language-provider";
 import { formatAuthErrorMessage } from "../../../lib/auth/error";
 import {
+  type AuthEmailVerificationPayload,
   getAuthProviders,
   getGoogleAuthAuthorizeUrl,
   signupWithPassword
@@ -36,7 +37,7 @@ function SignupPageContent() {
   const [error, setError] = useState("");
   const [createdState, setCreatedState] = useState<{
     email: string;
-    previewUrl?: string | null;
+    emailVerification?: AuthEmailVerificationPayload;
   } | null>(null);
 
   useEffect(() => {
@@ -88,7 +89,7 @@ function SignupPageContent() {
 
       setCreatedState({
         email,
-        previewUrl: result.emailVerification?.previewUrl ?? null
+        emailVerification: result.emailVerification
       });
     } catch (signupError) {
       setError(signupError instanceof Error ? signupError.message : t("Hesap oluşturulamadı."));
@@ -106,22 +107,60 @@ function SignupPageContent() {
   const companyPlaceholder = locale === "en" ? "Your company name" : "Şirketinizin adı";
   const emailPlaceholder = locale === "en" ? "name@company.com" : "is@sirketiniz.com";
   const passwordPlaceholder = locale === "en" ? "At least 8 characters" : "En az 8 karakter";
-  const verificationSentMessage =
-    locale === "en"
-      ? `A verification email was sent to ${createdState?.email}.`
-      : `${createdState?.email} adresi için doğrulama e-postası gönderildi.`;
 
   if (createdState) {
+    const emailVerification = createdState.emailVerification;
+    const verificationEnabled = Boolean(emailVerification?.enabled);
+    const verificationRequired = Boolean(emailVerification?.required);
+    const verificationPreviewUrl = emailVerification?.previewUrl ?? null;
+    const verificationDeliveryEnabled = Boolean(emailVerification?.deliveryEnabled);
+    const title = verificationEnabled ? t("Hesabınız oluşturuldu") : t("Hesap hazır");
+    const description = verificationRequired
+      ? locale === "en"
+        ? "Verify your email address to unlock workspace access."
+        : "Çalışma alanı erişimini açmak için e-posta adresinizi doğrulayın."
+      : verificationEnabled
+        ? locale === "en"
+          ? "Your account is ready. You can optionally verify your email now."
+          : "Hesabınız hazır. İsterseniz e-posta adresinizi şimdi doğrulayabilirsiniz."
+        : locale === "en"
+          ? "Your account is ready. Email verification is not required for this rollout yet."
+          : "Hesabınız hazır. Bu rollout aşamasında e-posta doğrulaması henüz zorunlu değil.";
+    const successMessage = !verificationEnabled
+      ? locale === "en"
+        ? "Account created successfully. You can continue directly to the panel."
+        : "Hesap başarıyla oluşturuldu. Doğrudan panele geçebilirsiniz."
+      : verificationDeliveryEnabled
+        ? locale === "en"
+          ? `A verification email was sent to ${createdState.email}.`
+          : `${createdState.email} adresine doğrulama e-postası gönderildi.`
+        : locale === "en"
+          ? "A verification link was prepared for this account."
+          : "Bu hesap için doğrulama bağlantısı hazırlandı.";
+    const infoMessage = verificationEnabled
+      ? verificationPreviewUrl
+        ? t("Geliştirme ortamı: Aşağıdaki bağlantıdan doğrulama ekranını açabilirsiniz.")
+        : t("E-posta kutunuzu kontrol edip doğrulama bağlantısına tıklayın.")
+      : locale === "en"
+        ? "Email verification can be managed later from the super admin authentication settings."
+        : "E-posta doğrulaması daha sonra süper admin kimlik doğrulama ayarlarından yönetilebilir.";
+
     return (
       <AuthShell
         badge={t("Hesap hazır")}
-        title={t("Hesabınız oluşturuldu")}
-        description={t("E-posta adresinizi doğrulayarak kurulumu tamamlayabilirsiniz.")}
+        title={title}
+        description={description}
         footer={
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <a href={nextPath} style={{ color: "inherit", textDecoration: "none" }}>
-              {t("Panele git")}
-            </a>
+            {!verificationRequired ? (
+              <a href={nextPath} style={{ color: "inherit", textDecoration: "none" }}>
+                {t("Panele git")}
+              </a>
+            ) : (
+              <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>
+                {t("Ana sayfa")}
+              </Link>
+            )}
             <Link href="/auth/login" style={{ color: "inherit", textDecoration: "none" }}>
               {t("Giriş ekranı")}
             </Link>
@@ -131,29 +170,26 @@ function SignupPageContent() {
         <div style={{ display: "grid", gap: 14 }}>
           <AuthNotice
             tone="success"
-            message={verificationSentMessage}
+            message={successMessage}
           />
-          {createdState.previewUrl ? (
+          {verificationEnabled ? (
             <AuthNotice
               tone="info"
-              message={t("Geliştirme ortamı: Aşağıdaki bağlantıdan doğrulama ekranını açabilirsiniz.")}
+              message={infoMessage}
             />
-          ) : (
-            <AuthNotice
-              tone="info"
-              message={t("E-posta kutunuzu kontrol edip doğrulama bağlantısına tıklayın.")}
-            />
-          )}
+          ) : null}
 
-          {createdState.previewUrl ? (
-            <a href={createdState.previewUrl} style={primaryButtonStyle}>
+          {verificationPreviewUrl ? (
+            <a href={verificationPreviewUrl} style={primaryButtonStyle}>
               {t("Doğrulama bağlantısını aç")}
             </a>
           ) : null}
 
-          <a href={nextPath} style={secondaryButtonStyle}>
-            {t("Panele devam et")}
-          </a>
+          {!verificationRequired ? (
+            <a href={nextPath} style={secondaryButtonStyle}>
+              {t("Panele devam et")}
+            </a>
+          ) : null}
         </div>
       </AuthShell>
     );

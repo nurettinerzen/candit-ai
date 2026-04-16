@@ -34,6 +34,8 @@ import { ApplicantInboxService } from "./applicant-inbox.service";
 
 const JOB_STATUSES = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const;
 type JobStatusValue = (typeof JOB_STATUSES)[number];
+const SCREENING_MODES = ["WIDE_POOL", "BALANCED", "STRICT"] as const;
+type ScreeningModeValue = (typeof SCREENING_MODES)[number];
 
 class RequirementDto {
   @IsString()
@@ -150,6 +152,11 @@ class UpdateJobRequest {
   @IsOptional()
   aiDraftText?: string;
 
+  @IsIn(SCREENING_MODES)
+  @Transform(({ value }) => (value === undefined ? undefined : String(value).toUpperCase()))
+  @IsOptional()
+  screeningMode?: ScreeningModeValue;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => RequirementDto)
@@ -230,6 +237,11 @@ class BulkCvUploadBody {
   @IsString()
   @IsOptional()
   externalSource?: string;
+
+  @IsIn(SCREENING_MODES)
+  @Transform(({ value }) => (value === undefined ? undefined : String(value).toUpperCase()))
+  @IsOptional()
+  screeningMode?: ScreeningModeValue;
 }
 
 class BulkDeleteJobsRequest {
@@ -453,6 +465,7 @@ export class JobsController {
       jobId,
       source: body.source,
       externalSource: body.externalSource,
+      screeningMode: body.screeningMode,
       createdBy: user.userId,
       files: files.map((file) => ({
         originalName: file.originalname,

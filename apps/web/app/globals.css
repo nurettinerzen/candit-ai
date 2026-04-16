@@ -751,6 +751,12 @@ main {
   margin: 0;
 }
 
+.main-content [style*="text-transform: uppercase"],
+.main-content [style*="text-transform:uppercase"] {
+  text-transform: none !important;
+  letter-spacing: 0.01em !important;
+}
+
 /* ── Language Switcher ── */
 .language-switcher {
   position: fixed;
@@ -1203,7 +1209,7 @@ main {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--text-dim);
   margin-bottom: 10px;
   padding-bottom: 6px;
@@ -1690,7 +1696,7 @@ main {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .sourcing-result-list.compact {
@@ -1825,9 +1831,12 @@ main {
    ═══════════════════════════════════════════ */
 
 .small {
+  font-family: var(--font-sans);
   color: var(--muted);
   font-size: 13px;
+  font-weight: 400;
   line-height: 1.55;
+  letter-spacing: -0.008em;
 }
 
 .tiny-mono {
@@ -1841,8 +1850,8 @@ main {
 .section-label {
   margin: 0 0 12px;
   font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  text-transform: none;
+  letter-spacing: 0.04em;
   color: var(--muted);
   font-weight: 700;
   font-family: var(--font-sans);
@@ -1899,8 +1908,8 @@ main {
 .kpi-card .small {
   font-size: 10.5px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  text-transform: none;
+  letter-spacing: 0.01em;
   margin: 0;
   color: var(--muted);
   font-family: var(--font-sans);
@@ -1979,6 +1988,9 @@ main {
 .page-title-subline p {
   margin: 0;
   min-width: 0;
+  font-family: var(--font-sans);
+  font-weight: 400;
+  letter-spacing: -0.008em;
 }
 
 .reports-metric-grid {
@@ -2628,8 +2640,8 @@ main {
   font-size: 13px;
   font-weight: 700;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  text-transform: none;
+  letter-spacing: 0.01em;
   margin-bottom: 14px;
 }
 
@@ -2822,9 +2834,9 @@ main {
   text-align: left;
   padding: 9px 14px;
   font-family: var(--font-sans);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 11px;
   font-weight: 700;
   color: var(--muted);
   background: var(--bg-subtle);
@@ -3591,8 +3603,8 @@ main {
 .inbox-stat-label {
   font-size: 10px;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  text-transform: none;
+  letter-spacing: 0.01em;
   font-weight: 600;
   font-family: var(--font-sans);
 }
@@ -4035,8 +4047,8 @@ main {
   font-weight: 700;
   margin-bottom: 12px;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  text-transform: none;
+  letter-spacing: 0.01em;
   font-family: var(--font-sans);
 }
 
@@ -5319,8 +5331,8 @@ main {
   margin: 0 0 6px;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
   color: var(--primary, #7c73fa);
 }
 
@@ -5364,8 +5376,8 @@ main {
   margin-bottom: 12px;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
   color: var(--text-dim);
 }
 
@@ -5434,7 +5446,7 @@ main {
 
 .tlx-usage-row {
   display: grid;
-  grid-template-columns: minmax(180px, 220px) 1fr auto auto;
+  grid-template-columns: minmax(180px, 220px) 1fr auto;
   align-items: center;
   gap: 16px;
 }
@@ -5471,24 +5483,48 @@ main {
   text-align: right;
 }
 
-.tlx-usage-row-action {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.tlx-usage-buy-button {
-  min-height: 34px;
-  padding-inline: 12px;
-  white-space: nowrap;
-}
-
 .tlx-usage-period {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
+  gap: 10px 16px;
   font-size: 14px;
   color: var(--text-secondary);
   padding-top: 8px;
   border-top: 1px solid var(--border-subtle);
+}
+
+.subscription-period-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.subscription-period-actions {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.subscription-period-meta {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.subscription-period-meta span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.subscription-period-meta strong {
+  color: var(--risk);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* ── Addon grid (Telyx: 2 columns, compact items) ── */
@@ -5545,12 +5581,12 @@ main {
 }
 
 .tlx-plan-current {
-  border-color: var(--success, #22c55e);
-  box-shadow: 0 0 0 1px var(--success, #22c55e);
+  border-color: color-mix(in srgb, var(--primary) 72%, white 0%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 72%, white 0%), 0 18px 36px rgba(80, 70, 229, 0.12);
 }
 
 .tlx-plan-current:hover {
-  border-color: var(--success, #22c55e);
+  border-color: color-mix(in srgb, var(--primary) 72%, white 0%);
 }
 
 .tlx-plan-current-label {
@@ -5558,9 +5594,9 @@ main {
   top: -1px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 2px 14px;
-  background: var(--success, #22c55e);
-  color: #fff;
+  padding: 4px 14px;
+  background: #161b2a;
+  color: #7ea2ff;
   font-size: 11px;
   font-weight: 700;
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
@@ -5577,6 +5613,13 @@ main {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.subscription-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .subscription-section-head h2 {
@@ -5598,7 +5641,7 @@ main {
 
 .subscription-summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -5619,6 +5662,33 @@ main {
 .subscription-summary-item strong {
   color: var(--text);
   font-size: 15px;
+}
+
+.subscription-danger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--risk) 55%, transparent);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--risk);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease),
+    color 0.15s var(--ease);
+}
+
+.subscription-danger-button:hover {
+  background: color-mix(in srgb, var(--risk) 8%, transparent);
+  border-color: color-mix(in srgb, var(--risk) 72%, transparent);
+}
+
+.subscription-danger-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .tlx-plan-card-head {
@@ -5692,6 +5762,8 @@ main {
 .tlx-plan-card-action {
   padding: 22px 24px 24px;
   margin-top: auto;
+  display: grid;
+  gap: 10px;
 }
 
 .tlx-plan-btn {
@@ -5714,6 +5786,13 @@ main {
 .tlx-plan-btn:hover {
   background: var(--surface-hover);
   border-color: var(--border-strong);
+}
+
+.tlx-plan-btn-static {
+  cursor: default;
+  background: color-mix(in srgb, var(--primary-muted) 72%, var(--surface) 28%);
+  border-color: color-mix(in srgb, var(--primary-border) 80%, var(--border) 20%);
+  color: var(--primary);
 }
 
 .tlx-plan-btn:disabled {
@@ -5804,8 +5883,12 @@ main {
 }
 
 .billing-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 34px;
   height: 34px;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
@@ -5813,6 +5896,15 @@ main {
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
+}
+
+.billing-modal-close span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  transform: translateY(-1px);
 }
 
 .billing-modal-close:hover {
@@ -5876,10 +5968,40 @@ main {
   white-space: nowrap;
 }
 
-.billing-modal-footnote {
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--muted);
+.billing-modal-alert {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.billing-modal-alert-error {
+  border-color: color-mix(in srgb, var(--danger, #ef4444) 35%, var(--border) 65%);
+  background: color-mix(in srgb, var(--danger, #ef4444) 10%, var(--surface) 90%);
+  color: color-mix(in srgb, var(--danger, #ef4444) 70%, white 30%);
+}
+
+.billing-modal-form {
+  display: grid;
+  gap: 18px;
+}
+
+.billing-modal-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.billing-modal-field-wide {
+  grid-column: 1 / -1;
+}
+
+.billing-modal-form .textarea {
+  min-height: 112px;
+  resize: vertical;
 }
 
 .billing-modal-actions {
@@ -5914,11 +6036,6 @@ main {
     grid-column: 1 / -1;
   }
 
-  .tlx-usage-row-action {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
-  }
-
   .billing-addon-compact-row {
     grid-template-columns: 1fr;
     align-items: flex-start;
@@ -5926,6 +6043,10 @@ main {
 
   .billing-modal {
     padding: 18px;
+  }
+
+  .billing-modal-form-grid {
+    grid-template-columns: 1fr;
   }
 
   .billing-modal-option {
@@ -6698,8 +6819,8 @@ a.admin-distribution-card:hover {
 
 .billing-eyebrow {
   font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
   font-weight: 700;
   color: var(--text-dim);
   margin-bottom: 10px;
@@ -6846,8 +6967,8 @@ a.admin-distribution-card:hover {
   border-radius: var(--radius-full);
   font-size: 10.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  text-transform: none;
+  letter-spacing: 0.01em;
 }
 
 .billing-plan-badge.badge-current {

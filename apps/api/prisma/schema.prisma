@@ -283,6 +283,12 @@ enum BillingCheckoutStatus {
   FAILED
 }
 
+enum BillingPlanChangeKind {
+  UPGRADE
+  DOWNGRADE
+  FLEX_TRANSITION
+}
+
 enum BillingAddonKey {
   JOB_CREDIT_PACK_1
   JOB_CREDIT_PACK_3
@@ -402,6 +408,13 @@ model TenantBillingAccount {
   currentPeriodEnd      DateTime?
   stripeSubscriptionId  String?              @unique
   lastCheckoutSessionId String?
+  pendingPlanKey        BillingPlanKey?
+  pendingChangeKind     BillingPlanChangeKind?
+  pendingChangeEffectiveAt DateTime?
+  pendingChangeRequestedAt DateTime?
+  pendingChangeRequestedBy String?
+  pendingChangeMetadataJson Json?
+  lastReconciledAt      DateTime?
   currency              String               @default("usd")
   featuresJson          Json?
   planSnapshotJson      Json?
@@ -423,7 +436,7 @@ model TenantBillingSubscription {
   accountId                  String
   planKey                    BillingPlanKey
   status                     BillingAccountStatus
-  stripeSubscriptionId       String?              @unique
+  stripeSubscriptionId       String?
   stripePriceId              String?
   stripeCheckoutSessionId    String?
   stripeCustomerId           String?
@@ -447,6 +460,7 @@ model TenantBillingSubscription {
 
   @@index([tenantId, status, createdAt(sort: Desc)])
   @@index([accountId, createdAt(sort: Desc)])
+  @@index([stripeSubscriptionId, createdAt(sort: Desc)])
 }
 
 model BillingQuotaGrant {
@@ -710,6 +724,7 @@ model Job {
   roleFamily   String
   locationText String?
   shiftType    String?
+  screeningMode String   @default("BALANCED")
   salaryMin    Decimal?
   salaryMax    Decimal?
   status       JobStatus @default(DRAFT)

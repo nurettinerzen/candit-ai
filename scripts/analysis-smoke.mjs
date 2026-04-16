@@ -22,6 +22,9 @@ const SMOKE_SCENARIO_KEYS = (process.env.CANDIT_SMOKE_SCENARIO_KEYS ?? "")
 const SMOKE_ACTIVE_JOB_QUOTA = Number(process.env.CANDIT_SMOKE_ACTIVE_JOB_QUOTA ?? "1000");
 const SMOKE_CANDIDATE_QUOTA = Number(process.env.CANDIT_SMOKE_CANDIDATE_QUOTA ?? "5000000");
 const SMOKE_AI_INTERVIEW_QUOTA = Number(process.env.CANDIT_SMOKE_AI_INTERVIEW_QUOTA ?? "100000");
+const SMOKE_CONCURRENCY = Math.max(1, Number.parseInt(process.env.CANDIT_SMOKE_CONCURRENCY ?? "4", 10) || 4);
+const SMOKE_SCREENING_MODE = normalizeScreeningModeEnv(process.env.CANDIT_SMOKE_SCREENING_MODE ?? "BALANCED");
+const SMOKE_LOCATION_SIGNAL_MODE = normalizeLocationSignalMode(process.env.CANDIT_SMOKE_LOCATION_SIGNAL_MODE ?? "FULL_CONTEXT");
 const RUN_STAMP = buildRunStamp();
 const ARTIFACT_DIR = path.join(process.cwd(), "artifacts", "smoke");
 const ARTIFACT_JSON_PATH = path.join(ARTIFACT_DIR, `analysis-smoke-${RUN_STAMP}.json`);
@@ -63,12 +66,40 @@ function normalizeText(value) {
     .replace(/ü/g, "u");
 }
 
+function normalizeScreeningModeEnv(value) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === "WIDE_POOL" || normalized === "STRICT") {
+    return normalized;
+  }
+
+  return "BALANCED";
+}
+
+function normalizeLocationSignalMode(value) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === "LOCATION_ONLY") {
+    return normalized;
+  }
+
+  return "FULL_CONTEXT";
+}
+
 async function request(label, url, options = {}) {
-  const maxAttempts = 3;
+  const maxAttempts = 6;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const response = await fetch(url, options);
+      const signal = options.signal ?? AbortSignal.timeout(45000);
+      const response = await fetch(url, {
+        ...options,
+        signal
+      });
       const text = await response.text();
       let data = null;
 
@@ -87,7 +118,7 @@ async function request(label, url, options = {}) {
 
         const retriableStatus = [408, 425, 429, 500, 502, 503, 504].includes(response.status);
         if (retriableStatus && attempt < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+          await new Promise((resolve) => setTimeout(resolve, Math.min(6000, attempt * 1250)));
           continue;
         }
 
@@ -103,7 +134,7 @@ async function request(label, url, options = {}) {
         throw error;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+      await new Promise((resolve) => setTimeout(resolve, Math.min(6000, attempt * 1250)));
     }
   }
 
@@ -224,12 +255,10 @@ async function poll(label, callback, predicate, options = {}) {
   throw new Error(`${label} timed out after ${attempts} attempts`);
 }
 
-async function waitForTaskRun(token, tenantId, taskRunId, label) {
+async function waitForTaskRun(session, taskRunId, label) {
   return poll(
     label,
-    () => requestJson("Poll task run", `/ai/task-runs/${taskRunId}`, {
-      headers: authHeaders(token, tenantId)
-    }),
+    () => requestJsonAsSmokeUser(session, "Poll task run", `/ai/task-runs/${taskRunId}`),
     (detail) => {
       const status = detail?.status;
       return Boolean(status && !["PENDING", "QUEUED", "RUNNING"].includes(status));
@@ -238,15 +267,13 @@ async function waitForTaskRun(token, tenantId, taskRunId, label) {
   );
 }
 
-async function waitForFreshFitScore(token, tenantId, applicationId, previousFitScore, triggerTimestamp, label) {
+async function waitForFreshFitScore(session, applicationId, previousFitScore, triggerTimestamp, label) {
   const previousId = previousFitScore?.id ?? null;
   const previousCreatedAt = parseTimestamp(previousFitScore?.createdAt);
 
   return poll(
     label,
-    () => requestJson("Poll fit score", `/applications/${applicationId}/fit-score/latest`, {
-      headers: authHeaders(token, tenantId)
-    }),
+    () => requestJsonAsSmokeUser(session, "Poll fit score", `/applications/${applicationId}/fit-score/latest`),
     (detail) => {
       if (!detail?.id) {
         return false;
@@ -286,6 +313,72 @@ function authHeaders(token, tenantId, contentType = null) {
 
 function jsonHeaders(token, tenantId) {
   return authHeaders(token, tenantId, "application/json");
+}
+
+async function refreshSmokeSession(session) {
+  if (session.refreshPromise) {
+    return session.refreshPromise;
+  }
+
+  session.refreshPromise = (async () => {
+    const body = {
+      email: SMOKE_EMAIL,
+      password: SMOKE_PASSWORD,
+      ...(session.tenantId ? { tenantId: session.tenantId } : {})
+    };
+
+    const login = await requestJson("Smoke session refresh", "/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    if (!login?.accessToken) {
+      throw new Error("Smoke session refresh returned no access token");
+    }
+
+    session.token = login.accessToken;
+    session.tenantId = login?.user?.tenantId ?? session.tenantId;
+    session.user = login?.user ?? session.user ?? null;
+
+    return session.token;
+  })().finally(() => {
+    session.refreshPromise = null;
+  });
+
+  return session.refreshPromise;
+}
+
+async function requestJsonAsSmokeUser(session, label, pathName, options = {}) {
+  const buildOptions = () => {
+    const headers = {
+      ...(options.headers ?? {})
+    };
+
+    if (session.token && !headers.authorization) {
+      headers.authorization = `Bearer ${session.token}`;
+    }
+
+    if (session.tenantId && !headers["x-tenant-id"]) {
+      headers["x-tenant-id"] = session.tenantId;
+    }
+
+    return {
+      ...options,
+      headers
+    };
+  };
+
+  try {
+    return await requestJson(label, pathName, buildOptions());
+  } catch (error) {
+    if (error?.status !== 401) {
+      throw error;
+    }
+
+    await refreshSmokeSession(session);
+    return requestJson(label, pathName, buildOptions());
+  }
 }
 
 function toBulletList(items) {
@@ -407,6 +500,15 @@ function fitSummary(fitScore) {
   return {
     overallScore,
     confidence: typeof fitScore?.confidence === "number" ? fitScore.confidence : null,
+    fitBand: typeof fitScore?.calibration?.fitBand === "string" ? fitScore.calibration.fitBand : null,
+    interviewReadiness:
+      typeof fitScore?.calibration?.interviewReadiness === "string"
+        ? fitScore.calibration.interviewReadiness
+        : null,
+    fitBandReasoning:
+      typeof fitScore?.calibration?.fitBandReasoning === "string"
+        ? fitScore.calibration.fitBandReasoning
+        : null,
     strengths: Array.isArray(fitScore?.strengths) ? fitScore.strengths : [],
     risks: Array.isArray(fitScore?.risks) ? fitScore.risks : [],
     missingInformation: Array.isArray(fitScore?.missingInfo) ? fitScore.missingInfo : [],
@@ -421,18 +523,25 @@ function fitSummary(fitScore) {
 }
 
 function buildCvText(input) {
+  const includeMobilitySignals = SMOKE_LOCATION_SIGNAL_MODE !== "LOCATION_ONLY";
+  const sanitizedExperience = input.experience.map((line) =>
+    line.replace(/\s*\/\s*[A-Za-z ]+$/g, "").trim()
+  );
+
   return [
     `Ad Soyad: ${input.fullName}`,
     `E-posta: ${input.email}`,
     `Telefon: ${input.phone}`,
-    `Lokasyon: ${input.location}`,
-    input.workPreference ? `Calisma Tercihi: ${input.workPreference}` : null,
+    `Guncel Lokasyon: ${input.location}`,
+    `Ikamet Ettigi Bolge: ${input.location}`,
+    includeMobilitySignals && input.workPreference ? `Calisma Tercihi: ${input.workPreference}` : null,
+    "Not: Deneyim bolumunde gecen sehirler onceki isyeri lokasyonlari olabilir; guncel aday lokasyonu yukaridaki alandir.",
     "",
     "Profil Ozeti",
     input.summary,
     "",
     "Deneyim",
-    ...input.experience,
+    ...sanitizedExperience,
     "",
     "Beceriler",
     input.skills.join(", "),
@@ -442,13 +551,407 @@ function buildCvText(input) {
     input.certifications?.length ? "" : null,
     input.certifications?.length ? "Sertifikalar" : null,
     input.certifications?.length ? input.certifications.join(", ") : null,
-    input.notes?.length ? "" : null,
-    input.notes?.length ? "Ek Notlar" : null,
-    ...(input.notes ?? [])
+    includeMobilitySignals && input.notes?.length ? "" : null,
+    includeMobilitySignals && input.notes?.length ? "Ek Notlar" : null,
+    ...(includeMobilitySignals ? (input.notes ?? []) : [])
   ].filter(Boolean).join("\n");
 }
 
-const SCENARIOS = [
+function buildScenarioPhone(index) {
+  const runSuffix = RUN_STAMP.slice(-5);
+  return `+9055${runSuffix}${String(index + 1).padStart(3, "0")}`;
+}
+
+const GENERATED_PROFILE_TEMPLATES = [
+  {
+    key: "strong_b2b_saas",
+    label: "Guclu B2B SaaS paid media",
+    fitTier: "strong",
+    roleExpectation: "strong",
+    expectedThemes: ["lead generation", "google ads", "meta ads", "ga4", "gtm"],
+    summary: "6 yillik B2B SaaS performance marketing deneyimim var. Google Ads, Meta Ads, LinkedIn Ads, GA4 ve GTM tarafinda hands-on calisiyor; pipeline odakli lead generation kampanyalari yurutup MQL ve demo maliyeti optimizasyonu yapiyorum.",
+    experience: [
+      "2022-2026 Senior Performance Marketing Specialist - FunnelBridge / Istanbul",
+      "Google Search, LinkedIn Ads ve Meta kampanyalari ile demo talebi hacmini buyuttum.",
+      "GA4, GTM, HubSpot ve Looker Studio ile attribution ve funnel dashboard'lari kurdum.",
+      "2019-2022 Performance Marketing Executive - Leadspan / Istanbul",
+      "B2B demand generation kampanyalarinda CPL ve SQL maliyetini optimize ettim."
+    ],
+    skills: ["Google Ads", "Meta Ads", "LinkedIn Ads", "GA4", "GTM", "HubSpot", "Lead Generation", "Looker Studio"],
+    education: "Bogazici Universitesi - Isletme",
+    certifications: ["Google Ads Search Certification", "GA4 Certification"]
+  },
+  {
+    key: "strong_agency_paid",
+    label: "Guclu ajans paid media",
+    fitTier: "strong",
+    roleExpectation: "strong",
+    expectedThemes: ["ajans", "google ads", "meta ads", "butce", "optimizasyon"],
+    summary: "Ajans tarafinda 7 yillik paid media deneyimim var. Birden fazla hesabi paralel yonetiyor, Google Ads ve Meta Ads panelinde butce optimizasyonunu dogrudan ben yapiyorum.",
+    experience: [
+      "2021-2026 Senior Paid Media Specialist - Rocket Agency / Istanbul",
+      "B2B ve teknoloji musterilerinde aylik 1.8M TL medya butcesi optimize ettim.",
+      "Google, Meta ve LinkedIn kampanyalarinda lead kalitesi ve CPL performansini iyilestirdim.",
+      "2018-2021 Paid Media Executive - Growthport / Istanbul",
+      "Raporlama ve kreatif test ritmini satis ekipleriyle birlikte yonettim."
+    ],
+    skills: ["Google Ads", "Meta Ads", "LinkedIn Ads", "GA4", "GTM", "Looker Studio", "Budget Management"],
+    education: "Bahcesehir Universitesi - Reklamcilik"
+  },
+  {
+    key: "strong_ecommerce_paid",
+    label: "Guclu e-ticaret performance",
+    fitTier: "strong",
+    roleExpectation: "strong",
+    expectedThemes: ["google shopping", "merchant center", "performance", "ga4"],
+    summary: "E-ticaret ve acquisition odakli 5 yillik performance marketing deneyimim var. Google Shopping, Search, Meta ve measurement tarafinda gucluyum.",
+    experience: [
+      "2021-2026 Senior Performance Marketing Specialist - RapidCart / Istanbul",
+      "Google Shopping ve Search kampanyalariyla gelir ve ROAS hedeflerini yonettim.",
+      "Meta acquisition kampanyalarinda kreatif ve funnel testleri yaptim.",
+      "2018-2021 Digital Marketing Executive - CommerceOne / Istanbul",
+      "GA4, GTM ve Merchant Center tarafinda hands-on calistim."
+    ],
+    skills: ["Google Ads", "Google Shopping", "Merchant Center", "Meta Ads", "GA4", "GTM", "CAPI"],
+    education: "Yeditepe Universitesi - Pazarlama"
+  },
+  {
+    key: "strong_hands_on_manager",
+    label: "Manager title ama operasyonel",
+    fitTier: "strong",
+    roleExpectation: "strong",
+    shouldMentionHandsOnRisk: true,
+    expectedThemes: ["manager", "hands-on", "kampanya", "optimizasyon"],
+    summary: "Title olarak manager olsam da kampanya setup, optimizasyon ve raporlama tarafinda aktif calismaya devam ediyorum. Ekip koordinasyonu ile bireysel katkıyı birlikte goturuyorum.",
+    experience: [
+      "2022-2026 Performance Marketing Manager - Launchers Agency / Istanbul",
+      "Google Ads ve Meta hesaplarini bizzat optimize ediyor, ekip ritmini koordine ediyorum.",
+      "LinkedIn Ads ve CRM raporlamasi ile lead kalitesini takip ediyorum.",
+      "2018-2022 Senior Paid Media Specialist - Reachlab / Istanbul",
+      "B2B lead generation kampanyalarinda CPL ve demo maliyetini dusurdum."
+    ],
+    skills: ["Google Ads", "Meta Ads", "LinkedIn Ads", "GA4", "GTM", "Looker Studio", "Team Coordination"],
+    education: "Istanbul Medeniyet Universitesi - Isletme"
+  },
+  {
+    key: "medium_crm_lifecycle",
+    label: "CRM ve lifecycle yaklasik aday",
+    fitTier: "medium",
+    roleExpectation: "medium",
+    expectedThemes: ["crm", "hubspot", "lifecycle", "lead scoring"],
+    summary: "CRM otomasyonu, lifecycle marketing ve lead scoring tarafinda gucluyum. Reklam paneli yonetimim daha destekleyici seviyede.",
+    experience: [
+      "2022-2026 Marketing Operations Manager - SaaSFlow / Istanbul",
+      "HubSpot lifecycle akislari, nurture programlari ve lead scoring modeli kurdum.",
+      "2019-2022 CRM Specialist - B2BWorks / Istanbul",
+      "E-posta ve webinar kaynakli lead'lerin pipeline performansini izledim."
+    ],
+    skills: ["HubSpot", "Lifecycle Marketing", "Lead Scoring", "Looker Studio", "GA4", "CRM"],
+    education: "Marmara Universitesi - Endustri Muhendisligi"
+  },
+  {
+    key: "medium_brand_marketer",
+    label: "Brand marketing agirlikli aday",
+    fitTier: "medium",
+    roleExpectation: "medium",
+    expectedThemes: ["brand", "kampanya planlama", "performance eksigi"],
+    summary: "Brand marketing ve kampanya planlama tarafinda 7 yillik deneyimim var. Paid media optimizasyonu ana uzmanligim degil ama kanal koordinasyonuna hakimim.",
+    experience: [
+      "2022-2026 Brand Marketing Manager - UrbanBeverage / Istanbul",
+      "360 kampanya planlari ve kreatif ajans yonetimi yaptim.",
+      "2018-2022 Marketing Communications Specialist - Northstar / Istanbul",
+      "Lansman, brief ve kanal koordinasyonu sureclerini yuruttum."
+    ],
+    skills: ["Brand Strategy", "Campaign Planning", "Agency Management", "Brief Writing", "Marketing Coordination"],
+    education: "Galatasaray Universitesi - Iletisim"
+  },
+  {
+    key: "medium_analytics_adjacent",
+    label: "Analitik guclu adjacent aday",
+    fitTier: "medium",
+    roleExpectation: "medium",
+    expectedThemes: ["ga4", "dashboard", "analitik", "attribution"],
+    summary: "Pazarlama analitigi, attribution ve dashboard tarafinda gucluyum. Kampanya paneli yonetimi ikincil seviyede kaldı.",
+    experience: [
+      "2022-2026 Marketing Analytics Analyst - SignalIQ / Istanbul",
+      "GA4, Looker Studio ve BigQuery ile funnel ve attribution raporlari hazirladim.",
+      "2019-2022 Data Analyst - Finlite / Istanbul",
+      "Paid media performans raporlarini olusturdum; butce yonetimi yapmadim."
+    ],
+    skills: ["GA4", "Looker Studio", "BigQuery", "SQL", "Attribution", "Dashboarding"],
+    education: "Bogazici Universitesi - Istatistik"
+  },
+  {
+    key: "low_content_marketer",
+    label: "Icerik pazarlamasi adayi",
+    fitTier: "low",
+    roleExpectation: "low",
+    expectedThemes: ["icerik", "paid media eksigi", "seo"],
+    summary: "Icerik stratejisi, editorial planning ve webinar funnel tarafinda gucluyum. Paid media execution ana uzmanligim degil.",
+    experience: [
+      "2020-2026 Content Marketing Manager - StoryWorks / Istanbul",
+      "Blog, webinar ve e-kitap funnel'lari kurdum.",
+      "2017-2020 Content Specialist - BrandLoom / Istanbul",
+      "Yayin takvimi ve e-posta kampanya metinleri hazirladim."
+    ],
+    skills: ["Content Strategy", "Copywriting", "SEO", "Email Marketing", "Editorial Planning"],
+    education: "Istanbul Bilgi Universitesi - Medya ve Iletisim"
+  },
+  {
+    key: "low_junior_growth",
+    label: "Junior growth adayi",
+    fitTier: "low",
+    roleExpectation: "low",
+    expectedThemes: ["junior", "staj", "deneyim", "gelisim"],
+    summary: "1 yil staj ve junior seviye growth marketing deneyimim var. Kampanya setup ve raporlama tarafinda destek verdim ama strateji ve butce yonetimi deneyimim sinirli.",
+    experience: [
+      "2025-2026 Growth Marketing Intern - AppNest / Istanbul",
+      "Meta Ads panelinde kreatif testleri ve raporlamayi destekledim.",
+      "2024-2025 Digital Marketing Intern - Nova Academy / Istanbul",
+      "Blog, e-posta ve temel reklam paneli islemlerine yardimci oldum."
+    ],
+    skills: ["Meta Ads", "Canva", "Excel", "GA4 temel raporlama", "Content Support"],
+    education: "Marmara Universitesi - Iletisim Fakultesi"
+  },
+  {
+    key: "low_clinical_irrelevant",
+    label: "Klinik gecmisli alakasiz aday",
+    fitTier: "low",
+    roleExpectation: "low",
+    forbiddenStrengthTerms: ["klinik", "dis hekimligi", "hekim"],
+    expectedThemes: ["uyumsuz", "ilgili deneyim yok", "klinik", "alakasiz"],
+    summary: "Dis hekimligi ve klinik yonetim tarafinda 10 yillik deneyimim var. Pazarlama ve paid media gecmisim bulunmuyor.",
+    experience: [
+      "2016-2026 Klinik Yonetici / Dis Hekimi - SmileCare Clinic / Istanbul",
+      "Hasta operasyonlari, randevu duzeni ve ekip koordinasyonu yonettim.",
+      "2011-2016 Dis Hekimi - DentalLine / Istanbul"
+    ],
+    skills: ["Hasta Yonetimi", "Klinik Operasyon", "Takim Koordinasyonu", "Planlama"],
+    education: "Istanbul Universitesi - Dis Hekimligi Fakultesi"
+  }
+];
+
+const GENERATED_LOCATION_VARIANTS = [
+  {
+    key: "cekmekoy_local",
+    label: "Cekmekoy lokal",
+    location: "Istanbul / Cekmekoy",
+    workPreference: "Hibrit veya ofis duzenine uygunum; Cekmekoy lokasyonunda calisabilirim.",
+    notes: ["Cekmekoy lokasyonundayim."],
+    locationExpectation: "very_high",
+    expectedThemes: ["cekmekoy", "hibrit", "ulasim"]
+  },
+  {
+    key: "umraniye_near",
+    label: "Yakin ilce",
+    location: "Istanbul / Umraniye",
+    workPreference: "Hibrit duzende haftada 4 gun ofise gelebilirim.",
+    notes: ["Cekmekoy ofisine duzenli ulasimim var."],
+    locationExpectation: "high",
+    expectedThemes: ["umraniye", "hibrit", "ulasim"]
+  },
+  {
+    key: "sancaktepe_same_side",
+    label: "Ayni yakada",
+    location: "Istanbul / Sancaktepe",
+    workPreference: "Hibrit veya ofis duzenine uygunum.",
+    notes: ["Anadolu yakasinda yasiyorum; Cekmekoy ulasimi rahat."],
+    locationExpectation: "high",
+    expectedThemes: ["sancaktepe", "ulasim", "hibrit"]
+  },
+  {
+    key: "halkali_far_commute_open",
+    label: "Uzak ilce ama gelebilir",
+    location: "Istanbul / Halkali",
+    workPreference: "Hibrit duzende calisabilirim; ulasim uzun olsa da planlayabilirim.",
+    notes: ["Halkali'dan Cekmekoy'e duzenli gidip gelebilirim."],
+    locationExpectation: "medium",
+    expectedThemes: ["halkali", "ulasim", "hibrit"]
+  },
+  {
+    key: "halkali_far_no_signal",
+    label: "Uzak ilce sinyal belirsiz",
+    location: "Istanbul / Halkali",
+    workPreference: "Hibrit rol degerlendirebilirim.",
+    notes: [],
+    locationExpectation: "low",
+    expectedThemes: ["halkali", "ulasim", "teyit"]
+  },
+  {
+    key: "bursa_relocation_open",
+    label: "Bursa ama tasinmaya acik",
+    location: "Bursa",
+    workPreference: "Istanbul'a tasinabilirim; hibrit rol benim icin uygundur.",
+    notes: ["Istanbul'a tasinmaya acigim."],
+    locationExpectation: "medium",
+    expectedThemes: ["bursa", "tasinabilirim", "hibrit"]
+  },
+  {
+    key: "bursa_no_relocation",
+    label: "Bursa ve tasinma yok",
+    location: "Bursa",
+    workPreference: "Bulundugum sehirde kalmak istiyorum; tasinma dusunmuyorum.",
+    notes: ["Tasinma dusunmuyorum."],
+    locationExpectation: "very_low",
+    expectedThemes: ["bursa", "tasinma yok", "hibrit zor"]
+  }
+];
+
+const LOCATION_ONLY_LOCATION_VARIANTS = [
+  {
+    key: "cekmekoy_local",
+    label: "Cekmekoy lokal",
+    location: "Istanbul / Cekmekoy",
+    locationExpectation: "very_high",
+    expectedThemes: ["cekmekoy", "istanbul"]
+  },
+  {
+    key: "umraniye_near",
+    label: "Umraniye",
+    location: "Istanbul / Umraniye",
+    locationExpectation: "high",
+    expectedThemes: ["umraniye", "istanbul"]
+  },
+  {
+    key: "sancaktepe_same_side",
+    label: "Sancaktepe",
+    location: "Istanbul / Sancaktepe",
+    locationExpectation: "high",
+    expectedThemes: ["sancaktepe", "istanbul"]
+  },
+  {
+    key: "atasehir_city",
+    label: "Atasehir",
+    location: "Istanbul / Atasehir",
+    locationExpectation: "medium",
+    expectedThemes: ["atasehir", "istanbul"]
+  },
+  {
+    key: "besiktas_city",
+    label: "Besiktas",
+    location: "Istanbul / Besiktas",
+    locationExpectation: "medium",
+    expectedThemes: ["besiktas", "istanbul"]
+  },
+  {
+    key: "halkali_far",
+    label: "Halkali",
+    location: "Istanbul / Halkali",
+    locationExpectation: "low",
+    expectedThemes: ["halkali", "istanbul"]
+  },
+  {
+    key: "bursa_city",
+    label: "Bursa",
+    location: "Bursa",
+    locationExpectation: "low",
+    expectedThemes: ["bursa"]
+  },
+  {
+    key: "ankara_city",
+    label: "Ankara",
+    location: "Ankara / Cankaya",
+    locationExpectation: "low",
+    expectedThemes: ["ankara", "cankaya"]
+  },
+  {
+    key: "izmir_city",
+    label: "Izmir",
+    location: "Izmir / Karsiyaka",
+    locationExpectation: "low",
+    expectedThemes: ["izmir", "karsiyaka"]
+  },
+  {
+    key: "sofia_foreign",
+    label: "Sofia",
+    location: "Sofia / Bulgaria",
+    locationExpectation: "very_low",
+    expectedThemes: ["sofia", "bulgaria"]
+  }
+];
+
+function deriveExpectedFitBand(fitTier, locationExpectation) {
+  if (SMOKE_LOCATION_SIGNAL_MODE === "LOCATION_ONLY") {
+    if (fitTier === "strong") {
+      return "high";
+    }
+
+    if (fitTier === "medium") {
+      return "medium";
+    }
+
+    return "low";
+  }
+
+  if (fitTier === "low") {
+    return "low";
+  }
+
+  if (fitTier === "strong") {
+    switch (locationExpectation) {
+      case "very_high":
+      case "high":
+        return "high";
+      case "medium":
+      case "low":
+        return "medium";
+      default:
+        return "low";
+    }
+  }
+
+  switch (locationExpectation) {
+    case "very_low":
+      return "low";
+    default:
+      return "medium";
+  }
+}
+
+function buildGeneratedScenario(template, variant) {
+  const certifications = template.certifications?.length ? [...template.certifications] : undefined;
+  const includeMobilitySignals = SMOKE_LOCATION_SIGNAL_MODE !== "LOCATION_ONLY";
+  const notes = includeMobilitySignals
+    ? [...(template.notes ?? []), ...(variant.notes ?? [])]
+    : [];
+
+  return {
+    key: `gen_${template.key}_${variant.key}`,
+    label: `${template.label} / ${variant.label}`,
+    expectedFitBand: deriveExpectedFitBand(template.fitTier, variant.locationExpectation),
+    expectedThemes: [...new Set([...(template.expectedThemes ?? []), ...(variant.expectedThemes ?? [])])],
+    profile: {
+      location: variant.location,
+      workPreference: includeMobilitySignals ? variant.workPreference : undefined,
+      summary: template.summary,
+      experience: [...template.experience],
+      skills: [...template.skills],
+      education: template.education,
+      certifications,
+      notes
+    },
+    meta: {
+      generated: true,
+      profileTier: template.fitTier,
+      roleExpectation: template.roleExpectation,
+      locationExpectation: variant.locationExpectation,
+      shouldMentionHandsOnRisk: Boolean(template.shouldMentionHandsOnRisk),
+      forbiddenStrengthTerms: template.forbiddenStrengthTerms ?? []
+    }
+  };
+}
+
+function buildGeneratedScenarios() {
+  const variants = SMOKE_LOCATION_SIGNAL_MODE === "LOCATION_ONLY"
+    ? LOCATION_ONLY_LOCATION_VARIANTS
+    : GENERATED_LOCATION_VARIANTS;
+
+  return GENERATED_PROFILE_TEMPLATES.flatMap((template) =>
+    variants.map((variant) => buildGeneratedScenario(template, variant))
+  );
+}
+
+const BASE_SCENARIOS = [
   {
     key: "strong_local_mid",
     label: "Guclu lokal eslesme",
@@ -1029,6 +1532,20 @@ const SCENARIOS = [
   }
 ];
 
+const GENERATED_SCENARIOS = buildGeneratedScenarios();
+const SCENARIOS = SMOKE_LOCATION_SIGNAL_MODE === "LOCATION_ONLY"
+  ? [...GENERATED_SCENARIOS]
+  : [...BASE_SCENARIOS, ...GENERATED_SCENARIOS];
+const SCENARIO_KEY_COUNT = new Set(SCENARIOS.map((scenario) => scenario.key)).size;
+
+if (SCENARIO_KEY_COUNT !== SCENARIOS.length) {
+  throw new Error("Smoke scenario keys must be unique");
+}
+
+if (SCENARIOS.length !== 100) {
+  throw new Error(`Expected 100 smoke scenarios, received ${SCENARIOS.length}`);
+}
+
 const ACTIVE_SCENARIOS = SMOKE_SCENARIO_KEYS.length > 0
   ? SCENARIOS.filter((scenario) => SMOKE_SCENARIO_KEYS.includes(scenario.key))
   : SCENARIOS;
@@ -1054,7 +1571,8 @@ async function ensureSmokeUser() {
       created: false,
       token: login.accessToken,
       tenantId: login?.user?.tenantId ?? SMOKE_TENANT_ID,
-      user: login?.user ?? null
+      user: login?.user ?? null,
+      refreshPromise: null
     };
   }
 
@@ -1075,7 +1593,8 @@ async function ensureSmokeUser() {
       created: true,
       token: signup.accessToken,
       tenantId: signup?.user?.tenantId ?? null,
-      user: signup?.user ?? null
+      user: signup?.user ?? null,
+      refreshPromise: null
     };
   } catch (error) {
     const detail = normalizeText(JSON.stringify(error.detail ?? ""));
@@ -1103,12 +1622,13 @@ async function ensureSmokeUser() {
       created: false,
       token: login.accessToken,
       tenantId: login?.user?.tenantId ?? null,
-      user: login?.user ?? null
+      user: login?.user ?? null,
+      refreshPromise: null
     };
   }
 }
 
-async function createMarketingJob(token, tenantId) {
+async function createMarketingJob(session) {
   const payload = {
     title: `Performance Marketing Specialist Smoke ${RUN_STAMP.slice(-6)}`,
     roleFamily: "Marketing",
@@ -1135,9 +1655,9 @@ async function createMarketingJob(token, tenantId) {
   };
 
   try {
-    const created = await requestJson("Create smoke job", "/jobs", {
+    const created = await requestJsonAsSmokeUser(session, "Create smoke job", "/jobs", {
       method: "POST",
-      headers: jsonHeaders(token, tenantId),
+      headers: jsonHeaders(session.token, session.tenantId),
       body: JSON.stringify({
         ...payload,
         status: "PUBLISHED"
@@ -1157,9 +1677,9 @@ async function createMarketingJob(token, tenantId) {
       throw error;
     }
 
-    const created = await requestJson("Create draft smoke job", "/jobs", {
+    const created = await requestJsonAsSmokeUser(session, "Create draft smoke job", "/jobs", {
       method: "POST",
-      headers: jsonHeaders(token, tenantId),
+      headers: jsonHeaders(session.token, session.tenantId),
       body: JSON.stringify({
         ...payload,
         status: "DRAFT"
@@ -1171,14 +1691,10 @@ async function createMarketingJob(token, tenantId) {
   }
 }
 
-async function loadExistingJobContext(token, tenantId, jobId) {
+async function loadExistingJobContext(session, jobId) {
   const [jobs, applications] = await Promise.all([
-    requestJson("List jobs", "/jobs?limit=100", {
-      headers: authHeaders(token, tenantId)
-    }),
-    requestJson("List applications", `/applications?jobId=${encodeURIComponent(jobId)}`, {
-      headers: authHeaders(token, tenantId)
-    })
+    requestJsonAsSmokeUser(session, "List jobs", "/jobs?limit=100"),
+    requestJsonAsSmokeUser(session, "List applications", `/applications?jobId=${encodeURIComponent(jobId)}`)
   ]);
 
   const job = Array.isArray(jobs) ? jobs.find((item) => item?.id === jobId) : null;
@@ -1193,7 +1709,19 @@ async function loadExistingJobContext(token, tenantId, jobId) {
   return { job, applications };
 }
 
-async function uploadCvFile(token, tenantId, candidateId, fileName, content) {
+async function ensureSmokeJobScreeningMode(session, jobId, screeningMode) {
+  const updated = await requestJsonAsSmokeUser(session, "Update smoke job screening mode", `/jobs/${jobId}`, {
+    method: "PATCH",
+    headers: jsonHeaders(session.token, session.tenantId),
+    body: JSON.stringify({
+      screeningMode
+    })
+  });
+
+  return updated;
+}
+
+async function uploadCvFile(session, candidateId, fileName, content) {
   const formData = new FormData();
   formData.set(
     "file",
@@ -1202,17 +1730,63 @@ async function uploadCvFile(token, tenantId, candidateId, fileName, content) {
     })
   );
 
-  return requestJson("Upload CV", `/candidates/${candidateId}/cv-files`, {
+  return requestJsonAsSmokeUser(session, "Upload CV", `/candidates/${candidateId}/cv-files`, {
     method: "POST",
-    headers: authHeaders(token, tenantId),
+    headers: authHeaders(session.token, session.tenantId),
     body: formData
   });
 }
 
-async function processScenario(token, tenantId, job, scenario, index) {
+async function createOrFindApplication(session, jobId, candidateId) {
+  const maxAttempts = 7;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await requestJsonAsSmokeUser(session, "Create application", "/applications", {
+        method: "POST",
+        headers: jsonHeaders(session.token, session.tenantId),
+        body: JSON.stringify({
+          candidateId,
+          jobId
+        })
+      });
+    } catch (error) {
+      const applications = await requestJsonAsSmokeUser(
+        session,
+        "List applications after create conflict",
+        `/applications?jobId=${encodeURIComponent(jobId)}`
+      );
+
+      const existing = Array.isArray(applications)
+        ? applications.find(
+            (item) => item?.candidateId === candidateId || item?.candidate?.id === candidateId
+          )
+        : null;
+
+      if (existing) {
+        return existing;
+      }
+
+      const isConflict = error?.status === 409;
+      const isTransient = [429, 500, 502, 503, 504].includes(error?.status);
+
+      if (isConflict) {
+        throw error;
+      }
+
+      if (!isTransient || attempt === maxAttempts) {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+    }
+  }
+}
+
+async function processScenario(session, job, scenario, index) {
   const fullName = `Smoke ${String(index + 1).padStart(2, "0")} ${scenario.label}`;
-  const email = `analysis-smoke-${scenario.key}-${RUN_STAMP}@example.com`;
-  const phone = `+905550${String(index + 1).padStart(6, "0")}`;
+  const email = `analysis-smoke-${RUN_STAMP}-${String(index + 1).padStart(3, "0")}@example.com`;
+  const phone = buildScenarioPhone(index);
   const cvText = buildCvText({
     ...scenario.profile,
     fullName,
@@ -1220,14 +1794,15 @@ async function processScenario(token, tenantId, job, scenario, index) {
     phone
   });
 
-  const candidateResult = await requestJson("Create candidate", "/candidates", {
+  const candidateResult = await requestJsonAsSmokeUser(session, "Create candidate", "/candidates", {
     method: "POST",
-    headers: jsonHeaders(token, tenantId),
+    headers: jsonHeaders(session.token, session.tenantId),
     body: JSON.stringify({
       fullName,
       email,
       phone,
-      source: "analysis_smoke"
+      source: "analysis_smoke",
+      locationText: scenario.profile.location
     })
   });
   const candidateId = candidateResult?.candidate?.id ?? candidateResult?.id ?? null;
@@ -1235,23 +1810,21 @@ async function processScenario(token, tenantId, job, scenario, index) {
     throw new Error("Candidate creation returned no id");
   }
 
-  const cvUpload = await uploadCvFile(token, tenantId, candidateId, `${scenario.key}.txt`, cvText);
+  const cvUpload = await uploadCvFile(session, candidateId, `${scenario.key}.txt`, cvText);
   const cvFileId = cvUpload?.id;
   if (!cvFileId) {
     throw new Error("CV upload returned no file id");
   }
 
-  await requestJson("Trigger CV parsing", `/candidates/${candidateId}/cv-parsing/trigger`, {
+  await requestJsonAsSmokeUser(session, "Trigger CV parsing", `/candidates/${candidateId}/cv-parsing/trigger`, {
     method: "POST",
-    headers: jsonHeaders(token, tenantId),
+    headers: jsonHeaders(session.token, session.tenantId),
     body: JSON.stringify({ cvFileId })
   });
 
   const cvParsing = await poll(
     `CV parsing ${scenario.key}`,
-    () => requestJson("Poll CV parsing", `/candidates/${candidateId}/cv-parsing/latest?cvFileId=${encodeURIComponent(cvFileId)}`, {
-      headers: authHeaders(token, tenantId)
-    }),
+    () => requestJsonAsSmokeUser(session, "Poll CV parsing", `/candidates/${candidateId}/cv-parsing/latest?cvFileId=${encodeURIComponent(cvFileId)}`),
     (detail) => {
       const status = detail?.taskRun?.status;
       return Boolean(status && !["PENDING", "QUEUED", "RUNNING"].includes(status));
@@ -1263,72 +1836,46 @@ async function processScenario(token, tenantId, job, scenario, index) {
     throw new Error(`CV parsing failed: ${cvParsing?.taskRun?.errorMessage ?? "unknown"}`);
   }
 
-  const applicationResult = await requestJson("Create application", "/applications", {
-    method: "POST",
-    headers: jsonHeaders(token, tenantId),
-    body: JSON.stringify({
-      candidateId,
-      jobId: job.id
-    })
-  });
+  const applicationResult = await createOrFindApplication(session, job.id, candidateId);
   const applicationId = applicationResult?.id ?? applicationResult?.application?.id ?? null;
   if (!applicationId) {
     throw new Error("Application creation returned no id");
   }
 
   const fitTriggerStartedAt = Date.now();
-  const fitTrigger = await requestJson("Trigger fit score", `/applications/${applicationId}/quick-action`, {
+  const fitTrigger = await requestJsonAsSmokeUser(session, "Trigger fit score", `/applications/${applicationId}/quick-action`, {
     method: "POST",
-    headers: jsonHeaders(token, tenantId),
+    headers: jsonHeaders(session.token, session.tenantId),
     body: JSON.stringify({ action: "trigger_fit_score" })
   });
   if (!fitTrigger?.taskRunId) {
     throw new Error("Fit score trigger returned no taskRunId");
   }
 
-  const fitTaskRun = await waitForTaskRun(
-    token,
-    tenantId,
-    fitTrigger.taskRunId,
-    `Fit score task ${scenario.key}`
-  );
+  const fitTaskRun = await waitForTaskRun(session, fitTrigger.taskRunId, `Fit score task ${scenario.key}`);
 
   if (fitTaskRun?.status !== "SUCCEEDED") {
     throw new Error(`Fit score task failed: ${fitTaskRun?.errorMessage ?? "unknown"}`);
   }
 
-  const fitScore = await waitForFreshFitScore(
-    token,
-    tenantId,
-    applicationId,
-    null,
-    fitTriggerStartedAt,
-    `Fit score ${scenario.key}`
-  );
+  const fitScore = await waitForFreshFitScore(session, applicationId, null, fitTriggerStartedAt, `Fit score ${scenario.key}`);
 
-  const screeningTrigger = await requestJson("Trigger screening", `/applications/${applicationId}/quick-action`, {
+  const screeningTrigger = await requestJsonAsSmokeUser(session, "Trigger screening", `/applications/${applicationId}/quick-action`, {
     method: "POST",
-    headers: jsonHeaders(token, tenantId),
+    headers: jsonHeaders(session.token, session.tenantId),
     body: JSON.stringify({ action: "trigger_screening" })
   });
   if (!screeningTrigger?.taskRunId) {
     throw new Error("Screening trigger returned no taskRunId");
   }
 
-  const screening = await waitForTaskRun(
-    token,
-    tenantId,
-    screeningTrigger.taskRunId,
-    `Screening ${scenario.key}`
-  );
+  const screening = await waitForTaskRun(session, screeningTrigger.taskRunId, `Screening ${scenario.key}`);
 
   if (screening?.status !== "SUCCEEDED") {
     throw new Error(`Screening failed: ${screening?.errorMessage ?? "unknown"}`);
   }
 
-  const applicationDetail = await requestJson("Application detail", `/read-models/applications/${applicationId}`, {
-    headers: authHeaders(token, tenantId)
-  });
+  const applicationDetail = await requestJsonAsSmokeUser(session, "Application detail", `/read-models/applications/${applicationId}`);
 
   const fit = fitSummary(fitScore);
   const screeningView = screeningSummary(screening);
@@ -1370,69 +1917,48 @@ async function processScenario(token, tenantId, job, scenario, index) {
   };
 }
 
-async function replayScenario(token, tenantId, job, scenario, index, existingApplication) {
+async function replayScenario(session, job, scenario, index, existingApplication) {
   const applicationId = existingApplication?.id ?? null;
   const candidate = existingApplication?.candidate ?? {};
   if (!applicationId) {
     throw new Error(`Existing application missing for scenario: ${scenario.label}`);
   }
 
-  const previousFitScore = await requestJson("Read previous fit score", `/applications/${applicationId}/fit-score/latest`, {
-    headers: authHeaders(token, tenantId)
-  });
+  const previousFitScore = await requestJsonAsSmokeUser(session, "Read previous fit score", `/applications/${applicationId}/fit-score/latest`);
   const fitTriggerStartedAt = Date.now();
-  const fitTrigger = await requestJson("Trigger fit score", `/applications/${applicationId}/quick-action`, {
+  const fitTrigger = await requestJsonAsSmokeUser(session, "Trigger fit score", `/applications/${applicationId}/quick-action`, {
     method: "POST",
-    headers: jsonHeaders(token, tenantId),
+    headers: jsonHeaders(session.token, session.tenantId),
     body: JSON.stringify({ action: "trigger_fit_score" })
   });
   if (!fitTrigger?.taskRunId) {
     throw new Error("Fit score trigger returned no taskRunId");
   }
 
-  const fitTaskRun = await waitForTaskRun(
-    token,
-    tenantId,
-    fitTrigger.taskRunId,
-    `Fit score task ${scenario.key}`
-  );
+  const fitTaskRun = await waitForTaskRun(session, fitTrigger.taskRunId, `Fit score task ${scenario.key}`);
 
   if (fitTaskRun?.status !== "SUCCEEDED") {
     throw new Error(`Fit score task failed: ${fitTaskRun?.errorMessage ?? "unknown"}`);
   }
 
-  const fitScore = await waitForFreshFitScore(
-    token,
-    tenantId,
-    applicationId,
-    previousFitScore,
-    fitTriggerStartedAt,
-    `Fit score ${scenario.key}`
-  );
+  const fitScore = await waitForFreshFitScore(session, applicationId, previousFitScore, fitTriggerStartedAt, `Fit score ${scenario.key}`);
 
-  const screeningTrigger = await requestJson("Trigger screening", `/applications/${applicationId}/quick-action`, {
+  const screeningTrigger = await requestJsonAsSmokeUser(session, "Trigger screening", `/applications/${applicationId}/quick-action`, {
     method: "POST",
-    headers: jsonHeaders(token, tenantId),
+    headers: jsonHeaders(session.token, session.tenantId),
     body: JSON.stringify({ action: "trigger_screening" })
   });
   if (!screeningTrigger?.taskRunId) {
     throw new Error("Screening trigger returned no taskRunId");
   }
 
-  const screening = await waitForTaskRun(
-    token,
-    tenantId,
-    screeningTrigger.taskRunId,
-    `Screening ${scenario.key}`
-  );
+  const screening = await waitForTaskRun(session, screeningTrigger.taskRunId, `Screening ${scenario.key}`);
 
   if (screening?.status !== "SUCCEEDED") {
     throw new Error(`Screening failed: ${screening?.errorMessage ?? "unknown"}`);
   }
 
-  const applicationDetail = await requestJson("Application detail", `/read-models/applications/${applicationId}`, {
-    headers: authHeaders(token, tenantId)
-  });
+  const applicationDetail = await requestJsonAsSmokeUser(session, "Application detail", `/read-models/applications/${applicationId}`);
 
   const fit = fitSummary(fitScore);
   const screeningView = screeningSummary(screening);
@@ -1499,7 +2025,7 @@ function deriveHeuristicAssessment(scenario, fit, screening) {
   const themesOk = scenario.expectedThemes.some((theme) => blob.includes(normalizeText(theme)));
   const nonAdvanceOk = band !== "low" || screening.recommendedOutcome !== "ADVANCE";
   const overallConsistencyOk = fit.consistencyGap === null || fit.consistencyGap <= 15;
-  const scenarioChecks = evaluateScenarioSpecificChecks(scenario.key, fit, {
+  const scenarioChecks = evaluateScenarioSpecificChecks(scenario, fit, {
     blob,
     strengthsBlob: normalizeText(fit.strengths.join(" "))
   });
@@ -1516,8 +2042,85 @@ function deriveHeuristicAssessment(scenario, fit, screening) {
   };
 }
 
-function evaluateScenarioSpecificChecks(key, fit, input) {
+function matchesLocationExpectation(expectation, score) {
+  if (score === null) {
+    return true;
+  }
+
+  switch (expectation) {
+    case "very_high":
+      return score >= 85;
+    case "high":
+      return score >= 70;
+    case "medium":
+      return score >= 35 && score <= 75;
+    case "low":
+      return score <= 55;
+    case "very_low":
+      return score <= 35;
+    default:
+      return true;
+  }
+}
+
+function matchesRoleExpectation(expectation, score) {
+  if (score === null) {
+    return true;
+  }
+
+  switch (expectation) {
+    case "strong":
+      return score >= 65;
+    case "medium":
+      return score >= 35 && score <= 75;
+    case "low":
+      return score < 55;
+    default:
+      return true;
+  }
+}
+
+function buildScenarioMetadataChecks(scenario, fit, input) {
+  const locationScore = scoreForCategory(fit.categories, /lokasyon|ulasim|location/);
+  const experienceScore = scoreForCategory(fit.categories, /deneyim/);
   const checks = [];
+  const meta = scenario.meta ?? {};
+
+  if (meta.locationExpectation) {
+    checks.push({
+      label: `Lokasyon puani ${meta.locationExpectation} beklentisine yakin olmali`,
+      ok: matchesLocationExpectation(meta.locationExpectation, locationScore)
+    });
+  }
+
+  if (meta.roleExpectation) {
+    checks.push({
+      label: `Rol ve deneyim puani ${meta.roleExpectation} beklentisini yansitmali`,
+      ok: matchesRoleExpectation(meta.roleExpectation, experienceScore)
+    });
+  }
+
+  if (Array.isArray(meta.forbiddenStrengthTerms) && meta.forbiddenStrengthTerms.length > 0) {
+    const forbiddenPattern = new RegExp(meta.forbiddenStrengthTerms.map((term) => normalizeText(term)).join("|"));
+    checks.push({
+      label: "Alakasiz domain gecmisi guclu avantaj gibi sunulmamalı",
+      ok: !forbiddenPattern.test(input.strengthsBlob)
+    });
+  }
+
+  if (meta.shouldMentionHandsOnRisk) {
+    checks.push({
+      label: "Manager title varsa hands-on riski veya operasyonel katkı anilmali",
+      ok: /hands-on|operasyonel|yonetim|manager/.test(input.blob)
+    });
+  }
+
+  return checks;
+}
+
+function evaluateScenarioSpecificChecks(scenario, fit, input) {
+  const checks = buildScenarioMetadataChecks(scenario, fit, input);
+  const key = scenario.key;
   const locationScore = scoreForCategory(fit.categories, /lokasyon|ulasim|location/);
   const experienceScore = scoreForCategory(fit.categories, /deneyim/);
 
@@ -1644,6 +2247,8 @@ function buildMarkdownReport(summary) {
     `- Password: ${summary.smokeUser.password}`,
     `- Job: ${summary.job.title} (${summary.job.id})`,
     `- Job status: ${summary.job.status}`,
+    `- Screening mode: ${summary.job.screeningMode}`,
+    `- Location signal mode: ${summary.job.locationSignalMode}`,
     "",
     "## Ozet",
     "",
@@ -1724,6 +2329,40 @@ function aggregateResults(results) {
   };
 }
 
+async function settleScenarios(items, concurrency, worker) {
+  const outcomes = new Array(items.length);
+  let cursor = 0;
+
+  async function runWorker() {
+    while (true) {
+      const index = cursor;
+      cursor += 1;
+
+      if (index >= items.length) {
+        return;
+      }
+
+      try {
+        outcomes[index] = {
+          status: "fulfilled",
+          value: await worker(items[index], index)
+        };
+      } catch (error) {
+        outcomes[index] = {
+          status: "rejected",
+          reason: error
+        };
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => runWorker())
+  );
+
+  return outcomes;
+}
+
 async function main() {
   logStatus("INFO", "Analysis smoke started", `${API_BASE_URL} | ${WEB_BASE_URL}`);
 
@@ -1750,40 +2389,55 @@ async function main() {
   let existingApplications = null;
 
   if (SMOKE_EXISTING_JOB_ID) {
-    const existingContext = await loadExistingJobContext(
-      smokeUser.token,
-      smokeUser.tenantId,
-      SMOKE_EXISTING_JOB_ID
-    );
+    const existingContext = await loadExistingJobContext(smokeUser, SMOKE_EXISTING_JOB_ID);
     job = existingContext.job;
     existingApplications = existingContext.applications;
     logStatus("PASS", "Existing smoke job loaded", `${job.id} | applications=${existingApplications.length}`);
   } else {
-    job = await createMarketingJob(smokeUser.token, smokeUser.tenantId);
+    job = await createMarketingJob(smokeUser);
   }
+
+  job = await ensureSmokeJobScreeningMode(smokeUser, job.id, SMOKE_SCREENING_MODE);
+  logStatus("PASS", "Smoke screening mode set", `${job.id} | mode=${SMOKE_SCREENING_MODE}`);
+
+  logStatus(
+    "INFO",
+    "Scenario batch prepared",
+    `total=${ACTIVE_SCENARIOS.length} | concurrency=${SMOKE_CONCURRENCY} | generated=${GENERATED_SCENARIOS.length} | base=${SCENARIOS.length - GENERATED_SCENARIOS.length} | mode=${SMOKE_SCREENING_MODE} | location_signal_mode=${SMOKE_LOCATION_SIGNAL_MODE}`
+  );
 
   const results = [];
   const failures = [];
 
-  for (const [index, scenario] of ACTIVE_SCENARIOS.entries()) {
-    try {
-      const expectedCandidateName = `Smoke ${String(index + 1).padStart(2, "0")} ${scenario.label}`;
-      const existingApplication = existingApplications?.find(
-        (item) => normalizeText(item?.candidate?.fullName ?? "") === normalizeText(expectedCandidateName)
-      );
-      const result = existingApplication
-        ? await replayScenario(smokeUser.token, smokeUser.tenantId, job, scenario, index, existingApplication)
-        : await processScenario(smokeUser.token, smokeUser.tenantId, job, scenario, index);
-      results.push(result);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      logStatus("WARN", `Scenario failed: ${scenario.label}`, message);
-      failures.push({
-        scenario: scenario.key,
-        label: scenario.label,
-        error: message
-      });
+  const outcomes = await settleScenarios(ACTIVE_SCENARIOS, SMOKE_CONCURRENCY, async (scenario, index) => {
+    const expectedCandidateName = `Smoke ${String(index + 1).padStart(2, "0")} ${scenario.label}`;
+    const existingApplication = existingApplications?.find(
+      (item) => normalizeText(item?.candidate?.fullName ?? "") === normalizeText(expectedCandidateName)
+    );
+
+    return existingApplication
+      ? replayScenario(smokeUser, job, scenario, index, existingApplication)
+      : processScenario(smokeUser, job, scenario, index);
+  });
+
+  outcomes.forEach((outcome, index) => {
+    const scenario = ACTIVE_SCENARIOS[index];
+    if (outcome?.status === "fulfilled") {
+      results.push(outcome.value);
+      return;
     }
+
+    const message = outcome?.reason instanceof Error ? outcome.reason.message : String(outcome?.reason ?? "unknown");
+    logStatus("WARN", `Scenario failed: ${scenario.label}`, message);
+    failures.push({
+      scenario: scenario.key,
+      label: scenario.label,
+      error: message
+    });
+  });
+
+  if (results.length !== ACTIVE_SCENARIOS.length - failures.length) {
+    logStatus("WARN", "Scenario accounting mismatch", `results=${results.length} failures=${failures.length}`);
   }
 
   const aggregate = aggregateResults(results);
@@ -1799,7 +2453,9 @@ async function main() {
     job: {
       id: job.id,
       title: job.title,
-      status: job.status
+      status: job.status,
+      screeningMode: SMOKE_SCREENING_MODE,
+      locationSignalMode: SMOKE_LOCATION_SIGNAL_MODE
     },
     aggregate,
     failures,

@@ -1,4 +1,5 @@
-import { BILLING_ADDON_CATALOG, BILLING_PLAN_CATALOG } from "@ai-interviewer/domain";
+import { BILLING_ADDON_CATALOG, FREE_TRIAL_DEFINITION } from "@ai-interviewer/domain";
+import { buildBillingTrialSummary } from "./billing-presentation";
 
 export type PublicNavLink = {
   label: string;
@@ -85,52 +86,16 @@ function formatTryPrice(amountCents: number) {
   }).format(amountCents / 100);
 }
 
-function buildPublicPlanBullets(plan: (typeof BILLING_PLAN_CATALOG)[keyof typeof BILLING_PLAN_CATALOG]) {
-  if (plan.key === "FLEX") {
-    return [
-      "1 kullanıcı",
-      "İlan kredisi satın al",
-      "Aday değerlendirme kredisi satın al",
-      "AI mülakat kredisi satın al",
-      "Aşım yok, kredi bittiğinde yeni paket alın",
-      "Temel raporlama",
-      "E-posta desteği"
-    ];
-  }
+const publicAddonAmounts = Object.values(BILLING_ADDON_CATALOG)
+  .map((addOn) => addOn.amountCents)
+  .sort((a, b) => a - b);
 
-  if (plan.key === "ENTERPRISE") {
-    return [
-      "Özel kullanıcı limiti",
-      "Özel ilan kredisi",
-      "Özel aday değerlendirme kredisi",
-      "Özel AI mülakat kredisi",
-      "Takvim entegrasyonları",
-      "Gelişmiş raporlama",
-      "Özel onboarding + SLA"
-    ];
-  }
-
-  const bullets = [
-    `${plan.seatsIncluded} kullanıcı`,
-    `${plan.activeJobsIncluded} ilan kredisi`,
-    `${plan.candidateProcessingIncluded} aday değerlendirme kredisi`,
-    `${plan.aiInterviewsIncluded} AI mülakat kredisi`
-  ];
-
-  if (plan.features.calendarIntegrations) {
-    bullets.push("Takvim entegrasyonları");
-  }
-
-  bullets.push(plan.features.advancedReporting ? "Gelişmiş raporlama" : "Temel raporlama");
-  bullets.push(plan.supportLabel);
-
-  return bullets;
-}
+export const PUBLIC_SITE_BRAND_SUBTITLE = "Ön eleme, kaynak bulma ve mülakat";
 
 export const PUBLIC_TOP_NAV: PublicNavLink[] = [
   { label: "Özellikler", href: "/features" },
   { label: "Çözümler", href: "/solutions" },
-  { label: "Fiyatlar", href: "/pricing" },
+  { label: "Paketler", href: "/pricing" },
   { label: "Kaynaklar", href: "/blog" },
   { label: "İletişim", href: "/contact" }
 ];
@@ -140,8 +105,7 @@ export const PUBLIC_FOOTER_COLUMNS: Array<{ title: string; links: PublicNavLink[
     title: "Ürün",
     links: [
       { label: "Özellikler", href: "/features" },
-      { label: "Fiyatlar", href: "/pricing" },
-      { label: "Entegrasyonlar", href: "/integrations" },
+      { label: "Paketler", href: "/pricing" },
       { label: "Güncellemeler", href: "/changelog" }
     ]
   },
@@ -237,7 +201,7 @@ export const PUBLIC_HOME_STEPS: PublicStep[] = [
 ];
 
 export const PUBLIC_FEATURE_HERO_ACTIONS: PublicAction[] = [
-  { label: "Hesap Oluştur", href: "/auth/signup" },
+  { label: "Ücretsiz deneme", href: "/auth/signup" },
   { label: "Özellikleri Keşfedin", href: "#feature-groups", tone: "secondary" }
 ];
 
@@ -468,81 +432,29 @@ export const PUBLIC_FAQ: PublicFaq[] = [
   {
     question: "Mevcut ATS sistemimle entegre olabilir mi?",
     answer:
-      "REST API ve webhook ile kontrollü ATS entegrasyon senaryoları planlanabilir. Takvim ve planlama bağlantıları ekip ihtiyacına göre kademeli açılır; tüm entegrasyonlar varsayılan olarak aktif gelmez."
+      "Şu an standart bir ATS veya takvim entegrasyonu sunmuyoruz. API ve webhook ihtiyaçlarını pilot kapsamına göre birlikte değerlendiriyoruz."
   }
 ];
 
-export const PUBLIC_PRICING_PLANS: PublicCard[] = [
-  {
-    badge: "14 gün ücretsiz — Kredi kartı gerekmez",
-    title: "Deneme",
-    body: "Platformu keşfedin. 14 gün boyunca temel özellikleri deneyin.",
-    meta: "Ücretsiz",
-    bullets: [
-      "1 kullanıcı",
-      "1 ilan kredisi",
-      "25 aday değerlendirme kredisi",
-      "3 AI mülakat kredisi",
-      "Temel raporlama",
-      "E-posta desteği"
-    ],
-    href: "/auth/signup",
-    actionLabel: "Ücretsiz Deneyin"
-  },
-  ...Object.values(BILLING_PLAN_CATALOG).map((plan) => ({
-    badge: plan.recommended ? "En Popüler" : undefined,
-    title: plan.key === "ENTERPRISE" ? "Kurumsal" : plan.label,
-    body: plan.description,
-    meta:
-      plan.billingModel === "prepaid"
-        ? plan.priceLabel ?? "Ön ödemeli kredi"
-        : plan.monthlyAmountCents === null
-          ? "Özel Teklif"
-          : `${formatTryPrice(plan.monthlyAmountCents)}/ay`,
-    bullets: buildPublicPlanBullets(plan),
-    href: plan.key === "ENTERPRISE" ? "/contact" : "/auth/signup",
-    actionLabel: plan.key === "ENTERPRISE" ? "Bize Ulaşın" : "Hemen Başlayın"
-  }))
-];
+export const PUBLIC_PRICING_TRIAL_CARD: PublicCard = {
+  eyebrow: "Ücretsiz deneme",
+  title: "14 günlük deneme",
+  body: buildBillingTrialSummary(FREE_TRIAL_DEFINITION),
+  href: "/auth/signup",
+  actionLabel: "Ücretsiz deneme"
+};
 
 export const PUBLIC_PAY_AS_YOU_GO: PublicCard = {
   eyebrow: "Ek Paketler",
   title: "Planınızı Bozmadan Kapasite Artırın",
   body: "Flex planda doğrudan, Starter ve Growth planda ise ek kapasite olarak kredi paketleri satın alın.",
-  meta: `${formatTryPrice(149900)} - ${formatTryPrice(399900)}`,
+  meta: `${formatTryPrice(publicAddonAmounts[0] ?? 0)} - ${formatTryPrice(publicAddonAmounts[publicAddonAmounts.length - 1] ?? 0)}`,
   bullets: Object.values(BILLING_ADDON_CATALOG).map(
     (addOn) => `${addOn.label}: ${formatTryPrice(addOn.amountCents)}`
   ),
   href: "/subscription",
   actionLabel: "Plana Ekle"
 };
-
-export const PUBLIC_INTEGRATION_GROUPS: Array<{ title: string; items: PublicCard[] }> = [
-  {
-    title: "Takvim ve Planlama",
-    items: [
-      { title: "Google Calendar", body: "Mülakat planlarını Google takvim akışıyla eşleştirin", badge: "Pilot kurulum", href: "/settings", actionLabel: "Panelde aç" },
-      { title: "Google Meet", body: "Planlama akışlarında Google Meet bağlantı senaryolarını yönetin", badge: "Pilot kurulum", href: "/settings", actionLabel: "Panelde aç" },
-      { title: "Calendly", body: "Talep olduğunda değerlendirilen planlama seçeneği", badge: "Değerlendirme", href: "/contact", actionLabel: "İletişime geç" }
-    ]
-  },
-  {
-    title: "ATS ve İşe Alım Sistemleri",
-    items: [
-      { title: "ATS Generic API", body: "Aday ve başvuru verisi için REST tabanlı entegrasyon senaryoları planlayın", badge: "Kontrollü erişim", href: "/docs/api", actionLabel: "Dokümanı aç" },
-      { title: "Webhook Olayları", body: "Başvuru ve mülakat olaylarını kendi sistemlerinize aktarmak için webhook akışları tanımlayın", badge: "Kontrollü erişim", href: "/docs/api", actionLabel: "Dokümanı aç" },
-      { title: "Özel ATS Bağlantısı", body: "Kurumsal ekipler için mevcut işe alım altyapısına özel entegrasyon", badge: "Kurumsal", href: "/contact", actionLabel: "İletişime geç" }
-    ]
-  },
-  {
-    title: "Yol Haritası",
-    items: [
-      { title: "Microsoft Calendar", body: "Kurumsal planlama ihtiyaçları için yol haritasında", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" },
-      { title: "Zoom", body: "Doğrudan toplantı oluşturma desteği yol haritasında", badge: "Yakında", href: "/contact", actionLabel: "İletişime geç" },
-      { title: "Gelişmiş HRIS Senkronizasyonu", body: "Çift yönlü veri eşleme ve özel saha senaryoları için hazırlanıyor", badge: "Yol Haritası", href: "/contact", actionLabel: "İhtiyaç paylaş" }
-    ]
-  }
-];
 
 export const PUBLIC_BLOG_ARTICLES: PublicBlogArticle[] = [
   {
@@ -740,18 +652,18 @@ export const PUBLIC_BLOG_ARTICLES: PublicBlogArticle[] = [
 ];
 
 export const PUBLIC_HELP_QUICKSTART: PublicStep[] = [
-  { step: "1", title: "Hesap Oluşturun", body: "Dakikalar içinde ücretsiz hesabınızı açın." },
-  { step: "2", title: "Pozisyon Ekleyin", body: "İş ilanınızı ve mülakat sorularınızı tanımlayın." },
-  { step: "3", title: "Mülakat Linki Paylaşın", body: "Adaylara mülakat linkini gönderin, başvurular otomatik başlasın." },
-  { step: "4", title: "Sonuçları Değerlendirin", body: "AI raporlarıyla en uygun adayları hızlıca belirleyin." }
+  { step: "1", title: "Hesap açılışı", body: "Ücretsiz hesabınızı birkaç dakika içinde açın." },
+  { step: "2", title: "Pozisyon tanımı", body: "İş ilanınızı ve mülakat sorularınızı tanımlayın." },
+  { step: "3", title: "Mülakat linki", body: "Adaylara mülakat linkini gönderin, başvurular otomatik başlasın." },
+  { step: "4", title: "Sonuç değerlendirme", body: "AI raporlarıyla en uygun adayları hızlıca belirleyin." }
 ];
 
 export const PUBLIC_HELP_TOPICS: PublicCard[] = [
   {
-    title: "Entegrasyonlar",
-    body: "Takvim, ATS ve API entegrasyonları",
-    href: "/integrations",
-    actionLabel: "Keşfet"
+    title: "Kurulum Desteği",
+    body: "Pilot başlangıcı, onboarding ve ilk akış kurulumu",
+    href: "/contact",
+    actionLabel: "İletişime geçin"
   },
   {
     title: "Güvenlik & Uyumluluk",
@@ -856,20 +768,6 @@ export const PUBLIC_TEAM: PublicCard[] = [
   { title: "Merve Çınar", body: "Pazarlama & İçerik. İK sektörüne yönelik dijital pazarlama stratejileri ve marka iletişimini yönetir." }
 ];
 
-export const PUBLIC_CONTACT_TRUST: PublicCard[] = [
-  { title: "Dakikalar İçinde Kurulum", body: "İlk AI mülakatınızı hemen oluşturun, teknik bilgi gerektirmez." },
-  { title: "AI Destekli Mülakat", body: "Yapay zeka ile tutarlı ve objektif aday değerlendirmesi." },
-  { title: "Kurumsal Güvenlik", body: "Rol bazlı erişim, audit görünürlüğü ve güvenli veri akışlarıyla tasarlandı." },
-  { title: "Özel Destek", body: "Kurulum, ATS entegrasyonu ve eğitimde yanınızdayız." }
-];
-
-export const PUBLIC_CONTACT_METRICS: PublicStat[] = [
-  { value: "Daha hızlı", label: "Ön eleme akışı" },
-  { value: "7/24", label: "Kesintisiz mülakat" },
-  { value: "Dakikalar", label: "İlk shortlist görünürlüğü" },
-  { value: "Tek panel", label: "İşe alım uzmanı operasyonu" }
-];
-
 export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
   {
     date: "Haziran 2026",
@@ -887,13 +785,13 @@ export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
   {
     date: "Mart 2026",
     version: "v0.5.0",
-    title: "Takvim ve Planlama Hazırlıkları",
+    title: "Planlama ve Akış Sertleştirmesi",
     body:
-      "Mülakat planlama tarafında Google ekosistemi odaklı bağlantı hazırlıkları ve yedek akışlar güçlendirildi.",
+      "Mülakat planlama tarafında temel hazırlıklar ve yedek akışlar güçlendirildi.",
     items: [
-      "Google Calendar bağlantı akışı güncellendi",
-      "Google Meet planlama bağlamı netleştirildi",
-      "Pilot planlama ihtiyaçları için entegrasyon hazırlıkları sertleştirildi",
+      "Planlama akışı güncellendi",
+      "Toplantı akışı bağlamı netleştirildi",
+      "Pilot planlama ihtiyaçları için operasyon akışı sertleştirildi",
       "Yedek toplantı akışı görünür hale getirildi"
     ]
   },

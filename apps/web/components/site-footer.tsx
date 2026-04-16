@@ -2,7 +2,7 @@
 
 import { useUiText } from "./site-language-provider";
 import styles from "./public-site.module.css";
-import { PUBLIC_FOOTER_COLUMNS } from "../lib/public-site-data";
+import { PUBLIC_FOOTER_COLUMNS, PUBLIC_SITE_BRAND_SUBTITLE } from "../lib/public-site-data";
 
 const SITE_BRAND = "Candit.ai";
 
@@ -24,7 +24,7 @@ export function SiteFooter() {
               </span>
               <span className={styles.brandCopy}>
                 <strong>{SITE_BRAND}</strong>
-                <span>{t("AI destekli işe alım platformu")}</span>
+                <span>{t(PUBLIC_SITE_BRAND_SUBTITLE)}</span>
               </span>
             </a>
             <p className={styles.footerCopy}>

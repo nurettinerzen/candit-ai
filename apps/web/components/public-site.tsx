@@ -8,24 +8,22 @@ import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
 import { useUiText } from "./site-language-provider";
 import {
+  buildBillingPlanCatalogCards
+} from "../lib/billing-presentation";
+import {
   PUBLIC_ABOUT_STATS,
   PUBLIC_ABOUT_STORY,
   PUBLIC_BLOG_ARTICLES,
   PUBLIC_CHANGELOG,
-  PUBLIC_CONTACT_METRICS,
-  PUBLIC_CONTACT_TRUST,
   PUBLIC_FAQ,
   PUBLIC_FEATURE_GROUPS,
-  PUBLIC_FEATURE_HERO_ACTIONS,
   PUBLIC_FEATURE_OPERATIONS,
   PUBLIC_HELP_QUICKSTART,
   PUBLIC_HELP_TOPICS,
   PUBLIC_HOME_CHANNELS,
   PUBLIC_HOME_PROOF,
   PUBLIC_HOME_STEPS,
-  PUBLIC_INTEGRATION_GROUPS,
-  PUBLIC_PAY_AS_YOU_GO,
-  PUBLIC_PRICING_PLANS,
+  PUBLIC_PRICING_TRIAL_CARD,
   PUBLIC_PRIVACY_SECTIONS,
   PUBLIC_SECURITY_GROUPS,
   PUBLIC_SOLUTIONS,
@@ -45,9 +43,6 @@ import {
   type PublicStep,
   type PublicTimelineEntry
 } from "../lib/public-site-data";
-
-const SITE_BRAND = "Candit.ai";
-const SITE_TAGLINE = "AI ile işe alımın geleceği.";
 
 function cn(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
@@ -206,8 +201,8 @@ function FAQBlock({ items }: { items: PublicFaq[] }) {
 function CTASection({
   title,
   body,
-  primary = { label: "Hesap Oluştur", href: "/auth/signup" },
-  secondary = { label: "Fiyatları İncele", href: "/pricing", tone: "secondary" }
+  primary = { label: "Ücretsiz deneme", href: "/auth/signup" },
+  secondary = { label: "Paketler", href: "/pricing", tone: "secondary" }
 }: {
   title: string;
   body: string;
@@ -219,7 +214,7 @@ function CTASection({
     <section className={styles.section}>
       <div className={cn(styles.shell, styles.ctaBand)}>
         <div>
-          <span className={styles.eyebrow}>{t("Hazır mısınız?")}</span>
+          <span className={styles.eyebrow}>{t("Sonraki adım")}</span>
           <h2 className={styles.ctaTitle}>{t(title)}</h2>
           <p className={styles.ctaBody}>{t(body)}</p>
         </div>
@@ -380,6 +375,7 @@ function ArticleCard({ article }: { article: PublicBlogArticle }) {
 }
 
 function LeadCaptureForm({
+  eyebrow,
   title,
   body,
   submitLabel,
@@ -387,6 +383,7 @@ function LeadCaptureForm({
   successTitle,
   successBody
 }: {
+  eyebrow?: string | null;
   title: string;
   body: string;
   submitLabel: string;
@@ -396,6 +393,7 @@ function LeadCaptureForm({
 }) {
   return (
     <PublicLeadForm
+      eyebrow={eyebrow}
       title={title}
       body={body}
       submitLabel={submitLabel}
@@ -446,7 +444,11 @@ function LegalSections({ sections }: { sections: PublicLegalSection[] }) {
 }
 
 function DocsEndpoints() {
-  const { t } = useUiText();
+  const { locale, t } = useUiText();
+  const exampleMessage =
+    locale === "en"
+      ? "I want to share pilot API details."
+      : "Pilot API detaylarını paylaşmak istiyorum.";
   const endpoints = [
     {
       method: "GET",
@@ -466,7 +468,7 @@ function DocsEndpoints() {
     {
       method: "POST",
       path: "/v1/integrations/webhooks/:provider",
-      body: "Desteklenen entegrasyon sağlayıcıları için gelen webhook olaylarını işler."
+      body: "Desteklenen webhook sağlayıcılarından gelen olayları işler."
     }
   ];
 
@@ -474,7 +476,7 @@ function DocsEndpoints() {
     <div className={styles.docsGrid}>
       <div className={styles.codeCard}>
         <span className={styles.cardEyebrow}>{t("Pilot API Yüzeyi")}</span>
-        <h3>{t("Kontrollü entegrasyonlar için temel uç noktalar")}</h3>
+        <h3>{t("Kontrollü API akışları için temel uç noktalar")}</h3>
         <pre className={styles.codeBlock}>
           <code>{`curl -X POST https://your-api-host/v1/public/contact \\
   -H "Content-Type: application/json" \\
@@ -482,7 +484,7 @@ function DocsEndpoints() {
     "fullName": "Jane Recruiter",
     "email": "jane@example.com",
     "company": "Candit Pilot",
-    "message": "Pilot entegrasyon detaylarini paylasmak istiyorum."
+    "message": "${exampleMessage}"
   }'`}</code>
         </pre>
       </div>
@@ -591,11 +593,11 @@ export function PublicFeaturesPage() {
               {t("İşe alım sürecinizi güçlendirecek AI yetenekleri")}
             </h1>
             <p className={styles.ftHeroSubtitle}>
-              {t("AI mülakat, aday tarama, iş ilanı yönetimi ve analitik araçları tek platformda. Hızlı kurulum, derin entegrasyonlar ve ölçeklenebilir otomasyon.")}
+              {t("AI mülakat, aday tarama, iş ilanı yönetimi ve analitik araçları tek platformda. Hızlı kurulum, net operasyon görünürlüğü ve ölçeklenebilir otomasyon.")}
             </p>
             <div className={styles.ftHeroActions}>
               <a href="/auth/signup" className={cn(styles.ftGlowBtn, styles.ftGlowBtnPrimary)}>
-                {t("Hemen Başlayın")}
+                {t("Ücretsiz deneme")}
               </a>
               <a href="#features-grid" className={cn(styles.ftGlowBtn, styles.ftGlowBtnOutline)}>
                 {t("Özellikleri Keşfedin")}
@@ -665,7 +667,7 @@ export function PublicFeaturesPage() {
             <div className={styles.ftSectionHeader}>
               <h2 className={styles.ftSectionTitle}>{t("Operasyon görünürlüğü ve yönetim araçları")}</h2>
               <p className={styles.ftSectionSubtitle}>
-                {t("Dashboard, güvenlik ve entegrasyon katmanlarıyla ekibiniz ve yöneticileriniz aynı veriden karar verir.")}
+                {t("Dashboard, güvenlik ve yönetim katmanlarıyla ekibiniz ve yöneticileriniz aynı veriden karar verir.")}
               </p>
             </div>
             <div className={styles.ftDeepGrid}>
@@ -767,7 +769,7 @@ export function PublicFeaturesPage() {
             <div className={styles.ftSectionHeader}>
               <h2 className={styles.ftSectionTitle}>{t("Merak edilenler")}</h2>
               <p className={styles.ftSectionSubtitle}>
-                {t("Özellikler, entegrasyon ve kullanım hakkında en çok sorulan sorular.")}
+                {t("Özellikler, kurulum ve kullanım hakkında en çok sorulan sorular.")}
               </p>
             </div>
             <FAQBlock items={PUBLIC_FAQ} />
@@ -785,10 +787,10 @@ export function PublicFeaturesPage() {
                 </p>
                 <div className={styles.ftCtaActions}>
                   <a href="/auth/signup" className={cn(styles.ftGlowBtn, styles.ftCtaBtnWhite)}>
-                    {t("Hemen Başlayın")}
+                    {t("Ücretsiz deneme")}
                   </a>
                   <a href="/contact" className={cn(styles.ftGlowBtn, styles.ftCtaBtnGhost)}>
-                    {t("Bize Ulaşın")}
+                    {t("İletişime geçin")}
                   </a>
                 </div>
               </div>
@@ -856,7 +858,7 @@ export function PublicSolutionsPage() {
                 {t("Çözümleri Keşfedin")}
               </a>
               <a href="/contact" className={cn(styles.solGlowBtn, styles.solGlowBtnOutline)}>
-                {t("Bize Ulaşın")}
+                {t("İletişime geçin")}
               </a>
             </div>
           </div>
@@ -941,7 +943,7 @@ export function PublicSolutionsPage() {
             <div className={styles.solSectionHeader}>
               <h2 className={styles.solSectionTitle}>{t("Karar öncesi merak edilenler")}</h2>
               <p className={styles.solSectionSubtitle}>
-                {t("Çözümler, entegrasyon süreci ve fiyatlandırma hakkında en sık sorulan sorular.")}
+                {t("Çözümler, kurulum süreci ve fiyatlandırma hakkında en sık sorulan sorular.")}
               </p>
             </div>
             <FAQBlock items={PUBLIC_FAQ} />
@@ -959,10 +961,10 @@ export function PublicSolutionsPage() {
                 </p>
                 <div className={styles.solCtaActions}>
                   <a href="/contact" className={styles.solCtaBtnWhite}>
-                    {t("Bize Ulaşın")}
+                    {t("İletişime geçin")}
                   </a>
                   <a href="/auth/signup" className={styles.solCtaBtnGhost}>
-                    {t("Hesap Oluştur")}
+                    {t("Ücretsiz deneme")}
                   </a>
                 </div>
               </div>
@@ -998,9 +1000,9 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
             <h1 className={styles.solutionTitle}>{t(solution.title)}</h1>
             <p className={styles.solutionIntro}>{t(solution.intro)}</p>
             <div className={styles.heroActions}>
-              <ActionLink action={{ label: t("Hesap Oluştur"), href: "/auth/signup" }} />
+              <ActionLink action={{ label: t("Ücretsiz deneme"), href: "/auth/signup" }} />
               <ActionLink
-                action={{ label: t("Fiyatları İncele"), href: "/pricing", tone: "secondary" }}
+                action={{ label: t("Paketler"), href: "/pricing", tone: "secondary" }}
                 tone="secondary"
               />
             </div>
@@ -1096,7 +1098,15 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
 }
 
 export function PublicPricingPage() {
-  const { t } = useUiText();
+  const { t, locale } = useUiText();
+  const pricingPlans = buildBillingPlanCatalogCards(locale, {
+    enterprisePriceLabel: locale === "en" ? "Contact Us" : "İletişime geçin"
+  }).map((plan) => ({
+    ...plan,
+    href: plan.key === "ENTERPRISE" ? "/contact" : "/auth/signup",
+    actionLabel: plan.key === "ENTERPRISE" ? "İletişime geçin" : "Ücretsiz deneme"
+  }));
+
   return (
     <PublicSiteFrame activeHref="/pricing">
       {/* ══ Hero ══ */}
@@ -1113,10 +1123,7 @@ export function PublicPricingPage() {
             {t("İhtiyacınıza uygun planı seçin")}
           </h1>
           <p className={styles.prHeroSubtitle}>
-            {t("Ücretsiz deneme ile başlayıp, büyüdükçe ölçeklendirin. Gizli ücret yok, sürpriz yok.")}
-          </p>
-          <p className={styles.prHeroKicker}>
-            {t("Ücretsiz deneme — Kredi kartı gerekmez")}
+            {t("Kullandıkça öde, aylık paketler veya kurumsal kurulum arasından seçim yapın. İhtiyacınıza göre ilerleyin.")}
           </p>
         </div>
       </section>
@@ -1125,82 +1132,52 @@ export function PublicPricingPage() {
       <section className={styles.prPlansSection}>
         <div className={styles.shell}>
           <div className={styles.prCardsGrid}>
-            {PUBLIC_PRICING_PLANS.map((plan, i) => {
-              const isPopular = plan.badge === "En Pop\u00FCler";
-              const isEnterprise = plan.title === "Kurumsal";
-              const isTrial = plan.title === "Deneme";
-              const isPrepaid = plan.meta === "Ön ödemeli kredi";
-
+            {pricingPlans.map((plan) => {
               return (
                 <article
-                  key={plan.title}
-                  className={cn(styles.prPlanCard, isPopular && styles.prPlanCardPopular)}
+                  key={plan.key}
+                  className={cn(styles.prPlanCard, plan.isRecommended && styles.prPlanCardPopular)}
                 >
-                  {/* Popular badge */}
-                  {isPopular && (
+                  {plan.isRecommended && (
                     <div className={styles.prPopularBadgeWrap}>
                       <span className={styles.prPopularBadge}>{t("En Popüler")}</span>
                     </div>
                   )}
 
-                  {/* Plan header */}
                   <div className={styles.prPlanHeader}>
-                    <h3 className={styles.prPlanName}>{t(plan.title)}</h3>
-                    <p className={styles.prPlanDesc}>{t(plan.body)}</p>
-
-                    {/* Price */}
+                    <h3 className={styles.prPlanName}>{plan.title}</h3>
                     <div className={styles.prPriceBlock}>
-                      {isTrial ? (
-                        <span className={styles.prPriceFree}>{t("Ücretsiz")}</span>
-                      ) : isEnterprise ? (
-                        <span className={styles.prPriceContact}>{t("İletişime Geçin")}</span>
-                      ) : isPrepaid ? (
-                        <span className={styles.prPriceContact}>{t(plan.meta ?? "")}</span>
+                      {plan.priceDisplay === "text" ? (
+                        <span className={styles.prPriceContact}>{plan.priceAmount}</span>
                       ) : (
                         <>
-                          <span className={styles.prPriceAmount}>
-                            {plan.meta
-                              ? plan.meta.split("/")[0]?.split("•")[0]?.trim() ?? ""
-                              : ""}
-                          </span>
-                          <span className={styles.prPricePeriod}>{t("/ay")}</span>
+                          <span className={styles.prPriceAmount}>{plan.priceAmount}</span>
+                          {plan.priceSuffix ? (
+                            <span className={styles.prPricePeriod}>{plan.priceSuffix}</span>
+                          ) : null}
                         </>
                       )}
                     </div>
-
-                    {/* Sub-price info */}
-                    <div className={styles.prSubPrice}>
-                      {isTrial && plan.badge ? (
-                        <span>{t(plan.badge)}</span>
-                      ) : isEnterprise ? (
-                        <span>{t("Özel fiyatlandırma")}</span>
-                      ) : plan.meta?.includes("Asim") ? (
-                        <span>{t("Aşım")}: {plan.meta.split("Asim:")[1]?.split("•")[0]?.trim()}</span>
-                      ) : null}
-                    </div>
                   </div>
 
-                  {/* Divider */}
                   <div className={styles.prDivider} />
 
-                  {/* Features */}
                   <ul className={styles.prFeatureList}>
-                    {plan.bullets?.map((bullet) => (
-                      <li key={bullet} className={styles.prFeatureItem}>
+                    {plan.featureList.map((feature) => (
+                      <li key={feature} className={styles.prFeatureItem}>
                         <span className={styles.prCheckIcon}>&#10003;</span>
-                        <span>{t(bullet)}</span>
+                        <span>{t(feature)}</span>
                       </li>
                     ))}
                   </ul>
 
-                  {/* CTA Button */}
                   {plan.href && plan.actionLabel ? (
                     <div className={styles.prCardCta}>
                       <a
                         href={plan.href}
                         className={cn(
                           styles.prCardBtn,
-                          isPopular && styles.prCardBtnPopular
+                          plan.isRecommended && styles.prCardBtnPopular
                         )}
                       >
                         <span>{t(plan.actionLabel)}</span>
@@ -1217,14 +1194,20 @@ export function PublicPricingPage() {
       {/* ══ CTA Section ══ */}
       <section className={styles.section}>
         <div className={styles.shell}>
-          <div className={styles.prCtaSection}>
-            <h2 className={styles.prCtaTitle}>{t("14 gün ücretsiz deneyin")}</h2>
-            <p className={styles.prCtaBody}>
-              {t("Kredi kartı gerekmez. Hemen hesap oluşturun ve tüm özellikleri keşfedin.")}
-            </p>
-            <a href="/auth/signup" className={styles.prGlowBtn}>
-              <span>{t("Ücretsiz Deneyin")}</span>
-            </a>
+          <div className={cn(styles.prCtaSection, styles.prTrialSection)}>
+            <div className={styles.prTrialCopy}>
+              {PUBLIC_PRICING_TRIAL_CARD.eyebrow ? (
+                <span className={styles.prTrialEyebrow}>{t(PUBLIC_PRICING_TRIAL_CARD.eyebrow)}</span>
+              ) : null}
+              <h2 className={styles.prCtaTitle}>{t(PUBLIC_PRICING_TRIAL_CARD.title)}</h2>
+              <p className={styles.prCtaBody}>{t(PUBLIC_PRICING_TRIAL_CARD.body)}</p>
+            </div>
+
+            <div className={styles.prTrialAction}>
+              <a href={PUBLIC_PRICING_TRIAL_CARD.href} className={styles.prGlowBtn}>
+                <span>{t(PUBLIC_PRICING_TRIAL_CARD.actionLabel ?? "Ücretsiz deneme")}</span>
+              </a>
+            </div>
           </div>
         </div>
       </section>
@@ -1251,42 +1234,6 @@ export function PublicPricingPage() {
           </p>
         </div>
       </section>
-    </PublicSiteFrame>
-  );
-}
-
-export function PublicIntegrationsPage() {
-  const { t } = useUiText();
-  return (
-    <PublicSiteFrame>
-      <section className={styles.heroSectionSlim}>
-        <div className={styles.shell}>
-          <SectionHeader
-            eyebrow="Entegrasyonlar"
-            title="Pilot kapsamındaki entegrasyonlar"
-            subtitle="Takvim, ATS ve webhook bağlantılarını ekip ihtiyacına göre kademeli planlayın."
-            align="center"
-          />
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <div className={styles.shell}>
-          <div className={styles.integrationGroups}>
-            {PUBLIC_INTEGRATION_GROUPS.map((group) => (
-              <section key={group.title} className={styles.integrationGroup}>
-                <h2>{t(group.title)}</h2>
-                <CardGrid cards={group.items} columns={3} />
-              </section>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <CTASection
-        title="İhtiyacınıza özel entegrasyon mu gerekiyor?"
-        body="Mevcut işe alım altyapınıza uygun özel bağlantı ihtiyacınız varsa ekibimizle planlayalım."
-      />
     </PublicSiteFrame>
   );
 }
@@ -1510,8 +1457,8 @@ export function PublicDocsApiPage() {
       </section>
 
       <CTASection
-        title="API entegrasyonunuz hakkında destek mi gerekiyor?"
-        body="Teknik ekibimiz entegrasyon sürecinde size yardımcı olmaya hazır."
+        title="API kullanımı hakkında destek mi gerekiyor?"
+        body="Teknik ekibimiz API erişimi ve webhook akışı konusunda size yardımcı olmaya hazır."
       />
     </PublicSiteFrame>
   );
@@ -1540,8 +1487,8 @@ export function PublicSecurityPage() {
       <CTASection
         title="Güvenlik hakkında sorularınız mı var?"
         body="Veri güvenliği ve uyumluluk konusundaki sorularınızı yanıtlamaktan memnuniyet duyarız."
-        primary={{ label: "İletişime Geçin", href: "/contact" }}
-        secondary={{ label: "Hesap Oluştur", href: "/auth/signup", tone: "secondary" }}
+        primary={{ label: "İletişime geçin", href: "/contact" }}
+        secondary={{ label: "Ücretsiz deneme", href: "/auth/signup", tone: "secondary" }}
       />
     </PublicSiteFrame>
   );
@@ -1599,8 +1546,8 @@ export function PublicAboutPage() {
       <CTASection
         title="Hikayemizin bir parçası olun"
         body="İşe alım süreçlerinizi AI ile dönüştürerek en doğru adayları en hızlı şekilde bulun."
-        primary={{ label: "Hesap Oluştur", href: "/auth/signup" }}
-        secondary={{ label: "İletişime Geçin", href: "/contact", tone: "secondary" }}
+        primary={{ label: "Ücretsiz deneme", href: "/auth/signup" }}
+        secondary={{ label: "İletişime geçin", href: "/contact", tone: "secondary" }}
       />
     </PublicSiteFrame>
   );
@@ -1608,24 +1555,39 @@ export function PublicAboutPage() {
 
 export function PublicContactPage() {
   const { t } = useUiText();
+
+  const MailSvg = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+    </svg>
+  );
+  const ClockSvg = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+  );
+
+  const contactDetails = [
+    { Icon: MailSvg, label: t("E-posta"), value: "info@candidate.ai" },
+    { Icon: ClockSvg, label: t("Çalışma saatleri"), value: t("Pazartesi - Cuma • 09:00 - 18:00") }
+  ];
+  const contactTopics = [
+    t("Demo planı"),
+    t("Pilot kapsamı"),
+    t("Kurulum akışı")
+  ];
+
   return (
     <PublicSiteFrame activeHref="/contact">
       {/* ═══ Hero ═══ */}
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="İletişim"
-            title="Size nasıl yardımcı olabiliriz?"
-            subtitle="İşe alım süreçlerinizi AI ile dönüştürmek mi istiyorsunuz? Sorularınızı iletin, ekibimiz en kısa sürede size dönecektir."
+            eyebrow={t("İletişim")}
+            title={t("Size nasıl yardımcı olabiliriz?")}
+            subtitle={t("İşe alım süreçlerinizi AI ile dönüştürmek mi istiyorsunuz? Sorularınızı iletin, ekibimiz en kısa sürede size dönecektir.")}
             align="center"
           />
-        </div>
-      </section>
-
-      {/* ═══ Highlight Cards ═══ */}
-      <section className={cn(styles.section, styles.sectionMuted)}>
-        <div className={styles.shell}>
-          <CardGrid cards={PUBLIC_CONTACT_TRUST} columns={4} />
         </div>
       </section>
 
@@ -1633,23 +1595,51 @@ export function PublicContactPage() {
       <section className={styles.section}>
         <div className={cn(styles.shell, styles.contactLayout)}>
           <LeadCaptureForm
+            eyebrow={null}
             title={t("Bize Mesaj Gönderin")}
-            body={t("Formu doldurarak bize ulaşın. Pilot hedefiniz, mevcut işe alım akışınız ve ihtiyaç duyduğunuz otomasyonları paylaşın.")}
+            body={t("Formu doldurun; demo, pilot planı veya işe alım akış ihtiyacınızı birkaç cümleyle paylaşın.")}
             submitLabel={t("Mesajı Gönder")}
             sourcePage="contact"
             successTitle={t("Mesajınız ulaştı")}
             successBody={t("Ekibimiz kısa süre içinde size dönüş yapacak.")}
           />
 
-          <div>
-            {/* Trust Stats */}
-            <div className={styles.compactStats}>
-              {PUBLIC_CONTACT_METRICS.map((item) => (
-                <div key={item.label} className={styles.compactStat}>
-                  <strong>{t(item.value)}</strong>
-                  <span>{t(item.label)}</span>
-                </div>
+          <div className={styles.contactInfoPanel}>
+            <h3 className={styles.contactInfoTitle}>{t("Ekibimizle doğrudan bağlantı kurun")}</h3>
+            <p className={styles.contactInfoBody}>
+              {t("Form üzerinden gönderdiğiniz notlar doğrudan ekibimize düşer. Demo, pilot planı veya işe alım akışı soruları için size uygun şekilde dönüş yaparız.")}
+            </p>
+
+            <div className={styles.contactMiniGrid}>
+              {contactDetails.map(({ Icon, label, value }) => (
+                <article key={label} className={styles.contactMiniCard}>
+                  <div className={styles.contactDetailIconWrap}>
+                    <Icon />
+                  </div>
+                  <div>
+                    <span className={styles.contactMiniLabel}>{label}</span>
+                    <span className={styles.contactMiniValue}>{value}</span>
+                  </div>
+                </article>
               ))}
+            </div>
+
+            <div className={styles.contactSupportCard}>
+              <h4>{t("Yardımcı olabileceğimiz başlıklar")}</h4>
+              <div className={styles.contactPillList}>
+                {contactTopics.map((item) => (
+                  <span key={item} className={styles.contactPill}>
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.contactSupportNote}>
+              <strong>{t("Mesajınıza mümkün olduğunca hızlı döneriz.")}</strong>
+              <p>
+                {t("Özellikle pilot hedefiniz ve mevcut akışınızdan kısaca bahsetmeniz, ilk yanıtı daha net hazırlamamızı sağlar.")}
+              </p>
             </div>
           </div>
         </div>
@@ -1740,33 +1730,33 @@ export function PublicWaitlistPage() {
         <div className={cn(styles.shell, styles.contactLayout)}>
           <div>
             <SectionHeader
-              eyebrow="Hemen Başlayın"
+              eyebrow="Ücretsiz deneme"
               title="Bekleme listesi yerine doğrudan hesap oluşturun"
               subtitle="Ücretsiz hesap oluşturun ve AI destekli işe alım platformunu hemen denemeye başlayın."
             />
             <StepsGrid
               steps={[
-                { step: "01", title: "Owner hesabını açın", body: "İlk çalışma alanınızı ve yönetici hesabınızı birkaç dakika içinde oluşturun." },
-                { step: "02", title: "Temel ayarları tamamlayın", body: "Takım üyeleri, entegrasyonlar ve ürün ayarlarını içeriden yönetin." },
-                { step: "03", title: "Pilotu başlatın", body: "İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın." },
-                { step: "04", title: "Destek gerekiyorsa yazın", body: "Ekibimiz kurulum ve onboarding sürecinde size yardımcı olmaya hazır." }
+                { step: "01", title: "Owner hesabı", body: "İlk çalışma alanınızı ve yönetici hesabınızı birkaç dakika içinde oluşturun." },
+                { step: "02", title: "Temel ayarlar", body: "Takım üyeleri, çalışma alanı ayarları ve ürün yapılandırmasını içeriden yönetin." },
+                { step: "03", title: "Pilot başlangıcı", body: "İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın." },
+                { step: "04", title: "Destek kanalı", body: "Ekibimiz kurulum ve onboarding sürecinde size yardımcı olmaya hazır." }
               ]}
             />
           </div>
 
           <div className={styles.formCard}>
             <span className={styles.eyebrow}>{t("Kayıt")}</span>
-            <h3>{t("Doğrudan hesap oluşturun")}</h3>
-            <p>{t("Hemen hesap oluşturun ve AI destekli işe alım platformunu denemeye başlayın. Kurulum desteği için ekibimiz her zaman yanınızda.")}</p>
+            <h3>{t("Doğrudan hesap açılışı")}</h3>
+            <p>{t("Ücretsiz hesap açılışıyla AI destekli işe alım platformunu deneyebilirsiniz. Kurulum desteğinde ekibimiz yanınızda.")}</p>
             <div className={styles.tagList}>
               <span>{t("Owner hesabı")}</span>
               <span>{t("E-posta doğrulama")}</span>
               <span>{t("İlk workspace kurulumu")}</span>
             </div>
             <div className={styles.ctaActions} style={{ marginTop: 18 }}>
-              <ActionLink action={{ label: t("Hesap Oluştur"), href: "/auth/signup" }} fullWidth />
+              <ActionLink action={{ label: t("Ücretsiz deneme"), href: "/auth/signup" }} fullWidth />
               <ActionLink
-                action={{ label: t("İletişime Geçin"), href: "/contact", tone: "secondary" }}
+                action={{ label: t("İletişime geçin"), href: "/contact", tone: "secondary" }}
                 tone="secondary"
                 fullWidth
               />

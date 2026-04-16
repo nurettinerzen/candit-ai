@@ -522,7 +522,11 @@ function SidebarContent({
       <nav className="sidebar-nav">
         {primaryNavGroups.map((group) => {
           const items = group.items
-            .filter((item) => canPerformAction(session, item.permission))
+            .filter((item) =>
+              item.internalOnly
+                ? isInternalAdminSession(session)
+                : canPerformAction(session, item.permission)
+            )
             .filter((item) => !item.internalOnly || isInternalAdminSession(session));
 
           if (items.length === 0) {

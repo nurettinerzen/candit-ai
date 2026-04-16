@@ -317,7 +317,7 @@ export default function CandidateDetailPage() {
                 <p style={{ fontSize: 14, lineHeight: 1.8, marginBottom: 14 }}>{parsedSummary.shortSummary}</p>
 
                 <div style={{ fontSize: 13, marginBottom: 14 }}>
-                  <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.3px", marginBottom: 4 }}>
+                  <div style={{ fontSize: 10, color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.01em", marginBottom: 4 }}>
                     İş Deneyimi Özeti
                   </div>
                   <p style={{ lineHeight: 1.7 }}>{parsedSummary.coreWorkHistorySummary}</p>
@@ -325,7 +325,7 @@ export default function CandidateDetailPage() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
                   <div>
-                    <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.3px", marginBottom: 6 }}>
+                    <div style={{ fontSize: 10, color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.01em", marginBottom: 6 }}>
                       Güçlü Yönler
                     </div>
                     {parsedSummary.likelyFitSignals.length === 0 ? (
@@ -337,7 +337,7 @@ export default function CandidateDetailPage() {
                     )}
                   </div>
                   <div>
-                    <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.3px", marginBottom: 6 }}>
+                    <div style={{ fontSize: 10, color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.01em", marginBottom: 6 }}>
                       Görüşmede Sorulması Gerekenler
                     </div>
                     {parsedSummary.recruiterFollowUpTopics.length === 0 ? (
@@ -352,7 +352,7 @@ export default function CandidateDetailPage() {
 
                 {parsedSummary.missingCriticalInformation.length > 0 && (
                   <div>
-                    <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.3px", marginBottom: 6 }}>
+                    <div style={{ fontSize: 10, color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.01em", marginBottom: 6 }}>
                       Eksik Bilgiler
                     </div>
                     <ul style={{ paddingLeft: 16, fontSize: 13, lineHeight: 1.8 }}>
@@ -493,7 +493,7 @@ export default function CandidateDetailPage() {
               </button>
             </form>
             <p className="text-sm text-muted" style={{ marginTop: 6, fontSize: 11 }}>
-              {candidate.uploadPolicy.allowedExtensions.join(", ").toUpperCase()} · Maks {(candidate.uploadPolicy.maxSizeBytes / 1024 / 1024).toFixed(0)} MB
+              {candidate.uploadPolicy.allowedExtensions.join(", ")} · Maks {(candidate.uploadPolicy.maxSizeBytes / 1024 / 1024).toFixed(0)} MB
             </p>
           </section>
 
@@ -553,7 +553,7 @@ export default function CandidateDetailPage() {
 function InfoCell({ label, value, success }: { label: string; value: string; success?: boolean }) {
   return (
     <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", borderRight: "1px solid var(--border)" }}>
-      <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.3px", marginBottom: 3 }}>
+      <div style={{ fontSize: 10, color: "var(--text-secondary)", fontWeight: 600, letterSpacing: "0.01em", marginBottom: 3 }}>
         {label}
       </div>
       <div style={{

@@ -1,9 +1,33 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = path.resolve(process.cwd());
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(SCRIPT_DIR, "..");
 const I18N_FILE = path.join(ROOT, "lib", "i18n.ts");
-const SOURCE_DIRS = [path.join(ROOT, "app"), path.join(ROOT, "components")];
+const DEFAULT_SOURCE_ENTRIES = [path.join(ROOT, "app"), path.join(ROOT, "components"), path.join(ROOT, "lib")];
+
+function resolveSourceEntries(rawArgs) {
+  if (rawArgs.length === 0) {
+    return DEFAULT_SOURCE_ENTRIES;
+  }
+
+  const resolved = rawArgs
+    .map((entry) => {
+      const fromCwd = path.resolve(process.cwd(), entry);
+      if (fs.existsSync(fromCwd)) {
+        return fromCwd;
+      }
+
+      const fromRoot = path.resolve(ROOT, entry);
+      return fs.existsSync(fromRoot) ? fromRoot : null;
+    })
+    .filter(Boolean);
+
+  return [...new Set(resolved)];
+}
+
+const SOURCE_ENTRIES = resolveSourceEntries(process.argv.slice(2));
 
 function extractObjectBodies(source, marker) {
   const bodies = [];
@@ -75,6 +99,18 @@ function collectTranslationKeys() {
 }
 
 function walk(dir, files) {
+  if (!fs.existsSync(dir)) {
+    return;
+  }
+
+  const stats = fs.statSync(dir);
+  if (stats.isFile()) {
+    if (/\.(ts|tsx|js|jsx)$/.test(path.basename(dir)) && !path.basename(dir).includes(" 2.")) {
+      files.push(dir);
+    }
+    return;
+  }
+
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === ".next" || entry.name === "node_modules") {
       continue;
@@ -94,8 +130,8 @@ function walk(dir, files) {
 
 function collectUiPhrases() {
   const files = [];
-  for (const dir of SOURCE_DIRS) {
-    walk(dir, files);
+  for (const entry of SOURCE_ENTRIES) {
+    walk(entry, files);
   }
 
   const phraseRefs = new Map();
