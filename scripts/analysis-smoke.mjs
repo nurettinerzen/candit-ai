@@ -5,7 +5,13 @@ import { createRequire } from "node:module";
 import path from "node:path";
 
 const apiRequire = createRequire(new URL("../apps/api/package.json", import.meta.url));
-const { BillingGrantSource, BillingQuotaKey, PrismaClient } = apiRequire("@prisma/client");
+const {
+  BillingAccountStatus,
+  BillingGrantSource,
+  BillingPlanKey,
+  BillingQuotaKey,
+  PrismaClient
+} = apiRequire("@prisma/client");
 
 const API_BASE_URL = stripTrailingSlash(process.env.CANDIT_API_BASE_URL ?? "http://localhost:4000/v1");
 const WEB_BASE_URL = stripTrailingSlash(process.env.CANDIT_WEB_BASE_URL ?? "http://localhost:3000");
@@ -155,29 +161,93 @@ function positiveInt(value, fallback) {
 }
 
 async function ensureSmokeQuotaGrant(tenantId) {
-  const account = await prisma.tenantBillingAccount.findUnique({
-    where: { tenantId },
-    include: {
-      quotaGrants: {
-        where: {
-          quotaKey: {
-            in: [
-              BillingQuotaKey.ACTIVE_JOBS,
-              BillingQuotaKey.CANDIDATE_PROCESSING,
-              BillingQuotaKey.AI_INTERVIEWS
-            ]
+  const now = new Date();
+  const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const account = await prisma.$transaction(async (tx) => {
+    const existing = await tx.tenantBillingAccount.findUnique({
+      where: { tenantId },
+      include: {
+        quotaGrants: {
+          where: {
+            quotaKey: {
+              in: [
+                BillingQuotaKey.ACTIVE_JOBS,
+                BillingQuotaKey.CANDIDATE_PROCESSING,
+                BillingQuotaKey.AI_INTERVIEWS
+              ]
+            }
           }
         }
       }
-    }
-  });
+    });
 
-  if (!account) {
-    return {
-      applied: false,
-      reason: "billing_account_missing"
-    };
-  }
+    if (existing) {
+      return existing;
+    }
+
+    const createdAccount = await tx.tenantBillingAccount.create({
+      data: {
+        tenantId,
+        billingEmail: SMOKE_EMAIL,
+        currentPlanKey: BillingPlanKey.STARTER,
+        status: BillingAccountStatus.ACTIVE,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+        featuresJson: {
+          smokeScript: true
+        },
+        planSnapshotJson: {
+          smokeScript: true,
+          seatsIncluded: 1,
+          activeJobsIncluded: 0,
+          candidateProcessingIncluded: 0,
+          aiInterviewsIncluded: 0
+        }
+      }
+    });
+
+    await tx.tenantBillingSubscription.create({
+      data: {
+        tenantId,
+        accountId: createdAccount.id,
+        planKey: BillingPlanKey.STARTER,
+        status: BillingAccountStatus.ACTIVE,
+        billingEmail: SMOKE_EMAIL,
+        periodStart: now,
+        periodEnd,
+        seatsIncluded: 1,
+        activeJobsIncluded: 0,
+        candidateProcessingIncluded: 0,
+        aiInterviewsIncluded: 0,
+        featuresJson: {
+          smokeScript: true
+        },
+        metadataJson: {
+          smokeScript: true,
+          bootstrap: "analysis_smoke"
+        },
+        createdBy: "system:analysis-smoke"
+      }
+    });
+
+    return tx.tenantBillingAccount.findUnique({
+      where: { tenantId },
+      include: {
+        quotaGrants: {
+          where: {
+            quotaKey: {
+              in: [
+                BillingQuotaKey.ACTIVE_JOBS,
+                BillingQuotaKey.CANDIDATE_PROCESSING,
+                BillingQuotaKey.AI_INTERVIEWS
+              ]
+            }
+          }
+        }
+      }
+    });
+  });
 
   const desiredByQuota = new Map([
     [BillingQuotaKey.ACTIVE_JOBS, positiveInt(SMOKE_ACTIVE_JOB_QUOTA, 1000)],
@@ -1589,11 +1659,59 @@ async function ensureSmokeUser() {
     });
 
     logStatus("PASS", "Smoke user created", `${SMOKE_EMAIL} | tenant=${signup?.user?.tenantId ?? "unknown"}`);
+    const tenantId = signup?.user?.tenantId ?? null;
+    const directAccessToken = typeof signup?.accessToken === "string" ? signup.accessToken : null;
+    const directRefreshToken = typeof signup?.refreshToken === "string" ? signup.refreshToken : null;
+
+    if (directAccessToken && tenantId) {
+      return {
+        created: true,
+        token: directAccessToken,
+        tenantId,
+        user: signup?.user ?? null,
+        refreshPromise: Promise.resolve(directRefreshToken)
+      };
+    }
+
+    const previewUrl = typeof signup?.emailVerification?.previewUrl === "string"
+      ? signup.emailVerification.previewUrl
+      : null;
+    const verificationToken = extractVerificationToken(previewUrl);
+    if (verificationToken) {
+      await requestJson("Smoke email verification confirm", "/auth/email-verification/confirm", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token: verificationToken })
+      });
+      logStatus("PASS", "Smoke user email verified", SMOKE_EMAIL);
+    }
+
+    if (!tenantId) {
+      return {
+        created: true,
+        token: null,
+        tenantId: null,
+        user: signup?.user ?? null,
+        refreshPromise: null
+      };
+    }
+
+    const login = await requestJson("Smoke login after signup", "/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email: SMOKE_EMAIL,
+        password: SMOKE_PASSWORD,
+        tenantId
+      })
+    });
+
+    logStatus("PASS", "Smoke user logged in", `${SMOKE_EMAIL} | tenant=${login?.user?.tenantId ?? tenantId}`);
     return {
       created: true,
-      token: signup.accessToken,
-      tenantId: signup?.user?.tenantId ?? null,
-      user: signup?.user ?? null,
+      token: login.accessToken,
+      tenantId: login?.user?.tenantId ?? tenantId,
+      user: login?.user ?? signup?.user ?? null,
       refreshPromise: null
     };
   } catch (error) {
@@ -1625,6 +1743,20 @@ async function ensureSmokeUser() {
       user: login?.user ?? null,
       refreshPromise: null
     };
+  }
+}
+
+function extractVerificationToken(previewUrl) {
+  if (typeof previewUrl !== "string" || previewUrl.trim().length === 0) {
+    return null;
+  }
+
+  try {
+    const url = new URL(previewUrl);
+    const token = url.searchParams.get("token");
+    return token?.trim() ? token.trim() : null;
+  } catch {
+    return null;
   }
 }
 

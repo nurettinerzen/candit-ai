@@ -85,8 +85,9 @@ export class ScreeningSupportTaskService {
     const rubric = await this.loadRubric(context.tenantId, context.taskRun.id, application.job.roleFamily);
     const screeningMode = this.normalizeScreeningMode(application.job.screeningMode);
     const screeningModeContext = this.buildScreeningModeContext(screeningMode);
-    const promptVersion = "screening_support.mode_aware.v2.tr";
+    const promptVersion = "screening_support.mode_aware.v4.simple.tr";
     const fitScoreContext = this.buildFitScoreContext(latestFitScore);
+    const screeningPromptCvProfile = this.buildScreeningPromptCvProfile(latestCvProfile);
     const requirementCoverage = this.buildRequirementCoverage(
       application.job.requirements,
       latestCvProfile
@@ -123,27 +124,12 @@ export class ScreeningSupportTaskService {
       systemPrompt: [
         "Sen recruiter'a yardim eden bir screening asistanisin.",
         "Turkce cikti uret.",
-        "Adayi yalnizca bu mevcut role gore degerlendir; adayi daha uygun oldugu baska bir role gore ADVANCE etme.",
-        "Screening fit score'un bir ozeti degil, recruiter icin eyleme donuk ve tutarli bir yorumdur.",
-        "fitScore ve screeningDecisionContext alanlari, recruiter icin hazirlanmis on degerlendirme baglamidir; bunlari aktif kullan.",
-        "fitStrengthSignals, matchedRequirements veya fitBandReasoning icinde zaten kanitlanan bir capability'yi yeniden missingInformation olarak yazma.",
-        "Raw CV ozetindeki eksikligi, fit tarafinda zaten kanit varsa kesin eksik gibi yorumlama; capability varligi ile derinligini ayir.",
-        "Ama acik false positive uretme: weak_fit veya not_for_this_role sinyali tasiyan adayi, cok guclu karsi kanit yoksa ADVANCE etme.",
-        "direct_fit ve ready_now sinyali tasiyan adayi da ciddi karsi kanit yoksa gereksiz ihtiyatla REVIEW etme.",
-        "HOLD genelde adjacent_fit veya borderline adaylar icindir; direct_fit + ready_now adayda riskler sadece follow-up seviyesindeyse ADVANCE'i tercih et.",
-        "weak_fit veya not_for_this_role adayda varsayilan yorum REVIEW ekseninde olmali; lokal olmak, yonetici title'i veya genel profesyonellik bunu HOLD ya da ADVANCE'e cevirmemeli.",
-        "Medya butcesi, ekipler arasi isbirligi, lead generation veya benzeri capability'ler fit baglaminda zaten kanitlandiysa bunlari HOLD gerekcesi yapma; gerekiyorsa yalnizca derinlik veya kapsam teyidi iste.",
-        "Summary mevcut role ve mevcut kanitlara gore yazilsin; genel profesyonellik veya komsu rol uygunlugu ana eksen olmasin.",
-        "Eksik bilgi ile riski ayir; eksik bilgi tek basina agir olumsuz karar sebebi olmasin.",
-        "direct_fit + ready_now + yuksek fit score kombinasyonunda 1-2 teyit maddesi varsa bunlari follow-up olarak ele al; adayi gereksiz yere REVIEW'a itme.",
-        "required/unresolved madde, capability'nin hic olmadigi anlamina gelmeyebilir; fit baglaminda kanit varsa bunu kapsam veya derinlik teyidi olarak yorumla.",
-        "fitRiskSignals bos ve fit tarafinda missingInformation bos olan direct-fit adayda unresolved maddeleri blocker gibi degil, follow-up gibi yorumla.",
-        "Lokasyon, commute veya farkli sehir bilgisi recruiter warning'idir; explicit remote-only veya fiziksel katilimi reddeden acik blocker yoksa recommendedOutcome'u tek basina dusurmesin.",
-        "screeningDecisionContext.operationalWarnings alanini recruiter warning'i olarak ele al; fitStrengthSignals ve exact-role kanitini override etmek icin kullanma.",
-        "Counterfactual dusun: ayni adayda role-fit kaniti ayni kalip yalnizca lokasyon degisiyorsa outcome'u default olarak koru; sadece warning veya follow-up notu degisebilir.",
-        "adjacent_fit veya borderline adayda execution teyit ihtiyaci belirginsa varsayilan eksen ADVANCE degil, HOLD olmali.",
-        screeningModeContext.systemInstruction,
-        "Nihai ise alim karari verme; sadece recruiter icin screening onerisi uret."
+        "Adayi yalnizca bu role gore degerlendir.",
+        "Ilan gereksinimlerini, CV ozetini ve fit degerlendirmesini birlikte okuyup recruiter icin net bir screening yorumu uret.",
+        "ADVANCE bu role gorusmeye alinmasi makul aday, HOLD umut veren ama teyit isteyen aday, REVIEW ise acikca zayif veya uzak aday icindir.",
+        "Kanitlanan bir capability'yi eksikmis gibi tekrar yazma.",
+        "Lokasyon ve calisma modeli notlarini operasyonel warning gibi ele al; role-fit'in yerine koyma.",
+        "Nihai ise alim karari verme; sadece screening onerisi uret."
       ].join(" "),
       userPrompt: JSON.stringify({
         task: "SCREENING_SUPPORT",
@@ -164,10 +150,9 @@ export class ScreeningSupportTaskService {
           id: application.job.id,
           title: application.job.title,
           roleFamily: application.job.roleFamily,
-          locationText: application.job.locationText,
           shiftType: application.job.shiftType,
           screeningMode,
-          jdText: application.job.jdText,
+          jdText: this.sanitizeJobDescriptionForScreeningPrompt(application.job.jdText),
           requirements: application.job.requirements
             .filter((item) => !this.isOperationalRequirementKey(item.key))
             .map((item) => ({
@@ -179,40 +164,36 @@ export class ScreeningSupportTaskService {
           operationalRequirements: application.job.requirements
             .filter((item) => this.isOperationalRequirementKey(item.key))
             .map((item) => ({
-            id: item.id,
-            key: item.key,
-            value: item.value,
-            required: item.required
-          }))
+              id: item.id,
+              key: item.key,
+              summary: this.summarizeOperationalRequirementValue(item.key, item.value),
+              required: item.required
+            }))
         },
-        cvParsedProfile: latestCvProfile,
+        cvParsedProfile: screeningPromptCvProfile,
         scoringRubric: rubric?.rubricJson ?? null,
-        screeningMode: screeningModeContext,
+        screeningMode: {
+          code: screeningMode,
+          guidance: screeningModeContext.userPromptInstruction
+        },
         fitScore: fitScoreContext,
-        screeningDecisionContext,
+        screeningDecisionContext: {
+          fitStrengthSignals: screeningDecisionContext.fitStrengthSignals,
+          fitRiskSignals: screeningDecisionContext.fitRiskSignals,
+          strongestFitAreas: screeningDecisionContext.strongestFitAreas,
+          weakestFitAreas: screeningDecisionContext.weakestFitAreas,
+          matchedRequirements: screeningDecisionContext.matchedRequirements,
+          unresolvedRequirements: screeningDecisionContext.unresolvedRequirements,
+          requirementsNeedingValidation: screeningDecisionContext.requirementsNeedingValidation,
+          operationalWarnings: screeningDecisionContext.operationalWarnings
+        },
         instructions: [
-          "screeningMode alanini recruiter'in bu batch icin tercih ettigi tarama davranisi olarak yorumla; once mevcut role ait kanita bak, sonra outcome tonunu bu tercihe gore kalibre et",
-          "recommendation.recommendedOutcome alani ADVANCE, HOLD veya REVIEW mantigina tutarli olsun",
-          "ADVANCE, bu exact role icin recruiter gorusmesine tasinmasi makul adaylar icin kullanilsin",
-          "HOLD, umut veren ama 1-2 kritik teyit sorusuna bagli gri adaylar icin kullanilsin",
-          "REVIEW, zayif uyumlu veya role acikca uzak adaylar icin kullanilsin",
-          "fitBand=direct_fit ve interviewReadiness=ready_now ise, riskler yalnizca follow-up veya kapsam teyidi seviyesindeyse ADVANCE'i sec",
-          "fitBand=weak_fit veya interviewReadiness=not_for_this_role ise, cok guclu karsi kanit yoksa REVIEW'i sec",
-          "fitStrengthSignals veya matchedRequirements tarafinda zaten kanitlanan capability'leri missingInformation listesine tasima",
-          "Eksik yazacaksan capability yokmus gibi degil, kapsam veya derinlik teyidi olarak yaz",
-          "overallScore >= 72, fitBand=direct_fit ve interviewReadiness=ready_now ise; acik lokasyon/language/hands-on blocker yoksa varsayilan outcome ADVANCE olsun",
-          "overallScore >= 75 ve unresolvedRequirements sayisi 2 veya daha az ise, bu maddeleri default olarak follow-up kabul et; role acik mismatch yoksa REVIEW'a kacma",
-          "fitStrengthSignals guclu ve fitRiskSignals bos ya da operasyonel warning seviyesindeyse, eksik maddeler yalnizca teyit niteligindeyse ADVANCE'i tercih et",
-          "fitBand=direct_fit, interviewReadiness=ready_now, fitRiskSignals bos ve fitScoreContext.missingInformation bos ise; unresolvedRequirements 1-3 adet olsa bile bunlari follow-up olarak yaz ve default sonucu ADVANCE tarafinda tut",
-          "location_warning, long_commute veya farkli sehir notlari tek basina outcome dusurme nedeni degildir; bunlari recruiter warning'i olarak yaz",
-          "screeningDecisionContext.operationalWarnings alanindaki notlar, explicit fiziksel katilim imkansizligi veya remote-only reddi yoksa ADVANCE/HOLD/REVIEW sonucunu tek basina degistirmesin",
-          "Ayni adayda yalnizca lokasyon degismis gibi gorunen vakalarda outcome'u mevcut role ait kanita gore koru; warning/follow-up dilini ayarla",
-          "fitBand=adjacent_fit veya interviewReadiness=borderline ise; execution teyit ihtiyaci belirginse sonucu ADVANCE yerine HOLD tarafinda tut",
-          "Summary bir recruiter'in tek bakista anlayacagi sekilde, mevcut role gore 1-2 temel guclu sinyal ve en buyuk riski yansitsin",
-          "Weak-fit adaylarda summary exact mismatch'i acikca adlandirsin; genel ve yumusak bir dil kullanma",
-          "Aday baska role daha uygun gorunuyorsa bunu ana gerekce yapma; bu role gore yorumla",
-          "fitBand ve interviewReadiness sinyallerini aktif kullan; weak_fit/not_for_this_role ile ADVANCE arasinda belirgin celiski kurma",
-          "direct_fit/ready_now adaylarda gereksiz kotumser dil kullanma",
+          "recommendation.recommendedOutcome alani ADVANCE, HOLD veya REVIEW olmali",
+          "Summary mevcut role gore 1-2 temel guclu sinyali ve en buyuk riski netce anlatmali",
+          "Eksik bilgi yazacaksan yalnizca karar icin anlamli eksikleri yaz; kanitlanan capability'leri tekrar eksik diye yazma",
+          "fitScore ve screeningDecisionContext alanlarini aktif kullan ama kendi recruiter yargini da kur",
+          "Lokasyon ve calisma modeli notlarini operasyonel warning gibi ele al; gerekmedikce sonucu bunlarla belirleme",
+          "Aday baska role daha uygun gorunse bile yorumu bu role gore yap",
           screeningModeContext.userPromptInstruction
         ]
       })
@@ -709,7 +690,7 @@ export class ScreeningSupportTaskService {
         title: input.job.title,
         roleFamily: input.job.roleFamily,
         workModel: input.job.shiftType,
-        locationText: input.job.locationText
+        locationText: null
       },
       exactRoleBoundary: {
         title: input.job.title,
@@ -1072,6 +1053,8 @@ export class ScreeningSupportTaskService {
     fitScoreContext: {
       overallScore: number;
       confidence: number;
+      fitBand: "direct_fit" | "adjacent_fit" | "weak_fit" | null;
+      interviewReadiness: "ready_now" | "borderline" | "not_for_this_role" | null;
     } | null;
     requirementCoverage: {
       uncoveredRequired: string[];
@@ -1224,7 +1207,7 @@ export class ScreeningSupportTaskService {
   }
 
   private describeOperationalRequirement(
-    value: string,
+    _value: string,
     key: string,
     status: "proven" | "partial" | "needs_validation" | "absent"
   ) {
@@ -1233,14 +1216,107 @@ export class ScreeningSupportTaskService {
     }
 
     if (/location|lokasyon/i.test(key)) {
-      return `Lokasyon ve fiziksel katilim konusu recruiter tarafinda teyit edilmeli: ${value}.`;
+      return "Lokasyon ve fiziksel katilim konusu recruiter tarafinda teyit edilmeli.";
     }
 
     if (/work_model|remote|hibrit|calisma modeli/i.test(key)) {
-      return `Calisma modeli ve ofis ritmi recruiter tarafinda teyit edilmeli: ${value}.`;
+      return "Calisma modeli ve ofis ritmi recruiter tarafinda teyit edilmeli.";
     }
 
-    return `Operasyonel uygunluk teyidi gerekli: ${value}.`;
+    return "Operasyonel uygunluk teyidi gerekli.";
+  }
+
+  private summarizeOperationalRequirementValue(key: string, value: string) {
+    const normalizedKey = key.toLocaleLowerCase("tr-TR");
+    const normalizedValue = value.toLocaleLowerCase("tr-TR");
+
+    if (/location|lokasyon/.test(normalizedKey)) {
+      return "Rol fiziksel katilim gerektiren bir lokasyon beklentisi tasiyor.";
+    }
+
+    if (/work_model|remote|hibrit|calisma modeli/.test(normalizedKey)) {
+      return /remote-only|remote only|uzaktan disinda/.test(normalizedValue)
+        ? "Rol remote-only uygun degildir; hibrit veya ofis ritmi beklenir."
+        : "Rolun calisma modeli hibrit veya ofis katilimi beklentisi iceriyor.";
+    }
+
+    return "Operasyonel uygunluk beklentisi mevcut.";
+  }
+
+  private sanitizeJobDescriptionForScreeningPrompt(jdText: string | null | undefined) {
+    if (typeof jdText !== "string" || jdText.trim().length === 0) {
+      return jdText ?? null;
+    }
+
+    const sentences = jdText
+      .split(/(?<=[.!?])\s+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const filtered = sentences.filter((sentence) => {
+      const normalized = sentence
+        .toLocaleLowerCase("tr-TR")
+        .replace(/ç/g, "c")
+        .replace(/ğ/g, "g")
+        .replace(/ı/g, "i")
+        .replace(/ö/g, "o")
+        .replace(/ş/g, "s")
+        .replace(/ü/g, "u");
+
+      return !/(cekmekoy|istanbul|lokasyon|hibrit|hybrid|remote-only|remote only|ofis|fiziksel katilim|haftada [0-9]+ gun|gun remote)/.test(
+        normalized
+      );
+    });
+
+    const sanitized = (filtered.length > 0 ? filtered : sentences).join(" ").trim();
+    return sanitized.length > 0 ? sanitized : jdText;
+  }
+
+  private buildScreeningPromptCvProfile(profileJson: unknown) {
+    const profile = toRecord(profileJson);
+    const extractedFacts = {
+      ...toRecord(profile.extractedFacts),
+      locationSignals: []
+    };
+
+    return {
+      ...profile,
+      extractedFacts: this.redactGenericLocationMentionsInUnknown(extractedFacts),
+      normalizedSummary: this.redactGenericLocationMentionsInUnknown(toRecord(profile.normalizedSummary)),
+      inferredObservations: this.redactGenericLocationMentionsInUnknown(profile.inferredObservations ?? null),
+      missingCriticalInformation: this.redactGenericLocationMentionsInUnknown(
+        profile.missingCriticalInformation ?? null
+      )
+    };
+  }
+
+  private redactGenericLocationMentionsInUnknown(value: unknown): unknown {
+    if (typeof value === "string") {
+      return this.redactGenericLocationMentionsInString(value);
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.redactGenericLocationMentionsInUnknown(item));
+    }
+
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+          key,
+          key === "locationSignals"
+            ? []
+            : this.redactGenericLocationMentionsInUnknown(entry)
+        ])
+      );
+    }
+
+    return value;
+  }
+
+  private redactGenericLocationMentionsInString(value: string) {
+    return value.replace(
+      /\b(istanbul|ankara|izmir|bursa|sofia|bulgaria|turkiye|turkey|cekmekoy|umraniye|sancaktepe|atasehir|besiktas|halkali|karsiyaka|cankaya)\b/gi,
+      "[lokasyon]"
+    );
   }
 
   private looksLikeOperationalWarning(value: string) {
