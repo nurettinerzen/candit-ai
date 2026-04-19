@@ -428,7 +428,7 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "Limit doldu": "Limit reached",
   "Kalan": "Remaining",
   "Kullanım": "Usage",
-  "Bu alan yalnızca iç yönetim ekibi için açıktır.": "This area is only available to the internal admin team.",
+  "Bu alan yalnızca yetkili yöneticiler için açıktır.": "This area is only available to authorized administrators.",
   "Müşteri görünümüne dön": "Back to customer view",
   "İç ekip için kullanıcılar, kırmızı alarm, abonelikler ve kurumsal teklif akışları tek merkezde.":
     "Users, red alerts, subscriptions, and enterprise quote flows are managed here for the internal team.",
@@ -447,9 +447,14 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
     "View active team members, pending invitations, and last session activity in this account.",
   "E-posta doğrulaması bekleniyor": "Email verification is pending",
   "Doğrulama mailini tekrar gönder": "Resend verification email",
-  "Davet preview bağlantısını aç": "Open invite preview link",
-  "Doğrulama preview bağlantısını aç": "Open verification preview link",
   "Yeni üye davet et": "Invite teammate",
+  Ekip: "Team",
+  Genel: "General",
+  "Ekip ayarları yükleniyor...": "Loading team settings...",
+  "Profili kaydet": "Save profile",
+  "Şirket profili kaydedilemedi.": "Company profile could not be saved.",
+  "Şirket profili güncellendi. Yeni ilan taslakları güncel profil bilgisini kullanacak.":
+    "Company profile updated. New job drafts will use the latest profile context.",
   "Üye listesi": "Team members",
   "Henüz ekip üyesi bulunmuyor.": "There are no team members yet.",
   "Çalışma alanında tek bir owner bulunur. Menajer operasyonu yönetir, personel günlük akışta çalışır.":
@@ -1085,8 +1090,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Kapsam": "Scope",
   "Zaman": "Time",
   "Sistem Özeti": "System Summary",
-  "Teknik bileşenlerin genel durumu ve servis hazırlığı.":
-    "Overall status of technical components and service readiness.",
+  "Teknik bileşenlerin genel durumu ve servis erişilebilirliği.":
+    "Overall status of technical components and service availability.",
   "Bileşen": "Component",
   "Hazır": "Ready",
   "İlan Merkezi": "Job Center",
@@ -1139,7 +1144,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Davet bekleyen kullanıcılar da bu limite dahildir.": "Pending invitations also count against this limit.",
   "Ekip kullanıcı limiti dolu. Yeni davet için plan yükseltin.": "Your team seat limit is full. Upgrade the plan to invite another user.",
   "Dönem bilgisi": "Billing period",
-  "Stripe hazırlığı": "Stripe readiness",
+  "Stripe durumu": "Stripe status",
   "Limitler tek merkezden izlenir. Kritik noktalarda sistem blok koyar ve upgrade / add-on önerir.":
     "Limits are tracked from one place. The system blocks at critical points and recommends upgrades or add-ons.",
   "Starter giriş paketi, Growth ise asıl satış paketi olarak konumlandı.":
@@ -1646,7 +1651,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Uyum skoru henüz hesaplanmadı.": "Fit score has not been calculated yet.",
   "Uyum skoru yüklenemedi.": "Fit score could not be loaded.",
   "Uyum skoru yükleniyor...": "Loading fit score...",
-  "V1 Güvenlik Kuralı:": "V1 Security Rule:",
+  "Güvenlik Kuralı:": "Security Rule:",
   "vardiyalı": "shift-based",
   "vardiyalı, tam zamanlı, yarı zamanlı...": "shift-based, full-time, part-time...",
   "Veri yüklenemedi.": "Data could not be loaded.",
@@ -2766,12 +2771,12 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Pozisyon bazlı süre analizi": "Position-based time analysis",
   "Ekip verimliliği raporları": "Team efficiency reports",
   "Entegrasyonlar": "Integrations",
-  "Pilot kapsamındaki takvim ve API entegrasyonlarını kontrollü şekilde devreye alın.":
-    "Activate pilot-scope calendar and API integrations in a controlled manner.",
+  "Takvim ve API entegrasyonlarını ekip ihtiyacına göre planlayın.":
+    "Plan calendar and API integrations based on your team needs.",
   "Google Calendar ve Google Meet": "Google Calendar and Google Meet",
   "Calendly bağlantısı": "Calendly connection",
   "ATS genel API / webhook": "ATS generic API / webhook",
-  "Kaynak Bulma (beta)": "Sourcing (beta)",
+  "Kaynak Bulma": "Sourcing",
 
   // Feature operations
   "İşe Alım Kontrol Paneli": "Hiring Control Panel",
@@ -3033,9 +3038,9 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "15 AI mülakat": "15 AI interviews",
   "50 AI mülakat": "50 AI interviews",
   "Temel raporlama": "Basic reporting",
-  "Beta erişim gerekli": "Beta access required",
-  "Sourcing modülü şu anda kontrollü beta erişiminde. İç yönetim ekibi dışında görünüm paylaşılmıyor.":
-    "The sourcing module is currently in controlled beta. The view is not shared outside the internal admin team.",
+  "Erişim gerekli": "Access required",
+  "Sourcing modülü şu anda hesabınız için kullanıma açık değil.":
+    "The sourcing module is not available for your account right now.",
   "E-posta desteği": "Email support",
   "Takvim entegrasyonları": "Calendar integrations",
   "Gelişmiş raporlama": "Advanced reporting",
@@ -3126,13 +3131,13 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Platform; rol bazlı erişim, veri maskeleme, audit log ve yaşam döngüsü kontrolleriyle güvenli kullanım için tasarlanmıştır. KVKK ve GDPR süreçleri için gerekli operasyonel kontroller ekip bazında yapılandırılmalıdır.":
     "The platform is designed for secure use with role-based access, data masking, audit logs, and lifecycle controls. Operational controls required for KVKK and GDPR processes must be configured on a team basis.",
   "Mevcut ATS sistemimle entegre olabilir mi?": "Can it integrate with my existing ATS?",
-  "Evet. Pilot aşamada REST API ve webhook desteği ile ATS sistemleriyle kontrollü entegrasyon kurulabilir. Hazır ve aktif bağlantı tarafında Google Calendar, Google Meet ve Calendly odaklı ilerliyoruz; diğer entegrasyonlar yol haritasına göre açılıyor.":
-    "Yes. In the pilot phase, controlled integration with ATS systems can be set up via REST API and webhook support. On the ready and active connections side, we are focused on Google Calendar, Google Meet, and Calendly; other integrations are opened according to the roadmap.",
+  "Evet. REST API ve webhook desteği ile ATS sistemleriyle entegrasyon senaryoları planlanabilir. Google Calendar, Google Meet ve Calendly odaklı bağlantılar için ekibimiz sizinle uygun akışı birlikte netleştirir.":
+    "Yes. Integration scenarios with ATS systems can be planned through REST API and webhook support. For Google Calendar, Google Meet, and Calendly-focused connections, our team helps you clarify the right setup together.",
 
   // Integrations page
-  "Pilot kapsamındaki entegrasyonlar": "Pilot-scope integrations",
-  "Takvim, ATS ve webhook odaklı bağlantıları kontrollü şekilde devreye alın.":
-    "Activate calendar, ATS, and webhook-focused connections in a controlled manner.",
+  Entegrasyonlar: "Integrations",
+  "Takvim, ATS ve webhook bağlantılarını ekip ihtiyacına göre planlayın.":
+    "Plan calendar, ATS, and webhook connections based on your team needs.",
   "Takvim ve Planlama": "Calendar and Scheduling",
   "ATS ve İşe Alım Sistemleri": "ATS and Hiring Systems",
   "Yol Haritası": "Roadmap",
@@ -3142,7 +3147,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Mülakat planlarını takvime bağlayın ve etkinlik oluşturun": "Connect interview schedules to your calendar and create events",
   "Uygun akışlarda görüşme linklerini Google ekosistemiyle yönetin": "Manage interview links through the Google ecosystem in suitable flows",
   "Aday planlama akışları için kurulum aşamasında, talep bazlı devreye alınır": "In setup phase for candidate scheduling flows, activated on demand",
-  "Pilotta aktif": "Active in pilot",
+  Aktif: "Active",
   "Yakında": "Coming soon",
   "Panelde aç": "Open in panel",
   "İletişime geç": "Contact us",
@@ -3391,6 +3396,24 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Want to transform your hiring processes with AI? Send us your questions, and our team will get back to you as soon as possible.",
   "Dakikalar İçinde Kurulum": "Setup in Minutes",
   "İlk AI mülakatınızı hemen oluşturun, teknik bilgi gerektirmez.": "Create your first AI interview right away, no technical knowledge required.",
+  "Başvurudan görüşmeye, tek akışta.": "From application to interview, in one flow.",
+  "İşe alım sürecinizi tek panelden yönetin,": "Manage your hiring process from a single panel,",
+  "AI ile daha hızlı karar verin.": "and make decisions faster with AI.",
+  "Başvuru toplama, CV tarama, aday uyum sinyalleri, ön görüşme ve takvimleme adımlarını tek akışta bir araya getirin.":
+    "Bring application collection, CV screening, candidate fit signals, pre-interviews, and scheduling together in one flow.",
+  "Kanıt bağlantılı tarama": "Evidence-linked screening",
+  "Türkçe AI ön görüşme": "Turkish AI pre-interviews",
+  "Takvim ve ekip operasyonu": "Scheduling and team operations",
+  "Akışı izleyin": "See the flow",
+  "Ürün akışı": "Product workflow",
+  "Nasıl çalışır": "How it works",
+  "İşe alım akışını baştan sona tek sahnede görün.": "See your hiring workflow end-to-end in one view.",
+  "Adayların başvurudan görüşmeye uzanan yolculuğunu tek ekranda takip edin; hangi adımda ne olduğunu ekipçe net şekilde görün.":
+    "Track the candidate journey from application to interview on one screen and let the team see clearly what is happening at every step.",
+  "Aday akışını sadece izlemez, hızlandırırsınız.":
+    "You do not just watch the candidate flow, you accelerate it.",
+  "Başvuru, tarama, görüşme ve planlama aynı ürün akışında birleşir; ekip daha hızlı ve daha net hareket eder.":
+    "Applications, screening, interviews, and scheduling come together in one product flow so the team can move faster and with more clarity.",
   "AI Destekli Mülakat": "AI-Powered Interview",
   "Yapay zeka ile tutarlı ve objektif aday değerlendirmesi.": "Consistent and objective candidate evaluation with AI.",
   "Kurumsal Güvenlik": "Enterprise Security",
@@ -3399,28 +3422,37 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Özel Destek": "Dedicated Support",
   "Kurulum, ATS entegrasyonu ve eğitimde yanınızdayız.": "We're with you for setup, ATS integration, and training.",
   "Bize Mesaj Gönderin": "Send Us a Message",
-  "Formu doldurarak bize ulaşın. Pilot hedefiniz, mevcut işe alım akışınız ve ihtiyaç duyduğunuz otomasyonları paylaşın.":
-    "Reach out by filling out the form. Share your pilot goals, current hiring workflow, and the automations you need.",
-  "Formu doldurun; demo, pilot planı veya entegrasyon ihtiyacınızı birkaç cümleyle paylaşın.":
-    "Fill out the form and share your demo, pilot, or integration needs in a few lines.",
+  "Formu doldurarak bize ulaşın. Mevcut işe alım akışınızı ve ihtiyaç duyduğunuz otomasyonları paylaşın.":
+    "Reach out by filling out the form. Share your current hiring workflow and the automations you need.",
+  "Formu doldurun; demo talebinizi, entegrasyon sorularınızı veya ihtiyacınızı birkaç cümleyle paylaşın.":
+    "Fill out the form and share your demo request, integration questions, or needs in a few lines.",
+  "Formu doldurun; demo talebinizi, entegrasyon sorularınızı veya işe alım ihtiyacınızı birkaç cümleyle paylaşın.":
+    "Fill out the form and share your demo request, integration questions, or hiring needs in a few lines.",
   "Mesajı Gönder": "Send Message",
   "Mesajınız ulaştı": "Your message was received",
   "Ekibimiz kısa süre içinde size dönüş yapacak.": "Our team will get back to you shortly.",
   "Örn: Ayşe Kaya": "e.g. Jane Doe",
   "Konu": "Subject",
-  "Demo, pilot, entegrasyon...": "Demo, pilot, integration...",
+  "Demo, entegrasyon, ihtiyaç...": "Demo, integration, needs...",
+  "Demo, entegrasyon, işe alım ihtiyacı...": "Demo, integration, hiring needs...",
   "Ekibimizle doğrudan bağlantı kurun": "Connect directly with our team",
-  "Form üzerinden gönderdiğiniz notlar doğrudan ekibimize düşer. Demo, pilot planı veya entegrasyon soruları için size uygun şekilde dönüş yaparız.":
-    "Notes you send through the form go straight to our team. We reply in the right way for demo, pilot planning, or integration questions.",
+  "Form üzerinden gönderdiğiniz notlar doğrudan ekibimize düşer. Demo, entegrasyon veya işe alım süreci soruları için size uygun şekilde dönüş yaparız.":
+    "Notes you send through the form go straight to our team. We reply in the right way for demo, integration, or hiring workflow questions.",
+  "Form üzerinden gönderdiğiniz notlar doğrudan ekibimize ulaşır. Demo, entegrasyon veya işe alım süreçleriyle ilgili sorularınız için size uygun şekilde dönüş yaparız.":
+    "Notes you send through the form reach our team directly. We will get back to you in the most relevant way for demo, integration, or hiring process questions.",
   "Çalışma saatleri": "Working hours",
   "Pazartesi - Cuma • 09:00 - 18:00": "Monday - Friday • 09:00 - 18:00",
   "Yardımcı olabileceğimiz başlıklar": "Topics we can help with",
   "Demo planı": "Demo planning",
-  "Pilot kapsamı": "Pilot scope",
+  "Demo talebi": "Demo request",
+  "İhtiyaç kapsamı": "Scope of need",
   "Entegrasyon soruları": "Integration questions",
+  "Kurulum desteği": "Setup support",
   "Mesajınıza mümkün olduğunca hızlı döneriz.": "We reply as quickly as we can.",
-  "Özellikle pilot hedefiniz ve mevcut akışınızdan kısaca bahsetmeniz, ilk yanıtı daha net hazırlamamızı sağlar.":
-    "Sharing your pilot goal and current workflow briefly helps us prepare a clearer first response.",
+  "Özellikle hedefinizi ve mevcut akışınızı kısaca paylaşmanız, ilk yanıtı daha net hazırlamamızı sağlar.":
+    "Briefly sharing your goals and current workflow helps us prepare a clearer first response.",
+  "Mevcut sürecinizi ve neye ihtiyaç duyduğunuzu kısaca paylaşmanız, ilk yanıtı daha hızlı hazırlamamızı sağlar.":
+    "Briefly sharing your current process and what you need helps us prepare a faster first response.",
   "Ön eleme akışı": "Pre-screening workflow",
   "Kesintisiz mülakat": "Non-stop interviews",
   "Dakikalar": "Minutes",
@@ -3512,9 +3544,13 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Hesap oluşturun ve platform güncellemelerini doğrudan takip edin.":
     "Create an account and follow platform updates directly.",
   "Haziran 2026": "June 2026",
-  "Lansman Sertleştirme": "Launch Hardening",
-  "Pilot lansman öncesi kimlik doğrulama güvenliği, iletişim formu alımı, yönetim görünürlüğü ve olay yönetimi omurgası sertleştirildi.":
-    "Pre-pilot launch authentication security, contact form intake, admin visibility, and incident management backbone were hardened.",
+  "Platform Sertleştirmesi": "Platform Hardening",
+  "Kimlik doğrulama güvenliği, iletişim formu alımı, yönetim görünürlüğü ve olay yönetimi omurgası güçlendirildi.":
+    "Authentication security, contact form intake, admin visibility, and incident management backbone were strengthened.",
+  "Kimlik doğrulama güvenliği, iletişim formu alımı, yönetim görünürlüğü ve olay yönetimi altyapısı güçlendirildi.":
+    "Authentication security, contact form intake, admin visibility, and incident management infrastructure were strengthened.",
+  "Kimlik Doğrulama ve Operasyon Güncellemesi":
+    "Authentication and Operations Update",
   "Herkese açık iletişim formu gerçek sunucuya bağlandı": "Public contact form connected to the real server",
   "İç yönetim potansiyel müşteri gelen kutusu açıldı": "Internal admin lead inbox opened",
   "Güvenlik olayı ve kritik alarm kalıcılığı eklendi": "Security incident and critical alert persistence added",
@@ -3531,7 +3567,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Kaynak Bulma ve Aday Havuzu": "Sourcing and Candidate Pool",
   "Aday keşfi, potansiyel aday takibi ve mevcut havuzdan yeniden değerlendirme akışları ürünün çekirdeğine eklendi.":
     "Candidate discovery, prospect tracking, and re-evaluation flows from the existing pool were added to the product core.",
-  "Kaynak bulma projesi ve potansiyel aday modeli açıldı": "Sourcing project and prospect model launched",
+  "Kaynak bulma projesi ve potansiyel aday modeli kullanıma açıldı":
+    "Sourcing project and prospect model became available",
   "Yetenek profili kaynak katmanı eklendi": "Talent profile sourcing layer added",
   "Uyum skorlama ve iletişim temelleri güçlendirildi": "Fit scoring and communication foundations strengthened",
   "İşe alım uzmanı görünürlüğü geliştirildi": "Recruiter visibility improved",
@@ -3558,7 +3595,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Kiracı ve çalışma alanı modeli": "Tenant and workspace model",
   "Kayıt / giriş / davet temelleri": "Registration / login / invitation foundations",
   "İlan, aday ve başvuru alan modeli": "Posting, candidate, and application domain model",
-  "İlk iç yönetim omurgası": "Initial internal admin backbone",
+  "İlk yönetim omurgası": "Initial admin backbone",
 
   // Waitlist page
   "Hemen Başlayın": "Get Started",
@@ -3571,9 +3608,9 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Temel ayarları tamamlayın": "Complete basic settings",
   "Takım üyeleri, entegrasyonlar ve ürün ayarlarını içeriden yönetin.":
     "Manage team members, integrations, and product settings from within.",
-  "Pilotu başlatın": "Start the pilot",
+  "Başlayın": "Get started",
   "Temel ayarlar": "Core settings",
-  "Pilot başlangıcı": "Pilot kickoff",
+  Başlangıç: "Kickoff",
   "Destek kanalı": "Support channel",
   "İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın.":
     "Run posting, candidate, and interview flows with your real use cases.",
@@ -3966,6 +4003,12 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "AI mülakat ve rapor hazır. Recruiter kararını verebilir.":
     "AI interview and report are ready. The recruiter can make a decision.",
   "AI Ön Eleme Tamamlandı": "AI Pre-screening Completed",
+  "Altyapı durumu": "Infrastructure status",
+  "Sistem uyarıları": "System warnings",
+  "Başlangıç durumu": "Startup status",
+  "Başlangıç uyarıları": "Startup warnings",
+  "Scheduling sağlayıcıları": "Scheduling providers",
+  "Kullanılamıyor": "Unavailable",
   "Akış Kapandı": "Flow Closed",
   "Düşük Uyum Riski": "Low Match Risk",
   "Fit score ve screening hazır. Recruiter değerlendirmesi yapılabilir.":
@@ -3985,10 +4028,29 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Talebi gönder": "Send request",
   "Pencereyi kapat": "Close modal",
   "Kurulum akışı": "Setup flow",
-  "Formu doldurun; demo, pilot planı veya işe alım akış ihtiyacınızı birkaç cümleyle paylaşın.":
-    "Fill out the form and share your demo, pilot plan, or hiring workflow needs in a few lines.",
-  "Form üzerinden gönderdiğiniz notlar doğrudan ekibimize düşer. Demo, pilot planı veya işe alım akışı soruları için size uygun şekilde dönüş yaparız.":
-    "Notes you send through the form go straight to our team. We reply in the right way for demo, pilot planning, or hiring workflow questions.",
+  "API Uç Noktaları": "API Endpoints",
+  "Başlamak için temel uç noktalar": "Core endpoints to get started",
+  "API detaylarını paylaşmak istiyorum.": "I want to share API details.",
+  "I want to share API details.": "I want to share API details.",
+  "İletişim ve demo taleplerini kayıt altına alır.": "Stores contact and demo requests.",
+  "REST API ve webhook senaryolarıyla Candit'i mevcut İK sistemlerinize bağlayın.":
+    "Connect Candit to your existing HR systems with REST API and webhook scenarios.",
+  "Sistemin sağlıklı çalışması için istek limitleri uygulanır.":
+    "Rate limits are applied to keep the system running reliably.",
+  "Bu alan şu anda hesabınız için kullanıma açık değil.":
+    "This area is not available for your account right now.",
+  "İşe alım sürecinizi daha hızlı ve daha net hale getirin.":
+    "Make your hiring process faster and clearer.",
+  "Aday akışını tek panelden yönetin, AI destekli ön eleme ve mülakatlarla daha doğru kararlar alın.":
+    "Manage your candidate flow from a single panel and make better decisions with AI-assisted screening and interviews.",
+  "Formu doldurun; demo talebinizi, entegrasyon sorularınızı veya işe alım akışı ihtiyacınızı birkaç cümleyle paylaşın.":
+    "Fill out the form and share your demo request, integration questions, or hiring workflow needs in a few lines.",
+  "Formu doldurun; demo talebinizi, entegrasyon sorularınızı veya işe alım ihtiyacınızı birkaç cümleyle paylaşın.":
+    "Fill out the form and share your demo request, integration questions, or hiring needs in a few lines.",
+  "Form üzerinden gönderdiğiniz notlar doğrudan ekibimize düşer. Demo, entegrasyon veya işe alım akışı soruları için size uygun şekilde dönüş yaparız.":
+    "Notes you send through the form go straight to our team. We reply in the right way for demo, integration, or hiring workflow questions.",
+  "Form üzerinden gönderdiğiniz notlar doğrudan ekibimize ulaşır. Demo, entegrasyon veya işe alım süreçleriyle ilgili sorularınız için size uygun şekilde dönüş yaparız.":
+    "Notes you send through the form reach our team directly. We will get back to you in the most relevant way for demo, integration, or hiring process questions.",
   "AI mülakat, aday tarama, iş ilanı yönetimi ve analitik araçları tek platformda. Hızlı kurulum, net operasyon görünürlüğü ve ölçeklenebilir otomasyon.":
     "AI interviews, candidate screening, job management, and analytics tools on a single platform. Fast setup, clear operational visibility, and scalable automation.",
   "Dashboard, güvenlik ve yönetim katmanlarıyla ekibiniz ve yöneticileriniz aynı veriden karar verir.":
@@ -4001,23 +4063,25 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Need support with API usage?",
   "Teknik ekibimiz API erişimi ve webhook akışı konusunda size yardımcı olmaya hazır.":
     "Our technical team is ready to help you with API access and webhook flow.",
-  "Kontrollü API akışları için temel uç noktalar":
-    "Core endpoints for controlled API flows",
+  "Başlamak için temel uç noktalar":
+    "Core endpoints to get started",
   "Desteklenen webhook sağlayıcılarından gelen olayları işler.":
     "Processes incoming events from supported webhook providers.",
-  "Pilot API detaylarını paylaşmak istiyorum.":
-    "I want to share pilot API details.",
+  "API detaylarını paylaşmak istiyorum.":
+    "I want to share API details.",
   "Takım üyeleri, çalışma alanı ayarları ve ürün yapılandırmasını içeriden yönetin.":
     "Manage team members, workspace settings, and product configuration from inside the product.",
-  "Şu an standart bir ATS veya takvim entegrasyonu sunmuyoruz. API ve webhook ihtiyaçlarını pilot kapsamına göre birlikte değerlendiriyoruz.":
-    "We do not currently offer a standard ATS or calendar integration. We evaluate API and webhook needs together based on the pilot scope.",
+  "Şu an standart bir ATS veya takvim entegrasyonu sunmuyoruz. API ve webhook ihtiyaçlarını ekibinizin kullanım senaryosuna göre birlikte değerlendiriyoruz.":
+    "We do not currently offer a standard ATS or calendar integration. We evaluate API and webhook needs together based on your team's use case.",
+  "İhtiyacınıza göre API ve webhook seçeneklerini birlikte değerlendirebiliriz. Uygun entegrasyon senaryoları için ekibimizle iletişime geçebilirsiniz.":
+    "We can evaluate API and webhook options together based on your needs. You can contact our team for suitable integration scenarios.",
   "Planlama ve Akış Sertleştirmesi": "Scheduling and workflow hardening",
   "Mülakat planlama tarafında temel hazırlıklar ve yedek akışlar güçlendirildi.":
     "Core interview scheduling preparation and fallback workflows were strengthened.",
   "Planlama akışı güncellendi": "Scheduling flow updated",
   "Toplantı akışı bağlamı netleştirildi": "Meeting flow context clarified",
-  "Pilot planlama ihtiyaçları için operasyon akışı sertleştirildi":
-    "Operational flow for pilot scheduling needs was hardened",
+  "Planlama ihtiyaçları için operasyon akışı güçlendirildi":
+    "Operational flow for scheduling needs was strengthened",
   "Bu ayar, birazdan kuyruğa alacağınız CV'lerde AI screening asistanının ne kadar iyimser veya seçici davranacağını belirler.":
     "This setting determines how optimistic or selective the AI screening assistant behaves for the CVs you are about to queue.",
   "Daha iyimser davranır. Yakın uyumlu ve umut veren adayları daha uzun süre oyunda tutar.":
@@ -4029,10 +4093,13 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Rol / Ekip": "Role / Team",
   Mesaj: "Message",
   "Örn: Nurettin Erzen": "Example: Nurettin Erzen",
-  "Demo, pilot, işe alım akışı...": "Demo, pilot, hiring workflow...",
+  "Demo, entegrasyon, işe alım akışı...": "Demo, integration, hiring workflow...",
+  "Demo, entegrasyon, işe alım ihtiyacı...": "Demo, integration, hiring needs...",
   "İK, kurucu, işe alım lideri...": "HR, founder, hiring lead...",
-  "İşe alım süreçleriniz, pilot hedefiniz ve ihtiyacınız olan akışlar hakkında kısa bilgi verin.":
-    "Share a short note about your hiring processes, pilot goals, and the workflows you need.",
+  "İşe alım süreçleriniz ve ihtiyacınız olan akışlar hakkında kısa bilgi verin.":
+    "Share a short note about your hiring processes and the workflows you need.",
+  "İşe alım sürecinizi ve ihtiyaç duyduğunuz akışları kısaca anlatın.":
+    "Briefly describe your hiring process and the workflows you need.",
   "Mesaj gönderilemedi. Lütfen tekrar deneyin.":
     "Message could not be sent. Please try again.",
   "Gönderim başarısız oldu": "Submission failed",
@@ -4095,14 +4162,14 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Audit log ve yönetim görünürlüğü": "Audit log and admin visibility",
   "Veri saklama ve silme süreçleri için operasyonel temel":
     "Operational foundation for data retention and deletion processes",
-  "REST API ve webhook ile kontrollü ATS entegrasyon senaryoları planlanabilir. Takvim ve planlama bağlantıları ekip ihtiyacına göre kademeli açılır; tüm entegrasyonlar varsayılan olarak aktif gelmez.":
-    "Controlled ATS integration scenarios can be planned with REST APIs and webhooks. Calendar and scheduling connections are enabled gradually according to team needs; integrations do not come active by default.",
+  "REST API ve webhook ile ATS entegrasyon senaryoları planlanabilir. Takvim ve planlama bağlantıları ekip ihtiyacına göre açılır; tüm entegrasyonlar varsayılan olarak aktif gelmez.":
+    "ATS integration scenarios can be planned with REST APIs and webhooks. Calendar and scheduling connections are enabled according to team needs; integrations do not come active by default.",
   "Google takvim akışıyla eşleştirin": "Match it with the Google Calendar flow",
   "Mülakat planlarını Google takvim akışıyla eşleştirin":
     "Match interview plans with the Google Calendar flow",
   "Planlama akışlarında Google Meet bağlantı senaryolarını yönetin":
     "Manage Google Meet connection scenarios in scheduling flows",
-  "Pilot kurulum": "Pilot setup",
+  Kurulum: "Setup",
   Değerlendirme: "Evaluation",
   "Talep olduğunda değerlendirilen planlama seçeneği":
     "A scheduling option evaluated when there is demand",
@@ -4139,39 +4206,45 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Politika, fallback ve gözden geçirme katmanlarıyla akış sertleştirilir":
     "The flow is hardened with policy, fallback, and review layers",
   "Operasyonel İzleme": "Operational Monitoring",
-  "Sistem durumu, kritik olaylar ve temel audit görünürlüğüyle launch öncesi sertleştirme desteklenir.":
-    "Pre-launch hardening is supported through system status, critical events, and core audit visibility.",
-  "Sağlık kontrolleri ve runtime görünürlüğü": "Health checks and runtime visibility",
+  "Sistem durumu, kritik olaylar ve temel audit görünürlüğüyle operasyonel takip desteklenir.":
+    "Operational monitoring is supported through system status, critical events, and core audit visibility.",
+  "Sistem durumu, kritik olaylar ve temel audit görünürlüğüyle operasyonel takip desteklenir.":
+    "Operational monitoring is supported through system status, critical events, and core audit visibility.",
+  "Sağlık kontrolleri ve altyapı görünürlüğü": "Health checks and infrastructure visibility",
   "Kritik olay kaydı ve yönetim takibi": "Critical event logging and admin tracking",
-  "Kademeli launch için checklist odaklı ilerleme":
-    "Checklist-driven progress for a staged launch",
+  "Checklist odaklı operasyon takibi":
+    "Checklist-driven operational tracking",
+  "Operasyon checklistleriyle düzenli takip":
+    "Regular follow-up with operational checklists",
   "Sezonluk kampanya dönemlerinde yüksek hacimli başvuruları AI ile tarayın ve öncelikli adayları daha hızlı görünür hale getirin.":
     "Use AI to review high-volume applications during seasonal campaigns and surface priority candidates faster.",
   "Hassas veri yönetimi için operasyonel kontrol yaklaşımı":
     "An operational control approach for sensitive data management",
   "Nasıl Çalışıyoruz": "How We Work",
-  "Candit ekibi ürün, mühendislik ve işe alım deneyimini bir araya getiren dağıtık bir çalışma modeliyle ilerler. Önceliğimiz Türkiye odaklı pilot ekiplerle gerçek kullanım üzerinden hızlı öğrenmek ve ürünü buna göre geliştirmektir.":
-    "The Candit team works in a distributed model that combines product, engineering, and hiring experience. Our priority is to learn quickly from real usage with Turkey-focused pilot teams and shape the product accordingly.",
+  "Candit ekibi ürün, mühendislik ve işe alım deneyimini bir araya getiren dağıtık bir çalışma modeliyle ilerler. Gerçek kullanım üzerinden hızlı öğrenir ve ürünü buna göre geliştirir.":
+    "The Candit team works in a distributed model that combines product, engineering, and hiring experience. We learn quickly from real usage and improve the product accordingly.",
+  "Candit ekibi ürün, mühendislik ve işe alım deneyimini bir araya getiren dağıtık bir çalışma modeliyle ilerler. Gerçek kullanım senaryolarından hızlı öğrenir, ürünü müşteri ihtiyaçlarına göre sürekli geliştiririz.":
+    "The Candit team works in a distributed model that brings together product, engineering, and hiring experience. We learn quickly from real usage scenarios and continuously improve the product around customer needs.",
   "Takvim ve Planlama Hazırlıkları": "Calendar and Scheduling Preparation",
   "Mülakat planlama tarafında Google ekosistemi odaklı bağlantı hazırlıkları ve yedek akışlar güçlendirildi.":
     "Connection preparation focused on the Google ecosystem and fallback flows for interview scheduling were strengthened.",
   "Google Meet planlama bağlamı netleştirildi":
     "Google Meet scheduling context was clarified",
-  "Pilot planlama ihtiyaçları için entegrasyon hazırlıkları sertleştirildi":
-    "Integration readiness for pilot scheduling needs was hardened",
-  "Pilot API Yüzeyi": "Pilot API Surface",
-  "Kontrollü entegrasyonlar için temel uç noktalar":
-    "Core endpoints for controlled integrations",
-  "Servis durumu ve temel çalışma zamanı hazırlığını doğrular.":
-    "Verifies service status and baseline runtime readiness.",
+  "Planlama ihtiyaçları için entegrasyon hazırlıkları güçlendirildi":
+    "Integration setup for scheduling needs was strengthened",
+  "API Yüzeyi": "API Surface",
+  "Entegrasyonlar için temel uç noktalar":
+    "Core endpoints for integrations",
+  "Servis durumunu ve temel çalışma koşullarını doğrular.":
+    "Verifies service status and baseline operating conditions.",
   "Etkin giriş sağlayıcılarını ve auth seçeneklerini listeler.":
     "Lists enabled sign-in providers and auth options.",
-  "Pilot ve demo taleplerini public lead kuyruğuna kaydeder.":
-    "Stores pilot and demo requests in the public lead queue.",
+  "Demo ve iletişim taleplerini public lead kuyruğuna kaydeder.":
+    "Stores demo and contact requests in the public lead queue.",
   "Desteklenen entegrasyon sağlayıcıları için gelen webhook olaylarını işler.":
     "Processes incoming webhook events for supported integration providers.",
-  "Pilot ortam": "Pilot environment",
-  "Pilot hazır": "Pilot-ready",
+  "Hazırlık ortamı": "Preparation environment",
+  Hazır: "Ready",
   "temel işe alım akışı": "core hiring flow",
   "Akış görünürlüğü": "Flow visibility",
   "Tek panel": "Single pane",
@@ -4192,23 +4265,23 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "For now, we share updates through the blog and contact channel instead of an email subscription.",
   "Blog yazılarını inceleyin": "Browse blog posts",
   "Güncelleme talebi bırakın": "Leave an update request",
-  "REST API ve webhook senaryolarıyla Candit'i mevcut İK sistemlerinize kontrollü biçimde bağlayın.":
-    "Connect Candit to your existing HR systems in a controlled way with REST API and webhook scenarios.",
+  "REST API ve webhook senaryolarıyla Candit'i mevcut İK sistemlerinize bağlayın.":
+    "Connect Candit to your existing HR systems with REST API and webhook scenarios.",
   "JWT ve provider tabanlı auth akışlarıyla korumalı uç noktalara erişin.":
     "Access protected endpoints with JWT and provider-based auth flows.",
   "Mülakat, değerlendirme, başvuru ve süreç olaylarını provider bazında takip edin.":
     "Track interview, evaluation, application, and process events by provider.",
-  "Pilot stabilitesini korumak için istek limitleri ve kontrollü erişim uygulanır.":
-    "Rate limits and controlled access are applied to protect pilot stability.",
+  "Sistemin sağlıklı çalışması için istek limitleri ve erişim kontrolleri uygulanır.":
+    "Rate limits and access controls are applied to keep the system running reliably.",
   "Erişim, denetim izi ve veri yönetişimi kontrollerini kademeli olarak güçlendiren bir güvenlik yaklaşımı benimsiyoruz.":
     "We follow a security approach that gradually strengthens access, audit trail, and data governance controls."
   ,
-  "Bazi readiness verileri eksik yüklendi.":
-    "Some readiness data loaded incompletely.",
+  "Bazı durum verileri eksik yüklendi.":
+    "Some status data loaded incompletely.",
   "AI destek verisi su an eksik yuklendi.":
     "AI support data is currently incomplete.",
-  "Entegrasyon readiness verisi su an eksik yuklendi.":
-    "Integration readiness data is currently incomplete.",
+  "Entegrasyon durumu verisi şu an eksik yüklendi.":
+    "Integration status data is currently incomplete.",
   "Mulakat oturum verisi su an eksik yuklendi.":
     "Interview session data is currently incomplete.",
   "Planlama workflow verisi su an eksik yuklendi.":
@@ -4396,7 +4469,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "14 gün ücretsiz deneyin": "Try free for 14 days",
   "Kredi kartı gerekmez. Hemen hesap oluşturun ve tüm özellikleri keşfedin.": "No credit card required. Create your account and explore all features.",
   "Kurulum Desteği": "Setup Support",
-  "Pilot başlangıcı, onboarding ve ilk akış kurulumu": "Pilot kickoff, onboarding, and first workflow setup",
+  "Başlangıç, onboarding ve ilk akış kurulumu": "Kickoff, onboarding, and first workflow setup",
 });
 
 Object.assign(EN_PHRASE_TRANSLATIONS, {
@@ -4440,16 +4513,16 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Enter the email address on your account. If it exists, we will send you a link to reset your password.",
   "Giriş ekranına dön": "Back to login",
   "Yeni hesap oluştur": "Create a new account",
-  "Bağlantı hazırlandı. Hesabın varsa e-posta kutuna veya lokal preview linkine bakabilirsin.":
-    "The link is ready. If your account exists, check your inbox or the local preview link.",
+  "Bağlantı hazırlandı. Hesabın varsa e-posta kutunu kontrol edebilirsin.":
+    "The link is ready. If your account exists, you can check your inbox.",
   "Hesabınız varsa, şifre sıfırlama bağlantısını e-posta kutunuza gönderdik.":
     "If your account exists, we sent the password reset link to your inbox.",
   "Kayıtlı e-posta adresi": "Email address on your account",
   opsiyonel: "optional",
   "Şifre sıfırlama bağlantısı gönder": "Send reset link",
   "Sıfırlama bağlantısını gönder": "Send reset link",
-  "Lokal reset bağlantısını aç": "Open local reset link",
-  "Geliştirme bağlantısını aç": "Open development link",
+  "Reset bağlantısını aç": "Open reset link",
+  "Bağlantıyı aç": "Open link",
   "Parola yenile": "Reset password",
   "Yeni şifreni belirle": "Set your new password",
   "Bağlantı geçerliyse yeni parolanı kaydedeceğiz ve hesabını tekrar açacağız.":

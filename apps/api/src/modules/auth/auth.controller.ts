@@ -158,7 +158,13 @@ export class AuthController {
       userAgent: request.header("user-agent") ?? undefined
     });
 
-    if (this.runtimeConfig.authTokenTransport === "cookie") {
+    if (
+      this.runtimeConfig.authTokenTransport === "cookie" &&
+      "accessToken" in result &&
+      "refreshToken" in result &&
+      result.accessToken &&
+      result.refreshToken
+    ) {
       this.writeAuthCookies(response, result.accessToken, result.refreshToken);
 
       return {
@@ -168,7 +174,10 @@ export class AuthController {
       };
     }
 
-    return result;
+    return {
+      ...result,
+      session: result.session ?? null
+    };
   }
 
   @Get("providers")
@@ -179,6 +188,11 @@ export class AuthController {
     return {
       google: {
         enabled: Boolean(googleAuth.clientId && googleAuth.clientSecret && googleAuth.redirectUri)
+      },
+      enterpriseSso: {
+        enabled: false,
+        launchStatus: "unsupported",
+        reason: "Enterprise OIDC/SSO V1 kapsamına dahil değil."
       }
     };
   }

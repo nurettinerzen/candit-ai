@@ -2,12 +2,19 @@ import type {
   ApplicationStage,
   ContactSuppressionStatus,
   HumanDecision,
+  InterviewInvitationView,
+  InterviewSessionStatus,
   JobStatus,
   ProspectFitLabel,
+  QuickActionType,
   SourcingProspectStage,
   TalentSourceKind
 } from "./types";
 import type { AiTaskType } from "./types";
+import {
+  shouldOfferInterviewReinvite,
+  shouldOfferInterviewReminder
+} from "./interview-invitation";
 
 export const JOB_STATUSES: JobStatus[] = ["DRAFT", "PUBLISHED", "ARCHIVED"];
 
@@ -115,46 +122,91 @@ export function getRecruiterStageMeta(
   return getStageMeta(stage);
 }
 
-/**
- * Returns available actions for a given stage.
- * Only 2 decision points exist in the pipeline:
- * 1. RECRUITER_REVIEW → Mülakata Davet Et / Reddet
- * 2. INTERVIEW_COMPLETED → Reddet (recruiter just reviews the report)
- * All other stages allow early rejection only via APPLIED/SCREENING.
- */
 export type StageAction = {
-  key: string;
+  key: QuickActionType;
   label: string;
   icon: string;
   color: string;
 };
 
+type StageActionContext = {
+  interview?: {
+    status?: InterviewSessionStatus | string | null;
+    invitation?: InterviewInvitationView | null;
+  } | null;
+};
+
+const INVITE_INTERVIEW_ACTION: StageAction = {
+  key: "invite_interview",
+  label: "Mülakata Davet Et",
+  icon: "📅",
+  color: "var(--info, #60a5fa)"
+};
+
+const REINVITE_INTERVIEW_ACTION: StageAction = {
+  key: "reinvite_interview",
+  label: "Tekrar Davet Et",
+  icon: "↺",
+  color: "var(--info, #60a5fa)"
+};
+
+const SEND_REMINDER_ACTION: StageAction = {
+  key: "send_reminder",
+  label: "Hatırlatma Gönder",
+  icon: "✉️",
+  color: "var(--warn, #f59e0b)"
+};
+
+const REJECT_ACTION: StageAction = {
+  key: "reject",
+  label: "Reddet",
+  icon: "✕",
+  color: "var(--danger, #ef4444)"
+};
+
 /**
- * Pipeline aksiyon butonları (aşamaya göre dinamik).
- *
- * "Mülakata Davet Et" → AI mülakat davetini tetikler.
- * "Reddet" → Adayı reddeder.
+ * Returns available actions for a given stage.
+ * Recruiter review points:
+ * 1. RECRUITER_REVIEW → Mülakata Davet Et / Reddet
+ * 2. INTERVIEW_SCHEDULED → Aktif davette Hatırlatma, düşen davette Tekrar Davet Et
+ * 3. INTERVIEW_COMPLETED → Reddet (recruiter just reviews the report)
  */
-export function getStageActions(stage: ApplicationStage): StageAction[] {
+export function getAvailableStageActions(
+  stage: ApplicationStage,
+  context: StageActionContext = {}
+): StageAction[] {
   switch (stage) {
     case "APPLIED":
     case "SCREENING":
     case "RECRUITER_REVIEW":
-      return [
-        { key: "invite_interview", label: "Mülakata Davet Et", icon: "📅", color: "var(--info, #60a5fa)" },
-        { key: "reject", label: "Reddet", icon: "✕", color: "var(--danger, #ef4444)" }
-      ];
+      return [INVITE_INTERVIEW_ACTION, REJECT_ACTION];
     case "INTERVIEW_COMPLETED":
-      return [
-        { key: "reject", label: "Reddet", icon: "✕", color: "var(--danger, #ef4444)" }
-      ];
-    case "INTERVIEW_SCHEDULED":
-      return [
-        { key: "reject", label: "Reddet", icon: "✕", color: "var(--danger, #ef4444)" }
-      ];
+      return [REJECT_ACTION];
+    case "INTERVIEW_SCHEDULED": {
+      const invitation = context.interview?.invitation ?? null;
+      const status = context.interview?.status ?? null;
+
+      if (!context.interview || shouldOfferInterviewReinvite(invitation, status)) {
+        return [REINVITE_INTERVIEW_ACTION, REJECT_ACTION];
+      }
+
+      if (shouldOfferInterviewReminder(invitation, status)) {
+        return [SEND_REMINDER_ACTION, REJECT_ACTION];
+      }
+
+      return [REJECT_ACTION];
+    }
     default:
       return [];
   }
+}
+
+export function getStageActions(stage: ApplicationStage): StageAction[] {
+  return getAvailableStageActions(stage);
+}
+
+export function isInterviewInviteAction(action: QuickActionType) {
+  return action === "invite_interview" || action === "reinvite_interview";
 }
 
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {

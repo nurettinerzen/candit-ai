@@ -14,8 +14,17 @@ import type {
   QuickActionType,
   RecruiterNote
 } from "../lib/types";
-import { getStageMeta, getStageActions, SOURCE_LABELS } from "../lib/constants";
-import { formatInterviewDeadline, getInterviewInvitationMeta } from "../lib/interview-invitation";
+import {
+  getAvailableStageActions,
+  getStageMeta,
+  isInterviewInviteAction,
+  SOURCE_LABELS
+} from "../lib/constants";
+import {
+  formatInterviewDeadline,
+  getInterviewInvitationMeta,
+  shouldOfferInterviewReinvite
+} from "../lib/interview-invitation";
 import { FitScoreBreakdown } from "./fit-score-breakdown";
 import { InterviewInviteModal } from "./interview-invite-modal";
 import { MatchIndicator } from "./match-indicator";
@@ -44,6 +53,8 @@ function recruiterDecisionLabel(decision: string): { label: string; color: strin
 
 const ACTION_BTN_CLASSES: Record<string, string> = {
   invite_interview: "drawer-action-btn drawer-action-interview",
+  reinvite_interview: "drawer-action-btn drawer-action-interview",
+  send_reminder: "drawer-action-btn drawer-action-interview",
   reject: "drawer-action-btn drawer-action-reject",
 };
 
@@ -78,6 +89,13 @@ function applicantNextAction(applicant: JobInboxApplicant) {
   );
 
   if (applicant.interview) {
+    if (shouldOfferInterviewReinvite(applicant.interview.invitation ?? null, applicant.interview.status ?? null)) {
+      return {
+        label: "Tekrar Davet Et",
+        detail: "Önceki AI mülakat linki artık kullanılamıyor. Yeni davet gönderebilirsiniz."
+      };
+    }
+
     return {
       label: interviewMeta.label,
       detail: applicant.interview.invitation?.expiresAt
@@ -146,6 +164,7 @@ export function ApplicantDrawer({ applicant, jobStatus, onClose, onActionDone }:
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<QuickActionType | null>(null);
+  const [inviteAction, setInviteAction] = useState<Extract<QuickActionType, "invite_interview" | "reinvite_interview">>("invite_interview");
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteOutcome, setInviteOutcome] = useState<{ interviewLink: string | null; expiresAt: string | null } | null>(null);
   const [actionError, setActionError] = useState("");
@@ -170,7 +189,9 @@ export function ApplicantDrawer({ applicant, jobStatus, onClose, onActionDone }:
 
   const stage = applicant.stage as ApplicationStage;
   const stageMeta = getStageMeta(stage);
-  const actions = getStageActions(stage);
+  const actions = getAvailableStageActions(stage, {
+    interview: applicant.interview
+  });
   const isArchivedJob = jobStatus === "ARCHIVED";
 
   const handleAction = (action: QuickActionType) => {
@@ -181,7 +202,8 @@ export function ApplicantDrawer({ applicant, jobStatus, onClose, onActionDone }:
 
     setActionError("");
 
-    if (action === "invite_interview") {
+    if (isInterviewInviteAction(action)) {
+      setInviteAction(action);
       setInviteModalOpen(true);
       return;
     }
@@ -315,6 +337,11 @@ export function ApplicantDrawer({ applicant, jobStatus, onClose, onActionDone }:
               {applicant.interview ? (
                 <p className="small" style={{ margin: "8px 0 0" }}>
                   {t("Davet durumu:")} {t(interviewMeta.label)}
+                </p>
+              ) : null}
+              {applicant.interview?.invitation ? (
+                <p className="small" style={{ margin: "8px 0 0" }}>
+                  {t("Hatırlatma sayısı:")} {applicant.interview.invitation.reminderCount}
                 </p>
               ) : null}
               {applicant.interview?.candidateInterviewUrl ? (
@@ -457,11 +484,17 @@ export function ApplicantDrawer({ applicant, jobStatus, onClose, onActionDone }:
           <div className="confirm-overlay" onClick={() => setConfirmAction(null)}>
             <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
               <p className="confirm-title">
-                {confirmAction === "invite_interview" ? t("Mülakata Davet Et") : t("Adayı Reddet")}
+                {confirmAction === "invite_interview"
+                  ? t("Mülakata Davet Et")
+                  : confirmAction === "send_reminder"
+                    ? t("Hatırlatma Gönder")
+                    : t("Adayı Reddet")}
               </p>
               <p className="confirm-body">
                 {confirmAction === "invite_interview"
                   ? `${applicant.fullName} ${t("adayına tek linkli AI mülakat daveti gönderilecek. Bu akışta slot seçimi yoktur.")}`
+                  : confirmAction === "send_reminder"
+                    ? `${applicant.fullName} ${t("adayına mevcut AI mülakat linki için hatırlatma e-postası gönderilecek.")}`
                   : `${applicant.fullName} ${t("adayı reddedilecek.")}`}
               </p>
             <div className="confirm-actions">
@@ -473,7 +506,11 @@ export function ApplicantDrawer({ applicant, jobStatus, onClose, onActionDone }:
                   className={`confirm-btn ${confirmAction === "reject" ? "confirm-btn-danger" : "confirm-btn-primary"}`}
                   onClick={() => void executeAction()}
                 >
-                  {confirmAction === "invite_interview" ? t("Evet, Davet Gönder") : t("Evet, Reddet")}
+                  {confirmAction === "invite_interview"
+                    ? t("Evet, Davet Gönder")
+                    : confirmAction === "send_reminder"
+                      ? t("Evet, Hatırlat")
+                      : t("Evet, Reddet")}
                 </button>
               </div>
             </div>
@@ -482,6 +519,7 @@ export function ApplicantDrawer({ applicant, jobStatus, onClose, onActionDone }:
 
         <InterviewInviteModal
           open={inviteModalOpen}
+          action={inviteAction}
           applicationId={applicant.applicationId}
           candidateName={applicant.fullName}
           jobTitle={t("Seçili ilan")}

@@ -236,6 +236,10 @@ class PublicStartBody {
   @IsString()
   token!: string;
 
+  @IsBoolean()
+  @IsOptional()
+  consentAccepted?: boolean;
+
   @IsObject()
   @IsOptional()
   capabilities?: PublicSessionCapabilitiesBody;
@@ -588,6 +592,7 @@ export class InterviewsController {
     return this.interviewsService.startPublicSession({
       sessionId,
       accessToken: body.token,
+      consentAccepted: body.consentAccepted,
       capabilities: body.capabilities
         ? {
             speechRecognition: body.capabilities.speechRecognition === true,

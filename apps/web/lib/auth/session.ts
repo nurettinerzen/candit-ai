@@ -299,7 +299,7 @@ export async function signupWithPassword(input: {
   email: string;
   password: string;
 }): Promise<{
-  session: WebAuthSession;
+  session: WebAuthSession | null;
   emailVerification?: AuthEmailVerificationPayload;
 }> {
   const response = await fetch(`${API_BASE_URL}/auth/signup`, {
@@ -319,6 +319,16 @@ export async function signupWithPassword(input: {
   }
 
   const isCookieTransport = AUTH_TOKEN_TRANSPORT === "cookie";
+  const hasIssuedSession = isCookieTransport
+    ? Boolean(payload.session?.id)
+    : Boolean(payload.accessToken);
+
+  if (!hasIssuedSession) {
+    return {
+      session: null,
+      emailVerification: payload.emailVerification
+    };
+  }
 
   if (!isCookieTransport && !payload.accessToken) {
     throw new Error("Kayit cevabi access token icermiyor.");
@@ -600,6 +610,11 @@ export async function getAuthProviders() {
     google?: {
       enabled?: boolean;
     };
+    enterpriseSso?: {
+      enabled?: boolean;
+      launchStatus?: string;
+      reason?: string;
+    };
   };
 
   if (!response.ok) {
@@ -619,6 +634,14 @@ export function getGoogleAuthAuthorizeUrl(input: {
     companyName: input.companyName ?? undefined,
     returnTo: input.returnTo ?? "/dashboard"
   });
+}
+
+export function getGoogleCalendarIntegrationAuthorizeUrl() {
+  return buildPublicApiUrl("integrations/google/authorize");
+}
+
+export function getCalendlyIntegrationAuthorizeUrl() {
+  return buildPublicApiUrl("integrations/calendly/authorize");
 }
 
 export async function refreshJwtSession(session: WebAuthSession): Promise<WebAuthSession | null> {

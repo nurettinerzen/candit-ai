@@ -22,7 +22,28 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
   - storage access
   - provider readiness
 
-### 2. Runtime pilot smoke
+### 2. Contract verification
+
+- Command:
+  - `corepack pnpm launch:verify:contracts`
+- Proves:
+  - launch-critical guardrails and service contracts
+  - production runtime hardening rules
+  - decision / reject / reminder / re-invite control flow
+  - auth provider boundary response and Calendly OAuth callback guardrails
+  - launch warning detection for common test-vs-production credential drift
+  - explicit scheduling provider guardrails for unsupported, unconfigured, or disconnected providers
+  - duplicate candidate provenance enrichment
+  - public interview consent gate
+  - event-driven decision email wiring
+  - CSV intake/source parsing contracts
+  - report minimum evidence enforcement
+- Does not prove:
+  - live api/web/worker coordination
+  - queue worker availability in a running environment
+  - real provider delivery
+
+### 3. Runtime pilot smoke
 
 - Command:
   - `corepack pnpm launch:verify:runtime`
@@ -35,6 +56,8 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
   - signup + session
   - tenant-aware auth requests
   - recruiter overview
+  - AI support center and infrastructure readiness surfaces
+  - scheduling provider catalog + fallback visibility
   - billing overview read
   - job create / publish path
   - candidate create
@@ -46,11 +69,15 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
   - interview invite
   - public interview completion
   - report + recommendation generation
+  - recruiter decision recording
+  - decision-driven candidate communication log visibility
+  - application dossier governance visibility
+  - transcript evidence visible in application detail
 - Current expected result:
   - pass with warnings if email provider is `console`
   - pass with warnings if `stripeReady=false`
 
-### 3. Strict runtime smoke
+### 4. Strict runtime smoke
 
 - Command:
   - `corepack pnpm launch:verify:runtime:strict`

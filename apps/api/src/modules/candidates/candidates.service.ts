@@ -117,6 +117,23 @@ function isMissingCvFileBlobTableError(error: unknown) {
   return meta.includes("CVFileBlob") || error.message.includes("CVFileBlob");
 }
 
+function normalizeOptionalText(value?: string | null) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function toOptionalDecimal(value?: number | null) {
+  if (value === undefined || value === null || !Number.isFinite(value)) {
+    return undefined;
+  }
+
+  return new Prisma.Decimal(value);
+}
+
 @Injectable()
 export class CandidatesService {
   constructor(
@@ -164,6 +181,11 @@ export class CandidatesService {
   async create(input: CandidateInput) {
     const normalizedEmail = this.normalizeEmail(input.email);
     const normalizedPhone = this.normalizePhone(input.phone);
+    const normalizedSource = normalizeOptionalText(input.source);
+    const normalizedLocationText = normalizeOptionalText(input.locationText);
+    const normalizedExternalRef = normalizeOptionalText(input.externalRef);
+    const normalizedExternalSource = normalizeOptionalText(input.externalSource);
+    const normalizedYearsOfExperience = toOptionalDecimal(input.yearsOfExperience);
 
     const existing = await this.findDuplicate(
       input.tenantId,
@@ -171,6 +193,54 @@ export class CandidatesService {
       normalizedPhone
     );
     if (existing) {
+      const enrichmentPatch: Prisma.CandidateUpdateInput = {};
+      const enrichedFields: string[] = [];
+
+      if (!normalizeOptionalText(existing.email) && normalizedEmail) {
+        enrichmentPatch.email = normalizedEmail;
+        enrichedFields.push("email");
+      }
+
+      if (!normalizeOptionalText(existing.phone) && normalizedPhone) {
+        enrichmentPatch.phone = normalizedPhone;
+        enrichedFields.push("phone");
+      }
+
+      if (!normalizeOptionalText(existing.source) && normalizedSource) {
+        enrichmentPatch.source = normalizedSource;
+        enrichedFields.push("source");
+      }
+
+      if (!normalizeOptionalText(existing.locationText) && normalizedLocationText) {
+        enrichmentPatch.locationText = normalizedLocationText;
+        enrichedFields.push("locationText");
+      }
+
+      if (existing.yearsOfExperience == null && normalizedYearsOfExperience) {
+        enrichmentPatch.yearsOfExperience = normalizedYearsOfExperience;
+        enrichedFields.push("yearsOfExperience");
+      }
+
+      if (!normalizeOptionalText(existing.externalRef) && normalizedExternalRef) {
+        enrichmentPatch.externalRef = normalizedExternalRef;
+        enrichedFields.push("externalRef");
+      }
+
+      if (!normalizeOptionalText(existing.externalSource) && normalizedExternalSource) {
+        enrichmentPatch.externalSource = normalizedExternalSource;
+        enrichedFields.push("externalSource");
+      }
+
+      const candidate =
+        enrichedFields.length > 0
+          ? await this.prisma.candidate.update({
+              where: {
+                id: existing.id
+              },
+              data: enrichmentPatch
+            })
+          : existing;
+
       await this.auditWriterService.write({
         tenantId: input.tenantId,
         actorUserId: input.createdBy,
@@ -179,14 +249,19 @@ export class CandidatesService {
         entityId: existing.id,
         metadata: {
           fullName: input.fullName,
-          email: normalizedEmail,
-          phone: normalizedPhone
+          email: normalizedEmail ?? null,
+          phone: normalizedPhone ?? null,
+          source: normalizedSource ?? null,
+          externalSource: normalizedExternalSource ?? null,
+          externalRef: normalizedExternalRef ?? null,
+          enrichedFields
         }
       });
 
       return {
         deduplicated: true,
-        candidate: existing
+        enrichedFields,
+        candidate
       };
     }
 
@@ -196,14 +271,11 @@ export class CandidatesService {
         fullName: input.fullName,
         email: normalizedEmail,
         phone: normalizedPhone,
-        source: input.source,
-        locationText: input.locationText,
-        yearsOfExperience:
-          input.yearsOfExperience !== undefined
-            ? new Prisma.Decimal(input.yearsOfExperience)
-            : undefined,
-        externalRef: input.externalRef,
-        externalSource: input.externalSource
+        source: normalizedSource,
+        locationText: normalizedLocationText,
+        yearsOfExperience: normalizedYearsOfExperience,
+        externalRef: normalizedExternalRef,
+        externalSource: normalizedExternalSource
       }
     });
 
@@ -234,6 +306,7 @@ export class CandidatesService {
 
     return {
       deduplicated: false,
+      enrichedFields: [],
       candidate
     };
   }

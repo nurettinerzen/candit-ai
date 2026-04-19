@@ -3,18 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ApplicationStage, QuickActionType } from "../lib/types";
-import { getStageActions } from "../lib/constants";
+import { getStageActions, type StageAction } from "../lib/constants";
 import { useUiText } from "./site-language-provider";
 
 type QuickActionMenuProps = {
   stage: ApplicationStage;
+  actions?: StageAction[];
   onAction: (action: QuickActionType, reasonCode?: string) => void;
   disabled?: boolean;
 };
 
-export function QuickActionMenu({ stage, onAction, disabled }: QuickActionMenuProps) {
+export function QuickActionMenu({ stage, actions: providedActions, onAction, disabled }: QuickActionMenuProps) {
   const { t } = useUiText();
-  const actions = getStageActions(stage);
+  const actions = providedActions ?? getStageActions(stage);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);

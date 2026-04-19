@@ -432,7 +432,7 @@ export const PUBLIC_FAQ: PublicFaq[] = [
   {
     question: "Mevcut ATS sistemimle entegre olabilir mi?",
     answer:
-      "Şu an standart bir ATS veya takvim entegrasyonu sunmuyoruz. API ve webhook ihtiyaçlarını pilot kapsamına göre birlikte değerlendiriyoruz."
+      "İhtiyacınıza göre API ve webhook seçeneklerini birlikte değerlendirebiliriz. Uygun entegrasyon senaryoları için ekibimizle iletişime geçebilirsiniz."
   }
 ];
 
@@ -715,11 +715,11 @@ export const PUBLIC_SECURITY_GROUPS: PublicCard[] = [
   },
   {
     title: "Operasyonel İzleme",
-    body: "Sistem durumu, kritik olaylar ve temel audit görünürlüğüyle launch öncesi sertleştirme desteklenir.",
+    body: "Sistem durumu, kritik olaylar ve temel audit görünürlüğüyle operasyonel takip desteklenir.",
     bullets: [
-      "Sağlık kontrolleri ve runtime görünürlüğü",
+      "Sağlık kontrolleri ve altyapı görünürlüğü",
       "Kritik olay kaydı ve yönetim takibi",
-      "Kademeli launch için checklist odaklı ilerleme"
+      "Operasyon checklistleriyle düzenli takip"
     ]
   }
 ];
@@ -740,7 +740,7 @@ export const PUBLIC_ABOUT_STORY: PublicCard[] = [
   {
     title: "Nasıl Çalışıyoruz",
     body:
-      "Candit ekibi ürün, mühendislik ve işe alım deneyimini bir araya getiren dağıtık bir çalışma modeliyle ilerler. Önceliğimiz Türkiye odaklı pilot ekiplerle gerçek kullanım üzerinden hızlı öğrenmek ve ürünü buna göre geliştirmektir."
+      "Candit ekibi ürün, mühendislik ve işe alım deneyimini bir araya getiren dağıtık bir çalışma modeliyle ilerler. Gerçek kullanım senaryolarından hızlı öğrenir, ürünü müşteri ihtiyaçlarına göre sürekli geliştiririz."
   },
   {
     title: "Misyonumuz",
@@ -772,12 +772,12 @@ export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
   {
     date: "Haziran 2026",
     version: "v0.6.0",
-    title: "Lansman Sertleştirme",
+    title: "Kimlik Doğrulama ve Operasyon Güncellemesi",
     body:
-      "Pilot lansman öncesi kimlik doğrulama güvenliği, iletişim formu alımı, yönetim görünürlüğü ve olay yönetimi omurgası sertleştirildi.",
+      "Kimlik doğrulama güvenliği, iletişim formu alımı, yönetim görünürlüğü ve olay yönetimi altyapısı güçlendirildi.",
     items: [
       "Herkese açık iletişim formu gerçek sunucuya bağlandı",
-      "İç yönetim potansiyel müşteri gelen kutusu açıldı",
+      "Yönetim potansiyel müşteri gelen kutusu açıldı",
       "Güvenlik olayı ve kritik alarm kalıcılığı eklendi",
       "Üretim ortamı kimlik doğrulama varsayılanları sertleştirildi"
     ]
@@ -787,11 +787,11 @@ export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
     version: "v0.5.0",
     title: "Planlama ve Akış Sertleştirmesi",
     body:
-      "Mülakat planlama tarafında temel hazırlıklar ve yedek akışlar güçlendirildi.",
+      "Mülakat planlama tarafında temel akışlar ve yedek senaryolar güçlendirildi.",
     items: [
       "Planlama akışı güncellendi",
       "Toplantı akışı bağlamı netleştirildi",
-      "Pilot planlama ihtiyaçları için operasyon akışı sertleştirildi",
+      "Planlama ihtiyaçları için operasyon akışı güçlendirildi",
       "Yedek toplantı akışı görünür hale getirildi"
     ]
   },
@@ -818,7 +818,7 @@ export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
       "AI sesli görüşme desteği",
       "Transkript özetleme ve rapor oluşturma",
       "Öneri ve işe alım uzmanı değerlendirme akışları",
-      "Mülakat çalışma zamanı yedek davranışları"
+      "Mülakat yedek akış davranışları"
     ]
   },
   {
@@ -844,7 +844,7 @@ export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
       "Kiracı ve çalışma alanı modeli",
       "Kayıt / giriş / davet temelleri",
       "İlan, aday ve başvuru alan modeli",
-      "İlk iç yönetim omurgası"
+      "İlk yönetim omurgası"
     ]
   }
 ];

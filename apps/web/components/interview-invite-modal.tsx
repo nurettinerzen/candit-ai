@@ -7,6 +7,7 @@ import type {
   InterviewQuestionDraftItem,
   InterviewQuestionnairePreview,
   InterviewTemplate,
+  QuickActionType,
   QuickActionResult
 } from "../lib/types";
 import { MatchIndicator } from "./match-indicator";
@@ -14,6 +15,7 @@ import { MatchIndicator } from "./match-indicator";
 type InterviewInviteModalProps = {
   open: boolean;
   applicationId: string | null;
+  action: Extract<QuickActionType, "invite_interview" | "reinvite_interview">;
   candidateName: string;
   jobTitle: string;
   roleFamily?: string | null;
@@ -30,6 +32,7 @@ function estimateDurationFromQuestions(count: number) {
 export function InterviewInviteModal({
   open,
   applicationId,
+  action,
   candidateName,
   jobTitle,
   roleFamily,
@@ -37,6 +40,7 @@ export function InterviewInviteModal({
   onSubmitted
 }: InterviewInviteModalProps) {
   const { t } = useUiText();
+  const isReinvite = action === "reinvite_interview";
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -212,7 +216,7 @@ export function InterviewInviteModal({
 
     try {
       const result = await apiClient.quickAction(applicationId, {
-        action: "invite_interview",
+        action,
         templateId: selectedTemplateId || preview?.template.id,
         questionnaire: sanitizedQuestionnaire
       });
@@ -233,9 +237,15 @@ export function InterviewInviteModal({
       <div className="invite-modal" onClick={(event) => event.stopPropagation()}>
         <div className="invite-modal-head">
           <div>
-            <p className="invite-modal-kicker">{t("AI mülakat ayarları")}</p>
+            <p className="invite-modal-kicker">{t(isReinvite ? "AI mülakatını yeniden başlat" : "AI mülakat ayarları")}</p>
             <h3>{candidateName}</h3>
-            <p className="invite-modal-subtitle">{t(`${jobTitle} için davet gönderiliyor.`)}</p>
+            <p className="invite-modal-subtitle">
+              {t(
+                isReinvite
+                  ? `${jobTitle} için yeni AI mülakat linki hazırlanıyor.`
+                  : `${jobTitle} için davet gönderiliyor.`
+              )}
+            </p>
           </div>
           <button type="button" className="btn-close" onClick={onClose}>
             &times;
@@ -361,7 +371,7 @@ export function InterviewInviteModal({
                 onClick={() => void handleSubmit()}
                 disabled={submitting}
               >
-                {submitting ? "Gönderiliyor..." : "Daveti Gönder"}
+                {submitting ? "Gönderiliyor..." : isReinvite ? "Yeni Link Gönder" : "Daveti Gönder"}
               </button>
             </div>
           </>

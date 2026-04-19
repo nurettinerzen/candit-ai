@@ -25,9 +25,9 @@
 ## Bilincli Olarak V1 Sonrasina Birakilanlar
 
 - [ ] Gercek OIDC/SSO provider entegrasyonu (simdilik local JWT)
-- [ ] Candidate consent gate runtime enforcement (interview session start adiminda)
-- [ ] AI raporda otomatik evidence-count validator (min 2)
-- [ ] E2E/contract test otomasyonu (su an placeholder test script)
+- [x] Candidate consent gate runtime enforcement (interview session start adiminda)
+- [x] AI raporda otomatik evidence-count validator (min 2)
+- [x] E2E/contract test otomasyonu (launch-critical contract verification lane + runtime smoke)
 - [ ] Canli media interview (LiveKit) entegrasyonu
 - [ ] Dis entegrasyonlar (Calendar/ATS) gercek provider baglantilari
 

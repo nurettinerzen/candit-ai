@@ -91,6 +91,24 @@ export default function AiSupportCenterPage() {
     [flags]
   );
 
+  const infrastructureWarnings = useMemo(
+    () =>
+      Array.from(
+        new Set([...(infrastructure?.queryWarnings ?? []), ...(infrastructure?.launchWarnings ?? [])])
+      ),
+    [infrastructure?.launchWarnings, infrastructure?.queryWarnings]
+  );
+
+  const schedulingBoundarySummary = useMemo(() => {
+    const catalog = infrastructure?.scheduling?.catalog ?? [];
+
+    return {
+      total: catalog.length,
+      selectable: catalog.filter((provider) => provider.selectable).length,
+      blocked: catalog.filter((provider) => !provider.selectable).length
+    };
+  }, [infrastructure?.scheduling?.catalog]);
+
   async function toggleFlag(flag: FeatureFlag, nextValue: boolean) {
     setSavingFlagKey(flag.key);
     try {
@@ -202,17 +220,57 @@ export default function AiSupportCenterPage() {
 
           {infrastructure ? (
             <section className="panel nested-panel" style={{ marginTop: 16 }}>
-              <h3 style={{ marginTop: 0 }}>Infrastructure Readiness</h3>
-              {infrastructure.queryWarnings?.length ? (
+              <h3 style={{ marginTop: 0 }}>{t("Altyapı durumu")}</h3>
+              {infrastructureWarnings.length ? (
                 <div style={{ marginBottom: 12 }}>
-                  <strong>{t("Bazi readiness verileri eksik yüklendi.")}</strong>
+                  <strong>{t("Sistem uyarıları")}</strong>
                   <ul className="plain-list" style={{ marginTop: 8 }}>
-                    {infrastructure.queryWarnings.map((warning) => (
+                    {infrastructureWarnings.map((warning) => (
                       <li key={warning} className="list-row">
                         <span>{t(warning)}</span>
                       </li>
                     ))}
                   </ul>
+                </div>
+              ) : null}
+              {infrastructure.startupHealth ? (
+                <div style={{ marginBottom: 12, display: "grid", gap: 12 }}>
+                  <div className="list-row">
+                    <strong>{t("Başlangıç durumu")}</strong>
+                    <span>{infrastructure.startupHealth.healthy ? t("Sağlıklı") : t("Dikkat gerekli")}</span>
+                  </div>
+                  {infrastructure.startupHealth.warnings.length ? (
+                    <div>
+                      <strong>{t("Başlangıç uyarıları")}</strong>
+                      <ul className="plain-list" style={{ marginTop: 8 }}>
+                        {infrastructure.startupHealth.warnings.map((warning) => (
+                          <li key={warning} className="list-row">
+                            <span>{warning}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {Object.keys(infrastructure.startupHealth.providers).length ? (
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Runtime Provider</th>
+                          <th>Durum</th>
+                          <th>Mode</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(infrastructure.startupHealth.providers).map(([key, provider]) => (
+                          <tr key={key}>
+                            <td>{key}</td>
+                            <td>{provider.ready ? "Hazır" : "Eksik"}</td>
+                            <td>{provider.mode}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : null}
                 </div>
               ) : null}
               <table className="table">
@@ -240,8 +298,67 @@ export default function AiSupportCenterPage() {
                       {infrastructure.runtime.notifications.ready ? "Hazır" : "Eksik"}
                     </td>
                   </tr>
+                  <tr>
+                    <td>Scheduling Workflows</td>
+                    <td>{infrastructure.scheduling?.totalWorkflows ?? 0}</td>
+                  </tr>
+                  <tr>
+                    <td>Notification Deliveries</td>
+                    <td>{infrastructure.notifications?.totalDeliveries ?? 0}</td>
+                  </tr>
                 </tbody>
               </table>
+              {infrastructure.scheduling?.catalog?.length ? (
+                <div style={{ marginTop: 16 }}>
+                  <div
+                    className="list-row"
+                    style={{ marginBottom: 12, alignItems: "flex-start", gap: 12 }}
+                  >
+                    <div>
+                      <strong>{t("Scheduling sağlayıcıları")}</strong>
+                      <p className="small" style={{ margin: "4px 0 0" }}>
+                        {t(
+                          "Hangi sağlayıcının gerçekten seçilebilir, hangisinin sadece görünür olduğunu buradan takip edebilirsiniz."
+                        )}
+                      </p>
+                    </div>
+                    <div className="small" style={{ marginLeft: "auto", textAlign: "right" }}>
+                      <div>{t("Toplam")}: {schedulingBoundarySummary.total}</div>
+                      <div>{t("Seçilebilir")}: {schedulingBoundarySummary.selectable}</div>
+                      <div>{t("Bloklu")}: {schedulingBoundarySummary.blocked}</div>
+                    </div>
+                  </div>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>{t("Provider")}</th>
+                        <th>{t("Durum")}</th>
+                        <th>{t("Seçilebilir")}</th>
+                        <th>{t("Bağlantı")}</th>
+                        <th>{t("Detay")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {infrastructure.scheduling.catalog.map((provider) => (
+                        <tr key={`${provider.provider}:${provider.connectionId ?? "none"}`}>
+                          <td>{provider.provider}</td>
+                          <td>{provider.status === "unsupported" ? t("Kullanılamıyor") : provider.status}</td>
+                          <td>{provider.selectable ? t("Evet") : t("Hayır")}</td>
+                          <td>{provider.displayName ?? infrastructure.scheduling?.fallback.label}</td>
+                          <td>
+                            {provider.selectionReason ??
+                              (provider.updatedAt
+                                ? `${t("Son doğrulama")}: ${formatDate(provider.updatedAt)}`
+                                : provider.hasMeetingUrlTemplate
+                                  ? t("Meeting link şablonu hazır.")
+                                  : t("Bağlantı görünür, fakat meeting link şablonu eksik olabilir."))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
             </section>
           ) : null}
 

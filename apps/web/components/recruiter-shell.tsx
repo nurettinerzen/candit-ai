@@ -32,6 +32,7 @@ type NavItem = {
     | "/candidates"
     | "/reports"
     | "/subscription"
+    | "/team"
     | "/admin"
     | "/admin/red-alert"
     | "/admin/leads"
@@ -71,6 +72,7 @@ const primaryNavGroups: NavGroup[] = [
     label: "Hesap",
     items: [
       { href: "/subscription", label: "Abonelik", permission: "tenant.manage" },
+      { href: "/team", label: "Ekip", permission: "user.manage" },
       { href: "/settings", label: "Ayarlar", permission: "user.manage" }
     ]
   },
@@ -139,6 +141,15 @@ function resolveActiveNavHref(pathname: string): NavItem["href"] | null {
     pathname.startsWith("/dashboard/subscription/")
   ) {
     return "/subscription";
+  }
+
+  if (
+    pathname === "/team" ||
+    pathname.startsWith("/team/") ||
+    pathname === "/ekip" ||
+    pathname.startsWith("/ekip/")
+  ) {
+    return "/team";
   }
 
   if (

@@ -1,49 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import type { Route } from "next";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageTitleWithGuide } from "../../../components/page-guide";
 import { PasswordField, PasswordRequirements } from "../../../components/password-field";
-import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-states";
+import { ErrorState, LoadingState } from "../../../components/ui-states";
 import { useUiText } from "../../../components/site-language-provider";
 import { apiClient } from "../../../lib/api-client";
+import { isInternalAdminSession } from "../../../lib/auth/policy";
 import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_POLICY_ERROR_MESSAGE,
   getPasswordPolicyStatus
 } from "../../../lib/auth/password-policy";
-import { getRoleLabel, isInternalAdminSession } from "../../../lib/auth/policy";
 import {
   changePasswordForCurrentSession,
   deleteCurrentAccount,
-  resendEmailVerification,
   resolveActiveSession,
-  saveSession
+  resolveSessionFromServer
 } from "../../../lib/auth/session";
-import { formatDateOnly } from "../../../lib/format";
-import type { BillingOverviewReadModel, MemberDirectoryItem } from "../../../lib/types";
+import type { TenantProfileReadModel } from "../../../lib/types";
 
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
-
-function statusBadge(status: MemberDirectoryItem["status"], locale: "tr" | "en") {
-  switch (status) {
-    case "ACTIVE":
-      return { label: locale === "en" ? "Active" : "Aktif", ready: true };
-    case "INVITED":
-      return { label: locale === "en" ? "Invite Pending" : "Davet Bekliyor", ready: false };
-    case "DISABLED":
-    default:
-      return { label: locale === "en" ? "Inactive" : "Pasif", ready: false };
-  }
-}
-
-function formatOptionalDate(value: string | null) {
-  return value ? formatDateOnly(value) : "—";
-}
-
-type EditableMemberRole = "owner" | "manager" | "staff";
 
 export default function SettingsPage() {
   const { t, locale } = useUiText();
@@ -58,20 +39,16 @@ export default function SettingsPage() {
       .includes("owner")
   );
 
-  const [members, setMembers] = useState<MemberDirectoryItem[]>([]);
-  const [billing, setBilling] = useState<BillingOverviewReadModel | null>(null);
-  const [memberRoleDrafts, setMemberRoleDrafts] = useState<Record<string, EditableMemberRole>>(
-    {}
-  );
+  const [profile, setProfile] = useState<TenantProfileReadModel | null>(null);
+  const [profileForm, setProfileForm] = useState({
+    companyName: "",
+    websiteUrl: "",
+    profileSummary: ""
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [memberLoadError, setMemberLoadError] = useState("");
-  const [billingLoadError, setBillingLoadError] = useState("");
   const [busyKey, setBusyKey] = useState("");
-  const [memberActionNotice, setMemberActionNotice] = useState("");
-  const [memberActionPreviewUrl, setMemberActionPreviewUrl] = useState("");
-  const [verificationNotice, setVerificationNotice] = useState("");
-  const [verificationPreviewUrl, setVerificationPreviewUrl] = useState("");
+  const [profileNotice, setProfileNotice] = useState("");
   const [securityNotice, setSecurityNotice] = useState("");
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -82,32 +59,26 @@ export default function SettingsPage() {
     currentPassword: "",
     confirmationText: ""
   });
-  const [inviteForm, setInviteForm] = useState({
-    fullName: "",
-    email: "",
-    role: "staff" as "manager" | "staff"
-  });
+
   const deleteAccountConfirmationPlaceholder =
-    locale === "en" ? "delete my account" : "hesabimi sil";
+    locale === "en" ? 'Type: "delete my account"' : 'Şunu yazın: "hesabımı sil"';
 
-  const memberRoleOptions = useMemo(
-    () =>
-      ([
-        { value: "owner", label: getRoleLabel("owner") },
-        { value: "manager", label: getRoleLabel("manager") },
-        { value: "staff", label: getRoleLabel("staff") }
-      ] as const satisfies ReadonlyArray<{ value: EditableMemberRole; label: string }>),
-    []
-  );
+  useEffect(() => {
+    let cancelled = false;
 
-  const inviteRoleOptions = useMemo(
-    () =>
-      memberRoleOptions.filter(
-        (option): option is { value: "manager" | "staff"; label: string } =>
-          option.value !== "owner"
-      ),
-    []
-  );
+    async function syncSession() {
+      const resolved = await resolveSessionFromServer(resolveActiveSession());
+      if (!cancelled) {
+        setCurrentSession(resolved);
+      }
+    }
+
+    void syncSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const requestedTab = searchParams.get("tab");
@@ -121,104 +92,87 @@ export default function SettingsPage() {
       return;
     }
 
-    if (
-      requestedTab === "entegrasyonlar" ||
-      requestedTab === "ai" ||
-      requestedTab === "sistem"
-    ) {
+    if (requestedTab === "team") {
+      router.replace("/team" as Route);
+      return;
+    }
+
+    if (requestedTab === "ai" || requestedTab === "sistem") {
       router.replace(isInternalAdmin ? "/admin/settings" : "/settings");
     }
   }, [isInternalAdmin, router, searchParams]);
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    setMemberLoadError("");
-    setBillingLoadError("");
+  useEffect(() => {
+    let cancelled = false;
 
-    try {
-      const [memberResult, billingResult] = await Promise.allSettled([
-        apiClient.listMembers(),
-        apiClient.billingOverview()
-      ]);
+    async function loadProfile() {
+      setLoading(true);
+      setError("");
 
-      if (memberResult.status === "fulfilled") {
-        setMembers(memberResult.value);
-        setMemberRoleDrafts(
-          Object.fromEntries(memberResult.value.map((member) => [member.userId, member.role]))
-        );
-      } else {
-        setMembers([]);
-        setMemberRoleDrafts({});
-        setMemberLoadError(
-          toErrorMessage(
-            memberResult.reason,
-            locale === "en" ? "Team data could not be loaded." : "Ekip bilgileri yüklenemedi."
-          )
-        );
+      try {
+        const nextProfile = await apiClient.getTenantProfile();
+
+        if (cancelled) {
+          return;
+        }
+
+        setProfile(nextProfile);
+        setProfileForm({
+          companyName: nextProfile.companyName,
+          websiteUrl: nextProfile.websiteUrl ?? "",
+          profileSummary: nextProfile.profileSummary ?? ""
+        });
+      } catch (loadError) {
+        if (!cancelled) {
+          setProfile(null);
+          setError(
+            toErrorMessage(
+              loadError,
+              locale === "en" ? "Settings could not be loaded." : "Ayarlar yüklenemedi."
+            )
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-
-      if (billingResult.status === "fulfilled") {
-        setBilling(billingResult.value);
-      } else {
-        setBilling(null);
-        setBillingLoadError(
-          toErrorMessage(
-            billingResult.reason,
-            locale === "en"
-              ? "Usage limits could not be loaded."
-              : "Kullanım limitleri yüklenemedi."
-          )
-        );
-      }
-    } catch (loadError) {
-      setError(
-        toErrorMessage(
-          loadError,
-          locale === "en" ? "Settings could not be loaded." : "Ayarlar yüklenemedi."
-        )
-      );
-    } finally {
-      setLoading(false);
     }
+
+    void loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, [locale]);
 
-  useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
-
-  async function handleResendOwnVerification() {
-    setBusyKey("verify-email");
+  async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusyKey("profile:save");
     setError("");
-    setSecurityNotice("");
-    setVerificationNotice("");
-    setVerificationPreviewUrl("");
+    setProfileNotice("");
 
     try {
-      const result = await resendEmailVerification(currentSession);
-      if (!result.enabled) {
-        setVerificationNotice(
-          locale === "en"
-            ? "Email verification is currently disabled across the platform."
-            : "E-posta doğrulaması şu anda platform genelinde kapalı."
-        );
-      } else {
-        setVerificationNotice(
-          result.previewUrl
-            ? locale === "en"
-              ? "Verification flow prepared again. A local preview link is available."
-              : "Doğrulama akışı yeniden hazırlandı. Lokal preview linki oluştu."
-            : locale === "en"
-              ? "Verification email sent again."
-              : "Doğrulama e-postası yeniden gönderildi."
-        );
-      }
-      setVerificationPreviewUrl(result.previewUrl ?? "");
-    } catch (verificationError) {
+      const nextProfile = await apiClient.updateTenantProfile({
+        companyName: profileForm.companyName,
+        websiteUrl: profileForm.websiteUrl || undefined,
+        profileSummary: profileForm.profileSummary || undefined
+      });
+
+      setProfile(nextProfile);
+      setProfileForm({
+        companyName: nextProfile.companyName,
+        websiteUrl: nextProfile.websiteUrl ?? "",
+        profileSummary: nextProfile.profileSummary ?? ""
+      });
+      setProfileNotice(
+        locale === "en"
+          ? "Company profile updated."
+          : "Şirket profili güncellendi."
+      );
+    } catch (saveError) {
       setError(
-        verificationError instanceof Error
-          ? verificationError.message
-          : t("Doğrulama e-postası tekrar gönderilemedi.")
+        saveError instanceof Error ? saveError.message : t("Şirket profili kaydedilemedi.")
       );
     } finally {
       setBusyKey("");
@@ -247,6 +201,7 @@ export default function SettingsPage() {
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword
       });
+
       setCurrentSession(nextSession);
       setPasswordForm({
         currentPassword: "",
@@ -260,9 +215,7 @@ export default function SettingsPage() {
       );
     } catch (changeError) {
       setError(
-        changeError instanceof Error
-          ? changeError.message
-          : t("Şifre değiştirilemedi.")
+        changeError instanceof Error ? changeError.message : t("Şifre değiştirilemedi.")
       );
     } finally {
       setBusyKey("");
@@ -297,232 +250,21 @@ export default function SettingsPage() {
 
     try {
       await deleteCurrentAccount(currentSession, deleteAccountForm);
-      setCurrentSession(null);
       window.location.assign("/");
     } catch (deleteError) {
       setError(
-        deleteError instanceof Error
-          ? deleteError.message
-          : t("Hesap silinemedi.")
+        deleteError instanceof Error ? deleteError.message : t("Hesap silinemedi.")
       );
     } finally {
       setBusyKey("");
     }
   }
 
-  async function handleInviteSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusyKey("invite");
-    setError("");
-    setMemberActionNotice("");
-    setMemberActionPreviewUrl("");
-
-    try {
-      const result = await apiClient.inviteMember(inviteForm);
-      setInviteForm({
-        fullName: "",
-        email: "",
-        role: "staff"
-      });
-      setMemberActionNotice(
-        result.invitationUrl
-          ? locale === "en"
-            ? "Invitation created. A local preview link is ready."
-            : "Davet oluşturuldu. Lokal preview linki hazır."
-          : locale === "en"
-            ? "Invitation created and email flow was triggered."
-            : "Davet oluşturuldu ve e-posta akışı tetiklendi."
-      );
-      setMemberActionPreviewUrl(result.invitationUrl ?? "");
-      await loadAll();
-    } catch (inviteError) {
-      setError(inviteError instanceof Error ? inviteError.message : t("Davet gönderilemedi."));
-    } finally {
-      setBusyKey("");
-    }
-  }
-
-  async function handleResendInvitation(userId: string) {
-    setBusyKey(`resend:${userId}`);
-    setError("");
-    setMemberActionNotice("");
-    setMemberActionPreviewUrl("");
-
-    try {
-      const result = await apiClient.resendMemberInvitation(userId);
-      setMemberActionNotice(
-        result.invitationUrl
-          ? locale === "en"
-            ? "Invitation sent again. A fresh local preview link is ready."
-            : "Davet yeniden gönderildi. Yeni lokal preview linki hazır."
-          : locale === "en"
-            ? "Invitation sent again."
-            : "Davet yeniden gönderildi."
-      );
-      setMemberActionPreviewUrl(result.invitationUrl ?? "");
-      await loadAll();
-    } catch (resendError) {
-      setError(
-        resendError instanceof Error ? resendError.message : t("Davet tekrar gönderilemedi.")
-      );
-    } finally {
-      setBusyKey("");
-    }
-  }
-
-  async function handleRoleChange(member: MemberDirectoryItem, nextRole: EditableMemberRole) {
-    const previousRole = member.role;
-    if (nextRole === previousRole) {
-      return;
-    }
-
-    if (
-      nextRole === "owner" &&
-      !window.confirm(
-        locale === "en"
-          ? `All authority will move to ${member.fullName}. Do you want to continue?`
-          : `${member.fullName} hesabını hesap sahibi yaparsanız tüm yetkiler bu kullanıcıya devredilir. Devam etmek istiyor musunuz?`
-      )
-    ) {
-      setMemberRoleDrafts((prev) => ({
-        ...prev,
-        [member.userId]: previousRole
-      }));
-      return;
-    }
-
-    setBusyKey(`role:${member.userId}`);
-    setError("");
-    setMemberActionNotice("");
-    setMemberActionPreviewUrl("");
-    setMemberRoleDrafts((prev) => ({
-      ...prev,
-      [member.userId]: nextRole
-    }));
-
-    try {
-      const result = await apiClient.updateMemberRole(member.userId, { role: nextRole });
-
-      setMemberActionNotice(
-        nextRole === "owner"
-          ? locale === "en"
-            ? "Account ownership transferred."
-            : "Hesap sahipliği devredildi."
-          : locale === "en"
-            ? "Role saved automatically."
-            : "Rol otomatik olarak kaydedildi."
-      );
-
-      if (
-        result.previousOwnerUserId &&
-        currentSession &&
-        currentSession.userId === result.previousOwnerUserId
-      ) {
-        saveSession({
-          ...currentSession,
-          roles: "manager"
-        });
-        setCurrentSession({
-          ...currentSession,
-          roles: "manager"
-        });
-        router.push("/dashboard");
-        router.refresh();
-        return;
-      }
-
-      await loadAll();
-    } catch (roleError) {
-      setMemberRoleDrafts((prev) => ({
-        ...prev,
-        [member.userId]: previousRole
-      }));
-      setError(roleError instanceof Error ? roleError.message : t("Rol güncellenemedi."));
-    } finally {
-      setBusyKey("");
-    }
-  }
-
-  async function handleStatusUpdate(member: MemberDirectoryItem) {
-    const nextStatus = member.status === "DISABLED" ? "ACTIVE" : "DISABLED";
-
-    if (
-      nextStatus === "DISABLED" &&
-      !window.confirm(`${member.fullName} ${t("kullanıcısını pasifleştirmek istiyor musunuz?")}`)
-    ) {
-      return;
-    }
-
-    setBusyKey(`status:${member.userId}`);
-    setError("");
-    setMemberActionNotice("");
-    setMemberActionPreviewUrl("");
-
-    try {
-      await apiClient.updateMemberStatus(member.userId, { status: nextStatus });
-      setMemberActionNotice(
-        nextStatus === "DISABLED"
-          ? locale === "en"
-            ? "User access paused."
-            : "Kullanıcı erişimi pasifleştirildi."
-          : locale === "en"
-            ? "User access restored."
-            : "Kullanıcı erişimi yeniden açıldı."
-      );
-      await loadAll();
-    } catch (statusError) {
-      setError(statusError instanceof Error ? statusError.message : t("Durum güncellenemedi."));
-    } finally {
-      setBusyKey("");
-    }
-  }
-
-  async function handleDeleteMember(member: MemberDirectoryItem) {
-    if (
-      !window.confirm(
-        locale === "en"
-          ? `${member.fullName} will be removed from the workspace. Active sessions and pending invitations will also be cleared. Continue?`
-          : `${member.fullName} çalışma alanından silinecek. Aktif oturumları ve bekleyen davetleri de temizlenecek. Devam etmek istiyor musunuz?`
-      )
-    ) {
-      return;
-    }
-
-    setBusyKey(`delete:${member.userId}`);
-    setError("");
-    setMemberActionNotice("");
-    setMemberActionPreviewUrl("");
-
-    try {
-      await apiClient.deleteMember(member.userId);
-      setMemberActionNotice(
-        locale === "en"
-          ? "User removed from the workspace."
-          : "Kullanıcı çalışma alanından silindi."
-      );
-      await loadAll();
-    } catch (deleteError) {
-      setError(
-        deleteError instanceof Error ? deleteError.message : t("Kullanıcı silinemedi.")
-      );
-    } finally {
-      setBusyKey("");
-    }
-  }
-
-  const seatQuota = billing?.usage.quotas.find((quota) => quota.key === "SEATS") ?? null;
-  const inviteBlockedReason =
-    seatQuota?.warningState === "exceeded"
-      ? locale === "en"
-        ? "User seat limit is full. Upgrade the plan before inviting another teammate."
-        : "Kullanıcı limiti dolu. Yeni davet için önce planı yükseltin."
-      : "";
-  const inviteDisabled = busyKey === "invite" || Boolean(inviteBlockedReason);
-  const title = locale === "en" ? "Team and Access" : "Ekip ve Erişim";
+  const title = locale === "en" ? "Settings" : "Ayarlar";
   const subtitle =
     locale === "en"
-      ? "Manage team access, roles, and email verification status."
-      : "Ekip erişimini, rolleri ve e-posta doğrulama durumunu yönetin.";
+      ? "Manage company profile and security settings."
+      : "Şirket profili ve güvenlik ayarlarını yönetin.";
 
   if (loading) {
     return (
@@ -534,7 +276,7 @@ export default function SettingsPage() {
     );
   }
 
-  if (error && members.length === 0 && !billing) {
+  if (error && !profile) {
     return (
       <section className="page-grid">
         <section className="panel">
@@ -553,69 +295,124 @@ export default function SettingsPage() {
       </div>
 
       {error ? <NoticeBox tone="danger" message={error} /> : null}
-      {memberActionNotice ? <NoticeBox tone="success" message={memberActionNotice} /> : null}
-      {verificationNotice ? <NoticeBox tone="success" message={verificationNotice} /> : null}
+      {profileNotice ? <NoticeBox tone="success" message={profileNotice} /> : null}
       {securityNotice ? <NoticeBox tone="success" message={securityNotice} /> : null}
-      {billingLoadError ? <NoticeBox tone="danger" message={billingLoadError} /> : null}
-
-      {memberActionPreviewUrl ? (
-        <a
-          href={memberActionPreviewUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="ghost-button"
-          style={{ justifySelf: "start", textDecoration: "none" }}
-        >
-          {t("Davet preview bağlantısını aç")}
-        </a>
-      ) : null}
-
-      {verificationPreviewUrl ? (
-        <a
-          href={verificationPreviewUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="ghost-button"
-          style={{ justifySelf: "start", textDecoration: "none" }}
-        >
-          {t("Doğrulama preview bağlantısını aç")}
-        </a>
-      ) : null}
-
-      {currentSession?.email && !currentSession.emailVerifiedAt ? (
-        <section className="panel" style={{ display: "grid", gap: 10 }}>
-          <div>
-            <h2 style={{ margin: "0 0 6px" }}>{t("E-posta doğrulaması bekleniyor")}</h2>
-            <p className="small text-muted" style={{ margin: 0 }}>
-              {locale === "en"
-                ? "Before opening customer-facing flows, make sure the account owner email is verified."
-                : "Müşteriye açık akışları devreye almadan önce hesap sahibi e-postasının doğrulanmış olduğundan emin olun."}
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className="ghost-button"
-              disabled={busyKey === "verify-email"}
-              onClick={() => void handleResendOwnVerification()}
-            >
-              {busyKey === "verify-email"
-                ? t("Hazırlanıyor...")
-                : t("Doğrulama mailini tekrar gönder")}
-            </button>
-          </div>
-        </section>
-      ) : null}
 
       <section className="panel" style={{ display: "grid", gap: 16 }}>
         <div>
-          <h2 style={{ margin: "0 0 6px" }}>
-            {locale === "en" ? "Security" : "Güvenlik"}
-          </h2>
+          <h2 style={{ margin: "0 0 6px" }}>{locale === "en" ? "General" : "Genel"}</h2>
           <p className="small text-muted" style={{ margin: 0 }}>
             {locale === "en"
-              ? "Update your password and close older sessions from one place."
-              : "Şifrenizi güncelleyin ve eski oturumları tek yerden kapatın."}
+              ? "Set the company information used across the workspace and in new job draft preparation."
+              : "Çalışma alanında ve yeni ilan taslağı hazırlığında kullanılan şirket bilgilerini yönetin."}
+          </p>
+        </div>
+
+        <form style={{ display: "grid", gap: 14 }} onSubmit={handleProfileSave}>
+          <div className="inline-grid" style={{ gridTemplateColumns: "1.1fr 1fr", gap: 12 }}>
+            <label style={{ display: "grid", gap: 8 }}>
+              <input
+                className="input"
+                value={profileForm.companyName}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({ ...prev, companyName: event.target.value }))
+                }
+                placeholder={locale === "en" ? "Company name" : "Şirket adı"}
+                required
+              />
+              <span className="small text-muted">
+                {locale === "en"
+                  ? "Appears as the default company name in the workspace."
+                  : "Çalışma alanında varsayılan şirket adı olarak görünür."}
+              </span>
+            </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <input
+                className="input"
+                value={profileForm.websiteUrl}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({ ...prev, websiteUrl: event.target.value }))
+                }
+                placeholder={locale === "en" ? "Website URL" : "Web sitesi bağlantısı"}
+              />
+              <span className="small text-muted">
+                {locale === "en"
+                  ? "Used as supporting context when preparing a new job draft."
+                  : "Yeni ilan taslağı hazırlanırken destekleyici bilgi olarak kullanılır."}
+              </span>
+            </label>
+          </div>
+
+          <label style={{ display: "grid", gap: 8 }}>
+            <textarea
+              className="input"
+              rows={5}
+              value={profileForm.profileSummary}
+              onChange={(event) =>
+                setProfileForm((prev) => ({ ...prev, profileSummary: event.target.value }))
+              }
+              placeholder={
+                locale === "en"
+                  ? "Short company summary"
+                  : "Kısa şirket tanımı"
+              }
+            />
+            <span className="small text-muted">
+              {locale === "en"
+                ? "Used as background context while creating new job drafts."
+                : "Yeni ilan taslakları oluşturulurken arka plan bilgisi olarak kullanılır."}
+            </span>
+          </label>
+
+          <div
+            style={{
+              display: "grid",
+              gap: 10,
+              padding: 14,
+              borderRadius: 14,
+              border: "1px solid var(--border)",
+              background: "rgba(255,255,255,0.02)"
+            }}
+          >
+            <strong>{locale === "en" ? "Current profile" : "Mevcut profil"}</strong>
+            <div className="small text-muted" style={{ display: "grid", gap: 4 }}>
+              <span>
+                {locale === "en" ? "Company name" : "Şirket adı"}:{" "}
+                <strong style={{ color: "var(--text)" }}>{profileForm.companyName || "—"}</strong>
+              </span>
+              <span>
+                {locale === "en" ? "Website" : "Web sitesi"}:{" "}
+                {profileForm.websiteUrl ? (
+                  <a href={profileForm.websiteUrl} target="_blank" rel="noreferrer">
+                    {profileForm.websiteUrl}
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <button type="submit" className="ghost-button" disabled={busyKey === "profile:save"}>
+              {busyKey === "profile:save"
+                ? t("Kaydediliyor...")
+                : locale === "en"
+                  ? "Save profile"
+                  : "Profili kaydet"}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="panel" style={{ display: "grid", gap: 16 }}>
+        <div>
+          <h2 style={{ margin: "0 0 6px" }}>{locale === "en" ? "Security" : "Güvenlik"}</h2>
+          <p className="small text-muted" style={{ margin: 0 }}>
+            {locale === "en"
+              ? "Update your password from one place."
+              : "Şifrenizi tek yerden güncelleyin."}
           </p>
         </div>
 
@@ -676,221 +473,6 @@ export default function SettingsPage() {
         </form>
       </section>
 
-      <section className="panel">
-        <h2 style={{ margin: "0 0 6px" }}>
-          {locale === "en" ? "Invite teammate" : "Yeni üye davet et"}
-        </h2>
-        <p className="small text-muted" style={{ marginBottom: 12 }}>
-          {locale === "en"
-            ? "Invite managers or staff to this workspace and keep access under one owner account."
-            : "Bu çalışma alanına menajer veya personel davet edin; hesapta tek bir hesap sahibi bulunsun."}
-        </p>
-
-        {inviteBlockedReason ? <NoticeBox tone="danger" message={inviteBlockedReason} /> : null}
-
-        {seatQuota ? (
-          <p className="small text-muted" style={{ marginTop: 12, marginBottom: 12 }}>
-            {t("Kullanıcı kotası")}: {seatQuota.used}/{seatQuota.limit}.{" "}
-            {locale === "en"
-              ? "Pending invitations are included in this limit."
-              : "Bekleyen davetler de bu limite dahildir."}
-          </p>
-        ) : null}
-
-        <form
-          className="inline-grid"
-          style={{ gridTemplateColumns: "1.2fr 1.2fr 0.8fr auto", gap: 12 }}
-          onSubmit={handleInviteSubmit}
-        >
-          <input
-            className="input"
-            value={inviteForm.fullName}
-            disabled={inviteDisabled}
-            onChange={(event) =>
-              setInviteForm((prev) => ({ ...prev, fullName: event.target.value }))
-            }
-            placeholder={t("Ad Soyad")}
-            required
-          />
-          <input
-            className="input"
-            type="email"
-            value={inviteForm.email}
-            disabled={inviteDisabled}
-            onChange={(event) =>
-              setInviteForm((prev) => ({ ...prev, email: event.target.value }))
-            }
-            placeholder={t("E-posta")}
-            required
-          />
-          <select
-            className="input"
-            value={inviteForm.role}
-            disabled={inviteDisabled}
-            onChange={(event) =>
-              setInviteForm((prev) => ({
-                ...prev,
-                role: event.target.value as "manager" | "staff"
-              }))
-            }
-          >
-            {inviteRoleOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {t(option.label)}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="ghost-button" disabled={inviteDisabled}>
-            {busyKey === "invite" ? t("Gönderiliyor...") : t("Davet Gönder")}
-          </button>
-        </form>
-      </section>
-
-      <section className="panel">
-        <div className="section-head" style={{ marginBottom: 12 }}>
-          <div>
-            <h2 style={{ margin: 0 }}>{locale === "en" ? "Team members" : "Üye listesi"}</h2>
-            <p className="small text-muted" style={{ marginTop: 4 }}>
-              {locale === "en"
-                ? "One owner controls the workspace. Managers run operations; staff work in the daily flow."
-                : "Tek bir hesap sahibi bulunur. Menajer operasyonu yönetir, personel günlük akışta çalışır."}
-            </p>
-          </div>
-        </div>
-
-        {memberLoadError ? (
-          <ErrorState
-            error={memberLoadError}
-            actions={
-              <button type="button" className="ghost-button" onClick={() => void loadAll()}>
-                {t("Tekrar dene")}
-              </button>
-            }
-          />
-        ) : members.length === 0 ? (
-          <EmptyState message={t("Henüz ekip üyesi bulunmuyor.")} />
-        ) : (
-          <div className="table-scroll">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{locale === "en" ? "User" : "Kullanıcı"}</th>
-                  <th>{locale === "en" ? "Role" : "Rol"}</th>
-                  <th>{t("Durum")}</th>
-                  <th>{locale === "en" ? "Last login" : "Son giriş"}</th>
-                  <th>{locale === "en" ? "Email verified" : "E-posta doğrulama"}</th>
-                  <th>{locale === "en" ? "Actions" : "Aksiyonlar"}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {members.map((member) => {
-                  const status = statusBadge(member.status, locale);
-                  const roleDraft = memberRoleDrafts[member.userId] ?? member.role;
-                  const roleBusy = busyKey === `role:${member.userId}`;
-                  const statusBusy = busyKey === `status:${member.userId}`;
-                  const resendBusy = busyKey === `resend:${member.userId}`;
-                  const deleteBusy = busyKey === `delete:${member.userId}`;
-
-                  return (
-                    <tr key={member.userId}>
-                      <td>
-                        <div className="admin-table-cell-stack">
-                          <strong>{member.fullName}</strong>
-                          <span>{member.email}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <select
-                          className="input"
-                          style={{ minWidth: 180 }}
-                          value={roleDraft}
-                          disabled={roleBusy || member.role === "owner"}
-                          onChange={(event) =>
-                            void handleRoleChange(
-                              member,
-                              event.target.value as EditableMemberRole
-                            )
-                          }
-                        >
-                          {memberRoleOptions.map((option) => (
-                            <option
-                              key={option.value}
-                              value={option.value}
-                              disabled={option.value === "owner" && member.status !== "ACTIVE"}
-                            >
-                              {t(option.label)}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <StatusBadge ready={status.ready} label={status.label} />
-                      </td>
-                      <td>
-                        {formatOptionalDate(member.lastLoginAt)}
-                      </td>
-                      <td>
-                        {member.emailVerifiedAt
-                          ? formatOptionalDate(member.emailVerifiedAt)
-                          : t("Bekliyor")}
-                      </td>
-                      <td>
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          {member.role !== "owner" ? (
-                            <button
-                              type="button"
-                              className="ghost-button"
-                              disabled={statusBusy}
-                              onClick={() => void handleStatusUpdate(member)}
-                            >
-                              {statusBusy
-                                ? t("İşleniyor...")
-                                : member.status === "DISABLED"
-                                  ? t("Aktifleştir")
-                                  : t("Pasifleştir")}
-                            </button>
-                          ) : null}
-                          {member.status === "INVITED" || member.hasPendingInvitation ? (
-                            <button
-                              type="button"
-                              className="ghost-button"
-                              disabled={resendBusy}
-                              onClick={() => void handleResendInvitation(member.userId)}
-                            >
-                              {resendBusy
-                                ? t("Gönderiliyor...")
-                                : t("Daveti Tekrar Gönder")}
-                            </button>
-                          ) : null}
-                          {member.role !== "owner" ? (
-                            <button
-                              type="button"
-                              className="ghost-button"
-                              disabled={deleteBusy}
-                              onClick={() => void handleDeleteMember(member)}
-                            >
-                              {deleteBusy ? t("Siliniyor...") : t("Sil")}
-                            </button>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {members.length > 0 ? (
-          <p className="small text-muted" style={{ marginTop: 12, textAlign: "right" }}>
-            {locale === "en"
-              ? "Role changes are saved automatically. Selecting Account Owner transfers all authority to that user."
-              : "Rol değişiklikleri otomatik kaydedilir. Hesap Sahibi seçildiğinde tüm yetkiler o kullanıcıya devredilir."}
-          </p>
-        ) : null}
-      </section>
-
       {isOwner ? (
         <section className="panel" style={{ display: "grid", gap: 16, borderColor: "rgba(239,68,68,0.24)" }}>
           <div>
@@ -904,8 +486,8 @@ export default function SettingsPage() {
             </p>
             <p className="small text-muted" style={{ margin: "8px 0 0" }}>
               {locale === "en"
-                ? `Type ${deleteAccountConfirmationPlaceholder} to confirm.`
-                : `Onaylamak için ${deleteAccountConfirmationPlaceholder} yazın.`}
+                ? 'To confirm, enter your current password and type "delete my account" in the field on the right.'
+                : 'Onaylamak için mevcut şifrenizi yazın ve sağ taraftaki alana "hesabımı sil" yazın.'}
             </p>
           </div>
 
@@ -979,30 +561,5 @@ function NoticeBox({
     >
       {t(message)}
     </div>
-  );
-}
-
-function StatusBadge({
-  ready,
-  label
-}: {
-  ready: boolean;
-  label?: string;
-}) {
-  const { t } = useUiText();
-
-  return (
-    <span
-      style={{
-        fontSize: 11,
-        padding: "2px 10px",
-        borderRadius: 10,
-        fontWeight: 600,
-        background: ready ? "rgba(34,197,94,0.12)" : "rgba(113,113,122,0.12)",
-        color: ready ? "var(--success, #22c55e)" : "var(--text-dim)"
-      }}
-    >
-      {t(label ?? (ready ? "Hazır" : "Sorunlu"))}
-    </span>
   );
 }

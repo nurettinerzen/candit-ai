@@ -2,6 +2,12 @@
 
 import { useId, useMemo, useRef, useState } from "react";
 import { SOURCE_LABELS } from "../lib/constants";
+import {
+  normalizeImportHeader,
+  parseDelimitedTable,
+  parseExperienceValue,
+  type ImportSourceHint
+} from "../lib/csv-import";
 import { useUiText } from "./site-language-provider";
 import type {
   SourcingImportedLead,
@@ -25,6 +31,8 @@ type SourcingIngestionPanelProps = {
 type ParsedTable = {
   headers: string[];
   rows: string[][];
+  delimiter: "," | ";" | "\t";
+  detectedSource: ImportSourceHint;
 };
 
 type LeadFieldKey =
@@ -94,69 +102,8 @@ const FIELD_OPTIONS: Array<{ value: LeadFieldKey; label: string }> = [
   { value: "externalRef", label: "Harici referans" }
 ];
 
-function detectSeparator(headerLine: string) {
-  const candidates: Array<"," | ";" | "\t"> = [",", ";", "\t"];
-  const scored = candidates.map((separator) => ({
-    separator,
-    count: headerLine.split(separator).length
-  }));
-  return scored.sort((left, right) => right.count - left.count)[0]?.separator ?? ",";
-}
-
-function parseDelimitedLine(line: string, separator: string) {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    if (char === '"') {
-      if (inQuotes && line[index + 1] === '"') {
-        current += '"';
-        index += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-
-    if (char === separator && !inQuotes) {
-      result.push(current.trim());
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  result.push(current.trim());
-  return result;
-}
-
-function parseDelimitedText(text: string): ParsedTable | null {
-  const lines = text
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .map((line) => line.trimEnd())
-    .filter((line) => line.trim().length > 0);
-
-  if (lines.length < 2) {
-    return null;
-  }
-
-  const separator = detectSeparator(lines[0] ?? "");
-  const headers = parseDelimitedLine(lines[0] ?? "", separator).map((item) => item.trim());
-  const rows = lines.slice(1).map((line) => parseDelimitedLine(line, separator));
-
-  if (headers.length === 0 || rows.length === 0) {
-    return null;
-  }
-
-  return { headers, rows };
-}
-
 function inferField(header: string): LeadFieldKey {
-  const normalized = header.toLocaleLowerCase("tr-TR");
+  const normalized = normalizeImportHeader(header);
   if (/^(ad|isim|name|full.?name)/.test(normalized)) return "fullName";
   if (/^(headline|profil|summary)/.test(normalized)) return "headline";
   if (/^(title|unvan|position|rol)/.test(normalized)) return "currentTitle";
@@ -192,7 +139,7 @@ function buildLeadsFromTable(table: ParsedTable, mapping: LeadFieldKey[]) {
 
         switch (field) {
           case "yearsOfExperience":
-            lead.yearsOfExperience = Number(value);
+            lead.yearsOfExperience = parseExperienceValue(value);
             break;
           case "skills":
             lead.skills = splitListValue(value);
@@ -212,7 +159,37 @@ function buildLeadsFromTable(table: ParsedTable, mapping: LeadFieldKey[]) {
 }
 
 function mappingStorageKey(preset: ImportPresetKey, headers: string[]) {
-  return `sourcing-import-mapping:${preset}:${headers.map((header) => header.toLocaleLowerCase("tr-TR")).join("|")}`;
+  return `sourcing-import-mapping:${preset}:${headers.map((header) => normalizeImportHeader(header)).join("|")}`;
+}
+
+function resolveSourcePresetFromHint(hint: ImportSourceHint): {
+  sourceType: SourcingImportSourceType;
+  sourceLabel: string;
+} | null {
+  switch (hint) {
+    case "kariyer_net":
+      return {
+        sourceType: "job_board_export",
+        sourceLabel: "Kariyer.net"
+      };
+    case "linkedin":
+      return {
+        sourceType: "job_board_export",
+        sourceLabel: "LinkedIn"
+      };
+    case "eleman_net":
+      return {
+        sourceType: "job_board_export",
+        sourceLabel: "Eleman.net"
+      };
+    case "agency":
+      return {
+        sourceType: "agency_upload",
+        sourceLabel: "Ajans / dış liste"
+      };
+    default:
+      return null;
+  }
 }
 
 function SummaryBlock({ summary }: { summary: SourcingLeadImportSummary }) {
@@ -262,12 +239,13 @@ export function SourcingIngestionPanel({
   onImportLeads,
   onImportUrls
 }: SourcingIngestionPanelProps) {
-  const { t } = useUiText();
+  const { locale, t } = useUiText();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const fileInputId = useId();
   const [selectedPreset, setSelectedPreset] = useState<ImportPresetKey>("general_lead_list");
   const [importSourceType, setImportSourceType] = useState<SourcingImportSourceType>("recruiter_import");
   const [importSourceLabel, setImportSourceLabel] = useState("");
+  const [sourceSelectionTouched, setSourceSelectionTouched] = useState(false);
   const [fileName, setFileName] = useState("");
   const [parsedTable, setParsedTable] = useState<ParsedTable | null>(null);
   const [fieldMapping, setFieldMapping] = useState<LeadFieldKey[]>([]);
@@ -300,6 +278,14 @@ export function SourcingIngestionPanel({
     () => (parsedTable ? buildLeadsFromTable(parsedTable, fieldMapping).slice(0, 5) : []),
     [fieldMapping, parsedTable]
   );
+  const detectedSourceLabel = locale === "en" ? "Detected source" : "Algılanan kaynak";
+  const delimiterLabel = locale === "en" ? "Delimiter" : "Ayraç";
+  const delimiterValueLabel =
+    parsedTable?.delimiter === "\t"
+      ? locale === "en" ? "Tab" : "Tab"
+      : parsedTable?.delimiter === ";"
+        ? locale === "en" ? "Semicolon" : "Noktalı virgül"
+        : locale === "en" ? "Comma" : "Virgül";
 
   function openFilePicker() {
     const input = fileRef.current;
@@ -331,7 +317,7 @@ export function SourcingIngestionPanel({
     const reader = new FileReader();
     reader.onload = () => {
       const raw = typeof reader.result === "string" ? reader.result : "";
-      const table = parseDelimitedText(raw);
+      const table = parseDelimitedTable(raw, file.name);
       if (!table) {
         setParsedTable(null);
         setFieldMapping([]);
@@ -340,6 +326,13 @@ export function SourcingIngestionPanel({
       }
 
       setParsedTable(table);
+      if (!sourceSelectionTouched) {
+        const suggestedSource = resolveSourcePresetFromHint(table.detectedSource);
+        if (suggestedSource) {
+          setImportSourceType(suggestedSource.sourceType);
+          setImportSourceLabel(suggestedSource.sourceLabel);
+        }
+      }
       const inferredMapping = table.headers.map((header) => inferField(header));
       let resolvedMapping = inferredMapping;
 
@@ -497,6 +490,7 @@ export function SourcingIngestionPanel({
                   className={`sourcing-chip interactive${selectedPreset === key ? " is-active" : ""}`}
                   onClick={() => {
                     setSelectedPreset(key);
+                    setSourceSelectionTouched(true);
                     setImportSourceType(preset.sourceType);
                     setImportSourceLabel(t(preset.sourceLabel));
                   }}
@@ -511,7 +505,10 @@ export function SourcingIngestionPanel({
             <select
               className="select"
               value={importSourceType}
-              onChange={(event) => setImportSourceType(event.target.value as SourcingImportSourceType)}
+              onChange={(event) => {
+                setSourceSelectionTouched(true);
+                setImportSourceType(event.target.value as SourcingImportSourceType);
+              }}
             >
               {IMPORT_SOURCE_OPTIONS.map((option) => (
                 <option key={option} value={option}>
@@ -522,7 +519,10 @@ export function SourcingIngestionPanel({
             <input
               className="input"
               value={importSourceLabel}
-              onChange={(event) => setImportSourceLabel(event.target.value)}
+              onChange={(event) => {
+                setSourceSelectionTouched(true);
+                setImportSourceLabel(event.target.value);
+              }}
               placeholder={t("Opsiyonel kaynak etiketi")}
             />
           </div>
@@ -553,6 +553,11 @@ export function SourcingIngestionPanel({
             <>
               <div className="small">
                 {t(`${parsedTable.rows.length} satır algılandı. Alan eşlemesini kontrol edin; sonraki aynı format import’larda mapping otomatik hatırlanır.`)}
+              </div>
+              <div className="small" style={{ color: "var(--text-secondary)" }}>
+                {detectedSourceLabel}: <strong>{t(SOURCE_LABELS[parsedTable.detectedSource] ?? parsedTable.detectedSource)}</strong>
+                {" · "}
+                {delimiterLabel}: <strong>{delimiterValueLabel}</strong>
               </div>
               <div style={{ display: "grid", gap: 8 }}>
                 {parsedTable.headers.map((header, index) => (
@@ -591,6 +596,7 @@ export function SourcingIngestionPanel({
                             {lead.currentTitle ?? t("Unvan yok")}
                             {lead.currentCompany ? ` · ${lead.currentCompany}` : ""}
                             {lead.locationText ? ` · ${lead.locationText}` : ""}
+                            {lead.externalRef ? ` · Ref: ${lead.externalRef}` : ""}
                           </div>
                         </div>
                         <span className="small">{lead.email ?? lead.phone ?? t("İletişim yok")}</span>

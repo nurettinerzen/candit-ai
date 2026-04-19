@@ -390,7 +390,7 @@ export class ReadModelsService {
       throw new NotFoundException("Basvuru bulunamadi.");
     }
 
-    const [screeningRuns, reports, recommendations, interviewSessions, aiTaskRuns, auditLogs, sourcingAttachment] =
+    const [screeningRuns, reports, recommendations, interviewSessions, aiTaskRuns, auditLogs, sourcingAttachment, applicationDomainEvents] =
       await Promise.all([
         this.screeningService.listByApplication(tenantId, applicationId, 10),
         this.reportsService.listByApplication(tenantId, applicationId, 10),
@@ -445,6 +445,17 @@ export class ReadModelsService {
             }
           },
           orderBy: { updatedAt: "desc" }
+        }),
+        this.prisma.domainEvent.findMany({
+          where: {
+            tenantId,
+            aggregateType: "CandidateApplication",
+            aggregateId: applicationId
+          },
+          orderBy: {
+            createdAt: "desc"
+          },
+          take: 80
         })
       ]);
 
@@ -512,6 +523,19 @@ export class ReadModelsService {
             })
           ])
         : [[], []];
+
+    const notificationDeliveries = await this.prisma.notificationDelivery.findMany({
+      where: {
+        tenantId,
+        domainEventId: {
+          in: [...applicationDomainEvents, ...interviewDomainEvents].map((event) => event.id)
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      },
+      take: 40
+    });
 
     const recommendationIds = recommendations.map((item) => item.id);
     const aiTaskRunIds = aiTaskRuns.map((item) => item.id);
@@ -700,7 +724,8 @@ export class ReadModelsService {
       },
       governance: {
         auditLogs,
-        humanApprovals
+        humanApprovals,
+        notificationDeliveries
       },
       timeline: {
         stageHistory: baseApplication.stageHistory,
@@ -859,6 +884,7 @@ export class ReadModelsService {
       integrations: "Entegrasyon readiness verisi su an eksik yuklendi.",
       interview_sessions: "Mulakat oturum verisi su an eksik yuklendi.",
       scheduling_workflows: "Planlama workflow verisi su an eksik yuklendi.",
+      scheduling_providers: "Planlama provider verisi su an eksik yuklendi.",
       notification_deliveries: "Bildirim teslimat verisi su an eksik yuklendi.",
       startup_validation: "Calisma zamani dogrulama verisi su an eksik yuklendi."
     };
@@ -870,7 +896,7 @@ export class ReadModelsService {
       return fallback;
     };
 
-    const [aiSupport, integrations, latestSessions, schedulingWorkflows, notificationStats] = await Promise.all([
+    const [aiSupport, integrations, schedulingProviders, latestSessions, schedulingWorkflows, notificationStats] = await Promise.all([
       this.aiSupportCenter(tenantId).catch(
         withFallback("ai_support", {
           providers: [],
@@ -889,6 +915,17 @@ export class ReadModelsService {
         })
       ),
       this.integrationsService.listConnections(tenantId).catch(withFallback("integrations", [])),
+      this.interviewsService.listSchedulingProviders(tenantId).catch(
+        withFallback("scheduling_providers", {
+          providers: [],
+          catalog: [],
+          fallback: {
+            provider: null,
+            source: "internal_fallback",
+            label: "Dahili Meeting Link Fallback"
+          }
+        })
+      ),
       this.prisma.interviewSession
         .findMany({
           where: {
@@ -964,6 +1001,7 @@ export class ReadModelsService {
     return {
       queryWarnings,
       runtime: this.runtimeConfig.providerReadiness,
+      launchWarnings: this.runtimeConfig.getProviderConfigurationWarnings(),
       startupHealth: {
         healthy: startupValidation.healthy,
         warnings: startupValidation.warnings,
@@ -975,7 +1013,9 @@ export class ReadModelsService {
       integrations,
       scheduling: {
         workflowsByState: schedulingStats,
-        totalWorkflows: Object.values(schedulingStats).reduce((a, b) => a + b, 0)
+        totalWorkflows: Object.values(schedulingStats).reduce((a, b) => a + b, 0),
+        catalog: schedulingProviders.catalog,
+        fallback: schedulingProviders.fallback
       },
       notifications: {
         deliveriesByStatus: notificationDeliveryStats,

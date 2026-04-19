@@ -11,19 +11,15 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<{
-    previewUrl?: string | null;
-  } | null>(null);
+  const [result, setResult] = useState(false);
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      const response = await requestPasswordReset({ email });
-      setResult({
-        previewUrl: response.previewUrl ?? null
-      });
+      await requestPasswordReset({ email });
+      setResult(true);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -74,12 +70,6 @@ export default function ForgotPasswordPage() {
         <button type="submit" disabled={loading} style={primaryButtonStyle}>
           {loading ? t("Hazırlanıyor...") : t("Sıfırlama bağlantısını gönder")}
         </button>
-
-        {result?.previewUrl ? (
-          <a href={result.previewUrl} style={secondaryButtonStyle}>
-            {t("Geliştirme bağlantısını aç")}
-          </a>
-        ) : null}
       </form>
     </AuthShell>
   );
@@ -108,24 +98,6 @@ const primaryButtonStyle: CSSProperties = {
   color: "#fff",
   fontSize: 15,
   fontWeight: 700,
-  padding: "14px 18px",
-  cursor: "pointer",
-  fontFamily: "inherit",
-  textDecoration: "none"
-};
-
-const secondaryButtonStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 10,
-  width: "100%",
-  borderRadius: 16,
-  border: "1px solid rgba(148,163,184,0.18)",
-  background: "rgba(15,23,42,0.56)",
-  color: "#e2e8f0",
-  fontSize: 15,
-  fontWeight: 600,
   padding: "14px 18px",
   cursor: "pointer",
   fontFamily: "inherit",

@@ -21,6 +21,7 @@ import { ApplicationAutomationService } from "./application-automation.service";
 import { ApplicationsService } from "./applications.service";
 import { FitScoringService } from "./fit-scoring.service";
 import { RecruiterNotesService } from "./recruiter-notes.service";
+import { InterviewsService } from "../interviews/interviews.service";
 
 const APPLICATION_STAGES = [
   "APPLIED",
@@ -111,7 +112,17 @@ class InterviewQuestionDraftItemBody {
 }
 
 class QuickActionBody {
-  @IsIn(["shortlist", "reject", "hold", "trigger_screening", "trigger_fit_score", "invite_interview", "advance"])
+  @IsIn([
+    "shortlist",
+    "reject",
+    "hold",
+    "trigger_screening",
+    "trigger_fit_score",
+    "invite_interview",
+    "reinvite_interview",
+    "advance",
+    "send_reminder"
+  ])
   action!: string;
 
   @IsString()
@@ -146,7 +157,8 @@ export class ApplicationsController {
     @Inject(ApplicationAutomationService) private readonly applicationAutomationService: ApplicationAutomationService,
     @Inject(FitScoringService) private readonly fitScoringService: FitScoringService,
     @Inject(RecruiterNotesService) private readonly recruiterNotesService: RecruiterNotesService,
-    @Inject(AiOrchestrationService) private readonly aiOrchestrationService: AiOrchestrationService
+    @Inject(AiOrchestrationService) private readonly aiOrchestrationService: AiOrchestrationService,
+    @Inject(InterviewsService) private readonly interviewsService: InterviewsService
   ) {}
 
   @Get()
@@ -299,6 +311,7 @@ export class ApplicationsController {
     switch (body.action) {
       // ── Mülakata Davet Et: Ön Eleme Tamamlandı → AI Mülakat ──
       case "invite_interview":
+      case "reinvite_interview":
       case "advance":
       case "shortlist": {
         const app = await this.applicationsService.getById(tenantId, applicationId);
@@ -317,8 +330,23 @@ export class ApplicationsController {
 
       // ── Reddet: Herhangi bir aşamadan reddedilebilir ──
       case "reject":
-        return this.applicationsService.stageTransition({
-          tenantId, applicationId, toStage: "REJECTED", reasonCode: body.reasonCode ?? "rejected_by_recruiter", changedBy: user.userId, traceId
+        return this.applicationsService.decision({
+          tenantId,
+          applicationId,
+          aiReportId: "manual_quick_action_reject",
+          reasonCode: body.reasonCode ?? "rejected_by_recruiter",
+          decision: "reject",
+          changedBy: user.userId,
+          humanApprovedBy: user.userId,
+          traceId
+        });
+
+      case "send_reminder":
+        return this.interviewsService.sendInvitationReminder({
+          tenantId,
+          applicationId,
+          requestedBy: user.userId,
+          traceId
         });
 
       // ── Legacy actions — backward compatibility ──

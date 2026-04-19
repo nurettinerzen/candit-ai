@@ -72,6 +72,28 @@ export function getInterviewInvitationMeta(
   }
 }
 
+export function shouldOfferInterviewReinvite(
+  invitation: InterviewInvitationView | null | undefined,
+  status?: InterviewSessionStatus | string | null
+) {
+  if (invitation?.state === "EXPIRED" || invitation?.state === "FAILED") {
+    return true;
+  }
+
+  return status === "FAILED" || status === "CANCELLED" || status === "NO_SHOW";
+}
+
+export function shouldOfferInterviewReminder(
+  invitation: InterviewInvitationView | null | undefined,
+  status?: InterviewSessionStatus | string | null
+) {
+  if (invitation) {
+    return invitation.resumeAllowed;
+  }
+
+  return status === "SCHEDULED" || status === "RUNNING";
+}
+
 export function formatInterviewDeadline(value: string | null | undefined) {
   if (!value) {
     return "Belirtilmedi";

@@ -9,8 +9,8 @@ const requiredPublicTranslations: Array<[string, string]> = [
   ["Örn: Nurettin Erzen", "Example: Nurettin Erzen"],
   ["İK, kurucu, işe alım lideri...", "HR, founder, hiring lead..."],
   [
-    "İşe alım süreçleriniz, pilot hedefiniz ve ihtiyacınız olan akışlar hakkında kısa bilgi verin.",
-    "Share a short note about your hiring processes, pilot goals, and the workflows you need."
+    "İşe alım sürecinizi ve ihtiyaç duyduğunuz akışları kısaca anlatın.",
+    "Briefly describe your hiring process and the workflows you need."
   ],
   ["Mesaj gönderilemedi. Lütfen tekrar deneyin.", "Message could not be sent. Please try again."],
   ["Gönderim başarısız oldu", "Submission failed"],

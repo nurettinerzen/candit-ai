@@ -12,6 +12,7 @@ export type PanelGuideKey =
   | "reports"
   | "sourcing"
   | "sourcingProject"
+  | "team"
   | "settings"
   | "subscription"
   | "adminDashboard"
@@ -348,27 +349,51 @@ export const PANEL_GUIDES: Record<PanelGuideKey, PanelGuideEntry> = {
       }
     ]
   },
-  settings: {
+  team: {
     title: {
-      tr: "Ekip ve Erişim",
-      en: "Team and Access"
+      tr: "Ekip",
+      en: "Team"
     },
     summary: {
-      tr: "Ekip erişimi, rol yönetimi ve çalışma alanı temel ayarlarını buradan kontrol edersiniz.",
-      en: "Control team access, role management, and core workspace settings from here."
+      tr: "Üye davetlerini, rol değişikliklerini ve çalışma alanı erişimini ayrı bir ekip yüzeyinden yönetirsiniz.",
+      en: "Manage invitations, role changes, and workspace access from a dedicated team surface."
     },
     highlights: [
       {
-        tr: "Kullanıcı ve rol yönetimi",
-        en: "User and role management"
+        tr: "Yeni üye daveti ve koltuk görünürlüğü",
+        en: "New teammate invites and seat visibility"
       },
       {
-        tr: "Davet ve doğrulama akışları",
-        en: "Invitation and verification flows"
+        tr: "Rol, durum ve davet aksiyonları",
+        en: "Role, status, and invitation actions"
       },
       {
-        tr: "Çalışma alanı erişim kontrolü",
-        en: "Workspace access control"
+        tr: "Erişim yönetimini abonelikten ayıran net akış",
+        en: "A clear access flow separated from subscription management"
+      }
+    ]
+  },
+  settings: {
+    title: {
+      tr: "Ayarlar",
+      en: "Settings"
+    },
+    summary: {
+      tr: "Şirket profilini, güvenlik ayarlarını ve kritik hesap aksiyonlarını buradan yönetirsiniz.",
+      en: "Manage the company profile, security settings, and critical account actions from here."
+    },
+    highlights: [
+      {
+        tr: "Şirket profili ve varsayılan çalışma alanı bilgileri",
+        en: "Company profile and default workspace details"
+      },
+      {
+        tr: "Şifre ve doğrulama akışları",
+        en: "Password and verification flows"
+      },
+      {
+        tr: "Kritik hesap aksiyonları",
+        en: "Critical account actions"
       }
     ]
   },
@@ -802,25 +827,39 @@ const PANEL_GUIDE_STEPS: Record<PanelGuideKey, LocalizedText[]> = {
     },
     {
       tr: "Bulunan adayları, kısa liste kalitesini ve ilk iletişim hazırlığını gözden geçirin.",
-      en: "Review discovered talent, shortlist quality, and outreach readiness."
+      en: "Review discovered talent, shortlist quality, and outreach plan."
     },
     {
       tr: "Seçilen adayları işe alım akışına taşıyın veya proje aksiyonlarını güncelleyin.",
       en: "Move selected talent into the hiring flow or update the project actions."
     }
   ],
+  team: [
+    {
+      tr: "Önce koltuk kapasitesini ve bekleyen davetleri kontrol edin.",
+      en: "Check seat capacity and pending invites first."
+    },
+    {
+      tr: "Yeni üyeyi davet edin veya mevcut kullanıcının rol ve durumunu güncelleyin.",
+      en: "Invite a new teammate or update an existing user's role and status."
+    },
+    {
+      tr: "Yaptığınız değişikliğin listede doğru yansıdığını hemen doğrulayın.",
+      en: "Confirm that your change is reflected correctly in the list right away."
+    }
+  ],
   settings: [
     {
-      tr: "Ekip, doğrulama ve iletişim ayarlarını üstten alta sırayla gözden geçirin.",
-      en: "Review team, verification, and communication settings from top to bottom."
+      tr: "Önce şirket profilini güncelleyin; yeni taslaklarda kullanılacak ana bilgiler burada durur.",
+      en: "Update the company profile first; the main details used in new drafts live here."
     },
     {
-      tr: "Sadece mevcut işe alım akışını etkileyen alanları güncelleyin.",
-      en: "Update only the fields that affect the current recruiter workflow."
+      tr: "Ardından güvenlik alanında parola ve doğrulama durumunu gözden geçirin.",
+      en: "Then review password and verification status in the security section."
     },
     {
-      tr: "Kaydettikten sonra ilgili deneyimde sonucu doğrulayın.",
-      en: "After saving, verify the result in the related user experience."
+      tr: "Tehlikeli aksiyonlara yalnızca gerçekten gerekli olduğunda ilerleyin.",
+      en: "Only proceed with dangerous actions when they are truly necessary."
     }
   ],
   subscription: [
@@ -910,7 +949,7 @@ const PANEL_GUIDE_STEPS: Record<PanelGuideKey, LocalizedText[]> = {
   adminEnterprise: [
     {
       tr: "Kurumsal müşteri listesi, teklif durumu ve ödeme hazırlığını kontrol edin.",
-      en: "Review the enterprise customer list, offer status, and payment readiness."
+      en: "Review the enterprise customer list, offer status, and payment status."
     },
     {
       tr: "Doğru hesabı açıp sözleşme veya teklif detaylarını inceleyin.",

@@ -4,7 +4,8 @@ import {
   AiTaskType,
   ApplicationStage,
   InterviewSessionStatus,
-  JobStatus
+  JobStatus,
+  Recommendation
 } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -53,12 +54,42 @@ function percentage(part: number, total: number, fractionDigits = 1) {
   return Number(((part / total) * 100).toFixed(fractionDigits));
 }
 
+function nullablePercentage(part: number, total: number, fractionDigits = 1) {
+  if (total <= 0) {
+    return null;
+  }
+
+  return percentage(part, total, fractionDigits);
+}
+
 function diffInMinutes(start: Date, end: Date) {
   return Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60));
 }
 
 function diffInDays(start: Date, end: Date) {
   return Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function readHumanDecision(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const decision = (metadata as Record<string, unknown>).decision;
+  return decision === "advance" || decision === "hold" || decision === "reject"
+    ? decision
+    : null;
+}
+
+function expectedHumanDecision(recommendation: Recommendation | null) {
+  switch (recommendation) {
+    case Recommendation.ADVANCE:
+      return "advance";
+    case Recommendation.HOLD:
+      return "hold";
+    default:
+      return null;
+  }
 }
 
 @Injectable()
@@ -179,6 +210,7 @@ export class AnalyticsService {
       reports,
       transcripts,
       aiTaskRuns,
+      humanApprovals,
       funnel,
       timeToHire
     ] = await Promise.all([
@@ -200,7 +232,8 @@ export class AnalyticsService {
         select: {
           id: true,
           createdAt: true,
-          currentStage: true
+          currentStage: true,
+          aiRecommendation: true
         }
       }),
       this.prisma.interviewSession.findMany({
@@ -265,6 +298,20 @@ export class AnalyticsService {
           createdAt: true
         }
       }),
+      this.prisma.humanApproval.findMany({
+        where: {
+          tenantId,
+          actionType: "application.decision",
+          entityType: "CandidateApplication"
+        },
+        orderBy: {
+          approvedAt: "desc"
+        },
+        select: {
+          entityId: true,
+          metadata: true
+        }
+      }),
       this.funnel(tenantId),
       this.timeToHire(tenantId)
     ]);
@@ -272,6 +319,21 @@ export class AnalyticsService {
     const applicationsById = new Map(
       applications.map((application) => [application.id, application])
     );
+    const latestHumanDecisionByApplicationId = new Map<
+      string,
+      "advance" | "hold" | "reject" | null
+    >();
+
+    for (const approval of humanApprovals) {
+      if (latestHumanDecisionByApplicationId.has(approval.entityId)) {
+        continue;
+      }
+
+      latestHumanDecisionByApplicationId.set(
+        approval.entityId,
+        readHumanDecision(approval.metadata)
+      );
+    }
 
     const totalApplications = applications.length;
     const activePipelineApplications = applications.filter(
@@ -446,6 +508,38 @@ export class AnalyticsService {
     ).length;
 
     const reportSessionIds = new Set(latestReports.map((report) => report.sessionId));
+    const aiRecommendedApplications = applications.filter(
+      (application) => application.aiRecommendation !== null
+    );
+    const humanReviewedApplications = aiRecommendedApplications.filter((application) =>
+      latestHumanDecisionByApplicationId.get(application.id) !== null
+    );
+    const comparableRecommendations = humanReviewedApplications.filter((application) =>
+      expectedHumanDecision(application.aiRecommendation) !== null
+    );
+    const agreedRecommendations = comparableRecommendations.filter((application) => {
+      const expectedDecision = expectedHumanDecision(application.aiRecommendation);
+      const actualDecision = latestHumanDecisionByApplicationId.get(application.id);
+      return Boolean(expectedDecision) && expectedDecision === actualDecision;
+    });
+    const advanceRecommendations = humanReviewedApplications.filter(
+      (application) => application.aiRecommendation === Recommendation.ADVANCE
+    );
+    const holdRecommendations = humanReviewedApplications.filter(
+      (application) => application.aiRecommendation === Recommendation.HOLD
+    );
+    const acceptedAdvanceRecommendations = advanceRecommendations.filter(
+      (application) => latestHumanDecisionByApplicationId.get(application.id) === "advance"
+    );
+    const acceptedHoldRecommendations = holdRecommendations.filter(
+      (application) => latestHumanDecisionByApplicationId.get(application.id) === "hold"
+    );
+    const reviewRecommendations = aiRecommendedApplications.filter(
+      (application) => application.aiRecommendation === Recommendation.REVIEW
+    );
+    const resolvedReviewRecommendations = reviewRecommendations.filter(
+      (application) => latestHumanDecisionByApplicationId.get(application.id) !== null
+    );
 
     const applied = funnel.find((item) => item.stage === ApplicationStage.APPLIED)?.count ?? 0;
     const screening = funnel.find((item) => item.stage === ApplicationStage.SCREENING)?.count ?? 0;
@@ -534,6 +628,32 @@ export class AnalyticsService {
           terminalAiTasks.length > 0
             ? percentage(successfulAiTaskCount, terminalAiTasks.length)
             : null,
+        calibration: {
+          recommendedCount: aiRecommendedApplications.length,
+          humanReviewedCount: humanReviewedApplications.length,
+          humanDecisionCoverageRate: nullablePercentage(
+            humanReviewedApplications.length,
+            aiRecommendedApplications.length
+          ),
+          comparableDecisionCount: comparableRecommendations.length,
+          agreementRate: nullablePercentage(
+            agreedRecommendations.length,
+            comparableRecommendations.length
+          ),
+          advanceAcceptanceRate: nullablePercentage(
+            acceptedAdvanceRecommendations.length,
+            advanceRecommendations.length
+          ),
+          holdAcceptanceRate: nullablePercentage(
+            acceptedHoldRecommendations.length,
+            holdRecommendations.length
+          ),
+          reviewRecommendationCount: reviewRecommendations.length,
+          resolvedReviewRecommendationRate: nullablePercentage(
+            resolvedReviewRecommendations.length,
+            reviewRecommendations.length
+          )
+        },
         estimatedTimeSavedHours: {
           screening: estimatedScreeningHoursSaved,
           interviewAnalysis: estimatedInterviewHoursSaved,
@@ -552,6 +672,10 @@ export class AnalyticsService {
           "Başvuru oluşturulma tarihi ile adayın HIRED aşamasına geçtiği tarih arasındaki fark.",
         reportConfidence:
           "AI raporu üretildiğinde modelin kanıt kapsamına göre oluşturduğu güven skorunun ortalaması.",
+        calibrationAgreement:
+          "AI'nin ADVANCE veya HOLD önerisi verdiği ve insan kararının kaydedildiği dosyalarda yön uyum oranı.",
+        humanDecisionCoverage:
+          "AI önerisi olan başvurularda insan kararının da kaydedilmiş olma oranı.",
         timeSaved:
           "Tahmini kazanç; screening için 8 dk/başvuru, mülakat analizi için 18 dk/oturum ve planlama için 10 dk/oturum varsayımıyla hesaplanır."
       },

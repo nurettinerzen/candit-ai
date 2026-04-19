@@ -220,11 +220,14 @@ export default function InternalAdminSettingsPage() {
 
   const warnings = useMemo(
     () =>
-      [
-        ...(health?.warnings ?? []),
-        ...(infra?.queryWarnings ?? [])
-      ].map((warning) => friendlyWarning(warning, locale)),
-    [health?.warnings, infra?.queryWarnings, locale]
+      Array.from(
+        new Set([
+          ...(health?.warnings ?? []),
+          ...(infra?.queryWarnings ?? []),
+          ...(infra?.launchWarnings ?? [])
+        ])
+      ).map((warning) => friendlyWarning(warning, locale)),
+    [health?.warnings, infra?.queryWarnings, infra?.launchWarnings, locale]
   );
 
   const systemRows = useMemo(() => {
@@ -332,8 +335,8 @@ export default function InternalAdminSettingsPage() {
       setAuthFlags((prev) => prev.map((item) => (item.key === updated.key ? updated : item)));
       setSuccess(
         locale === "en"
-          ? "Global auth rollout updated."
-          : "Global auth rollout ayarı güncellendi."
+          ? "Global authentication settings updated."
+          : "Global kimlik doğrulama ayarları güncellendi."
       );
     } catch (toggleError) {
       setError(
@@ -411,12 +414,12 @@ export default function InternalAdminSettingsPage() {
 
       <section className="panel">
         <h2 style={{ margin: "0 0 6px" }}>
-          {locale === "en" ? "Global Authentication Rollout" : "Global Kimlik Doğrulama Rollout'u"}
+          {locale === "en" ? "Global Authentication Settings" : "Global Kimlik Doğrulama Ayarları"}
         </h2>
         <p className="small text-muted" style={{ marginBottom: 12 }}>
           {locale === "en"
-            ? "These switches affect every tenant. Keep both off during test phases, then enable email sending first and make verification required only at go-live."
-            : "Bu anahtarlar tüm tenantları etkiler. Test aşamalarında ikisini de kapalı tutun; önce e-posta gönderimini açın, zorunluluğu ise ancak canlıya çıkarken açın."}
+            ? "These switches affect every tenant. Review them carefully because they change the sign-up and verification flow for everyone."
+            : "Bu anahtarlar tüm tenantları etkiler. Herkesin kayıt ve doğrulama akışını değiştirdiği için dikkatle güncelleyin."}
         </p>
 
         {authFlagLoadError ? (
@@ -432,8 +435,8 @@ export default function InternalAdminSettingsPage() {
           <EmptyState
             message={
               locale === "en"
-                ? "No global auth rollout settings found."
-                : "Global auth rollout ayarı bulunamadı."
+                ? "No global authentication settings found."
+                : "Global kimlik doğrulama ayarı bulunamadı."
             }
           />
         ) : (
@@ -487,8 +490,8 @@ export default function InternalAdminSettingsPage() {
         <h2 style={{ margin: "0 0 6px" }}>{t("AI Davranış Kuralları")}</h2>
         <p className="small text-muted" style={{ marginBottom: 12 }}>
           {locale === "en"
-            ? "This area controls internal AI triggers and guardrails, not recruiter-facing preferences."
-            : "Bu alan recruiter tercihi değil; iç AI tetiklerini ve koruma kurallarını yönetir."}
+            ? "This area controls platform-level AI triggers and guardrails, not recruiter-facing preferences."
+            : "Bu alan recruiter tercihi değil; platform seviyesindeki AI tetiklerini ve koruma kurallarını yönetir."}
         </p>
         <div style={{ display: "grid", gap: 8 }}>
           <RuleRow label={t("AI sadece yardımcı rol üstlenir")} value={t("Evet")} positive />
@@ -505,8 +508,8 @@ export default function InternalAdminSettingsPage() {
         <h2 style={{ margin: "0 0 6px" }}>{t("AI Özellikleri")}</h2>
         <p className="small text-muted" style={{ marginBottom: 12 }}>
           {locale === "en"
-            ? "Enable or disable internal AI capabilities and auto-trigger behavior."
-            : "İç AI kabiliyetlerini ve otomatik tetik davranışlarını buradan açıp kapatın."}
+            ? "Enable or disable AI capabilities and automatic trigger behavior."
+            : "AI kabiliyetlerini ve otomatik tetik davranışlarını buradan açıp kapatın."}
         </p>
 
         {aiLoadError ? (
@@ -576,8 +579,8 @@ export default function InternalAdminSettingsPage() {
         </h2>
         <p className="small text-muted" style={{ marginBottom: 12 }}>
           {locale === "en"
-            ? "Latest runtime output from internal AI execution."
-            : "İç AI çalıştırmalarının son runtime çıktıları."}
+            ? "Latest output from recent AI task runs."
+            : "Son AI görev çalıştırmalarının çıktıları."}
         </p>
 
         {aiLoadError ? (
@@ -621,12 +624,12 @@ export default function InternalAdminSettingsPage() {
 
       <section className="panel">
         <h2 style={{ margin: "0 0 6px" }}>
-          {locale === "en" ? "System readiness" : "Sistem hazırlığı"}
+          {locale === "en" ? "System status" : "Sistem durumu"}
         </h2>
         <p className="small text-muted" style={{ marginBottom: 12 }}>
           {locale === "en"
-            ? "Internal runtime and provider health visible only to the super admin team."
-            : "Sadece süper admin ekibinin görmesi gereken runtime ve sağlayıcı sağlığı görünümü."}
+            ? "Provider and infrastructure status visible to the super admin team."
+            : "Süper admin ekibinin görebildiği sağlayıcı ve altyapı durumu."}
         </p>
 
         {healthLoadError && infraLoadError ? (
@@ -665,6 +668,46 @@ export default function InternalAdminSettingsPage() {
           </div>
         )}
       </section>
+
+      {infra?.scheduling?.catalog?.length ? (
+        <section className="panel">
+          <h2 style={{ margin: "0 0 6px" }}>
+            {locale === "en" ? "Scheduling provider boundaries" : "Planlama sağlayıcı sınırları"}
+          </h2>
+          <p className="small text-muted" style={{ marginBottom: 12 }}>
+            {locale === "en"
+              ? "Use this table to verify which providers are actually selectable versus only visible in the product."
+              : "Bu tablo hangi sağlayıcıların gerçekten seçilebilir, hangilerinin ise sadece görünür olduğunu doğrulamak için kullanılır."}
+          </p>
+          <div className="table-scroll">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>{locale === "en" ? "Provider" : "Sağlayıcı"}</th>
+                  <th>{copy.status}</th>
+                  <th>{locale === "en" ? "Selectable" : "Seçilebilir"}</th>
+                  <th>{copy.details}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {infra.scheduling.catalog.map((provider) => (
+                  <tr key={`${provider.provider}:${provider.connectionId ?? "none"}`}>
+                    <td>{provider.provider}</td>
+                    <td>
+                      <StatusBadge
+                        ready={provider.ready}
+                        label={provider.status === "unsupported" ? "Kullanılamıyor" : provider.status}
+                      />
+                    </td>
+                    <td>{provider.selectable ? t("Evet") : t("Hayır")}</td>
+                    <td>{provider.selectionReason ?? provider.displayName ?? infra.scheduling?.fallback.label}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
     </section>
   );
 }

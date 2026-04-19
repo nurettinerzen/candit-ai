@@ -351,6 +351,9 @@ enum OutreachMessageStatus {
 model Tenant {
   id        String       @id @default(uuid())
   name      String
+  websiteUrl String?
+  logoUrl   String?
+  profileSummary String?
   locale    String       @default("tr-TR")
   timezone  String       @default("Europe/Istanbul")
   status    TenantStatus @default(ACTIVE)

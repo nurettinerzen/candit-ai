@@ -410,7 +410,6 @@ export class AuthService {
         }
       });
     });
-    const result = await this.issueSessionForUser(user, meta);
     const emailVerificationState = await this.resolveEmailVerificationState();
     const emailVerification = await this.sendEmailVerificationForUser(
       user,
@@ -422,6 +421,16 @@ export class AuthService {
         previewUrl: null
       })
     );
+
+    if (emailVerificationState.required) {
+      return {
+        user: this.toPublicUser(user),
+        session: null,
+        emailVerification
+      };
+    }
+
+    const result = await this.issueSessionForUser(user, meta);
 
     return {
       ...result,
@@ -1565,6 +1574,10 @@ export class AuthService {
   }
 
   private async issueSessionForUser(user: AuthUserRecord, meta: SessionClientMeta) {
+    if (!user.emailVerifiedAt && (await this.isEmailVerificationRequired())) {
+      throw new ForbiddenException("E-posta adresinizi doğrulamadan oturum açılamaz.");
+    }
+
     const now = new Date();
     const sessionExpiresAt = addDays(now, this.runtimeConfig.sessionTtlDays);
 

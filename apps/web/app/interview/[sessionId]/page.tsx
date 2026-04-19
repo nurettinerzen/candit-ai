@@ -160,6 +160,7 @@ export default function CandidateInterviewPage() {
   const [manualFallbackVisible, setManualFallbackVisible] = useState(false);
   const [statusNote, setStatusNote] = useState("");
   const [supportToolsVisible, setSupportToolsVisible] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(false);
 
   const loadSession = useCallback(async () => {
     if (!token) {
@@ -216,6 +217,12 @@ export default function CandidateInterviewPage() {
     }
   }, [micPermission]);
 
+  useEffect(() => {
+    if (view?.consent.status === "GRANTED") {
+      setConsentAccepted(true);
+    }
+  }, [view?.consent.status]);
+
   const providerBackedVoice = Boolean(
     view?.runtime.providerMode?.startsWith("provider_backed")
   );
@@ -223,6 +230,10 @@ export default function CandidateInterviewPage() {
     typeof navigator !== "undefined" &&
     Boolean(navigator.mediaDevices?.getUserMedia) &&
     supportsMediaRecorder();
+  const useElevenLabsRoom = roomMode && !internalModeEnabled;
+  const consentRequired = Boolean(view?.consent.required && view.consent.status !== "GRANTED");
+  const consentBlocked = Boolean(consentRequired && !consentAccepted);
+  const consentNeedsRenewal = view?.consent.status === "WITHDRAWN";
 
   const requestMicrophonePermission = useCallback(async () => {
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
@@ -377,6 +388,13 @@ export default function CandidateInterviewPage() {
       return false;
     }
 
+    if (consentBlocked) {
+      setSpeechError(
+        "Görüşmeyi başlatmadan önce ses kaydı ve transcript işleme onay kutusunu işaretlemeniz gerekiyor."
+      );
+      return false;
+    }
+
     setWorking(true);
     workingRef.current = true;
     setSpeechError("");
@@ -384,6 +402,7 @@ export default function CandidateInterviewPage() {
     try {
       const data = await apiClient.startPublicInterviewSession(sessionId, {
         token,
+        consentAccepted: consentRequired ? consentAccepted : undefined,
         capabilities: {
           speechRecognition:
             overrides?.speechRecognition ?? (speechRecognitionSupported && micPermission === "granted"),
@@ -403,7 +422,17 @@ export default function CandidateInterviewPage() {
       setWorking(false);
       workingRef.current = false;
     }
-  }, [localeTag, micPermission, sessionId, speechRecognitionSupported, speechSynthesisSupported, token]);
+  }, [
+    consentAccepted,
+    consentBlocked,
+    consentRequired,
+    localeTag,
+    micPermission,
+    sessionId,
+    speechRecognitionSupported,
+    speechSynthesisSupported,
+    token
+  ]);
 
   const joinAndStart = useCallback(async () => {
     if (!token || joining || working) {
@@ -415,7 +444,29 @@ export default function CandidateInterviewPage() {
     setError("");
     setStatusNote("");
 
+    if (consentBlocked) {
+      setSpeechError(
+        "Görüşme odasına katılmadan önce ses kaydı ve transcript işleme onayını vermeniz gerekiyor."
+      );
+      setJoining(false);
+      return;
+    }
+
     const micGranted = await requestMicrophonePermission();
+
+    if (useElevenLabsRoom) {
+      if (!micGranted) {
+        setSpeechError("Mikrofon izni olmadan görüşme odasına katılamazsınız.");
+        setJoining(false);
+        return;
+      }
+
+      setJoined(true);
+      setStatusNote("AI görüşme odası hazırlanıyor.");
+      setJoining(false);
+      return;
+    }
+
     const started = await startSession({
       speechRecognition: speechRecognitionSupported && micGranted,
       speechSynthesis: speechSynthesisSupported
@@ -427,12 +478,14 @@ export default function CandidateInterviewPage() {
 
     setJoining(false);
   }, [
+    consentBlocked,
     joining,
     requestMicrophonePermission,
     speechRecognitionSupported,
     speechSynthesisSupported,
     startSession,
     token,
+    useElevenLabsRoom,
     working
   ]);
 
@@ -1010,10 +1063,9 @@ export default function CandidateInterviewPage() {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
-  const useElevenLabsRoom = roomMode && !internalModeEnabled;
   const showPrepScreen = !roomMode;
-  const showElevenLabsRoom = Boolean(useElevenLabsRoom && roomMode && view && !sessionInFinalState);
-  const showRoomJoinScreen = Boolean(!useElevenLabsRoom && roomMode && view && !joined && !sessionInFinalState);
+  const showElevenLabsRoom = Boolean(useElevenLabsRoom && roomMode && view && joined && !sessionInFinalState);
+  const showRoomJoinScreen = Boolean(roomMode && view && !joined && !sessionInFinalState);
   const showRunningPanel = Boolean(!useElevenLabsRoom && roomMode && view?.status === "RUNNING" && joined);
   const roomHref = useMemo(() => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -1385,6 +1437,7 @@ export default function CandidateInterviewPage() {
                     <ElevenLabsInterview
                       sessionId={sessionId}
                       token={token}
+                      consentAccepted={consentAccepted}
                       initialView={view}
                       onViewUpdate={setView}
                       autoStart
@@ -1573,18 +1626,74 @@ export default function CandidateInterviewPage() {
                         </div>
                       </div>
 
+                      <div
+                        style={{
+                          marginTop: 18,
+                          padding: "16px 18px",
+                          borderRadius: 18,
+                          border: consentNeedsRenewal
+                            ? "1px solid rgba(248,113,113,0.22)"
+                            : "1px solid rgba(255,255,255,0.08)",
+                          background: consentNeedsRenewal
+                            ? "rgba(127,29,29,0.22)"
+                            : "rgba(15,23,42,0.42)"
+                        }}
+                      >
+                        <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700 }}>
+                          Açık rıza ve bilgilendirme
+                        </p>
+                        <p className="small" style={{ marginTop: 0, color: "rgba(226,232,240,0.74)" }}>
+                          Görüşme başlamadan önce sesiniz işlenir, transcript oluşturulur ve bu kayıt işe alım değerlendirmesi için recruiter ekibiyle paylaşılır.
+                        </p>
+
+                        {view.consent.status === "GRANTED" ? (
+                          <p className="small" style={{ marginBottom: 0, color: "#86efac" }}>
+                            Onay kaydı alındı. Görüşmeye devam edebilirsiniz.
+                          </p>
+                        ) : (
+                          <>
+                            <label
+                              style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: 12,
+                                cursor: "pointer",
+                                marginTop: 10
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={consentAccepted}
+                                onChange={(event) => setConsentAccepted(event.target.checked)}
+                                style={{ marginTop: 3 }}
+                              />
+                              <span style={{ fontSize: 14, lineHeight: 1.55, color: "rgba(226,232,240,0.9)" }}>
+                                Ses kaydı alınmasını, transcript üretilmesini ve görüşme çıktılarının değerlendirme amacıyla kullanılmasını kabul ediyorum.
+                              </span>
+                            </label>
+                            <p className="small" style={{ margin: "10px 0 0", color: "rgba(148,163,184,0.8)" }}>
+                              Devam ederek <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: "#c4b5fd" }}>Gizlilik Politikası</a> ve bilgilendirme metni kapsamındaki işleme sürecini onaylamış olursunuz.
+                            </p>
+                          </>
+                        )}
+                      </div>
+
                       <div className="row-actions" style={{ marginTop: 18 }}>
                         <button
                           type="button"
                           className="button-link"
-                          disabled={joining || working}
+                          disabled={joining || working || consentBlocked}
                           onClick={() => void joinAndStart()}
                         >
                           {joining || working
                             ? "Oda hazırlanıyor..."
-                            : view.status === "RUNNING"
-                              ? "Mikrofonu Aç ve Görüşmeye Devam Et"
-                              : "Mikrofonu Aç ve Görüşmeyi Başlat"}
+                            : useElevenLabsRoom
+                              ? view.status === "RUNNING"
+                                ? "Mikrofonu Aç ve Odaya Dön"
+                                : "Mikrofonu Aç ve Odaya Katıl"
+                              : view.status === "RUNNING"
+                                ? "Mikrofonu Aç ve Görüşmeye Devam Et"
+                                : "Mikrofonu Aç ve Görüşmeyi Başlat"}
                         </button>
                       </div>
 
@@ -2132,11 +2241,36 @@ export default function CandidateInterviewPage() {
             {internalModeEnabled ? (
               <section className="panel" style={{ marginTop: 12 }}>
                 <h3 style={{ marginTop: 0 }}>Internal Fallback Kontrolleri</h3>
+                {consentRequired ? (
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      marginBottom: 12
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={consentAccepted}
+                      onChange={(event) => setConsentAccepted(event.target.checked)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span className="small">
+                      Ses kaydı ve transcript işleme onayını vermeden debug/start akışı da açılamaz.
+                    </span>
+                  </label>
+                ) : null}
                 <div className="row-actions">
                   <button
                     type="button"
                     className="button-link"
-                    disabled={working || view.status === "COMPLETED" || view.status === "FAILED"}
+                    disabled={
+                      working ||
+                      consentBlocked ||
+                      view.status === "COMPLETED" ||
+                      view.status === "FAILED"
+                    }
                     onClick={() => void startSession()}
                   >
                     Görüşmeyi Başlat / Devam Et

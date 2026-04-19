@@ -2,50 +2,24 @@
 
 import { useState } from "react";
 import { SOURCE_LABELS } from "../lib/constants";
+import { parseBulkImportCsv, type ParsedBulkImportCsv } from "../lib/csv-import";
 import type { BulkImportCandidate } from "../lib/types";
 import { useUiText } from "./site-language-provider";
 
 type CsvUploadModalProps = {
   open: boolean;
   onClose: () => void;
-  onSubmit: (candidates: BulkImportCandidate[], source: string) => Promise<void>;
+  onSubmit: (candidates: BulkImportCandidate[], source: string, externalSource?: string) => Promise<void>;
 };
-
-function parseCsv(text: string): BulkImportCandidate[] {
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-  if (lines.length < 2) return [];
-
-  const header = lines[0]!.toLowerCase();
-  const sep = header.includes("\t") ? "\t" : header.includes(";") ? ";" : ",";
-  const cols = header.split(sep).map((c) => c.trim());
-
-  const colIdx = {
-    name: cols.findIndex((c) => /^(ad|name|full.?name|isim)/.test(c)),
-    phone: cols.findIndex((c) => /^(tel|phone|telefon)/.test(c)),
-    email: cols.findIndex((c) => /^(e?.?mail|eposta)/.test(c)),
-    location: cols.findIndex((c) => /^(loc|konum|şehir|sehir|il)/.test(c)),
-    experience: cols.findIndex((c) => /^(exp|den|yıl|yil|tecrübe|tecrube)/.test(c))
-  };
-
-  if (colIdx.name === -1) return [];
-
-  return lines.slice(1).map((line) => {
-    const vals = line.split(sep).map((v) => v.trim());
-    return {
-      fullName: vals[colIdx.name] ?? "",
-      phone: colIdx.phone >= 0 ? vals[colIdx.phone] || undefined : undefined,
-      email: colIdx.email >= 0 ? vals[colIdx.email] || undefined : undefined,
-      locationText: colIdx.location >= 0 ? vals[colIdx.location] || undefined : undefined,
-      yearsOfExperience: colIdx.experience >= 0 && vals[colIdx.experience] ? Number(vals[colIdx.experience]) : undefined
-    };
-  }).filter((c) => c.fullName.length >= 2);
-}
 
 export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps) {
   const { locale, t } = useUiText();
   const [candidates, setCandidates] = useState<BulkImportCandidate[]>([]);
+  const [parsedFile, setParsedFile] = useState<ParsedBulkImportCsv | null>(null);
   const [source, setSource] = useState("csv_import");
+  const [externalSource, setExternalSource] = useState("");
   const [fileName, setFileName] = useState("");
+  const [sourceTouched, setSourceTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -59,13 +33,24 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
             "No valid candidates were found. The header row must include a 'Name' or 'Full Name' column.",
           genericError: "Something went wrong.",
           selectFile: "Select File",
+          autoSource: "Detected source",
+          fieldMapping: "Detected field mapping",
+          noMapping: "No field mapping found yet.",
+          reference: "Reference",
+          delimiter: "Delimiter",
+          delimiters: {
+            ",": "Comma",
+            ";": "Semicolon",
+            "\t": "Tab"
+          },
           detected: `${candidates.length} candidates detected`,
           headers: {
             name: "Name",
             phone: "Phone",
             email: "Email",
             location: "Location",
-            experience: "Exp."
+            experience: "Exp.",
+            reference: "Reference"
           },
           more: `...and ${Math.max(candidates.length - 5, 0)} more`,
           source: "Source",
@@ -81,13 +66,24 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
             "Geçerli aday bulunamadı. Başlık satırında 'Ad' veya 'Name' kolonu olmalı.",
           genericError: "Bir hata oluştu.",
           selectFile: "Dosya Seç",
+          autoSource: "Algılanan kaynak",
+          fieldMapping: "Algılanan alan eşleşmesi",
+          noMapping: "Henüz bir alan eşleşmesi bulunamadı.",
+          reference: "Referans",
+          delimiter: "Ayraç",
+          delimiters: {
+            ",": "Virgül",
+            ";": "Noktalı virgül",
+            "\t": "Tab"
+          },
           detected: `${candidates.length} aday algılandı`,
           headers: {
             name: "Ad",
             phone: "Telefon",
             email: "E-posta",
             location: "Lokasyon",
-            experience: "Den."
+            experience: "Den.",
+            reference: "Referans"
           },
           more: `...ve ${Math.max(candidates.length - 5, 0)} daha`,
           source: "Kaynak",
@@ -105,9 +101,14 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const parsed = parseCsv(text);
-      setCandidates(parsed);
-      if (parsed.length === 0) setError(labels.invalidCandidates);
+      const parsed = parseBulkImportCsv(text, file.name);
+      setParsedFile(parsed);
+      setCandidates(parsed.candidates);
+      if (!sourceTouched && parsed.detectedSource !== "csv_import") {
+        setSource(parsed.detectedSource);
+        setExternalSource("");
+      }
+      if (parsed.candidates.length === 0) setError(labels.invalidCandidates);
       else setError("");
     };
     reader.readAsText(file);
@@ -116,11 +117,19 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
 
   const handleSubmit = async () => {
     if (candidates.length === 0) return;
+    if (source === "other" && !externalSource.trim()) {
+      setError(t("Diğer kaynak seçildiğinde kaynak adı zorunludur."));
+      return;
+    }
     setSubmitting(true);
     try {
-      await onSubmit(candidates, source);
+      await onSubmit(candidates, source, source === "other" ? externalSource.trim() || undefined : undefined);
       setCandidates([]);
+      setParsedFile(null);
       setFileName("");
+      setExternalSource("");
+      setSource("csv_import");
+      setSourceTouched(false);
       onClose();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : labels.genericError);
@@ -165,6 +174,50 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
           {candidates.length > 0 && (
             <div className="csv-preview">
               <p className="text-sm">{labels.detected}</p>
+              {parsedFile ? (
+                <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
+                  <div className="text-xs text-muted">
+                    {labels.autoSource}: <strong>{t(SOURCE_LABELS[parsedFile.detectedSource] ?? parsedFile.detectedSource)}</strong>
+                    {" · "}
+                    {labels.delimiter}: <strong>{labels.delimiters[parsedFile.delimiter]}</strong>
+                  </div>
+                  <div className="text-xs text-muted">{labels.fieldMapping}</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {Object.entries(parsedFile.mappedHeaders)
+                      .filter(([, value]) => Boolean(value))
+                      .map(([key, value]) => (
+                        <span
+                          key={key}
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "5px 10px",
+                            borderRadius: 999,
+                            color: "var(--text-secondary)",
+                            background: "rgba(255,255,255,0.06)"
+                          }}
+                        >
+                          {key === "fullName"
+                            ? labels.headers.name
+                            : key === "phone"
+                              ? labels.headers.phone
+                              : key === "email"
+                                ? labels.headers.email
+                                : key === "locationText"
+                                  ? labels.headers.location
+                                  : key === "yearsOfExperience"
+                                    ? labels.headers.experience
+                                    : labels.headers.reference}
+                          {" ← "}
+                          {value}
+                        </span>
+                      ))}
+                  </div>
+                  {Object.values(parsedFile.mappedHeaders).every((value) => !value) ? (
+                    <div className="text-xs text-muted">{labels.noMapping}</div>
+                  ) : null}
+                </div>
+              ) : null}
               <table className="table table-sm">
                 <thead>
                   <tr>
@@ -173,6 +226,7 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
                     <th>{labels.headers.email}</th>
                     <th>{labels.headers.location}</th>
                     <th>{labels.headers.experience}</th>
+                    <th>{labels.headers.reference}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -183,11 +237,12 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
                       <td>{c.email ?? "-"}</td>
                       <td>{c.locationText ?? "-"}</td>
                       <td>{c.yearsOfExperience ?? "-"}</td>
+                      <td>{c.externalRef ?? "-"}</td>
                     </tr>
                   ))}
                   {candidates.length > 5 ? (
                     <tr>
-                      <td colSpan={5} className="text-muted">
+                      <td colSpan={6} className="text-muted">
                         {labels.more}
                       </td>
                     </tr>
@@ -199,7 +254,18 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
 
           <div className="form-row">
             <label>{labels.source}</label>
-            <select className="form-select" value={source} onChange={(e) => setSource(e.target.value)}>
+            <select
+              className="form-select"
+              value={source}
+              onChange={(e) => {
+                const nextSource = e.target.value;
+                setSourceTouched(true);
+                setSource(nextSource);
+                if (nextSource !== "other") {
+                  setExternalSource("");
+                }
+              }}
+            >
               {["csv_import", "kariyer_net", "linkedin", "eleman_net", "agency", "other"].map((s) => (
                 <option key={s} value={s}>
                   {t(SOURCE_LABELS[s] ?? s)}
@@ -207,6 +273,18 @@ export function CsvUploadModal({ open, onClose, onSubmit }: CsvUploadModalProps)
               ))}
             </select>
           </div>
+
+          {source === "other" ? (
+            <div className="form-row">
+              <label>{t("Dış Kaynak Adı")}</label>
+              <input
+                className="form-input"
+                value={externalSource}
+                onChange={(e) => setExternalSource(e.target.value)}
+                placeholder={t("Kaynak adı")}
+              />
+            </div>
+          ) : null}
 
           {error && <p className="text-danger text-sm">{error}</p>}
         </div>

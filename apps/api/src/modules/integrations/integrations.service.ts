@@ -17,6 +17,7 @@ import {
 } from "@prisma/client";
 import { AuditWriterService } from "../audit/audit-writer.service";
 import { SecurityEventsService } from "../security-events/security-events.service";
+import { RuntimeConfigService } from "../../config/runtime-config.service";
 import type {
   IntegrationDomainEventInput,
   IntegrationInterviewProvisionResult,
@@ -120,6 +121,50 @@ function isLaunchUnsupportedProvider(provider: IntegrationProvider) {
   );
 }
 
+const MEETING_PROVIDERS = [
+  IntegrationProvider.CALENDLY,
+  IntegrationProvider.GOOGLE_MEET,
+  IntegrationProvider.ZOOM,
+  IntegrationProvider.GOOGLE_CALENDAR,
+  IntegrationProvider.MICROSOFT_CALENDAR
+] as const;
+
+function buildMeetingProviderSelectionReason(input: {
+  provider: IntegrationProvider;
+  status: string;
+  requiresConnection: boolean;
+  connected: boolean;
+  oauthConfigured: boolean;
+}) {
+  if (input.status === "unsupported") {
+    return `${input.provider} V1 kapsaminda desteklenmiyor.`;
+  }
+
+  if (input.status === "setup_required" && !input.oauthConfigured) {
+    return `${input.provider} için provider kurulumu henüz tamamlanmadi.`;
+  }
+
+  if (input.requiresConnection && !input.connected) {
+    return `${input.provider} için aktif tenant baglantisi bulunmuyor.`;
+  }
+
+  return null;
+}
+
+function buildInternalFallbackMeetingContext(sessionId: string) {
+  return {
+    provider: null,
+    connectionId: null,
+    providerSource: "internal_fallback",
+    joinUrl: `https://interview.local/session/${encodeURIComponent(sessionId)}`,
+    externalRef: `internal-${sessionId}`,
+    calendarEventRef: null,
+    details: {
+      message: "Harici provider secilemedigi icin internal fallback kullanildi."
+    }
+  };
+}
+
 function mapExternalStage(stageRaw: string | null) {
   const normalized = stageRaw?.trim().toUpperCase();
 
@@ -174,8 +219,69 @@ export class IntegrationsService {
     @Inject(AuditWriterService) private readonly auditWriterService: AuditWriterService,
     @Inject(IntegrationIdentityMapperService) private readonly identityMapper: IntegrationIdentityMapperService,
     @Inject(SecurityEventsService)
-    private readonly securityEventsService: SecurityEventsService
+    private readonly securityEventsService: SecurityEventsService,
+    @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService
   ) {}
+
+  private describeMeetingProviderState(
+    provider: IntegrationProvider,
+    activeConnections: Array<{ id: string; provider: IntegrationProvider }>
+  ) {
+    const catalogEntry = this.runtimeConfig.meetingProviderCatalog.find((entry) => entry.provider === provider);
+    const connection = activeConnections.find((item) => item.provider === provider) ?? null;
+    const connected = Boolean(connection);
+    const selectionReason = buildMeetingProviderSelectionReason({
+      provider,
+      status: catalogEntry?.status ?? "unsupported",
+      requiresConnection: catalogEntry?.requiresConnection ?? true,
+      connected,
+      oauthConfigured: catalogEntry?.oauthConfigured ?? false
+    });
+
+    return {
+      provider,
+      status: catalogEntry?.status ?? "unsupported",
+      ready: catalogEntry?.ready ?? false,
+      requiresConnection: catalogEntry?.requiresConnection ?? true,
+      oauthConfigured: catalogEntry?.oauthConfigured ?? false,
+      connected,
+      connectionId: connection?.id ?? null,
+      selectable: !selectionReason,
+      selectionReason
+    };
+  }
+
+  async assertMeetingProviderSelectable(input: {
+    tenantId: string;
+    provider: IntegrationProvider;
+    activeConnections?: Array<{ id: string; provider: IntegrationProvider }>;
+  }) {
+    const activeConnections =
+      input.activeConnections ??
+      (await this.prisma.integrationConnection.findMany({
+        where: {
+          tenantId: input.tenantId,
+          status: IntegrationConnectionStatus.ACTIVE,
+          provider: {
+            in: [...MEETING_PROVIDERS]
+          }
+        },
+        select: {
+          id: true,
+          provider: true
+        }
+      }));
+
+    const state = this.describeMeetingProviderState(input.provider, activeConnections);
+
+    if (!state.selectable) {
+      throw new BadRequestException(
+        state.selectionReason ?? `${input.provider} şu anda secilebilir degil.`
+      );
+    }
+
+    return state;
+  }
 
   async resolveMeetingContext(input: {
     tenantId: string;
@@ -209,13 +315,7 @@ export class IntegrationsService {
       };
     }
 
-    const supportedProviders: IntegrationProvider[] = [
-      IntegrationProvider.CALENDLY,
-      IntegrationProvider.GOOGLE_MEET,
-      IntegrationProvider.ZOOM,
-      IntegrationProvider.GOOGLE_CALENDAR,
-      IntegrationProvider.MICROSOFT_CALENDAR
-    ];
+    const supportedProviders: IntegrationProvider[] = [...MEETING_PROVIDERS];
 
     const providerPriority = input.preferredProvider
       ? [input.preferredProvider, ...supportedProviders.filter((item) => item !== input.preferredProvider)]
@@ -248,8 +348,25 @@ export class IntegrationsService {
       }
     });
 
+    const lightweightConnections = activeConnections.map((connection) => ({
+      id: connection.id,
+      provider: connection.provider
+    }));
+
+    if (input.preferredProvider) {
+      await this.assertMeetingProviderSelectable({
+        tenantId: input.tenantId,
+        provider: input.preferredProvider,
+        activeConnections: lightweightConnections
+      });
+    }
+
+    const selectableProviders = providerPriority.filter((provider) =>
+      this.describeMeetingProviderState(provider, lightweightConnections).selectable
+    );
+
     const selectedConnection =
-      providerPriority
+      selectableProviders
         .map((provider) => activeConnections.find((connection) => connection.provider === provider))
         .find(Boolean) ?? null;
 
@@ -430,6 +547,14 @@ export class IntegrationsService {
             traceId: input.traceId ?? null
           }
         });
+
+        if (input.preferredProvider === selectedConnection.provider) {
+          throw new BadRequestException(
+            `${selectedConnection.provider} şu anda booking üretemiyor. Baglantiyi kontrol edin veya farkli bir provider secin.`
+          );
+        }
+
+        return buildInternalFallbackMeetingContext(input.sessionId);
       }
 
       if (!baseMeetingUrl) {
@@ -447,19 +572,14 @@ export class IntegrationsService {
             traceId: input.traceId ?? null
           }
         });
-        return {
-          provider: selectedConnection.provider,
-          connectionId: selectedConnection.id,
-          providerSource: "provider_connection_config_missing",
-          joinUrl: null,
-          externalRef: null,
-          calendarEventRef: null,
-          details: {
-            displayName: selectedConnection.displayName,
-            message: "Aktif provider var ancak booking/baseMeetingUrl konfiguru eksik.",
-            credentialStatus: selectedConnection.credential?.status ?? "MISSING"
-          }
-        };
+
+        if (input.preferredProvider === selectedConnection.provider) {
+          throw new BadRequestException(
+            `${selectedConnection.provider} baglantisinda booking/baseMeetingUrl konfiguru eksik.`
+          );
+        }
+
+        return buildInternalFallbackMeetingContext(input.sessionId);
       }
 
       const joinUrl = `${trimTrailingSlash(baseMeetingUrl)}/${meetingPathPrefix}/${encodeURIComponent(externalRef)}`;
@@ -511,20 +631,7 @@ export class IntegrationsService {
       };
     }
 
-    const fallbackRef = `internal-${input.sessionId}`;
-    const joinUrl = `https://interview.local/session/${encodeURIComponent(input.sessionId)}`;
-
-    return {
-      provider: null,
-      connectionId: null,
-      providerSource: "internal_fallback",
-      joinUrl,
-      externalRef: fallbackRef,
-      calendarEventRef: null,
-      details: {
-        message: "Aktif meeting provider baglantisi olmadigi icin internal fallback kullanildi."
-      }
-    };
+    return buildInternalFallbackMeetingContext(input.sessionId);
   }
 
   async cancelMeetingContext(input: {

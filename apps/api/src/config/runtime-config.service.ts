@@ -4,6 +4,7 @@ import { ConfigService } from "@nestjs/config";
 export type AppRuntimeMode = "development" | "demo" | "production";
 export type AuthSessionMode = "jwt" | "hybrid" | "dev_header";
 export type AuthTokenTransport = "header" | "cookie";
+export type LaunchSupportStatus = "ready" | "pilot" | "setup_required" | "unsupported";
 
 export function isLocalOrigin(value: string) {
   try {
@@ -41,6 +42,23 @@ function toCsvList(value: string | undefined) {
     ?.split(",")
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean) ?? [];
+}
+
+function inferStripeSecretKeyMode(secretKey: string | undefined) {
+  const trimmed = secretKey?.trim();
+  if (!trimmed) {
+    return "not_configured" as const;
+  }
+
+  if (trimmed.startsWith("sk_live_")) {
+    return "live" as const;
+  }
+
+  if (trimmed.startsWith("sk_test_")) {
+    return "test" as const;
+  }
+
+  return "unknown" as const;
 }
 
 @Injectable()
@@ -319,6 +337,8 @@ export class RuntimeConfigService {
       apiBaseUrl:
         toOptionalString(this.configService.get<string>("CALENDLY_API_BASE_URL")) ??
         "https://api.calendly.com",
+      oauthRedirectUri:
+        toOptionalString(this.configService.get<string>("CALENDLY_OAUTH_REDIRECT_URI")) ?? "",
       webhookSigningSecretConfigured: Boolean(
         toOptionalString(this.configService.get<string>("CALENDLY_WEBHOOK_SIGNING_SECRET"))
       ),
@@ -546,9 +566,117 @@ export class RuntimeConfigService {
     };
   }
 
+  get meetingProviderCatalog() {
+    const readiness = this.providerReadiness;
+    const googleReady = readiness.googleCalendar.oauthConfigured;
+    const calendlyReady = readiness.calendly.oauthConfigured;
+
+    return [
+      {
+        provider: "CALENDLY",
+        status: calendlyReady ? "pilot" : "setup_required",
+        ready: calendlyReady,
+        requiresConnection: true,
+        oauthConfigured: calendlyReady
+      },
+      {
+        provider: "GOOGLE_CALENDAR",
+        status: googleReady ? "pilot" : "setup_required",
+        ready: googleReady,
+        requiresConnection: true,
+        oauthConfigured: googleReady
+      },
+      {
+        provider: "GOOGLE_MEET",
+        status: googleReady ? "pilot" : "setup_required",
+        ready: googleReady,
+        requiresConnection: true,
+        oauthConfigured: googleReady
+      },
+      {
+        provider: "ZOOM",
+        status: "unsupported" as const,
+        ready: false,
+        requiresConnection: true,
+        oauthConfigured: false
+      },
+      {
+        provider: "MICROSOFT_CALENDAR",
+        status: "unsupported" as const,
+        ready: false,
+        requiresConnection: true,
+        oauthConfigured: false
+      }
+    ];
+  }
+
+  get launchBoundaries() {
+    const readiness = this.providerReadiness;
+    const emailProvider = this.emailRuntimeConfig.provider;
+    const googleAuth = this.googleAuthConfig;
+    const googleAuthReady = Boolean(
+      googleAuth.clientId && googleAuth.clientSecret && googleAuth.redirectUri
+    );
+
+    const emailStatus: LaunchSupportStatus =
+      emailProvider === "resend"
+        ? readiness.notifications.ready
+          ? "ready"
+          : "setup_required"
+        : "pilot";
+
+    const billingStatus: LaunchSupportStatus = readiness.billing.ready
+      ? "ready"
+      : "setup_required";
+
+    return {
+      email: {
+        provider: emailProvider,
+        status: emailStatus,
+        ready: emailStatus !== "setup_required",
+        liveDelivery: emailProvider === "resend" && readiness.notifications.ready
+      },
+      billing: {
+        provider: "stripe",
+        status: billingStatus,
+        ready: readiness.billing.ready,
+        selfServeEnabled: readiness.billing.ready
+      },
+      voiceInterviews: {
+        provider: readiness.elevenLabs.configured ? "elevenlabs" : "browser_fallback",
+        status: "pilot" as const,
+        ready: true,
+        browserFallback: !readiness.elevenLabs.configured
+      },
+      authentication: {
+        sessionMode: this.authMode,
+        googleOAuth: {
+          provider: "google",
+          status: googleAuthReady ? ("pilot" as const) : ("setup_required" as const),
+          ready: googleAuthReady
+        },
+        enterpriseSso: {
+          provider: "oidc_sso",
+          status: "unsupported" as const,
+          ready: false
+        }
+      },
+      scheduling: {
+        fallback: {
+          provider: "INTERNAL_FALLBACK",
+          status: "pilot" as const,
+          ready: true
+        },
+        providers: this.meetingProviderCatalog
+      }
+    };
+  }
+
   getProviderConfigurationWarnings() {
     const warnings: string[] = [];
     const readiness = this.providerReadiness;
+    const stripeSecretMode = inferStripeSecretKeyMode(this.stripeBillingConfig.apiKey);
+    const email = this.emailRuntimeConfig;
 
     if (!this.openAiConfig.apiKeyConfigured) {
       warnings.push("OPENAI_API_KEY missing; AI parsing/screening runs will use deterministic fallback.");
@@ -576,14 +704,46 @@ export class RuntimeConfigService {
       warnings.push("Google OAuth env vars are incomplete (ready-after-config state).");
     }
 
+    if (this.isProduction && email.provider === "console") {
+      warnings.push("EMAIL_PROVIDER=console in production; candidate-facing emails will not be delivered.");
+    }
+
     if (!readiness.notifications.ready) {
       warnings.push("Email provider selected but provider credentials are missing.");
+    }
+
+    if (email.provider === "resend" && email.from.endsWith(".local")) {
+      warnings.push("EMAIL_FROM still uses a local placeholder domain; verify a real sender domain before launch.");
     }
 
     if (!readiness.billing.ready) {
       warnings.push(
         "Stripe billing ayarları eksik; secret key, webhook secret ve temel plan price id'leri tamamlanmadan self-serve abonelik akışları güvenli çalışmaz."
       );
+    }
+
+    if (this.isProduction && stripeSecretMode === "test") {
+      warnings.push("Stripe test secret key is configured in production runtime.");
+    }
+
+    if (!this.isProduction && stripeSecretMode === "live") {
+      warnings.push("Stripe live secret key is configured outside production runtime.");
+    }
+
+    if (
+      this.isProduction &&
+      this.googleCalendarConfig.oauthRedirectUri &&
+      isLocalOrigin(this.googleCalendarConfig.oauthRedirectUri)
+    ) {
+      warnings.push("Google OAuth redirect URI still points to a local origin in production runtime.");
+    }
+
+    if (
+      this.isProduction &&
+      this.calendlyConfig.oauthRedirectUri &&
+      isLocalOrigin(this.calendlyConfig.oauthRedirectUri)
+    ) {
+      warnings.push("Calendly OAuth redirect URI still points to a local origin in production runtime.");
     }
 
     if (!readiness.elevenLabs.configured) {

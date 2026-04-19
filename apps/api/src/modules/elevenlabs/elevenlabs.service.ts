@@ -178,6 +178,7 @@ export class ElevenLabsService {
   async createSignedConversationUrl(input: {
     sessionId: string;
     accessToken: string;
+    consentAccepted?: boolean;
     traceId?: string;
   }): Promise<{
     signedUrl: string;
@@ -259,24 +260,22 @@ export class ElevenLabsService {
       questionPack = "";
     }
 
-    const readinessConfirmedAt = (() => {
-      const engineState =
-        session.engineStateJson && typeof session.engineStateJson === "object"
-          ? (session.engineStateJson as Record<string, unknown>)
-          : {};
-
-      return typeof engineState.readinessConfirmedAt === "string" &&
-        engineState.readinessConfirmedAt.trim().length > 0
-        ? engineState.readinessConfirmedAt
-        : null;
-    })();
-
-    const hasAskedTurn = session.turns.some(
-      (turn) => turn.completionStatus === "ASKED" && !turn.answerText
-    );
+    const startedView = await this.interviewsService.startPublicSession({
+      sessionId: input.sessionId,
+      accessToken: input.accessToken,
+      consentAccepted: input.consentAccepted,
+      capabilities: {
+        speechRecognition: true,
+        speechSynthesis: true,
+        locale: session.candidateLocale
+      },
+      traceId: input.traceId
+    });
 
     const firstMessage =
-      !readinessConfirmedAt && !hasAskedTurn ? buildInterviewOpeningPrompt() : "";
+      session.status === "SCHEDULED" && startedView.activePrompt?.kind === "READINESS"
+        ? startedView.activePrompt.text
+        : "";
 
     const systemPrompt = [
       "Sen sirketimizin yapay zeka destekli ilk mulakat asistanisin. Turkce konus.",
@@ -336,8 +335,6 @@ export class ElevenLabsService {
       throw new Error("ElevenLabs signed_url bos dondu.");
     }
 
-    const shouldPromoteToRunning = session.status === "SCHEDULED";
-
     await this.prisma.interviewSession.update({
       where: { id: session.id },
       data: {
@@ -345,16 +342,7 @@ export class ElevenLabsService {
         runtimeProviderMode: "elevenlabs_conversational_ai",
         voiceInputProvider: "elevenlabs_stt",
         voiceOutputProvider: "elevenlabs_tts",
-        ...(shouldPromoteToRunning
-          ? {
-              status: "RUNNING",
-              invitationStatus: invitation ? "IN_PROGRESS" : session.invitationStatus,
-              startedAt: session.startedAt ?? new Date(),
-              lastCandidateActivityAt: new Date()
-            }
-          : {
-              lastCandidateActivityAt: new Date()
-            })
+        lastCandidateActivityAt: new Date()
       }
     });
 

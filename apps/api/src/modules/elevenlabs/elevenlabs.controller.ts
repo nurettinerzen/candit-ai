@@ -123,11 +123,12 @@ export class ElevenLabsController {
   @Post("public/sessions/:id/elevenlabs-init")
   async initElevenLabsConversation(
     @Param("id") sessionId: string,
-    @Body() body: { token: string }
+    @Body() body: { token: string; consentAccepted?: boolean }
   ) {
     const result = await this.elevenLabsService.createSignedConversationUrl({
       sessionId,
       accessToken: body.token,
+      consentAccepted: body.consentAccepted,
       traceId: `elevenlabs_init_${Date.now()}`
     });
 

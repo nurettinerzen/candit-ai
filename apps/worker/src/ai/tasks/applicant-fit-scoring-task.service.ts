@@ -731,6 +731,7 @@ export class ApplicantFitScoringTaskService {
             weight: category.weight
           }))
         },
+        locationContext: this.buildFitPromptLocationContext(application, locationAnalysis),
         cvProfile: fitPromptCvProfile,
         cvDocumentContext: fitPromptCvDocumentContext,
         supportingContext: {
@@ -760,6 +761,8 @@ export class ApplicantFitScoringTaskService {
           "Guclu yonler ve riskler role gore ayirt edici olsun",
           "Eksik bilgi ile riski ayir; ayni capability'yi hem strength hem missingInformation olarak yazma",
           "Skorlar, category reasoning'leri ve overall assessment birbiriyle tutarli olsun",
+          "locationContext.candidateLocationProvided true ise adayin lokasyonu belirtilmemis deme",
+          "Lokasyon kategorisi reasoning'ini locationContext'e gore yaz; ama lokasyonu diger kategori puanlarinin yerine koyma",
           "Lokasyon ve calisma modeli notlarini ana fit belirleyicisi gibi degil, operasyonel warning gibi ele al",
           "Kanitlanan bir capability'yi yalnizca derinligi net degil diye yokmus gibi puanlama"
         ]
@@ -821,7 +824,7 @@ export class ApplicantFitScoringTaskService {
     );
 
     missingInfo = mergedMissingInfo;
-    uncertaintyReasons = this.uniqueList(mergedScores.uncertaintyReasons);
+    uncertaintyReasons = this.sanitizeUncertaintyReasons(mergedScores.uncertaintyReasons, locationAnalysis);
     sanitizedCategoryScores = mergedScores.categoryScores.map((category) => ({
       key: category.key,
       label: rubricData.categories.find((item) => item.key === category.key)?.label ?? category.key,
@@ -832,7 +835,7 @@ export class ApplicantFitScoringTaskService {
       aiScore: category.aiScore === undefined ? null : this.clampScore(category.aiScore),
       strengths: this.sanitizeStrengths(category.strengths, locationAnalysis, jobContext),
       risks: this.sanitizeRisks(category.risks, missingInfo, locationAnalysis),
-      reasoning: category.reasoning
+      reasoning: this.sanitizeCategoryReasoning(category.key, category.reasoning, locationAnalysis)
     })).map((category) => ({
       ...category,
       strengths: this.pruneConflictingStrengths(category.strengths, category.risks)
@@ -1948,12 +1951,12 @@ export class ApplicantFitScoringTaskService {
       /yüksek lisans/i
     ];
 
-    return this.dedupeByMeaning(items)
+    return this.uniqueList(this.dedupeByMeaning(items)
       .map((item) => this.canonicalizeRisk(this.normalizeWarningText(item), locationAnalysis))
       .filter(Boolean)
       .filter((item) => !blockedPatterns.some((pattern) => pattern.test(item)))
       .filter((item) => !this.looksLikeMissingInformation(item))
-      .filter((item) => !missingInformation.some((missing) => this.warningOverlap(item, missing)));
+      .filter((item) => !missingInformation.some((missing) => this.warningOverlap(item, missing))));
   }
 
   private sanitizeMissingInformation(items: string[], locationAnalysis: LocationFitAnalysis) {
@@ -1961,6 +1964,43 @@ export class ApplicantFitScoringTaskService {
       .map((item) => this.normalizeWarningText(item))
       .filter(Boolean)
       .filter((item) => !this.looksLikeLocationSignal(item, locationAnalysis));
+  }
+
+  private sanitizeUncertaintyReasons(items: string[], locationAnalysis: LocationFitAnalysis) {
+    const hasCandidateLocation = Boolean(locationAnalysis.candidateLocationText?.trim());
+    return this.uniqueList(items)
+      .map((item) => this.normalizeWarningText(item))
+      .filter(Boolean)
+      .filter((item) => {
+        if (!hasCandidateLocation) {
+          return true;
+        }
+
+        const normalized = normalizeTurkishText(item);
+        return !/lokasyon.*belirtilmem|adayin lokasyonu belirtilmem/.test(normalized);
+      });
+  }
+
+  private sanitizeCategoryReasoning(
+    categoryKey: string,
+    reasoning: string,
+    locationAnalysis: LocationFitAnalysis
+  ) {
+    if (!this.isLocationCategory({ key: categoryKey, label: categoryKey })) {
+      return reasoning;
+    }
+
+    const trimmed = reasoning.trim();
+    const normalized = normalizeTurkishText(trimmed);
+    if (!trimmed) {
+      return this.buildLocationCategoryReasoning(locationAnalysis);
+    }
+
+    if (locationAnalysis.candidateLocationText && /lokasyon.*belirtilmem|adayin lokasyonu belirtilmem/.test(normalized)) {
+      return this.buildLocationCategoryReasoning(locationAnalysis);
+    }
+
+    return reasoning;
   }
 
   private sanitizeStrengths(
@@ -2605,6 +2645,54 @@ export class ApplicantFitScoringTaskService {
     }
 
     return "Lokasyon bilgisi role-fit yerine operasyonel warning olarak ele alinmali.";
+  }
+
+  private buildLocationCategoryReasoning(locationAnalysis: LocationFitAnalysis) {
+    const candidateLocation = locationAnalysis.candidateLocationText?.trim();
+    const jobLocation = locationAnalysis.jobLocationText?.trim();
+
+    if (!candidateLocation) {
+      return "Adayin lokasyonu CV veya profil verisinde net gorunmuyor; hibrit duzen icin recruiter teyidi gerekir.";
+    }
+
+    if (locationAnalysis.presenceMode === "remote") {
+      return `Adayin lokasyonu ${candidateLocation}. Rol uzaktan gorundugu icin lokasyon ikincil bir operasyonel not olarak ele alinmali.`;
+    }
+
+    if (locationAnalysis.mismatchLevel === "same_locality") {
+      return `Adayin lokasyonu ${candidateLocation}. Is lokasyonu${jobLocation ? ` ${jobLocation}` : ""} ile operasyonel olarak guclu uyum gosteriyor.`;
+    }
+
+    if (locationAnalysis.mismatchLevel === "same_city") {
+      return locationAnalysis.commuteSeverity === "minimal" || locationAnalysis.commuteSeverity === "light"
+        ? `Adayin lokasyonu ${candidateLocation}. Ayni sehir icinde ve hibrit duzen icin yonetilebilir gorunuyor.`
+        : `Adayin lokasyonu ${candidateLocation}. Ayni sehirde olsa da duzenli ofis yolculugu recruiter tarafinda teyit edilmelidir.`;
+    }
+
+    if (locationAnalysis.mismatchLevel === "cross_city" || locationAnalysis.mismatchLevel === "cross_country") {
+      return `Adayin lokasyonu ${candidateLocation}. Hibrit veya ofis gerektiren duzen icin operasyonel teyit gerekir; bu not role-fit yerine warning olarak ele alinmalidir.`;
+    }
+
+    return `Adayin lokasyonu ${candidateLocation}. Lokasyon bilgisi operasyonel bir follow-up konusu olarak ele alinmalidir.`;
+  }
+
+  private buildFitPromptLocationContext(
+    application: {
+      candidate: { locationText: string | null };
+      job: { locationText: string | null; shiftType: string | null };
+    },
+    locationAnalysis: LocationFitAnalysis
+  ) {
+    return {
+      candidateLocationProvided: Boolean(application.candidate.locationText?.trim()),
+      candidateLocationText: application.candidate.locationText,
+      jobLocationText: application.job.locationText,
+      workModel: application.job.shiftType,
+      mismatchLevel: locationAnalysis.mismatchLevel,
+      commuteSeverity: locationAnalysis.commuteSeverity,
+      recruiterWarning: this.buildOperationalLocationPromptWarning(locationAnalysis),
+      guidance: "Bu alan sadece lokasyon ve calisma modeli uyumu kategorisi ile ilgili reasoning ve uncertainty icindir; role, beceri ve execution skorlarinin yerine gecmez."
+    };
   }
 
   private buildFitPromptProfile(input: {

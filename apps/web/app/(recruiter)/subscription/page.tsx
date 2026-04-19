@@ -13,7 +13,11 @@ import {
 } from "../../../lib/billing-presentation";
 import { formatDateOnly } from "../../../lib/format";
 import { getLocaleTag } from "../../../lib/i18n";
-import type { BillingOverviewReadModel, BillingPlanKey } from "../../../lib/types";
+import type {
+  BillingOverviewReadModel,
+  BillingPlanKey,
+  TenantRuntimeConfigurationReadModel
+} from "../../../lib/types";
 
 type BillingQuotaKeyWithAddOns = Exclude<
   BillingOverviewReadModel["addOnCatalog"][number]["quotaKey"],
@@ -127,6 +131,39 @@ function buildEnterpriseQuoteMessage(
   return lines.join("\n");
 }
 
+function formatBillingAccessStatus(
+  status: string | undefined,
+  stripeReady: boolean,
+  locale: "tr" | "en"
+) {
+  const normalized = status ?? (stripeReady ? "ready" : "setup_required");
+
+  switch (normalized) {
+    case "ready":
+      return locale === "en" ? "Ready" : "Hazır";
+    case "pilot":
+      return locale === "en" ? "Preparation" : "Hazırlık";
+    case "setup_required":
+      return locale === "en" ? "Setup required" : "Kurulum gerekiyor";
+    case "unsupported":
+      return locale === "en" ? "Unavailable" : "Kullanılamıyor";
+    default:
+      return normalized.replace(/_/g, " ");
+  }
+}
+
+function formatCheckoutAccessLabel(selfServeReady: boolean, productionRuntime: boolean, locale: "tr" | "en") {
+  if (selfServeReady) {
+    return locale === "en" ? "Online payment active" : "Çevrimiçi ödeme açık";
+  }
+
+  if (productionRuntime) {
+    return locale === "en" ? "Contact sales" : "Satış ekibiyle ilerleyin";
+  }
+
+  return locale === "en" ? "Test mode" : "Test modu";
+}
+
 export default function SubscriptionPage() {
   const { t, locale } = useUiText();
   const localeTag = getLocaleTag(locale);
@@ -134,6 +171,7 @@ export default function SubscriptionPage() {
   const billingState = searchParams.get("billing");
 
   const [billing, setBilling] = useState<BillingOverviewReadModel | null>(null);
+  const [runtimeConfig, setRuntimeConfig] = useState<TenantRuntimeConfigurationReadModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyKey, setBusyKey] = useState("");
@@ -152,8 +190,23 @@ export default function SubscriptionPage() {
     setError("");
 
     try {
-      const overview = await apiClient.billingOverview();
-      setBilling(overview);
+      const [billingResult, runtimeResult] = await Promise.allSettled([
+        apiClient.billingOverview(),
+        apiClient.getTenantRuntimeConfiguration()
+      ]);
+
+      if (billingResult.status === "fulfilled") {
+        setBilling(billingResult.value);
+      } else {
+        setBilling(null);
+        setError(toErrorMessage(billingResult.reason, t("Abonelik bilgileri yüklenemedi.")));
+      }
+
+      if (runtimeResult.status === "fulfilled") {
+        setRuntimeConfig(runtimeResult.value);
+      } else {
+        setRuntimeConfig(null);
+      }
     } catch (loadError) {
       setBilling(null);
       setError(toErrorMessage(loadError, t("Abonelik bilgileri yüklenemedi.")));
@@ -165,6 +218,15 @@ export default function SubscriptionPage() {
   useEffect(() => {
     void loadBilling();
   }, [loadBilling]);
+
+  const billingBoundary = runtimeConfig?.launchBoundaries.billing ?? null;
+  const selfServeReady = billingBoundary?.selfServeEnabled ?? billing?.stripeReady ?? false;
+  const productionRuntime = runtimeConfig?.runtime.appMode === "production";
+  const selfServeBlocked = productionRuntime && !selfServeReady;
+  const billingBlockedMessage =
+    locale === "en"
+      ? "Online billing is not currently available. Continue through the contact or sales flow."
+      : "Çevrimiçi abonelik şu anda kullanıma açık değil. İletişim veya satış akışı üzerinden ilerleyin.";
 
   const activeQuotaAddOns =
     billing?.addOnCatalog.filter((addOn) => addOn.quotaKey === activeAddOnQuotaKey) ?? [];
@@ -235,6 +297,11 @@ export default function SubscriptionPage() {
   }
 
   async function handlePlanCheckout(planKey: Exclude<BillingPlanKey, "ENTERPRISE">) {
+    if (selfServeBlocked) {
+      setError(billingBlockedMessage);
+      return;
+    }
+
     setBusyKey(`plan:${planKey}`);
     setError("");
     setActionNotice("");
@@ -269,6 +336,11 @@ export default function SubscriptionPage() {
   }
 
   async function handleBillingPortalOpen() {
+    if (selfServeBlocked) {
+      setError(billingBlockedMessage);
+      return;
+    }
+
     setBusyKey("portal");
     setError("");
     setActionNotice("");
@@ -285,6 +357,11 @@ export default function SubscriptionPage() {
   }
 
   async function handleScheduleSubscriptionCancellation() {
+    if (selfServeBlocked) {
+      setError(billingBlockedMessage);
+      return;
+    }
+
     setBusyKey("subscription:cancel");
     setError("");
     setActionNotice("");
@@ -301,6 +378,11 @@ export default function SubscriptionPage() {
   }
 
   async function handleResumeScheduledCancellation() {
+    if (selfServeBlocked) {
+      setError(billingBlockedMessage);
+      return;
+    }
+
     setBusyKey("subscription:resume");
     setError("");
     setActionNotice("");
@@ -317,6 +399,11 @@ export default function SubscriptionPage() {
   }
 
   async function handleAddOnCheckout(addOnKey: BillingOverviewReadModel["addOnCatalog"][number]["key"]) {
+    if (selfServeBlocked) {
+      setError(billingBlockedMessage);
+      return false;
+    }
+
     setBusyKey(`addon:${addOnKey}`);
     setError("");
     setActionNotice("");
@@ -488,6 +575,53 @@ export default function SubscriptionPage() {
         </section>
       ) : (
         <>
+          <section className="panel">
+            <div className="subscription-section-head" style={{ marginBottom: 16 }}>
+              <div>
+                <h2 style={{ margin: 0 }}>
+                  {locale === "en" ? "Billing access" : "Ödeme erişimi"}
+                </h2>
+                <p className="small text-muted" style={{ margin: "6px 0 0" }}>
+                  {locale === "en"
+                    ? "This panel shows whether online billing is available for your account."
+                    : "Bu alan çevrimiçi ödeme akışının hesabınız için açık olup olmadığını gösterir."}
+                </p>
+              </div>
+              <StatusBadge
+                ready={selfServeReady}
+                variant={selfServeReady ? "success" : productionRuntime ? "danger" : "warning"}
+                label={formatCheckoutAccessLabel(selfServeReady, productionRuntime, locale)}
+              />
+            </div>
+
+            <div className="subscription-summary-grid">
+              <div className="subscription-summary-item">
+                <span>{locale === "en" ? "Provider" : "Sağlayıcı"}</span>
+                <strong>{billingBoundary?.provider ?? "stripe"}</strong>
+              </div>
+              <div className="subscription-summary-item">
+                <span>{locale === "en" ? "Status" : "Durum"}</span>
+                <strong>{formatBillingAccessStatus(billingBoundary?.status, billing.stripeReady, locale)}</strong>
+              </div>
+              <div className="subscription-summary-item">
+                <span>{locale === "en" ? "Online payment" : "Çevrimiçi ödeme"}</span>
+                <strong>{selfServeReady ? t("Açık") : t("Kapalı")}</strong>
+              </div>
+            </div>
+
+            {selfServeBlocked ? (
+              <p className="small text-muted" style={{ marginTop: 14, marginBottom: 0 }}>
+                {billingBlockedMessage}
+              </p>
+            ) : !selfServeReady ? (
+              <p className="small text-muted" style={{ marginTop: 14, marginBottom: 0 }}>
+                {locale === "en"
+                  ? "Some payment steps may continue through test flows in this environment."
+                  : "Bu ortamda bazı ödeme adımları test akışlarıyla ilerleyebilir."}
+              </p>
+            ) : null}
+          </section>
+
           <section className="panel subscription-summary-panel">
             <div className="subscription-section-head">
               <h2>{t("Abonelik Özeti")}</h2>
@@ -496,7 +630,7 @@ export default function SubscriptionPage() {
                   <button
                     type="button"
                     className="ghost-button"
-                    disabled={busyKey === "portal"}
+                    disabled={busyKey === "portal" || selfServeBlocked}
                     onClick={() => void handleBillingPortalOpen()}
                   >
                     {busyKey === "portal"
@@ -554,23 +688,23 @@ export default function SubscriptionPage() {
                       </div>
                     ) : null}
                     {showResumeCancellationButton ? (
-                      <button
-                        type="button"
-                        className="subscription-danger-button"
-                        disabled={busyKey === "subscription:resume"}
-                        onClick={() => void handleResumeScheduledCancellation()}
-                      >
+                        <button
+                          type="button"
+                          className="subscription-danger-button"
+                          disabled={busyKey === "subscription:resume" || selfServeBlocked}
+                          onClick={() => void handleResumeScheduledCancellation()}
+                        >
                         {busyKey === "subscription:resume"
                           ? t("Hazırlanıyor...")
                           : t("İptali geri çek")}
                       </button>
                     ) : showScheduleCancellationButton ? (
-                      <button
-                        type="button"
-                        className="subscription-danger-button"
-                        disabled={busyKey === "subscription:cancel"}
-                        onClick={() => void handleScheduleSubscriptionCancellation()}
-                      >
+                        <button
+                          type="button"
+                          className="subscription-danger-button"
+                          disabled={busyKey === "subscription:cancel" || selfServeBlocked}
+                          onClick={() => void handleScheduleSubscriptionCancellation()}
+                        >
                         {busyKey === "subscription:cancel"
                           ? t("Hazırlanıyor...")
                           : t("Aboneliği iptal et")}
@@ -638,7 +772,7 @@ export default function SubscriptionPage() {
                         <button
                           type="button"
                           className="tlx-plan-btn"
-                          disabled={busyKey === `plan:${plan.key}`}
+                          disabled={busyKey === `plan:${plan.key}` || selfServeBlocked}
                           onClick={() =>
                             void handlePlanCheckout(
                               plan.key as Exclude<BillingPlanKey, "ENTERPRISE">
@@ -654,7 +788,7 @@ export default function SubscriptionPage() {
                           type="button"
                           className="tlx-plan-btn"
                           disabled={
-                            busyKey === `plan:${plan.key}`
+                            busyKey === `plan:${plan.key}` || selfServeBlocked
                           }
                           onClick={() => void handlePlanCheckout(plan.key as Exclude<BillingPlanKey, "ENTERPRISE">)}
                         >
@@ -687,11 +821,12 @@ export default function SubscriptionPage() {
                         <strong>{t(quota.label)}</strong>
                       </div>
 
-                      <button
-                        type="button"
-                        className="ghost-button billing-addon-compact-button"
-                        onClick={() => setActiveAddOnQuotaKey(quota.key as BillingQuotaKeyWithAddOns)}
-                      >
+                        <button
+                          type="button"
+                          className="ghost-button billing-addon-compact-button"
+                          disabled={selfServeBlocked}
+                          onClick={() => setActiveAddOnQuotaKey(quota.key as BillingQuotaKeyWithAddOns)}
+                        >
                         {locale === "en" ? "Buy add-on" : "Ek paket al"}
                       </button>
                     </article>

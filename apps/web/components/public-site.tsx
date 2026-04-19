@@ -447,8 +447,8 @@ function DocsEndpoints() {
   const { locale, t } = useUiText();
   const exampleMessage =
     locale === "en"
-      ? "I want to share pilot API details."
-      : "Pilot API detaylarını paylaşmak istiyorum.";
+      ? t("I want to share API details.")
+      : t("API detaylarını paylaşmak istiyorum.");
   const endpoints = [
     {
       method: "GET",
@@ -463,7 +463,7 @@ function DocsEndpoints() {
     {
       method: "POST",
       path: "/v1/public/contact",
-      body: "Pilot ve demo taleplerini public lead kuyruğuna kaydeder."
+      body: "İletişim ve demo taleplerini kayıt altına alır."
     },
     {
       method: "POST",
@@ -475,8 +475,8 @@ function DocsEndpoints() {
   return (
     <div className={styles.docsGrid}>
       <div className={styles.codeCard}>
-        <span className={styles.cardEyebrow}>{t("Pilot API Yüzeyi")}</span>
-        <h3>{t("Kontrollü API akışları için temel uç noktalar")}</h3>
+        <span className={styles.cardEyebrow}>{t("API Uç Noktaları")}</span>
+        <h3>{t("Başlamak için temel uç noktalar")}</h3>
         <pre className={styles.codeBlock}>
           <code>{`curl -X POST https://your-api-host/v1/public/contact \\
   -H "Content-Type: application/json" \\
@@ -1416,14 +1416,16 @@ export function PublicHelpPage() {
 }
 
 export function PublicDocsApiPage() {
+  const { t } = useUiText();
+
   return (
     <PublicSiteFrame>
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="API Dokümantasyonu"
-            title="Candit API ile entegre olun"
-            subtitle="REST API ve webhook senaryolarıyla Candit'i mevcut İK sistemlerinize kontrollü biçimde bağlayın."
+            eyebrow={t("API Dokümantasyonu")}
+            title={t("Candit API ile entegre olun")}
+            subtitle={t("REST API ve webhook senaryolarıyla Candit'i mevcut İK sistemlerinize bağlayın.")}
             align="center"
           />
         </div>
@@ -1440,16 +1442,16 @@ export function PublicDocsApiPage() {
           <CardGrid
             cards={[
               {
-                title: "Kimlik Doğrulama",
-                body: "JWT ve provider tabanlı auth akışlarıyla korumalı uç noktalara erişin."
+                title: t("Kimlik Doğrulama"),
+                body: t("JWT ve provider tabanlı auth akışlarıyla korumalı uç noktalara erişin.")
               },
               {
-                title: "Webhook Bildirimleri",
-                body: "Mülakat, değerlendirme, başvuru ve süreç olaylarını provider bazında takip edin."
+                title: t("Webhook Bildirimleri"),
+                body: t("Mülakat, değerlendirme, başvuru ve süreç olaylarını provider bazında takip edin.")
               },
               {
-                title: "Hız Limitleri",
-                body: "Pilot stabilitesini korumak için istek limitleri ve kontrollü erişim uygulanır."
+                title: t("Hız Limitleri"),
+                body: t("Sistemin sağlıklı çalışması için istek limitleri uygulanır.")
               }
             ]}
           />
@@ -1572,9 +1574,9 @@ export function PublicContactPage() {
     { Icon: ClockSvg, label: t("Çalışma saatleri"), value: t("Pazartesi - Cuma • 09:00 - 18:00") }
   ];
   const contactTopics = [
-    t("Demo planı"),
-    t("Pilot kapsamı"),
-    t("Kurulum akışı")
+    t("Demo talebi"),
+    t("Entegrasyon soruları"),
+    t("Kurulum desteği")
   ];
 
   return (
@@ -1597,7 +1599,7 @@ export function PublicContactPage() {
           <LeadCaptureForm
             eyebrow={null}
             title={t("Bize Mesaj Gönderin")}
-            body={t("Formu doldurun; demo, pilot planı veya işe alım akış ihtiyacınızı birkaç cümleyle paylaşın.")}
+            body={t("Formu doldurun; demo talebinizi, entegrasyon sorularınızı veya işe alım ihtiyacınızı birkaç cümleyle paylaşın.")}
             submitLabel={t("Mesajı Gönder")}
             sourcePage="contact"
             successTitle={t("Mesajınız ulaştı")}
@@ -1607,7 +1609,7 @@ export function PublicContactPage() {
           <div className={styles.contactInfoPanel}>
             <h3 className={styles.contactInfoTitle}>{t("Ekibimizle doğrudan bağlantı kurun")}</h3>
             <p className={styles.contactInfoBody}>
-              {t("Form üzerinden gönderdiğiniz notlar doğrudan ekibimize düşer. Demo, pilot planı veya işe alım akışı soruları için size uygun şekilde dönüş yaparız.")}
+              {t("Form üzerinden gönderdiğiniz notlar doğrudan ekibimize ulaşır. Demo, entegrasyon veya işe alım süreçleriyle ilgili sorularınız için size uygun şekilde dönüş yaparız.")}
             </p>
 
             <div className={styles.contactMiniGrid}>
@@ -1638,7 +1640,7 @@ export function PublicContactPage() {
             <div className={styles.contactSupportNote}>
               <strong>{t("Mesajınıza mümkün olduğunca hızlı döneriz.")}</strong>
               <p>
-                {t("Özellikle pilot hedefiniz ve mevcut akışınızdan kısaca bahsetmeniz, ilk yanıtı daha net hazırlamamızı sağlar.")}
+                {t("Mevcut sürecinizi ve neye ihtiyaç duyduğunuzu kısaca paylaşmanız, ilk yanıtı daha hızlı hazırlamamızı sağlar.")}
               </p>
             </div>
           </div>

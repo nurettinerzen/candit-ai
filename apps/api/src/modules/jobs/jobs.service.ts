@@ -26,6 +26,12 @@ type JobDraftOutline = {
   closingParagraph: string;
 };
 
+type TenantDraftProfile = {
+  companyName: string;
+  websiteUrl: string | null;
+  profileSummary: string | null;
+};
+
 export type CreateJobInput = {
   tenantId: string;
   userId: string;
@@ -132,10 +138,12 @@ export class JobsService {
     const generationMode =
       input.existingDraft?.trim() || input.rewriteInstruction?.trim() ? "rewrite" : "fresh";
     const provider = this.aiProviderRegistryService.getProvider();
+    const tenantProfile = await this.getTenantDraftProfile(input.tenantId);
 
     if (provider.key === "deterministic-fallback") {
       return this.buildFallbackDraft(
         input,
+        tenantProfile,
         generationMode,
         "AI sağlayıcısı hazır değil; kural tabanlı taslak üretildi."
       );
@@ -149,7 +157,7 @@ export class JobsService {
         locale: "tr",
         payload: {
           systemPrompt: this.buildDraftSystemPrompt(),
-          userPrompt: this.buildDraftUserPrompt(input, generationMode),
+          userPrompt: this.buildDraftUserPrompt(input, tenantProfile, generationMode),
           schemaName: "job_posting_draft",
           outputSchema: this.buildDraftOutputSchema()
         }
@@ -159,12 +167,13 @@ export class JobsService {
       if (!outline) {
         return this.buildFallbackDraft(
           input,
+          tenantProfile,
           generationMode,
           "AI yanıtı geçerli bir ilan taslağı üretmedi; kural tabanlı taslak gösteriliyor."
         );
       }
 
-      return {
+        return {
         draftText: this.composeDraftText(input, outline),
         generationMode,
         source: "llm",
@@ -175,6 +184,7 @@ export class JobsService {
     } catch (error) {
       return this.buildFallbackDraft(
         input,
+        tenantProfile,
         generationMode,
         "AI taslak üretimi başarısız oldu; kural tabanlı taslak gösteriliyor."
       );
@@ -439,6 +449,7 @@ export class JobsService {
       "Türkçe, profesyonel ve dış kariyer platformlarına kolayca yapıştırılabilir bir ilan taslağı hazırla.",
       "Metin sıradan kurumsal klişelerle dolu olmasın; net, modern, güven veren ve adayın ne yapacağını gerçekten anlatan bir dil kur.",
       "Yalnızca paylaşılan bilgilerden hareket et.",
+      "Eğer şirket profili verilmişse yalnızca o bilgiler kadar kullan; verilmemiş detayları uydurma.",
       "Şirket adı, yan hak, ekip büyüklüğü, başvuru kanalı, marka vaadi veya kesin olmayan diğer detayları uydurma.",
       "Eksik bilgiler varsa bunu genel ve güvenli ifadelerle yönet; gerçekmiş gibi detay ekleme.",
       "Aynı bilgiyi açılış paragrafı, iş özeti ve madde listelerinde tekrar etme.",
@@ -449,10 +460,19 @@ export class JobsService {
     ].join(" ");
   }
 
-  private buildDraftUserPrompt(input: GenerateJobDraftInput, generationMode: "fresh" | "rewrite") {
+  private buildDraftUserPrompt(
+    input: GenerateJobDraftInput,
+    tenantProfile: TenantDraftProfile,
+    generationMode: "fresh" | "rewrite"
+  ) {
     const payload = {
       goal: "Harici iş ilanı platformlarına kopyalanabilir profesyonel ilan taslağı oluştur.",
       generationMode,
+      companyProfile: {
+        companyName: tenantProfile.companyName,
+        websiteUrl: tenantProfile.websiteUrl,
+        profileSummary: tenantProfile.profileSummary
+      },
       input: {
         title: input.title.trim(),
         department: input.roleFamily?.trim() || null,
@@ -582,6 +602,7 @@ export class JobsService {
 
   private buildFallbackDraft(
     input: GenerateJobDraftInput,
+    tenantProfile: TenantDraftProfile,
     generationMode: "fresh" | "rewrite",
     notice: string
   ): GeneratedJobDraft {
@@ -589,7 +610,7 @@ export class JobsService {
     const detailLines = this.buildDetailLines(input);
     const lines: string[] = [title, ""];
     const introParts = [
-      `${title} pozisyonunda görev alacak ekip arkadaşı arıyoruz.`,
+      `${tenantProfile.companyName} bünyesinde ${title} pozisyonunda görev alacak ekip arkadaşı arıyoruz.`,
       input.roleFamily?.trim()
         ? `Pozisyon, ${input.roleFamily.trim()} departmanı için hazırlanmıştır.`
         : null,
@@ -746,6 +767,25 @@ export class JobsService {
         };
       })
       .filter((item): item is { key: string; value: string; required: boolean } => Boolean(item));
+  }
+
+  private async getTenantDraftProfile(tenantId: string): Promise<TenantDraftProfile> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: {
+        id: tenantId
+      },
+      select: {
+        name: true,
+        websiteUrl: true,
+        profileSummary: true
+      }
+    });
+
+    return {
+      companyName: tenant?.name?.trim() || "Şirketiniz",
+      websiteUrl: tenant?.websiteUrl ?? null,
+      profileSummary: tenant?.profileSummary ?? null
+    };
   }
 
   private cleanList(value: unknown, limit: number) {

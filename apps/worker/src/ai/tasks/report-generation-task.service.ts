@@ -31,6 +31,8 @@ import {
   type InterviewTranscriptSignals
 } from "./interview-signal.utils.js";
 
+const MIN_REPORT_EVIDENCE_LINKS = 2;
+
 export class ReportGenerationTaskService {
   constructor(
     private readonly prisma: PrismaClient,
@@ -235,11 +237,14 @@ export class ReportGenerationTaskService {
       }, promptTemplate)
     });
 
-    const sections = this.sanitizeReportSections(
-      this.applyInterviewSignals(
-        normalizeStructuredSections(generation.output, fallbackSections),
-        transcriptSignals
-      )
+    const sections = this.enforceMinimumEvidenceLinks(
+      this.sanitizeReportSections(
+        this.applyInterviewSignals(
+          normalizeStructuredSections(generation.output, fallbackSections),
+          transcriptSignals
+        )
+      ),
+      fallbackSections.evidenceLinks
     );
     const confidence = Math.min(
       this.policy.normalizeConfidence(sections.confidence, fallbackSections.confidence),
@@ -591,6 +596,60 @@ export class ReportGenerationTaskService {
       uncertaintyReasons: this.uniqueStrings(sections.uncertaintyReasons).slice(0, 6),
       flags: this.uniqueFlags(sections.flags).slice(0, 8),
       evidenceLinks: this.uniqueEvidenceLinks(sections.evidenceLinks).slice(0, 12)
+    };
+  }
+
+  private enforceMinimumEvidenceLinks(
+    sections: StructuredTaskSections,
+    fallbackEvidenceLinks: EvidenceLink[]
+  ): StructuredTaskSections {
+    if (sections.evidenceLinks.length >= MIN_REPORT_EVIDENCE_LINKS) {
+      return sections;
+    }
+
+    const normalizedEvidenceLinks = this.uniqueEvidenceLinks([
+      ...sections.evidenceLinks,
+      ...fallbackEvidenceLinks
+    ]).slice(0, 12);
+
+    if (normalizedEvidenceLinks.length >= MIN_REPORT_EVIDENCE_LINKS) {
+      return {
+        ...sections,
+        evidenceLinks: normalizedEvidenceLinks,
+        flags: this.uniqueFlags([
+          ...sections.flags,
+          {
+            code: "EVIDENCE_MINIMUM_ENFORCED",
+            severity: "medium",
+            note: "Rapor en az iki kanıt referansı ile otomatik olarak güçlendirildi."
+          }
+        ]).slice(0, 8),
+        uncertaintyReasons: this.uniqueStrings([
+          ...sections.uncertaintyReasons,
+          "Kanıt sayısı iki referans altına düştüğü için fallback kanıtlar eklendi."
+        ]).slice(0, 6)
+      };
+    }
+
+    return {
+      ...sections,
+      evidenceLinks: normalizedEvidenceLinks,
+      flags: this.uniqueFlags([
+        ...sections.flags,
+        {
+          code: "EVIDENCE_INSUFFICIENT",
+          severity: "high",
+          note: "Rapor yeterli kanıt referansı olmadan üretildi; recruiter manuel teyidi zorunludur."
+        }
+      ]).slice(0, 8),
+      missingInformation: this.uniqueStrings([
+        ...sections.missingInformation,
+        "minimum_evidence_validation"
+      ]).slice(0, 8),
+      uncertaintyReasons: this.uniqueStrings([
+        ...sections.uncertaintyReasons,
+        "İki bağımsız kanıt referansı üretilemedi."
+      ]).slice(0, 6)
     };
   }
 

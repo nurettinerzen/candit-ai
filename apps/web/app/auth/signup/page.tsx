@@ -109,7 +109,6 @@ function SignupPageContent() {
     const emailVerification = createdState.emailVerification;
     const verificationEnabled = Boolean(emailVerification?.enabled);
     const verificationRequired = Boolean(emailVerification?.required);
-    const verificationPreviewUrl = emailVerification?.previewUrl ?? null;
     const verificationDeliveryEnabled = Boolean(emailVerification?.deliveryEnabled);
     const title = verificationEnabled ? t("Hesabınız oluşturuldu") : t("Hesap hazır");
     const description = verificationRequired
@@ -121,8 +120,8 @@ function SignupPageContent() {
           ? "Your account is ready. You can optionally verify your email now."
           : "Hesabınız hazır. İsterseniz e-posta adresinizi şimdi doğrulayabilirsiniz."
         : locale === "en"
-          ? "Your account is ready. Email verification is not required for this rollout yet."
-          : "Hesabınız hazır. Bu rollout aşamasında e-posta doğrulaması henüz zorunlu değil.";
+          ? "Your account is ready."
+          : "Hesabınız hazır.";
     const successMessage = !verificationEnabled
       ? locale === "en"
         ? "Account created successfully. You can continue directly to the panel."
@@ -134,13 +133,7 @@ function SignupPageContent() {
         : locale === "en"
           ? "A verification link was prepared for this account."
           : "Bu hesap için doğrulama bağlantısı hazırlandı.";
-    const infoMessage = verificationEnabled
-      ? verificationPreviewUrl
-        ? t("Geliştirme ortamı: Aşağıdaki bağlantıdan doğrulama ekranını açabilirsiniz.")
-        : t("E-posta kutunuzu kontrol edip doğrulama bağlantısına tıklayın.")
-      : locale === "en"
-        ? "Email verification can be managed later from the super admin authentication settings."
-        : "E-posta doğrulaması daha sonra süper admin kimlik doğrulama ayarlarından yönetilebilir.";
+    const infoMessage = verificationEnabled ? t("E-posta kutunuzu kontrol edip doğrulama bağlantısına tıklayın.") : "";
 
     return (
       <AuthShell
@@ -169,17 +162,11 @@ function SignupPageContent() {
             tone="success"
             message={successMessage}
           />
-          {verificationEnabled ? (
+          {verificationEnabled && infoMessage ? (
             <AuthNotice
               tone="info"
               message={infoMessage}
             />
-          ) : null}
-
-          {verificationPreviewUrl ? (
-            <a href={verificationPreviewUrl} style={primaryButtonStyle}>
-              {t("Doğrulama bağlantısını aç")}
-            </a>
           ) : null}
 
           {!verificationRequired ? (
@@ -273,58 +260,44 @@ function SignupPageContent() {
         </button>
       </form>
 
-      <div style={{ display: "grid", gap: 12, marginTop: 18 }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr auto 1fr",
-            alignItems: "center",
-            gap: 12,
-            color: "#64748b",
-            fontSize: 12
-          }}
-        >
-          <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
-          <span>{t("veya")}</span>
-          <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
-        </div>
-
-        <a
-          href={googleEnabled ? googleUrl : undefined}
-          aria-disabled={!googleEnabled}
-          style={{
-            ...secondaryButtonStyle,
-            opacity: googleEnabled ? 1 : 0.55,
-            cursor: googleEnabled ? "pointer" : "not-allowed",
-            pointerEvents: googleEnabled ? "auto" : "none"
-          }}
-        >
-          <span
+      {googleEnabled ? (
+        <div style={{ display: "grid", gap: 12, marginTop: 18 }}>
+          <div
             style={{
-              display: "inline-flex",
-              width: 22,
-              height: 22,
-              borderRadius: 999,
+              display: "grid",
+              gridTemplateColumns: "1fr auto 1fr",
               alignItems: "center",
-              justifyContent: "center",
-              background: "#fff",
-              color: "#0f172a",
-              fontWeight: 700,
+              gap: 12,
+              color: "#64748b",
               fontSize: 12
             }}
           >
-            G
-          </span>
-          {t("Google ile kayıt ol")}
-        </a>
+            <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
+            <span>{t("veya")}</span>
+            <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
+          </div>
 
-        {!googleEnabled ? (
-          <AuthNotice
-            tone="info"
-            message={t("Google ile kayıt yakında aktif olacak.")}
-          />
-        ) : null}
-      </div>
+          <a href={googleUrl} style={secondaryButtonStyle}>
+            <span
+              style={{
+                display: "inline-flex",
+                width: 22,
+                height: 22,
+                borderRadius: 999,
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#fff",
+                color: "#0f172a",
+                fontWeight: 700,
+                fontSize: 12
+              }}
+            >
+              G
+            </span>
+            {t("Google ile kayıt ol")}
+          </a>
+        </div>
+      ) : null}
     </AuthShell>
   );
 }

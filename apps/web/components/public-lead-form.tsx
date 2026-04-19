@@ -165,7 +165,7 @@ export function PublicLeadForm({
           <span>{t("Konu")}</span>
           <input
             type="text"
-            placeholder={t("Demo, pilot, işe alım akışı...")}
+            placeholder={t("Demo, entegrasyon, işe alım ihtiyacı...")}
             value={form.topic}
             onChange={handleChange("topic")}
           />
@@ -186,7 +186,7 @@ export function PublicLeadForm({
           <span>{t("Mesaj")}</span>
           <textarea
             rows={5}
-            placeholder={t("İşe alım süreçleriniz, pilot hedefiniz ve ihtiyacınız olan akışlar hakkında kısa bilgi verin.")}
+            placeholder={t("İşe alım sürecinizi ve ihtiyaç duyduğunuz akışları kısaca anlatın.")}
             value={form.message}
             onChange={handleChange("message")}
             required

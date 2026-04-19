@@ -10,18 +10,21 @@ import { resolveActiveSession } from "../../../../lib/auth/session";
 import {
   SOURCE_LABELS,
   PIPELINE_STAGE_FILTERS,
+  getAvailableStageActions,
   getStageMeta,
-  getStageActions
+  isInterviewInviteAction
 } from "../../../../lib/constants";
 import { formatCurrencyTry, formatDate } from "../../../../lib/format";
 import {
   formatInterviewDeadline,
-  getInterviewInvitationMeta
+  getInterviewInvitationMeta,
+  shouldOfferInterviewReinvite
 } from "../../../../lib/interview-invitation";
 import { formatJobShiftTypeLabel } from "../../../../lib/job-display";
 import { sourcingProjectDetailHref, withApiBaseOverride } from "../../../../lib/entity-routes";
 import type {
   BillingOverviewReadModel,
+  BulkImportCandidate,
   JobInboxReadModel,
   JobInboxApplicant,
   QuickActionType,
@@ -33,6 +36,7 @@ import { JobStatusChip } from "../../../../components/stage-chip";
 import { QuickActionMenu } from "../../../../components/quick-action-menu";
 import { ApplicantDrawer } from "../../../../components/applicant-drawer";
 import { BulkCvUploadModal } from "../../../../components/bulk-cv-upload-modal";
+import { CsvUploadModal } from "../../../../components/csv-upload-modal";
 import { InterviewInviteModal } from "../../../../components/interview-invite-modal";
 import { MatchIndicator } from "../../../../components/match-indicator";
 import { useUiText } from "../../../../components/site-language-provider";
@@ -79,7 +83,10 @@ function buildQuickActionMessage(locale: SiteLocale, action: QuickActionType) {
   if (locale === "en") {
     switch (action) {
       case "invite_interview":
+      case "reinvite_interview":
         return "AI interview invitation sent.";
+      case "send_reminder":
+        return "Interview reminder sent.";
       case "reject":
         return "Candidate rejected.";
       default:
@@ -89,7 +96,10 @@ function buildQuickActionMessage(locale: SiteLocale, action: QuickActionType) {
 
   switch (action) {
     case "invite_interview":
+    case "reinvite_interview":
       return "AI mülakat daveti gönderildi.";
+    case "send_reminder":
+      return "Mülakat hatırlatması gönderildi.";
     case "reject":
       return "Aday reddedildi.";
     default:
@@ -107,6 +117,19 @@ function buildBulkCvUploadMessage(locale: SiteLocale, queued: number, failedCoun
     (failedCount > 0 ? ` ${failedCount} dosyada hata var.` : "");
 }
 
+function buildBulkImportMessage(
+  locale: SiteLocale,
+  summary: { processed: number; imported: number; deduplicated: number; enriched: number }
+) {
+  if (locale === "en") {
+    return `${summary.processed} applicants processed. ${summary.imported} new candidates created, ${summary.deduplicated} matched an existing candidate.` +
+      (summary.enriched > 0 ? ` ${summary.enriched} existing candidate records were enriched with missing source data.` : "");
+  }
+
+  return `${summary.processed} aday işlendi. ${summary.imported} yeni aday oluşturuldu, ${summary.deduplicated} aday mevcut kayıtla eşleşti.` +
+    (summary.enriched > 0 ? ` ${summary.enriched} mevcut aday kaydının kaynak bilgisi zenginleştirildi.` : "");
+}
+
 function applicantNextAction(applicant: JobInboxApplicant, locale: SiteLocale) {
   const interviewMeta = getInterviewInvitationMeta(
     applicant.interview?.invitation ?? null,
@@ -119,6 +142,17 @@ function applicantNextAction(applicant: JobInboxApplicant, locale: SiteLocale) {
   );
 
   if (applicant.interview) {
+    if (shouldOfferInterviewReinvite(applicant.interview.invitation ?? null, applicant.interview.status ?? null)) {
+      return {
+        label: "Tekrar Davet Et",
+        detail: translateUiText(
+          "Önceki AI mülakat linki artık kullanılamıyor. Yeni link oluşturabilirsiniz.",
+          locale
+        ),
+        tone: "warn" as const
+      };
+    }
+
     if (applicant.interview.invitation?.expiresAt) {
       return {
         label: interviewMeta.label,
@@ -192,27 +226,38 @@ function applicantNextAction(applicant: JobInboxApplicant, locale: SiteLocale) {
   };
 }
 
+function getApplicantActions(applicant: JobInboxApplicant) {
+  return getAvailableStageActions(applicant.stage as ApplicationStage, {
+    interview: applicant.interview
+  });
+}
+
 function buildInviteSuccessMessage(
   locale: SiteLocale,
-  result: { interviewLink?: string; expiresAt?: string | null }
+  result: { interviewLink?: string; expiresAt?: string | null },
+  action: QuickActionType = "invite_interview"
 ) {
+  const inviteLabel = action === "reinvite_interview" ? "AI mülakat daveti yeniden gönderildi." : "AI mülakat daveti gönderildi.";
+
   if (locale === "en") {
     if (result.expiresAt) {
-      return `AI interview invitation sent. Link is active until ${formatInterviewDeadline(result.expiresAt)}.`;
+      return `${action === "reinvite_interview" ? "AI interview invitation resent." : "AI interview invitation sent."} Link is active until ${formatInterviewDeadline(result.expiresAt)}.`;
     }
 
     return result.interviewLink
-      ? "AI interview invitation sent. Direct interview link is ready."
-      : "AI interview invitation sent.";
+      ? `${action === "reinvite_interview" ? "AI interview invitation resent." : "AI interview invitation sent."} Direct interview link is ready.`
+      : action === "reinvite_interview"
+        ? "AI interview invitation resent."
+        : "AI interview invitation sent.";
   }
 
   if (result.expiresAt) {
-    return `AI mülakat daveti gönderildi. Link ${formatInterviewDeadline(result.expiresAt)} tarihine kadar aktif.`;
+    return `${inviteLabel} Link ${formatInterviewDeadline(result.expiresAt)} tarihine kadar aktif.`;
   }
 
   return result.interviewLink
-    ? "AI mülakat daveti gönderildi. Direkt görüşme linki hazır."
-    : "AI mülakat daveti gönderildi.";
+    ? `${inviteLabel} Direkt görüşme linki hazır.`
+    : inviteLabel;
 }
 
 function normalizeSignalText(text: string) {
@@ -329,6 +374,7 @@ export default function JobDetailPage() {
 
   // Modals & drawers
   const [selectedApplicant, setSelectedApplicant] = useState<JobInboxApplicant | null>(null);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [bulkCvUploadOpen, setBulkCvUploadOpen] = useState(false);
 
   // Bulk selection for interview approval
@@ -342,7 +388,10 @@ export default function JobDetailPage() {
   const [showJobInfo, setShowJobInfo] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ applicant: JobInboxApplicant; action: QuickActionType } | null>(null);
-  const [inviteDialogApplicant, setInviteDialogApplicant] = useState<JobInboxApplicant | null>(null);
+  const [inviteDialogState, setInviteDialogState] = useState<{
+    applicant: JobInboxApplicant;
+    action: Extract<QuickActionType, "invite_interview" | "reinvite_interview">;
+  } | null>(null);
   const [pendingAutomationIds, setPendingAutomationIds] = useState<string[]>([]);
   const hasLoadedInboxRef = useRef(false);
 
@@ -579,8 +628,11 @@ export default function JobDetailPage() {
     }
 
     setInviteOutcome(null);
-    if (action === "invite_interview") {
-      setInviteDialogApplicant(applicant);
+    if (isInterviewInviteAction(action)) {
+      setInviteDialogState({
+        applicant,
+        action
+      });
       return;
     }
 
@@ -599,11 +651,11 @@ export default function JobDetailPage() {
     try {
       const result = await apiClient.quickAction(applicant.applicationId, { action });
       setActionMessage(
-        action === "invite_interview"
-          ? buildInviteSuccessMessage(locale, result)
+        isInterviewInviteAction(action)
+          ? buildInviteSuccessMessage(locale, result, action)
           : buildQuickActionMessage(locale, action)
       );
-      if (action === "invite_interview") {
+      if (isInterviewInviteAction(action)) {
         setInviteOutcome({
           interviewLink: result.interviewLink ?? null,
           expiresAt: result.expiresAt ?? null
@@ -657,6 +709,37 @@ export default function JobDetailPage() {
     );
   };
 
+  const handleBulkImport = async (
+    candidates: BulkImportCandidate[],
+    source: string,
+    externalSource?: string
+  ) => {
+    if (job?.status === "ARCHIVED") {
+      setBulkImportOpen(false);
+      setActionMessage("");
+      setActionError(t("Arşivli ilana yeni aday eklenemez."));
+      return;
+    }
+
+    const result = await apiClient.bulkImportApplicants(jobId, {
+      candidates,
+      source,
+      externalSource
+    });
+
+    setActionError("");
+    setActionMessage(
+      buildBulkImportMessage(locale, {
+        processed: result.applications.length,
+        imported: result.imported,
+        deduplicated: result.deduplicated,
+        enriched: result.enriched
+      })
+    );
+    void loadInbox();
+    setPendingAutomationIds(result.applications.map((item) => item.applicationId));
+  };
+
   const toggleSelect = (appId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -681,9 +764,7 @@ export default function JobDetailPage() {
   const bulkInviteEligibleIds = useMemo(
     () =>
       selectedApplicants
-        .filter((applicant) =>
-          getStageActions(applicant.stage as ApplicationStage).some((action) => action.key === "invite_interview")
-        )
+        .filter((applicant) => getApplicantActions(applicant).some((action) => isInterviewInviteAction(action.key)))
         .map((applicant) => applicant.applicationId),
     [selectedApplicants]
   );
@@ -691,9 +772,7 @@ export default function JobDetailPage() {
   const bulkRejectEligibleIds = useMemo(
     () =>
       selectedApplicants
-        .filter((applicant) =>
-          getStageActions(applicant.stage as ApplicationStage).some((action) => action.key === "reject")
-        )
+        .filter((applicant) => getApplicantActions(applicant).some((action) => action.key === "reject"))
         .map((applicant) => applicant.applicationId),
     [selectedApplicants]
   );
@@ -814,6 +893,12 @@ export default function JobDetailPage() {
     );
     return false;
   }, [canPublishJob, t]);
+
+  useEffect(() => {
+    if (isArchivedJob && bulkImportOpen) {
+      setBulkImportOpen(false);
+    }
+  }, [bulkImportOpen, isArchivedJob]);
 
   useEffect(() => {
     if (isArchivedJob && bulkCvUploadOpen) {
@@ -1084,6 +1169,15 @@ export default function JobDetailPage() {
               </select>
               <button
                 type="button"
+                className="ghost-button applicant-filter-upload-btn"
+                onClick={() => setBulkImportOpen(true)}
+                disabled={isArchivedJob}
+                title={isArchivedJob ? t("Arşivli ilana yeni aday eklenemez.") : undefined}
+              >
+                {t("CSV İçe Aktar")}
+              </button>
+              <button
+                type="button"
                 className="button-link applicant-filter-upload-btn"
                 onClick={() => setBulkCvUploadOpen(true)}
                 disabled={isArchivedJob}
@@ -1325,11 +1419,12 @@ export default function JobDetailPage() {
                               </div>
                             </td>
                             <td onClick={(e) => e.stopPropagation()}>
-                              <QuickActionMenu
-                                stage={a.stage as ApplicationStage}
-                                onAction={(act) => handleQuickAction(a, act)}
-                                disabled={actionLoadingId === a.applicationId || isArchivedJob}
-                              />
+                      <QuickActionMenu
+                        stage={a.stage as ApplicationStage}
+                        actions={getApplicantActions(a)}
+                        onAction={(act) => handleQuickAction(a, act)}
+                        disabled={actionLoadingId === a.applicationId || isArchivedJob}
+                      />
                             </td>
                           </tr>
                         );
@@ -1355,6 +1450,11 @@ export default function JobDetailPage() {
       />
 
       {/* Modals */}
+      <CsvUploadModal
+        open={bulkImportOpen}
+        onClose={() => setBulkImportOpen(false)}
+        onSubmit={handleBulkImport}
+      />
       <BulkCvUploadModal
         open={bulkCvUploadOpen}
         onClose={() => setBulkCvUploadOpen(false)}
@@ -1369,11 +1469,15 @@ export default function JobDetailPage() {
             <p className="confirm-title">
               {confirmDialog.action === "invite_interview"
                 ? t("Mülakata Davet Et")
+                : confirmDialog.action === "send_reminder"
+                  ? t("Hatırlatma Gönder")
                 : t("Adayı Reddet")}
             </p>
             <p className="confirm-body">
               {confirmDialog.action === "invite_interview"
                 ? `${confirmDialog.applicant.fullName} ${t("adayına tek linkli AI mülakat daveti gönderilecek. Bu akışta slot seçimi yoktur.")}`
+                : confirmDialog.action === "send_reminder"
+                  ? `${confirmDialog.applicant.fullName} ${t("adayına mevcut AI mülakat linki için hatırlatma e-postası gönderilecek.")}`
                 : `${confirmDialog.applicant.fullName} ${t("adayı reddedilecek.")}`}
             </p>
             <div className="confirm-actions">
@@ -1389,7 +1493,11 @@ export default function JobDetailPage() {
                 className={`confirm-btn ${confirmDialog.action === "reject" ? "confirm-btn-danger" : "confirm-btn-primary"}`}
                 onClick={() => void executeAction()}
               >
-                {confirmDialog.action === "invite_interview" ? t("Evet, Davet Gönder") : t("Evet, Reddet")}
+                {confirmDialog.action === "invite_interview"
+                  ? t("Evet, Davet Gönder")
+                  : confirmDialog.action === "send_reminder"
+                    ? t("Evet, Hatırlat")
+                    : t("Evet, Reddet")}
               </button>
             </div>
           </div>
@@ -1397,15 +1505,17 @@ export default function JobDetailPage() {
       )}
 
       <InterviewInviteModal
-        open={Boolean(inviteDialogApplicant)}
-        applicationId={inviteDialogApplicant?.applicationId ?? null}
-        candidateName={inviteDialogApplicant?.fullName ?? ""}
+        open={Boolean(inviteDialogState)}
+        action={inviteDialogState?.action ?? "invite_interview"}
+        applicationId={inviteDialogState?.applicant.applicationId ?? null}
+        candidateName={inviteDialogState?.applicant.fullName ?? ""}
         jobTitle={job?.title ?? ""}
         roleFamily={job?.roleFamily ?? null}
-        onClose={() => setInviteDialogApplicant(null)}
+        onClose={() => setInviteDialogState(null)}
         onSubmitted={(result) => {
-          setInviteDialogApplicant(null);
-          setActionMessage(buildInviteSuccessMessage(locale, result));
+          const inviteAction = inviteDialogState?.action ?? "invite_interview";
+          setInviteDialogState(null);
+          setActionMessage(buildInviteSuccessMessage(locale, result, inviteAction));
           setActionError("");
           setInviteOutcome({
             interviewLink: result.interviewLink ?? null,

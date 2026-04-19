@@ -406,6 +406,10 @@ export class NotificationsService {
       });
     }
 
+    if (input.eventType === "application.decision_recorded") {
+      return this.notifyApplicationDecisionEvent(input);
+    }
+
     if (
       input.eventType !== "application.stage_transitioned" &&
       input.eventType !== "interview.session.completed"
@@ -672,5 +676,164 @@ export class NotificationsService {
       provider: result.provider,
       status: result.status
     };
+  }
+
+  private async notifyApplicationDecisionEvent(input: {
+    tenantId: string;
+    eventType: string;
+    aggregateType: string;
+    aggregateId: string;
+    traceId?: string;
+    payload: Record<string, unknown>;
+  }) {
+    const decision = asString(input.payload.decision)?.toLowerCase();
+
+    if (decision !== "advance" && decision !== "hold" && decision !== "reject") {
+      return {
+        notified: false,
+        reason: "decision_notification_not_supported"
+      };
+    }
+
+    const [application, tenant] = await Promise.all([
+      this.prisma.candidateApplication.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          id: input.aggregateId
+        },
+        include: {
+          candidate: {
+            select: {
+              fullName: true,
+              email: true
+            }
+          },
+          job: {
+            select: {
+              title: true
+            }
+          }
+        }
+      }),
+      this.prisma.tenant.findUnique({
+        where: {
+          id: input.tenantId
+        },
+        select: {
+          name: true
+        }
+      })
+    ]);
+
+    if (!application) {
+      return {
+        notified: false,
+        reason: "application_not_found"
+      };
+    }
+
+    const recipient = application.candidate.email?.trim() || null;
+
+    if (!recipient) {
+      return {
+        notified: false,
+        reason: "recipient_missing"
+      };
+    }
+
+    const companyName = tenant?.name ?? "Candit.ai";
+    const candidateName = application.candidate.fullName;
+    const jobTitle = application.job.title;
+    const email = this.buildApplicationDecisionEmail({
+      decision,
+      companyName,
+      candidateName,
+      jobTitle
+    });
+
+    const result = await this.send({
+      tenantId: input.tenantId,
+      channel: "email",
+      to: recipient,
+      subject: email.subject,
+      body: email.body,
+      metadata: {
+        eventType: input.eventType,
+        applicationId: application.id,
+        decision,
+        infoPosition: jobTitle,
+        decisionLabel: email.decisionLabel,
+        showPrimaryCta: false,
+        showSecondaryCta: false
+      },
+      traceId: input.traceId,
+      domainEventId: asString(input.payload.domainEventId) ?? undefined,
+      eventType: input.eventType,
+      templateKey: email.templateKey
+    });
+
+    return {
+      notified: true,
+      channel: "email",
+      deliveryId: result.deliveryId,
+      provider: result.provider,
+      status: result.status
+    };
+  }
+
+  private buildApplicationDecisionEmail(input: {
+    decision: "advance" | "hold" | "reject";
+    companyName: string;
+    candidateName: string;
+    jobTitle: string;
+  }) {
+    switch (input.decision) {
+      case "advance":
+        return {
+          templateKey: "application_advanced_v1",
+          decisionLabel: "İlerletildi",
+          subject: `${input.companyName} – Başvurunuz bir sonraki aşamaya alındı`,
+          body: [
+            `Merhaba ${input.candidateName},`,
+            ``,
+            `${input.companyName} bünyesindeki ${input.jobTitle} pozisyonu için başvurunuzu değerlendirdik.`,
+            ``,
+            `Başvurunuz bir sonraki aşamaya alındı.`,
+            ``,
+            `Sonraki adımlarla ilgili ekibimiz sizinle ayrı bir iletişim paylaşacaktır.`
+          ].join("\n")
+        } as const;
+      case "hold":
+        return {
+          templateKey: "application_on_hold_v1",
+          decisionLabel: "Bekletildi",
+          subject: `${input.companyName} – Başvurunuz değerlendirmede`,
+          body: [
+            `Merhaba ${input.candidateName},`,
+            ``,
+            `${input.companyName} bünyesindeki ${input.jobTitle} pozisyonu için başvurunuz halen değerlendirme sürecindedir.`,
+            ``,
+            `Şu an için nihai karar verilmedi; değerlendirme tamamlandığında sizinle tekrar paylaşacağız.`,
+            ``,
+            `İlginiz ve sabrınız için teşekkür ederiz.`
+          ].join("\n")
+        } as const;
+      case "reject":
+      default:
+        return {
+          templateKey: "application_rejected_v1",
+          decisionLabel: "Reddedildi",
+          subject: `${input.companyName} – Başvuru güncellemesi`,
+          body: [
+            `Merhaba ${input.candidateName},`,
+            ``,
+            `${input.companyName} bünyesindeki ${input.jobTitle} pozisyonu için başvurunuzu değerlendirdik.`,
+            ``,
+            `Bu aşamada sürece seninle devam edemeyeceğiz.`,
+            ``,
+            `Başvurun ve zamanın için teşekkür eder, kariyer yolculuğunda başarılar dileriz.`
+          ].join("\n")
+        } as const;
+    }
   }
 }

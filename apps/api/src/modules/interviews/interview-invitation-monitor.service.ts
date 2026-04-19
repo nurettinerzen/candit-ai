@@ -1,4 +1,11 @@
-import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit
+} from "@nestjs/common";
 import { AuditActorType, InterviewSessionStatus } from "@prisma/client";
 import { StructuredLoggerService } from "../../common/logging/structured-logger.service";
 import { PrismaService } from "../../prisma/prisma.service";
@@ -133,6 +140,139 @@ export class InterviewInvitationMonitorService implements OnModuleInit, OnModule
     } finally {
       this.running = false;
     }
+  }
+
+  async sendManualReminder(input: {
+    tenantId: string;
+    applicationId: string;
+    requestedBy: string;
+    traceId?: string;
+  }) {
+    const now = new Date();
+    const session = await this.prisma.interviewSession.findFirst({
+      where: {
+        tenantId: input.tenantId,
+        applicationId: input.applicationId,
+        mode: "VOICE",
+        schedulingSource: AI_FIRST_INTERVIEW_INVITE_SOURCE,
+        status: InterviewSessionStatus.SCHEDULED
+      },
+      orderBy: [{ scheduledAt: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        tenantId: true,
+        applicationId: true,
+        candidateAccessExpiresAt: true,
+        invitationIssuedAt: true,
+        invitationReminderCount: true,
+        invitationReminder1SentAt: true,
+        invitationReminder2SentAt: true,
+        meetingJoinUrl: true,
+        application: {
+          select: {
+            candidate: {
+              select: {
+                email: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!session) {
+      throw new NotFoundException("Aktif AI mülakat daveti bulunamadı.");
+    }
+
+    if (!session.application.candidate.email?.trim()) {
+      throw new BadRequestException("Aday için e-posta adresi bulunamadı.");
+    }
+
+    const expiresAt = session.candidateAccessExpiresAt;
+
+    if (!expiresAt || expiresAt.getTime() <= now.getTime()) {
+      throw new BadRequestException("Süresi dolmuş görüşme daveti için hatırlatma gönderilemez.");
+    }
+
+    const reminderNumber =
+      (session.invitationReminderCount ?? 0) > 0
+        ? (session.invitationReminderCount ?? 0) + 1
+        : session.invitationReminder2SentAt
+          ? 3
+          : session.invitationReminder1SentAt
+            ? 2
+            : 1;
+    const reminderField =
+      !session.invitationReminder1SentAt
+        ? "invitationReminder1SentAt"
+        : !session.invitationReminder2SentAt
+          ? "invitationReminder2SentAt"
+          : null;
+
+    const updateResult = await this.prisma.interviewSession.updateMany({
+      where: {
+        id: session.id,
+        status: InterviewSessionStatus.SCHEDULED,
+        candidateAccessExpiresAt: {
+          gt: now
+        }
+      },
+      data: {
+        invitationStatus: "REMINDER_SENT",
+        invitationReminderCount: {
+          increment: 1
+        },
+        ...(reminderField ? { [reminderField]: now } : {})
+      }
+    });
+
+    if (updateResult.count === 0) {
+      throw new BadRequestException("Hatırlatma gönderilemedi. Davet durumu değişmiş olabilir.");
+    }
+
+    await Promise.all([
+      this.domainEventsService.append({
+        tenantId: input.tenantId,
+        aggregateType: "InterviewSession",
+        aggregateId: session.id,
+        traceId: input.traceId,
+        eventType: "interview.invitation.reminder_sent",
+        payload: {
+          applicationId: input.applicationId,
+          reminderNumber,
+          reminderSentAt: now.toISOString(),
+          notificationMetadata: {
+            reminderNumber,
+            reminderSource: "manual_recruiter",
+            primaryCtaLabel: "G\u00F6r\u00FC\u015Fmeyi Ba\u015Flat",
+            hideScheduledAt: true
+          }
+        }
+      }),
+      this.auditWriterService.write({
+        tenantId: input.tenantId,
+        actorType: AuditActorType.USER,
+        actorUserId: input.requestedBy,
+        action: "interview.invitation.reminder_requested",
+        entityType: "InterviewSession",
+        entityId: session.id,
+        traceId: input.traceId,
+        metadata: {
+          applicationId: input.applicationId,
+          reminderNumber,
+          reminderSentAt: now.toISOString()
+        }
+      })
+    ]);
+
+    return {
+      status: "queued",
+      applicationId: input.applicationId,
+      sessionId: session.id,
+      interviewLink: session.meetingJoinUrl,
+      expiresAt: expiresAt.toISOString(),
+      reminderNumber
+    };
   }
 
   private async sendReminder(

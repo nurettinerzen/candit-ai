@@ -10,6 +10,7 @@ import type { PublicInterviewSessionView } from "../../../lib/types";
 type ElevenLabsInterviewProps = {
   sessionId: string;
   token: string;
+  consentAccepted?: boolean;
   initialView: PublicInterviewSessionView;
   onViewUpdate: (view: PublicInterviewSessionView) => void;
   autoStart?: boolean;
@@ -77,6 +78,7 @@ function buildTranscriptSegments(
 export function ElevenLabsInterview({
   sessionId,
   token,
+  consentAccepted = false,
   initialView,
   onViewUpdate,
   autoStart = false
@@ -256,7 +258,10 @@ export function ElevenLabsInterview({
       // 1. Get signed URL from our backend
       const { signedUrl, dynamicVariables, contextualUpdate } = await apiClient.initElevenLabsConversation(
         sessionId,
-        token
+        {
+          token,
+          consentAccepted
+        }
       );
 
       if (disposedRef.current || startAttemptRef.current !== attemptId) {
@@ -375,7 +380,7 @@ export function ElevenLabsInterview({
       );
       setConnecting(false);
     }
-  }, [connecting, finalizeConversation, sessionId, status, token]);
+  }, [connecting, consentAccepted, finalizeConversation, sessionId, status, token]);
 
   useEffect(() => {
     if (!autoStart || autoStartedRef.current || connecting || status === "connected" || sessionComplete) {

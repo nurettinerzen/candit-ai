@@ -566,6 +566,7 @@ export class ApplicantInboxService {
     const results: Array<{ candidateId: string; applicationId: string; deduplicated: boolean }> = [];
     let importedCount = 0;
     let deduplicatedCount = 0;
+    let enrichedCount = 0;
 
     for (const rec of input.candidates) {
       const candidateResult = await this.candidatesService.create({
@@ -587,6 +588,10 @@ export class ApplicantInboxService {
         deduplicatedCount++;
       } else {
         importedCount++;
+      }
+
+      if (candidateResult.enrichedFields.length > 0) {
+        enrichedCount++;
       }
 
       const existingApp = await this.prisma.candidateApplication.findFirst({
@@ -618,11 +623,17 @@ export class ApplicantInboxService {
         source: input.source,
         imported: importedCount,
         deduplicated: deduplicatedCount,
+        enriched: enrichedCount,
         total: input.candidates.length
       }
     });
 
-    return { imported: importedCount, deduplicated: deduplicatedCount, applications: results };
+    return {
+      imported: importedCount,
+      deduplicated: deduplicatedCount,
+      enriched: enrichedCount,
+      applications: results
+    };
   }
 
   async bulkUploadCvFiles(input: {
@@ -675,6 +686,8 @@ export class ApplicantInboxService {
 
     let importedCount = 0;
     let queuedCount = 0;
+    let deduplicatedCount = 0;
+    let enrichedCount = 0;
 
     for (const file of input.files) {
       try {
@@ -689,6 +702,12 @@ export class ApplicantInboxService {
 
         if (!candidateResult.deduplicated) {
           importedCount++;
+        } else {
+          deduplicatedCount++;
+        }
+
+        if (candidateResult.enrichedFields.length > 0) {
+          enrichedCount++;
         }
 
         const cvFile = await this.candidatesService.uploadCvFile({
@@ -760,6 +779,8 @@ export class ApplicantInboxService {
         externalSource: input.externalSource ?? null,
         screeningMode,
         imported: importedCount,
+        deduplicated: deduplicatedCount,
+        enriched: enrichedCount,
         queued: queuedCount,
         total: input.files.length
       }
@@ -767,6 +788,8 @@ export class ApplicantInboxService {
 
     return {
       imported: importedCount,
+      deduplicated: deduplicatedCount,
+      enriched: enrichedCount,
       queued: queuedCount,
       total: input.files.length,
       items

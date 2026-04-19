@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "lint": "tsc --noEmit -p tsconfig.json",
-    "test": "node ../../scripts/run-ts-tests.mjs src"
+    "test": "node ../../scripts/run-ts-tests.mjs src",
+    "test:contracts": "node --import tsx --test src/ai/tasks/report-generation-task.service.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.6.0",

@@ -15,6 +15,7 @@ import type {
   BillingAddonKey,
   BillingOverviewReadModel,
   BillingPlanKey,
+  BulkApplicantImportResult,
   BulkImportPayload,
   InternalAdminAccountDetailReadModel,
   InternalAdminAccountListReadModel,
@@ -55,6 +56,7 @@ import type {
   InterviewQuestionnairePreview,
   InterviewTemplate,
   InfrastructureReadinessReadModel,
+  IntegrationConnectionReadModel,
   PublicInterviewSessionView,
   Job,
   JobRequirement,
@@ -63,6 +65,8 @@ import type {
   MeetingProvider,
   MemberDirectoryItem,
   QuickActionResult,
+  TenantProfileReadModel,
+  TenantRuntimeConfigurationReadModel,
   StageTransitionPayload,
   ProviderHealthDashboard,
   BulkApproveResult
@@ -145,11 +149,17 @@ type TranscriptQualityPayload = {
 
 type PublicSessionStartPayload = {
   token: string;
+  consentAccepted?: boolean;
   capabilities?: {
     speechRecognition?: boolean;
     speechSynthesis?: boolean;
     locale?: string;
   };
+};
+
+type InitElevenLabsConversationPayload = {
+  token: string;
+  consentAccepted?: boolean;
 };
 
 type PublicSessionAnswerPayload = {
@@ -588,7 +598,7 @@ export const apiClient = {
       body: payload
     });
   },
-  initElevenLabsConversation(sessionId: string, token: string) {
+  initElevenLabsConversation(sessionId: string, payload: InitElevenLabsConversationPayload) {
     return request<{
       signedUrl: string;
       agentId: string;
@@ -600,7 +610,7 @@ export const apiClient = {
       `interviews/public/sessions/${sessionId}/elevenlabs-init`,
       {
         method: "POST",
-        body: { token }
+        body: payload
       }
     );
   },
@@ -618,7 +628,7 @@ export const apiClient = {
     });
   },
   bulkImportApplicants(jobId: string, payload: BulkImportPayload) {
-    return request<{ imported: number; skipped: number; errors: string[] }>(`jobs/${jobId}/applicants/bulk-import`, {
+    return request<BulkApplicantImportResult>(`jobs/${jobId}/applicants/bulk-import`, {
       method: "POST",
       body: payload
     });
@@ -658,6 +668,19 @@ export const apiClient = {
   },
   listRecruiterNotes(applicationId: string) {
     return request<RecruiterNote[]>(`applications/${applicationId}/notes`);
+  },
+  listIntegrationConnections() {
+    return request<IntegrationConnectionReadModel[]>("integrations/connections");
+  },
+  refreshIntegrationCredential(provider: "CALENDLY" | "GOOGLE_CALENDAR" | "GOOGLE_MEET") {
+    return request<{
+      refreshed: boolean;
+      reason?: string;
+      statusCode?: number;
+    }>(`integrations/connections/${provider}/credential/refresh`, {
+      method: "POST",
+      body: {}
+    });
   },
   addRecruiterNote(applicationId: string, noteText: string) {
     return request<RecruiterNote>(`applications/${applicationId}/notes`, {
@@ -872,6 +895,23 @@ export const apiClient = {
       userId: string;
     }>(`members/${userId}`, {
       method: "DELETE"
+    });
+  },
+  getTenantProfile() {
+    return request<TenantProfileReadModel>("tenant-config/profile");
+  },
+  getTenantRuntimeConfiguration() {
+    return request<TenantRuntimeConfigurationReadModel>("tenant-config/runtime");
+  },
+  updateTenantProfile(payload: {
+    companyName: string;
+    websiteUrl?: string;
+    logoUrl?: string;
+    profileSummary?: string;
+  }) {
+    return request<TenantProfileReadModel>("tenant-config/profile", {
+      method: "PATCH",
+      body: payload
     });
   },
   billingOverview() {

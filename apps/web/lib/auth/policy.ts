@@ -126,6 +126,7 @@ export const ROUTE_POLICY_MAP: Record<string, RoutePolicy> = {
   "/reports": { requiredPermissions: ["report.read"] },
   "/sourcing": { requiredPermissions: ["job.read"] },
   "/subscription": { requiredPermissions: ["tenant.manage"] },
+  "/team": { requiredPermissions: ["user.manage"] },
   "/jobs/new": { requiredPermissions: ["job.create"] },
   "/candidates": { requiredPermissions: ["candidate.read"] },
   "/candidates/new": { requiredPermissions: ["candidate.create"] },
@@ -133,6 +134,7 @@ export const ROUTE_POLICY_MAP: Record<string, RoutePolicy> = {
   "/audit-logs": { requiredPermissions: ["audit.read"] },
   "/raporlar": { requiredPermissions: ["report.read"] },
   "/abonelik": { requiredPermissions: ["tenant.manage"] },
+  "/ekip": { requiredPermissions: ["user.manage"] },
   "/yonetim": { requiredPermissions: ["tenant.manage"] },
   "/settings": { requiredPermissions: ["user.manage"] }
 };

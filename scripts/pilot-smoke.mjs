@@ -141,13 +141,15 @@ async function signupPilotUser() {
 
   ensure(signup?.accessToken, "Signup access token missing");
   ensure(signup?.user?.tenantId, "Signup tenant id missing");
+  ensure(signup?.user?.id, "Signup user id missing");
 
   logStatus("PASS", "Pilot tenant created", signup.user?.tenantId ?? email);
 
   return {
     stamp,
     token: signup.accessToken,
-    tenantId: signup.user?.tenantId ?? null
+    tenantId: signup.user?.tenantId ?? null,
+    userId: signup.user?.id ?? null
   };
 }
 
@@ -267,6 +269,9 @@ async function main() {
   const providerHealth = await requestJson("Provider health", "/read-models/provider-health", {
     headers: auth
   });
+  const aiSupportCenter = await requestJson("AI support center", "/read-models/ai-support-center", {
+    headers: auth
+  });
   const infrastructure = await requestJson("Infrastructure readiness", "/read-models/infrastructure-readiness", {
     headers: auth
   });
@@ -278,6 +283,30 @@ async function main() {
     addWarning("Provider health degraded", formatWarnings(providerHealth.warnings ?? []));
   } else {
     logStatus("PASS", "Provider health healthy");
+  }
+
+  logStatus(
+    "PASS",
+    "AI support center loaded",
+    `providers=${Array.isArray(aiSupportCenter?.providers) ? aiSupportCenter.providers.length : 0}`
+  );
+
+  ensure(Array.isArray(infrastructure?.scheduling?.catalog), "Infrastructure scheduling catalog missing");
+  ensure(infrastructure?.scheduling?.fallback?.label, "Infrastructure scheduling fallback missing");
+  logStatus(
+    "PASS",
+    "Infrastructure scheduling catalog loaded",
+    `providers=${infrastructure.scheduling.catalog.length}, fallback=${infrastructure.scheduling.fallback.label}`
+  );
+
+  if (Array.isArray(infrastructure?.launchWarnings) && infrastructure.launchWarnings.length > 0) {
+    addWarning("Infrastructure launch warnings present", formatWarnings(infrastructure.launchWarnings));
+  } else {
+    logStatus("PASS", "Infrastructure launch warnings clear");
+  }
+
+  if (Array.isArray(infrastructure?.queryWarnings) && infrastructure.queryWarnings.length > 0) {
+    addWarning("Infrastructure query warnings present", formatWarnings(infrastructure.queryWarnings));
   }
 
   if (!infrastructure?.runtime?.notifications?.ready || infrastructure?.runtime?.notifications?.emailProvider === "console") {
@@ -538,6 +567,78 @@ async function main() {
     "Interview review pack completed",
     `${reviewPack.reports[0]?.id ?? "report"} | ${reviewPack.recommendation.id}`
   );
+
+  const latestReportId = reviewPack.reports[0]?.id ?? null;
+  ensure(latestReportId, "Latest report id missing after review pack completion");
+
+  const decisionResult = await requestJson("Record recruiter decision", `/applications/${applicationId}/decision`, {
+    method: "POST",
+    headers: jsonHeaders(pilot.token, pilot.tenantId),
+    body: JSON.stringify({
+      decision: "advance",
+      reasonCode: "advanced_by_recruiter",
+      aiReportId: latestReportId,
+      humanApprovedBy: pilot.userId
+    })
+  });
+  ensure(decisionResult?.applicationId === applicationId, "Decision response application mismatch");
+  logStatus("PASS", "Recruiter decision recorded", decisionResult?.status ?? "advance");
+
+  const finalApplicationDetail = await poll(
+    "Application decision propagation",
+    () =>
+      requestJson("Final application detail", `/read-models/applications/${applicationId}`, {
+        headers: auth
+      }),
+    (detail) => {
+      const decisionRecorded = detail?.summary?.humanDecision === "advance";
+      const stageAdvanced = detail?.summary?.stage === "HIRING_MANAGER_REVIEW";
+      const approvalLogged = Array.isArray(detail?.governance?.humanApprovals) && detail.governance.humanApprovals.length > 0;
+      const notificationLogged =
+        Array.isArray(detail?.governance?.notificationDeliveries) &&
+        detail.governance.notificationDeliveries.some(
+          (delivery) =>
+            delivery?.eventType === "application.decision_recorded" ||
+            delivery?.templateKey === "application_advanced_v1"
+        );
+
+      return Boolean(decisionRecorded && stageAdvanced && approvalLogged && notificationLogged);
+    },
+    { attempts: 20, intervalMs: 2000 }
+  );
+
+  ensure(
+    Array.isArray(finalApplicationDetail?.governance?.notificationDeliveries),
+    "Application detail governance notification list missing"
+  );
+  ensure(
+    Array.isArray(finalApplicationDetail?.governance?.humanApprovals),
+    "Application detail human approval list missing"
+  );
+  ensure(
+    (finalApplicationDetail?.interview?.latestSession?.transcript?.segmentCount ?? 0) > 0,
+    "Application detail transcript evidence missing after interview completion"
+  );
+  ensure(
+    finalApplicationDetail?.summary?.humanDecision === "advance",
+    "Application detail human decision missing after recruiter decision"
+  );
+  ensure(
+    finalApplicationDetail?.summary?.stage === "HIRING_MANAGER_REVIEW",
+    "Application detail stage did not advance after recruiter decision"
+  );
+  logStatus(
+    "PASS",
+    "Application dossier governance loaded",
+    `decision=${finalApplicationDetail.summary.humanDecision}, notifications=${finalApplicationDetail.governance.notificationDeliveries.length}, approvals=${finalApplicationDetail.governance.humanApprovals.length}, transcriptSegments=${finalApplicationDetail.interview.latestSession.transcript.segmentCount}`
+  );
+
+  if (finalApplicationDetail.governance.notificationDeliveries.length === 0) {
+    addWarning(
+      "Application communication log empty",
+      "Invite or decision notifications are not yet visible in the dossier."
+    );
+  }
 
   if (warnings.length > 0) {
     const detail = warnings.map((warning) => `${warning.label}${warning.detail ? ` (${warning.detail})` : ""}`).join(" | ");

@@ -107,6 +107,13 @@ export class SchedulingService {
       throw new NotFoundException("Basvuru bulunamadi.");
     }
 
+    if (input.provider) {
+      await this.integrationsService.assertMeetingProviderSelectable({
+        tenantId: input.tenantId,
+        provider: input.provider
+      });
+    }
+
     const workflow = await this.prisma.schedulingWorkflow.create({
       data: {
         tenantId: input.tenantId,

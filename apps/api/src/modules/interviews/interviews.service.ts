@@ -7,6 +7,7 @@ import { randomUUID } from "crypto";
 import {
   ApplicationStage,
   AuditActorType,
+  ConsentContext,
   IntegrationConnectionStatus,
   IntegrationProvider,
   InterviewSessionStatus,
@@ -31,6 +32,7 @@ import {
   deriveInterviewInvitationState,
   isAiFirstInterviewInvitation
 } from "./interview-invitation-state.util";
+import { InterviewInvitationMonitorService } from "./interview-invitation-monitor.service";
 import {
   buildInterviewFirstQuestionPrompt,
   buildInterviewOpeningPrompt,
@@ -51,6 +53,8 @@ const MEETING_PROVIDERS = [
 
 const INTERVIEW_SESSION_STALE_MINUTES = 45;
 const ANSWER_TOO_SHORT_WORDS = 4;
+const INTERVIEW_CONSENT_NOTICE_VERSION = "kvkk_tr_v1_2026_03";
+const INTERVIEW_CONSENT_POLICY_VERSION = "policy_v1";
 const PUBLIC_SESSION_INCLUDE = {
   template: true,
   application: {
@@ -160,6 +164,28 @@ function parseOptionalDate(raw?: string) {
   }
 
   return parsed;
+}
+
+function buildMeetingProviderSelectionReason(input: {
+  provider: IntegrationProvider;
+  status: string;
+  requiresConnection: boolean;
+  connected: boolean;
+  oauthConfigured: boolean;
+}) {
+  if (input.status === "unsupported") {
+    return `${input.provider} V1 kapsaminda desteklenmiyor.`;
+  }
+
+  if (input.status === "setup_required" && !input.oauthConfigured) {
+    return `${input.provider} için provider kurulumu henüz tamamlanmadi.`;
+  }
+
+  if (input.requiresConnection && !input.connected) {
+    return `${input.provider} için aktif tenant baglantisi bulunmuyor.`;
+  }
+
+  return null;
 }
 
 function toJsonValue(input?: Record<string, unknown>) {
@@ -338,6 +364,17 @@ type PublicSessionRow = Prisma.InterviewSessionGetPayload<{
   include: typeof PUBLIC_SESSION_INCLUDE;
 }>;
 
+type PublicSessionConsentStatus = "PENDING" | "GRANTED" | "WITHDRAWN";
+
+type PublicSessionConsentView = {
+  required: boolean;
+  status: PublicSessionConsentStatus;
+  noticeVersion: string;
+  policyVersion: string | null;
+  grantedAt: Date | null;
+  withdrawnAt: Date | null;
+};
+
 @Injectable()
 export class InterviewsService {
   constructor(
@@ -350,6 +387,8 @@ export class InterviewsService {
     @Inject(BillingService) private readonly billingService: BillingService,
     @Inject(SpeechRuntimeService) private readonly speechRuntimeService: SpeechRuntimeService,
     @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService,
+    @Inject(InterviewInvitationMonitorService)
+    private readonly interviewInvitationMonitorService: InterviewInvitationMonitorService,
     @Inject(StructuredLoggerService) private readonly logger: StructuredLoggerService
   ) {}
 
@@ -412,6 +451,15 @@ export class InterviewsService {
 
   listByApplication(tenantId: string, applicationId: string) {
     return this.listSessions(tenantId, { applicationId });
+  }
+
+  sendInvitationReminder(input: {
+    tenantId: string;
+    applicationId: string;
+    requestedBy: string;
+    traceId?: string;
+  }) {
+    return this.interviewInvitationMonitorService.sendManualReminder(input);
   }
 
   async listTemplates(tenantId: string, roleFamily?: string) {
@@ -568,24 +616,49 @@ export class InterviewsService {
       }
     });
 
-    return {
-      providers: connections.map((connection) => ({
-        provider: connection.provider,
-        connectionId: connection.id,
-        displayName: connection.displayName,
-        hasMeetingUrlTemplate: (() => {
-          const config = connection.configJson as Record<string, unknown>;
-          if (connection.provider === IntegrationProvider.CALENDLY) {
-            return (
-              typeof config.schedulingUrl === "string" ||
-              typeof config.schedulingUrlTemplate === "string"
-            );
-          }
+    const mappedProviders = connections.map((connection) => ({
+      provider: connection.provider,
+      connectionId: connection.id,
+      displayName: connection.displayName,
+      hasMeetingUrlTemplate: (() => {
+        const config = connection.configJson as Record<string, unknown>;
+        if (connection.provider === IntegrationProvider.CALENDLY) {
+          return (
+            typeof config.schedulingUrl === "string" ||
+            typeof config.schedulingUrlTemplate === "string"
+          );
+        }
 
-          return typeof config.baseMeetingUrl === "string";
-        })(),
-        updatedAt: connection.updatedAt
-      })),
+        return typeof config.baseMeetingUrl === "string";
+      })(),
+      updatedAt: connection.updatedAt
+    }));
+
+    const providerByKey = new Map(mappedProviders.map((provider) => [provider.provider, provider]));
+
+    return {
+      providers: mappedProviders,
+      catalog: this.runtimeConfig.meetingProviderCatalog.map((entry) => {
+        const connected = providerByKey.get(entry.provider as IntegrationProvider);
+        const selectionReason = buildMeetingProviderSelectionReason({
+          provider: entry.provider as IntegrationProvider,
+          status: entry.status,
+          requiresConnection: entry.requiresConnection,
+          connected: Boolean(connected),
+          oauthConfigured: entry.oauthConfigured
+        });
+
+        return {
+          ...entry,
+          connected: Boolean(connected),
+          connectionId: connected?.connectionId ?? null,
+          displayName: connected?.displayName ?? null,
+          hasMeetingUrlTemplate: connected?.hasMeetingUrlTemplate ?? false,
+          updatedAt: connected?.updatedAt ?? null,
+          selectable: !selectionReason,
+          selectionReason
+        };
+      }),
       fallback: {
         provider: null,
         source: "internal_fallback",
@@ -2101,12 +2174,13 @@ export class InterviewsService {
     });
 
     const ensured = await this.autoFailStaleSessionIfNeeded(session, input.traceId);
-    return this.toPublicSessionView(ensured);
+    return await this.toPublicSessionView(ensured);
   }
 
   async startPublicSession(input: {
     sessionId: string;
     accessToken: string;
+    consentAccepted?: boolean;
     capabilities?: {
       speechRecognition: boolean;
       speechSynthesis: boolean;
@@ -2125,12 +2199,34 @@ export class InterviewsService {
       session.status === InterviewSessionStatus.FAILED ||
       session.status === InterviewSessionStatus.NO_SHOW
     ) {
-      return this.toPublicSessionView(session);
+      return await this.toPublicSessionView(session);
     }
 
     if (session.status === InterviewSessionStatus.COMPLETED) {
-      return this.toPublicSessionView(session);
+      return await this.toPublicSessionView(session);
     }
+
+    const consentView = await this.resolvePublicSessionConsentView(session);
+    const consentRecord =
+      consentView.status === "GRANTED"
+        ? null
+        : input.consentAccepted === true
+          ? await this.capturePublicSessionConsent({
+              session,
+              traceId: input.traceId,
+              source:
+                session.status === InterviewSessionStatus.SCHEDULED
+                  ? "candidate_public_link"
+                  : "candidate_public_resume"
+            })
+          : null;
+
+    if (consentView.status !== "GRANTED" && !consentRecord) {
+      throw new BadRequestException(
+        "Görüşmeyi başlatmadan önce ses kaydı ve transcript işleme onayını vermeniz gerekiyor."
+      );
+    }
+
     const now = new Date();
 
     const runtimeSelection = this.speechRuntimeService.resolveRuntimeSelection({
@@ -2148,6 +2244,7 @@ export class InterviewsService {
               ...(isAiFirstInterviewInvitation(session) ? { invitationStatus: "IN_PROGRESS" } : {}),
               startedAt: session.startedAt ?? now,
               lastCandidateActivityAt: now,
+              ...(consentRecord ? { consentRecordId: consentRecord.id } : {}),
               voiceInputProvider: runtimeSelection.voiceInputProvider,
               voiceOutputProvider: runtimeSelection.voiceOutputProvider,
               candidateLocale: input.capabilities?.locale?.trim() || session.candidateLocale,
@@ -2162,6 +2259,7 @@ export class InterviewsService {
             data: {
               lastCandidateActivityAt: now,
               ...(isAiFirstInterviewInvitation(session) ? { invitationStatus: "IN_PROGRESS" } : {}),
+              ...(consentRecord ? { consentRecordId: consentRecord.id } : {}),
               voiceInputProvider: session.voiceInputProvider ?? runtimeSelection.voiceInputProvider,
               voiceOutputProvider: session.voiceOutputProvider ?? runtimeSelection.voiceOutputProvider,
               runtimeProviderMode: session.runtimeProviderMode ?? runtimeSelection.runtimeProviderMode
@@ -2204,7 +2302,7 @@ export class InterviewsService {
     }
 
     const promptedSession = await this.ensurePromptForRunningSession(startedSession, input.traceId);
-    return this.toPublicSessionView(promptedSession);
+    return await this.toPublicSessionView(promptedSession);
   }
 
   async submitPublicAnswer(input: {
@@ -2226,7 +2324,7 @@ export class InterviewsService {
     const activeSession = await this.autoFailStaleSessionIfNeeded(session, input.traceId);
 
     if (activeSession.status === InterviewSessionStatus.COMPLETED) {
-      return this.toPublicSessionView(activeSession);
+      return await this.toPublicSessionView(activeSession);
     }
 
     if (activeSession.status !== InterviewSessionStatus.RUNNING) {
@@ -2255,12 +2353,12 @@ export class InterviewsService {
         traceId: input.traceId
       });
 
-      return this.toPublicSessionView(handled);
+      return await this.toPublicSessionView(handled);
     }
 
     if (!activeTurn) {
       const prompted = await this.ensurePromptForRunningSession(activeSession, input.traceId);
-      return this.toPublicSessionView(prompted);
+      return await this.toPublicSessionView(prompted);
     }
 
     const transcript = await this.ensureRuntimeTranscript({
@@ -2394,7 +2492,7 @@ export class InterviewsService {
       traceId: input.traceId
     });
 
-    return this.toPublicSessionView(next);
+    return await this.toPublicSessionView(next);
   }
 
   async submitPublicAudioAnswer(input: {
@@ -2476,7 +2574,16 @@ export class InterviewsService {
       session.status === InterviewSessionStatus.FAILED ||
       session.status === InterviewSessionStatus.NO_SHOW
     ) {
-      return this.toPublicSessionView(session);
+      return await this.toPublicSessionView(session);
+    }
+
+    if (session.status === InterviewSessionStatus.SCHEDULED) {
+      const consentView = await this.resolvePublicSessionConsentView(session);
+      if (consentView.status !== "GRANTED") {
+        throw new BadRequestException(
+          "Görüşme tamamlanmadan önce ses kaydı ve transcript işleme onayının alınmış olması gerekiyor."
+        );
+      }
     }
 
     const runningSession =
@@ -2581,7 +2688,7 @@ export class InterviewsService {
       throw new NotFoundException("Interview session bulunamadı.");
     }
 
-    return this.toPublicSessionView(completed);
+    return await this.toPublicSessionView(completed);
   }
 
   async getPublicPromptAudio(input: {
@@ -2724,7 +2831,7 @@ export class InterviewsService {
       throw new NotFoundException("Interview session bulunamadı.");
     }
 
-    return this.toPublicSessionView(refreshed);
+    return await this.toPublicSessionView(refreshed);
   }
 
   async abandonPublicSession(input: {
@@ -2744,7 +2851,7 @@ export class InterviewsService {
       session.status === InterviewSessionStatus.COMPLETED ||
       session.status === InterviewSessionStatus.FAILED
     ) {
-      return this.toPublicSessionView(session);
+      return await this.toPublicSessionView(session);
     }
 
     const abandoned = await this.prisma.interviewSession.update({
@@ -2790,7 +2897,7 @@ export class InterviewsService {
       })
     ]);
 
-    return this.toPublicSessionView(abandoned);
+    return await this.toPublicSessionView(abandoned);
   }
 
   async requestReviewPack(input: {
@@ -3943,7 +4050,7 @@ export class InterviewsService {
     return this.ensurePromptForRunningSession(refreshed, input.traceId);
   }
 
-  private toPublicSessionView(
+  private async toPublicSessionView(
     session: PublicSessionRow
   ) {
     const invitation = deriveInterviewInvitationState(session);
@@ -3969,6 +4076,7 @@ export class InterviewsService {
 
     const progressValue =
       template.blocks.length > 0 ? answeredBlocks.size / template.blocks.length : 0;
+    const consent = await this.resolvePublicSessionConsentView(session);
 
     return {
       sessionId: session.id,
@@ -4077,8 +4185,123 @@ export class InterviewsService {
             expired: invitation.expired,
             resumeAllowed: invitation.resumeAllowed
           }
-        : null
+        : null,
+      consent: {
+        required: consent.required,
+        status: consent.status,
+        noticeVersion: consent.noticeVersion,
+        policyVersion: consent.policyVersion,
+        grantedAt: consent.grantedAt,
+        withdrawnAt: consent.withdrawnAt
+      }
     };
+  }
+
+  private async resolvePublicSessionConsentView(
+    session: Pick<PublicSessionRow, "tenantId" | "consentRecordId" | "application">
+  ): Promise<PublicSessionConsentView> {
+    const fallback: PublicSessionConsentView = {
+      required: true,
+      status: "PENDING",
+      noticeVersion: INTERVIEW_CONSENT_NOTICE_VERSION,
+      policyVersion: INTERVIEW_CONSENT_POLICY_VERSION,
+      grantedAt: null,
+      withdrawnAt: null
+    };
+
+    if (!session.consentRecordId) {
+      return fallback;
+    }
+
+    const record = await this.prisma.consentRecord.findFirst({
+      where: {
+        id: session.consentRecordId,
+        tenantId: session.tenantId,
+        candidateId: session.application.candidate.id,
+        context: ConsentContext.INTERVIEW_RECORDING
+      },
+      select: {
+        consentGiven: true,
+        noticeVersion: true,
+        policyVersion: true,
+        capturedAt: true,
+        withdrawnAt: true
+      }
+    });
+
+    if (!record) {
+      return fallback;
+    }
+
+    return {
+      required: true,
+      status:
+        record.withdrawnAt
+          ? "WITHDRAWN"
+          : record.consentGiven
+            ? "GRANTED"
+            : "PENDING",
+      noticeVersion: record.noticeVersion || INTERVIEW_CONSENT_NOTICE_VERSION,
+      policyVersion: record.policyVersion ?? INTERVIEW_CONSENT_POLICY_VERSION,
+      grantedAt: record.consentGiven ? record.capturedAt : null,
+      withdrawnAt: record.withdrawnAt
+    };
+  }
+
+  private async capturePublicSessionConsent(input: {
+    session: Pick<PublicSessionRow, "id" | "tenantId" | "applicationId" | "application">;
+    traceId?: string;
+    source: string;
+  }) {
+    const consentRecord = await this.prisma.consentRecord.create({
+      data: {
+        tenantId: input.session.tenantId,
+        candidateId: input.session.application.candidate.id,
+        context: ConsentContext.INTERVIEW_RECORDING,
+        consentGiven: true,
+        noticeVersion: INTERVIEW_CONSENT_NOTICE_VERSION,
+        policyVersion: INTERVIEW_CONSENT_POLICY_VERSION
+      }
+    });
+
+    await Promise.all([
+      this.domainEventsService.append({
+        tenantId: input.session.tenantId,
+        aggregateType: "InterviewSession",
+        aggregateId: input.session.id,
+        eventType: "interview.consent.captured",
+        traceId: input.traceId,
+        payload: {
+          applicationId: input.session.applicationId,
+          candidateId: input.session.application.candidate.id,
+          consentRecordId: consentRecord.id,
+          context: ConsentContext.INTERVIEW_RECORDING,
+          noticeVersion: consentRecord.noticeVersion,
+          policyVersion: consentRecord.policyVersion,
+          capturedAt: consentRecord.capturedAt.toISOString(),
+          source: input.source
+        }
+      }),
+      this.auditWriterService.write({
+        tenantId: input.session.tenantId,
+        actorType: AuditActorType.SYSTEM,
+        action: "interview.consent.captured",
+        entityType: "ConsentRecord",
+        entityId: consentRecord.id,
+        traceId: input.traceId,
+        metadata: {
+          sessionId: input.session.id,
+          applicationId: input.session.applicationId,
+          candidateId: input.session.application.candidate.id,
+          context: ConsentContext.INTERVIEW_RECORDING,
+          noticeVersion: consentRecord.noticeVersion,
+          policyVersion: consentRecord.policyVersion,
+          source: input.source
+        }
+      })
+    ]);
+
+    return consentRecord;
   }
 
   private toSessionView(session: InterviewSessionRow) {

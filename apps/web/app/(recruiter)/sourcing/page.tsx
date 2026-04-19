@@ -46,7 +46,7 @@ export default function SourcingPage() {
         loadError instanceof Error ? loadError.message : t("Sourcing ekranı yüklenemedi.");
       if (message.includes("beta erişiminde") || message.includes("iç yönetim ekibi")) {
         setAccessNotice(
-          "Sourcing modülü şu anda kontrollü beta erişiminde. İç yönetim ekibi dışında görünüm paylaşılmıyor."
+          "Bu alan şu anda hesabınız için kullanıma açık değil."
         );
         setOverview(null);
         setJobs([]);

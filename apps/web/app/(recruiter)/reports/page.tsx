@@ -185,6 +185,35 @@ export default function RaporlarPage() {
     ];
   }, [data, locale, t]);
 
+  const calibrationHighlights = useMemo(() => {
+    if (!data) {
+      return [];
+    }
+
+    return [
+      {
+        title: t("İnsan kararı kapsamı"),
+        value: formatPercentLabel(locale, data.ai.calibration.humanDecisionCoverageRate, 0),
+        info: t(data.definitions.humanDecisionCoverage)
+      },
+      {
+        title: t("AI yön uyumu"),
+        value: formatPercentLabel(locale, data.ai.calibration.agreementRate, 0),
+        info: t(data.definitions.calibrationAgreement)
+      },
+      {
+        title: t("Advance kabul oranı"),
+        value: formatPercentLabel(locale, data.ai.calibration.advanceAcceptanceRate, 0),
+        info: t("AI'nin ADVANCE önerisi verdiği ve insan kararının kaydedildiği dosyalarda recruiter'ın ilerletme kararı verme oranı.")
+      },
+      {
+        title: t("Review çözümleme oranı"),
+        value: formatPercentLabel(locale, data.ai.calibration.resolvedReviewRecommendationRate, 0),
+        info: t("AI'nin REVIEW önerisi verdiği dosyalarda recruiter kararının kaydedilme oranı.")
+      }
+    ];
+  }, [data, locale, t]);
+
   return (
     <section className="page-grid">
       <div className="section-head" style={{ marginBottom: 0 }}>
@@ -275,6 +304,46 @@ export default function RaporlarPage() {
                   <MetricTile key={item.title} label={item.title} value={item.value} info={item.info} />
                 ))}
               </div>
+            </section>
+
+            <section className="panel reports-panel">
+              <div className="section-head" style={{ marginBottom: 0 }}>
+                <div>
+                  <h3 style={{ marginTop: 0, fontSize: 15 }}>{t("AI kalibrasyonu")}</h3>
+                  <p className="small" style={{ margin: 0 }}>
+                    {t("AI önerileri ile recruiter kararlarının ne kadar hizalı olduğunu görün.")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="reports-metric-grid">
+                {calibrationHighlights.map((item) => (
+                  <MetricTile key={item.title} label={item.title} value={item.value} info={item.info} />
+                ))}
+              </div>
+
+              <ul className="plain-list" style={{ marginTop: 12 }}>
+                <DetailRow
+                  label={t("AI önerisi olan dosya")}
+                  value={formatMetricNumber(locale, data.ai.calibration.recommendedCount, 0)}
+                  info={t("AI recommendation üretilmiş başvuru sayısı.")}
+                />
+                <DetailRow
+                  label={t("İnsan kararı kaydı olan")}
+                  value={formatMetricNumber(locale, data.ai.calibration.humanReviewedCount, 0)}
+                  info={t(data.definitions.humanDecisionCoverage)}
+                />
+                <DetailRow
+                  label={t("Karşılaştırılabilir karar")}
+                  value={formatMetricNumber(locale, data.ai.calibration.comparableDecisionCount, 0)}
+                  info={t("AI'nin ADVANCE veya HOLD önerdiği ve insan kararının da kaydedildiği dosyalar.")}
+                />
+                <DetailRow
+                  label={t("Hold kabul oranı")}
+                  value={formatPercentLabel(locale, data.ai.calibration.holdAcceptanceRate, 0)}
+                  info={t("AI'nin HOLD önerdiği ve insan kararının kaydedildiği dosyalarda bekletme kararı verilme oranı.")}
+                />
+              </ul>
             </section>
 
             <section className="panel reports-panel">

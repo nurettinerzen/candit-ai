@@ -23,7 +23,7 @@ function resolveNextPath(raw: string | null) {
 }
 
 function LoginPageContent() {
-  const { locale, t } = useUiText();
+  const { t } = useUiText();
   const searchParams = useSearchParams();
   const nextPath = useMemo(() => resolveNextPath(searchParams.get("returnTo")), [searchParams]);
   const oauthError = formatAuthErrorMessage(searchParams.get("oauth_error"));
@@ -34,7 +34,6 @@ function LoginPageContent() {
   const [loading, setLoading] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [error, setError] = useState("");
-  const [verificationPreviewUrl, setVerificationPreviewUrl] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +62,6 @@ function LoginPageContent() {
     event.preventDefault();
     setLoading(true);
     setError("");
-    setVerificationPreviewUrl("");
 
     try {
       await loginWithPassword({
@@ -74,7 +72,6 @@ function LoginPageContent() {
     } catch (loginError) {
       const authFlowError = readAuthFlowError(loginError);
       setError(authFlowError?.message ?? (loginError instanceof Error ? loginError.message : t("Giriş başarısız.")));
-      setVerificationPreviewUrl(authFlowError?.emailVerification?.previewUrl ?? "");
     } finally {
       setLoading(false);
     }
@@ -109,16 +106,6 @@ function LoginPageContent() {
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }}>
         {oauthError ? <AuthNotice tone="danger" message={oauthError} /> : null}
         {error ? <AuthNotice tone="danger" message={error} /> : null}
-        {verificationPreviewUrl ? (
-          <AuthNotice
-            tone="info"
-            message={
-              locale === "en"
-                ? "Development mode: a fresh verification preview link is ready below."
-                : "Geliştirme modunda yeni bir doğrulama preview bağlantısı aşağıda hazır."
-            }
-          />
-        ) : null}
 
         <label style={{ display: "grid", gap: 8 }}>
           <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("E-posta")}</span>
@@ -144,67 +131,46 @@ function LoginPageContent() {
         <button type="submit" disabled={loading} style={primaryButtonStyle}>
           {loading ? t("Giriş yapılıyor...") : t("Giriş Yap")}
         </button>
-
-        {verificationPreviewUrl ? (
-          <a href={verificationPreviewUrl} style={secondaryButtonStyle}>
-            {t("Doğrulama bağlantısını aç")}
-          </a>
-        ) : null}
       </form>
 
-      <div style={{ display: "grid", gap: 12, marginTop: 18 }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr auto 1fr",
-            alignItems: "center",
-            gap: 12,
-            color: "#64748b",
-            fontSize: 12
-          }}
-        >
-          <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
-          <span>{t("veya")}</span>
-          <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
-        </div>
-
-        <a
-          href={googleEnabled ? googleUrl : undefined}
-          aria-disabled={!googleEnabled}
-          style={{
-            ...secondaryButtonStyle,
-            opacity: googleEnabled ? 1 : 0.55,
-            cursor: googleEnabled ? "pointer" : "not-allowed",
-            pointerEvents: googleEnabled ? "auto" : "none"
-          }}
-        >
-          <span
+      {googleEnabled ? (
+        <div style={{ display: "grid", gap: 12, marginTop: 18 }}>
+          <div
             style={{
-              display: "inline-flex",
-              width: 22,
-              height: 22,
-              borderRadius: 999,
+              display: "grid",
+              gridTemplateColumns: "1fr auto 1fr",
               alignItems: "center",
-              justifyContent: "center",
-              background: "#fff",
-              color: "#0f172a",
-              fontWeight: 700,
+              gap: 12,
+              color: "#64748b",
               fontSize: 12
             }}
           >
-            G
-          </span>
-          {t("Google ile giriş yap")}
-        </a>
+            <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
+            <span>{t("veya")}</span>
+            <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
+          </div>
 
-        {!googleEnabled ? (
-          <AuthNotice
-            tone="info"
-            message={t("Google ile giriş yakında aktif olacak.")}
-          />
-        ) : null}
-
-      </div>
+          <a href={googleUrl} style={secondaryButtonStyle}>
+            <span
+              style={{
+                display: "inline-flex",
+                width: 22,
+                height: 22,
+                borderRadius: 999,
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#fff",
+                color: "#0f172a",
+                fontWeight: 700,
+                fontSize: 12
+              }}
+            >
+              G
+            </span>
+            {t("Google ile giriş yap")}
+          </a>
+        </div>
+      ) : null}
     </AuthShell>
   );
 }

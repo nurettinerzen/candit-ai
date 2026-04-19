@@ -12,27 +12,35 @@ import { ErrorState, LoadingState } from "../../../../components/ui-states";
 import { FitScoreBreakdown } from "../../../../components/fit-score-breakdown";
 import { apiClient } from "../../../../lib/api-client";
 import {
+  getAvailableStageActions,
   getRecruiterStageMeta,
-  getStageActions,
+  isInterviewInviteAction,
   SOURCE_LABELS,
   STAGE_LABELS
 } from "../../../../lib/constants";
 import { formatDate } from "../../../../lib/format";
 import {
   formatInterviewDeadline,
-  getInterviewInvitationMeta
+  getInterviewInvitationMeta,
+  shouldOfferInterviewReinvite
 } from "../../../../lib/interview-invitation";
+import { resolveActiveSession } from "../../../../lib/auth/session";
 import { decodeRouteEntityId, sourcingProjectDetailHref, withApiBaseOverride } from "../../../../lib/entity-routes";
 import type {
   ApplicantFitScoreView,
   ApplicationDetailReadModel,
   ApplicationStage,
+  HumanDecision,
   JsonValue,
   QuickActionType,
   RecruiterNote
 } from "../../../../lib/types";
 
 /* -- helpers -- */
+
+type LatestInterviewTranscript = NonNullable<
+  ApplicationDetailReadModel["interview"]["latestSession"]
+>["transcript"];
 
 function aiRecommendationBanner(rec: string | null): { label: string; color: string } | null {
   if (!rec) return null;
@@ -147,6 +155,187 @@ function sourceLabel(source: string | null | undefined) {
   return SOURCE_LABELS[source] ?? source;
 }
 
+function notificationTemplateLabel(templateKey: string | null | undefined) {
+  switch (templateKey) {
+    case "application_advanced_v1":
+      return "İlerletme e-postası";
+    case "application_on_hold_v1":
+      return "Bekletme e-postası";
+    case "application_rejected_v1":
+      return "Red e-postası";
+    case "interview_invitation_on_demand_v1":
+      return "AI mülakat daveti";
+    case "interview_invitation_reminder_v1":
+      return "Mülakat hatırlatması";
+    case "interview_scheduled_v1":
+      return "Planlı görüşme bildirimi";
+    case "interview_rescheduled_v1":
+      return "Yeniden planlama bildirimi";
+    case "interview_cancelled_v1":
+      return "İptal bildirimi";
+    default:
+      return templateKey ?? "Bildirim";
+  }
+}
+
+function notificationEventLabel(eventType: string | null | undefined) {
+  switch (eventType) {
+    case "application.decision_recorded":
+      return "Karar bildirimi";
+    case "interview.invitation.sent":
+      return "Mülakat daveti";
+    case "interview.invitation.reminder_sent":
+      return "Hatırlatma";
+    case "interview.scheduled":
+      return "Planlama bildirimi";
+    default:
+      return eventType ?? "Sistem olayı";
+  }
+}
+
+function notificationStatusMeta(status: string) {
+  switch (status) {
+    case "SENT":
+      return {
+        label: "Gönderildi",
+        color: "var(--success, #22c55e)",
+        background: "rgba(34,197,94,0.1)"
+      };
+    case "FAILED":
+      return {
+        label: "Hata",
+        color: "var(--danger, #ef4444)",
+        background: "rgba(239,68,68,0.1)"
+      };
+    default:
+      return {
+        label: "Kuyrukta",
+        color: "var(--warn, #f59e0b)",
+        background: "rgba(245,158,11,0.12)"
+      };
+  }
+}
+
+function dossierSignalMeta(isReady: boolean, labels: { ready: string; missing: string }) {
+  return {
+    label: isReady ? labels.ready : labels.missing,
+    color: isReady ? "var(--success, #22c55e)" : "var(--warn, #f59e0b)",
+    background: isReady ? "rgba(34,197,94,0.1)" : "rgba(245,158,11,0.12)"
+  };
+}
+
+function transcriptGovernanceMeta(
+  transcript: LatestInterviewTranscript
+) {
+  if (!transcript) {
+    return {
+      label: "Transcript yok",
+      color: "var(--warn, #f59e0b)",
+      background: "rgba(245,158,11,0.12)",
+      detail: "Mülakat transcript'i henüz oluşmamış."
+    };
+  }
+
+  if (transcript.finalizedAt) {
+    return {
+      label: "Transcript doğrulandı",
+      color: "var(--success, #22c55e)",
+      background: "rgba(34,197,94,0.1)",
+      detail: `Finalize: ${formatDate(transcript.finalizedAt)}`
+    };
+  }
+
+  if (transcript.qualityStatus === "REVIEW_REQUIRED") {
+    return {
+      label: "Transcript kontrol bekliyor",
+      color: "var(--warn, #f59e0b)",
+      background: "rgba(245,158,11,0.12)",
+      detail: transcript.reviewNotes ?? "Kalite kontrol veya insan gözden geçirmesi bekleniyor."
+    };
+  }
+
+  if (transcript.qualityStatus === "VERIFIED") {
+    return {
+      label: "Transcript hazır",
+      color: "var(--success, #22c55e)",
+      background: "rgba(34,197,94,0.1)",
+      detail: "Kalite doğrulaması tamamlandı."
+    };
+  }
+
+  return {
+    label: "Transcript taslak",
+    color: "var(--text-secondary)",
+    background: "rgba(255,255,255,0.08)",
+    detail: transcript.lastIngestedAt
+      ? `Son ingest: ${formatDate(transcript.lastIngestedAt)}`
+      : "Transcript akışı devam ediyor."
+  };
+}
+
+function cvExtractionStatusMeta(
+  profile: ApplicationDetailReadModel["candidate"]["cvFiles"][number]["parsedProfile"] | null | undefined
+) {
+  if (!profile) {
+    return {
+      label: "Parse bekleniyor",
+      color: "var(--warn, #f59e0b)",
+      background: "rgba(245,158,11,0.12)"
+    };
+  }
+
+  switch (profile.extractionStatus) {
+    case "EXTRACTED":
+      return {
+        label: profile.requiresManualReview ? "Kontrol öneriliyor" : "Parse tamamlandı",
+        color: profile.requiresManualReview ? "var(--warn, #f59e0b)" : "var(--success, #22c55e)",
+        background: profile.requiresManualReview ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.1)"
+      };
+    case "PARTIAL":
+      return {
+        label: "Kısmi çıkarım",
+        color: "var(--warn, #f59e0b)",
+        background: "rgba(245,158,11,0.12)"
+      };
+    case "FAILED":
+      return {
+        label: "Parse hatası",
+        color: "var(--danger, #ef4444)",
+        background: "rgba(239,68,68,0.1)"
+      };
+    case "UNSUPPORTED":
+      return {
+        label: "Desteklenmeyen dosya",
+        color: "var(--danger, #ef4444)",
+        background: "rgba(239,68,68,0.1)"
+      };
+    default:
+      return {
+        label: profile.extractionStatus,
+        color: "var(--text-secondary)",
+        background: "rgba(255,255,255,0.08)"
+      };
+  }
+}
+
+function extractionMethodLabel(method: string | null | undefined) {
+  switch (method) {
+    case "UTF8_PLAIN_TEXT":
+      return "Düz metin";
+    case "PDF_PARSE":
+      return "PDF parse";
+    case "DOCX_MAMMOTH":
+      return "DOCX parse";
+    case "DOC_LEGACY":
+    case "DOC_OS_CONVERSION":
+      return "Legacy DOC";
+    case "METADATA_ONLY":
+      return "Sadece metadata";
+    default:
+      return method ?? "—";
+  }
+}
+
 function outreachOutcomeLabel(status: string | null | undefined) {
   switch (status) {
     case "REPLIED":
@@ -166,15 +355,78 @@ function outreachOutcomeLabel(status: string | null | undefined) {
   }
 }
 
-function buildInviteSuccessMessage(result: { interviewLink?: string; expiresAt?: string | null }) {
+function buildInviteSuccessMessage(
+  result: { interviewLink?: string; expiresAt?: string | null },
+  action: QuickActionType = "invite_interview"
+) {
+  const inviteLabel = action === "reinvite_interview" ? "AI mülakat daveti yeniden gönderildi." : "AI mülakat daveti gönderildi.";
+
   if (result.expiresAt) {
-    return `AI mülakat daveti gönderildi. Link ${formatInterviewDeadline(result.expiresAt)} tarihine kadar aktif.`;
+    return `${inviteLabel} Link ${formatInterviewDeadline(result.expiresAt)} tarihine kadar aktif.`;
   }
 
   return result.interviewLink
-    ? "AI mülakat daveti gönderildi. Direkt görüşme linki hazır."
-    : "AI mülakat daveti gönderildi.";
+    ? `${inviteLabel} Direkt görüşme linki hazır.`
+    : inviteLabel;
 }
+
+function buildDecisionSuccessMessage(decision: HumanDecision) {
+  switch (decision) {
+    case "advance":
+      return "Aday bir sonraki değerlendirme aşamasına alındı.";
+    case "hold":
+      return "Aday bekletme kararına alındı.";
+    case "reject":
+      return "Aday reddedildi.";
+    default:
+      return "Karar kaydedildi.";
+  }
+}
+
+function buildQuickActionSuccessMessage(action: QuickActionType) {
+  switch (action) {
+    case "reject":
+      return "Aday reddedildi.";
+    case "invite_interview":
+    case "reinvite_interview":
+      return "Görüşme daveti gönderildi.";
+    case "send_reminder":
+      return "Mülakat hatırlatması gönderildi.";
+    default:
+      return "İşlem tamamlandı.";
+  }
+}
+
+function buildDecisionReasonCode(decision: HumanDecision) {
+  switch (decision) {
+    case "advance":
+      return "advanced_by_recruiter";
+    case "hold":
+      return "held_by_recruiter";
+    case "reject":
+      return "rejected_by_recruiter";
+    default:
+      return "manual_recruiter_decision";
+  }
+}
+
+function buildDecisionLabel(decision: HumanDecision) {
+  switch (decision) {
+    case "advance":
+      return "İlerlet";
+    case "hold":
+      return "Beklet";
+    case "reject":
+      return "Reddet";
+    default:
+      return "Karar";
+  }
+}
+
+type ConfirmDialogState = {
+  action: QuickActionType | HumanDecision;
+  flow: "quick" | "decision";
+};
 
 const INSIGHT_STOP_WORDS = new Set([
   "aday",
@@ -371,6 +623,13 @@ function applicationNextAction(input: {
   );
 
   if (input.latestInterview) {
+    if (shouldOfferInterviewReinvite(input.latestInterview.invitation ?? null, input.latestInterview.status ?? null)) {
+      return {
+        label: "Tekrar Davet Et",
+        detail: "Önceki AI mülakat linki artık kullanılamıyor. Yeni link oluşturabilirsiniz."
+      };
+    }
+
     return {
       label: interviewMeta.label,
       detail: input.latestInterview.invitation?.expiresAt
@@ -438,8 +697,9 @@ export default function ApplicationDetailPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState("");
-  const [confirmAction, setConfirmAction] = useState<QuickActionType | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [insightTab, setInsightTab] = useState<"summary" | "transcript">("summary");
+  const [inviteAction, setInviteAction] = useState<Extract<QuickActionType, "invite_interview" | "reinvite_interview">>("invite_interview");
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -467,30 +727,52 @@ export default function ApplicationDetailPage() {
   useEffect(() => { void loadData(); void loadFitScore(); void loadNotes(); }, [loadData, loadFitScore, loadNotes]);
 
   const handleAction = (action: QuickActionType) => {
-    if (action === "invite_interview") {
+    if (isInterviewInviteAction(action)) {
+      setInviteAction(action);
       setInviteModalOpen(true);
       return;
     }
 
-    setConfirmAction(action);
+    setConfirmDialog({
+      action,
+      flow: "quick"
+    });
+  };
+
+  const handleDecisionAction = (decision: HumanDecision) => {
+    setConfirmDialog({
+      action: decision,
+      flow: "decision"
+    });
   };
 
   const executeAction = async () => {
-    if (!confirmAction) return;
-    const action = confirmAction;
-    setConfirmAction(null);
+    if (!confirmDialog) return;
+    const { action, flow } = confirmDialog;
+    setConfirmDialog(null);
     setActionLoading(action);
     setActionMessage("");
     setActionError("");
     try {
-      await apiClient.quickAction(applicationId, { action });
-      setActionMessage(
-        action === "reject"
-          ? t("Aday reddedildi.")
-          : action === "invite_interview"
-            ? t("Görüşme daveti gönderildi.")
-            : t("İşlem tamamlandı.")
-      );
+      if (flow === "decision") {
+        const activeSession = resolveActiveSession();
+
+        if (!activeSession?.userId) {
+          throw new Error("Karar kaydetmek için aktif oturum bulunamadı.");
+        }
+
+        await apiClient.submitDecision(applicationId, {
+          decision: action as HumanDecision,
+          reasonCode: buildDecisionReasonCode(action as HumanDecision),
+          aiReportId: latestReport?.id ?? "manual_application_detail_decision",
+          humanApprovedBy: activeSession.userId
+        });
+
+        setActionMessage(buildDecisionSuccessMessage(action as HumanDecision));
+      } else {
+        await apiClient.quickAction(applicationId, { action: action as QuickActionType });
+        setActionMessage(t(buildQuickActionSuccessMessage(action as QuickActionType)));
+      }
       void loadData();
     } catch (e) {
       setActionError(e instanceof Error ? e.message : t("İşlem tamamlanamadı."));
@@ -567,7 +849,14 @@ export default function ApplicationDetailPage() {
     filter: isInterviewGroundedInsight
   });
   const transcriptPreview = latestInterview?.transcript?.previewSegments ?? [];
-  const actions = getStageActions(summary.stage as ApplicationStage);
+  const actions = getAvailableStageActions(summary.stage as ApplicationStage, {
+    interview: latestInterview
+      ? {
+          status: latestInterview.status,
+          invitation: latestInterview.invitation
+        }
+      : null
+  });
   const latestInterviewDuration = formatDurationLabel(latestInterview?.startedAt, latestInterview?.endedAt);
   const interviewSessions = data.interview?.sessions ?? [];
   const completedInterviewCount = interviewSessions.filter((session) => session.status === "COMPLETED").length;
@@ -579,6 +868,37 @@ export default function ApplicationDetailPage() {
     candidateEmail: candidate.email,
     sourcingOutreachStatus: candidate.sourcing?.latestOutreach?.status
   });
+  const shouldShowDecisionComposer =
+    summary.stage === "INTERVIEW_COMPLETED" ||
+    latestInterview?.status === "COMPLETED";
+  const latestHumanApproval = data.governance.humanApprovals[0] ?? null;
+  const notificationDeliveries = data.governance.notificationDeliveries ?? [];
+  const latestCvFile = candidate.cvFiles[0] ?? null;
+  const latestParsedCv = latestCvFile?.parsedProfile ?? null;
+  const emailSignal = dossierSignalMeta(Boolean(candidate.email), {
+    ready: "E-posta hazır",
+    missing: "E-posta eksik"
+  });
+  const phoneSignal = dossierSignalMeta(Boolean(candidate.phone), {
+    ready: "Telefon hazır",
+    missing: "Telefon eksik"
+  });
+  const cvSignal = dossierSignalMeta(Boolean(latestCvFile), {
+    ready: "CV mevcut",
+    missing: "CV eksik"
+  });
+  const cvParseSignal = cvExtractionStatusMeta(latestParsedCv);
+  const sourceEvidenceLabels = [
+    ...(candidate.externalSource ? [candidate.externalSource] : []),
+    ...(candidate.sourcing?.sourceLabels ?? [])
+  ].filter((label, index, array) => array.indexOf(label) === index);
+  const latestCommunication = notificationDeliveries[0] ?? null;
+  const latestCommunicationStatus = latestCommunication
+    ? notificationStatusMeta(latestCommunication.status)
+    : null;
+  const latestTranscript = latestInterview?.transcript ?? null;
+  const transcriptSignal = transcriptGovernanceMeta(latestTranscript);
+  const reminderCount = latestInterview?.invitation?.reminderCount ?? 0;
 
   return (
     <div className="page-grid">
@@ -1068,16 +1388,274 @@ export default function ApplicationDetailPage() {
           )}
 
           <section className="panel" style={{ marginBottom: 16 }}>
+            <h3 style={{ margin: "0 0 12px" }}>Aday Dosyası</h3>
+            <div style={{ display: "grid", gap: 12 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[emailSignal, phoneSignal, cvSignal].map((signal) => (
+                  <span
+                    key={signal.label}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "5px 10px",
+                      borderRadius: 999,
+                      color: signal.color,
+                      background: signal.background
+                    }}
+                  >
+                    {signal.label}
+                  </span>
+                ))}
+                {latestCvFile ? (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "5px 10px",
+                      borderRadius: 999,
+                      color: cvParseSignal.color,
+                      background: cvParseSignal.background
+                    }}
+                  >
+                    {cvParseSignal.label}
+                  </span>
+                ) : null}
+                {latestInterview ? (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "5px 10px",
+                      borderRadius: 999,
+                      color: transcriptSignal.color,
+                      background: transcriptSignal.background
+                    }}
+                  >
+                    {transcriptSignal.label}
+                  </span>
+                ) : null}
+              </div>
+
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  border: "1px solid var(--border)",
+                  background: "rgba(255,255,255,0.02)",
+                  display: "grid",
+                  gap: 8
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <span className="text-sm text-muted">Temas hazırlığı</span>
+                  <strong style={{ fontSize: 13 }}>
+                    {candidate.email
+                      ? "Karar ve davet e-postaları gönderilebilir"
+                      : "Karar e-postası için e-posta bilgisi gerekli"}
+                  </strong>
+                </div>
+                {latestCommunication && latestCommunicationStatus ? (
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span className="text-sm text-muted">Son iletişim</span>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        padding: "4px 8px",
+                        borderRadius: 999,
+                        color: latestCommunicationStatus.color,
+                        background: latestCommunicationStatus.background
+                      }}
+                    >
+                      {notificationTemplateLabel(latestCommunication.templateKey)} · {latestCommunicationStatus.label}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  border: "1px solid var(--border)",
+                  background: "rgba(255,255,255,0.02)",
+                  display: "grid",
+                  gap: 8
+                }}
+              >
+                <div className="text-xs text-muted">Kaynak izi</div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <span className="text-sm text-muted">Birincil kaynak</span>
+                  <strong style={{ fontSize: 13 }}>{sourceLabel(candidate.source)}</strong>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <span className="text-sm text-muted">Kaynak etiketi</span>
+                  <strong style={{ fontSize: 13 }}>
+                    {candidate.externalSource ?? candidate.sourcing?.primarySourceLabel ?? "—"}
+                  </strong>
+                </div>
+                {candidate.externalRef ? (
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span className="text-sm text-muted">Dış referans</span>
+                    <strong style={{ fontSize: 13 }}>{candidate.externalRef}</strong>
+                  </div>
+                ) : null}
+                {sourceEvidenceLabels.length > 0 ? (
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <span className="text-sm text-muted">Ek kaynak sinyalleri</span>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {sourceEvidenceLabels.map((label) => (
+                        <span
+                          key={label}
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "5px 10px",
+                            borderRadius: 999,
+                            color: "var(--text-secondary)",
+                            background: "rgba(255,255,255,0.06)"
+                          }}
+                        >
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  border: "1px solid var(--border)",
+                  background: "rgba(255,255,255,0.02)",
+                  display: "grid",
+                  gap: 8
+                }}
+              >
+                <div className="text-xs text-muted">CV kanıtı</div>
+                {!latestCvFile ? (
+                  <p className="text-sm text-muted" style={{ margin: 0 }}>
+                    Henüz bu aday için CV yüklenmemiş. Fit ve screening yalnız mevcut profil sinyalleriyle çalışıyor olabilir.
+                  </p>
+                ) : (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <span className="text-sm text-muted">Son CV</span>
+                      <strong style={{ fontSize: 13 }}>{latestCvFile.originalName}</strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <span className="text-sm text-muted">Yüklenme</span>
+                      <strong style={{ fontSize: 13 }}>{formatDate(latestCvFile.uploadedAt)}</strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <span className="text-sm text-muted">İşleme durumu</span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          padding: "4px 8px",
+                          borderRadius: 999,
+                          color: cvParseSignal.color,
+                          background: cvParseSignal.background
+                        }}
+                      >
+                        {cvParseSignal.label}
+                      </span>
+                    </div>
+                    {latestParsedCv ? (
+                      <>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                          <span className="text-sm text-muted">Çıkarım yöntemi</span>
+                          <strong style={{ fontSize: 13 }}>{extractionMethodLabel(latestParsedCv.extractionMethod)}</strong>
+                        </div>
+                        {formatConfidence(latestParsedCv.parseConfidence) ? (
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                            <span className="text-sm text-muted">Parse güveni</span>
+                            <strong style={{ fontSize: 13 }}>{formatConfidence(latestParsedCv.parseConfidence)}</strong>
+                          </div>
+                        ) : null}
+                        {latestParsedCv.providerKey || latestParsedCv.modelKey ? (
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                            <span className="text-sm text-muted">AI sağlayıcı</span>
+                            <strong style={{ fontSize: 13 }}>
+                              {[latestParsedCv.providerKey, latestParsedCv.modelKey].filter(Boolean).join(" · ")}
+                            </strong>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </>
+                )}
+              </div>
+
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  border: "1px solid var(--border)",
+                  background: "rgba(255,255,255,0.02)",
+                  display: "grid",
+                  gap: 8
+                }}
+              >
+                <div className="text-xs text-muted">Operasyon güvencesi</div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <span className="text-sm text-muted">Son insan onayı</span>
+                  <strong style={{ fontSize: 13 }}>
+                    {latestHumanApproval ? formatDate(latestHumanApproval.approvedAt) : "Henüz karar onayı yok"}
+                  </strong>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <span className="text-sm text-muted">Transcript durumu</span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: "4px 8px",
+                      borderRadius: 999,
+                      color: transcriptSignal.color,
+                      background: transcriptSignal.background
+                    }}
+                  >
+                    {transcriptSignal.label}
+                  </span>
+                </div>
+                <p className="text-sm text-muted" style={{ margin: 0 }}>
+                  {transcriptSignal.detail}
+                </p>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <span className="text-sm text-muted">Son iletişim hattı</span>
+                  <strong style={{ fontSize: 13 }}>
+                    {latestCommunication
+                      ? `${notificationTemplateLabel(latestCommunication.templateKey)} / ${latestCommunication.channel}`
+                      : "Henüz iletişim gönderilmedi"}
+                  </strong>
+                </div>
+                {latestCommunication ? (
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span className="text-sm text-muted">İletişim kaydı</span>
+                    <strong style={{ fontSize: 13 }}>
+                      {[notificationEventLabel(latestCommunication.eventType), latestCommunication.providerKey]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </strong>
+                  </div>
+                ) : null}
+                {latestInterview?.invitation ? (
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span className="text-sm text-muted">Hatırlatma sayısı</span>
+                    <strong style={{ fontSize: 13 }}>{reminderCount}</strong>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </section>
+
+          <section className="panel" style={{ marginBottom: 16 }}>
             <h3 style={{ margin: "0 0 12px" }}>Workflow Durumu</h3>
             <div style={{ display: "grid", gap: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                <span className="text-sm text-muted">Kaynak</span>
-                <strong style={{ fontSize: 13 }}>{sourceLabel(candidate.source)}</strong>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                <span className="text-sm text-muted">Kaynak etiketi</span>
-                <strong style={{ fontSize: 13 }}>{candidate.externalSource ?? candidate.sourcing?.primarySourceLabel ?? "—"}</strong>
-              </div>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                 <span className="text-sm text-muted">Sonraki adım</span>
                 <strong style={{ fontSize: 13 }}>{nextAction.label}</strong>
@@ -1119,13 +1697,134 @@ export default function ApplicationDetailPage() {
                   Gönderilen AI mülakat linkini aç
                 </a>
               ) : null}
+              {latestInterview?.invitation ? (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span className="text-sm text-muted">Davet durumu</span>
+                    <strong style={{ fontSize: 13 }}>{interviewMeta.label}</strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span className="text-sm text-muted">Hatırlatma sayısı</span>
+                    <strong style={{ fontSize: 13 }}>{latestInterview.invitation.reminderCount}</strong>
+                  </div>
+                  {latestInterview.invitation.expiresAt ? (
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                      <span className="text-sm text-muted">Son geçerlilik</span>
+                      <strong style={{ fontSize: 13 }}>{formatInterviewDeadline(latestInterview.invitation.expiresAt)}</strong>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
             </div>
+          </section>
+
+          <section className="panel" style={{ marginBottom: 16 }}>
+            <h3 style={{ margin: "0 0 12px" }}>İletişim</h3>
+            {notificationDeliveries.length === 0 ? (
+              <p className="text-sm text-muted" style={{ margin: 0 }}>
+                Henüz bu başvuru için aday iletişimi kaydı oluşmadı.
+              </p>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {notificationDeliveries.slice(0, 4).map((delivery) => {
+                  const statusMeta = notificationStatusMeta(delivery.status);
+
+                  return (
+                    <div
+                      key={delivery.id}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        border: "1px solid var(--border)",
+                        background: "rgba(255,255,255,0.02)"
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          marginBottom: 6
+                        }}
+                      >
+                        <strong style={{ fontSize: 13 }}>
+                          {notificationTemplateLabel(delivery.templateKey)}
+                        </strong>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "4px 8px",
+                            borderRadius: 999,
+                            color: statusMeta.color,
+                            background: statusMeta.background
+                          }}
+                        >
+                          {statusMeta.label}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted" style={{ display: "grid", gap: 4 }}>
+                        <span>{delivery.toAddress}</span>
+                        <span>{formatDate(delivery.createdAt)}</span>
+                        <span>{notificationEventLabel(delivery.eventType)}</span>
+                        {delivery.providerKey ? <span>Provider: {delivery.providerKey}</span> : null}
+                        {delivery.requestedBy ? <span>Tetikleyen: {delivery.requestedBy}</span> : null}
+                        {delivery.sentAt ? <span>Gönderim: {formatDate(delivery.sentAt)}</span> : null}
+                        {delivery.failedAt ? <span>Hata zamanı: {formatDate(delivery.failedAt)}</span> : null}
+                        {delivery.errorMessage ? <span>Hata: {delivery.errorMessage}</span> : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           {/* Decision Card */}
           <section className="panel" style={{ marginBottom: 16 }}>
             <h3 style={{ margin: "0 0 12px" }}>Karar</h3>
-            {actions.length === 0 ? (
+            {shouldShowDecisionComposer ? (
+              <div style={{ display: "grid", gap: 12 }}>
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    border: "1px solid var(--border)",
+                    background: "rgba(255,255,255,0.02)"
+                  }}
+                >
+                  <div className="text-xs text-muted" style={{ marginBottom: 4 }}>
+                    Recruiter karar yüzeyi
+                  </div>
+                  <p className="text-sm text-muted" style={{ margin: 0 }}>
+                    {latestReport
+                      ? "Rapor ve öneri hazır. Karar kaydı insan onayı ve audit izi ile oluşturulur."
+                      : "Rapor henüz görünmüyor. Gerekirse manuel karar kaydıyla devam edebilirsiniz."}
+                  </p>
+                  {latestHumanApproval ? (
+                    <p className="text-xs text-muted" style={{ margin: "8px 0 0" }}>
+                      Son insan onayı: {formatDate(latestHumanApproval.approvedAt)}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                  {(["advance", "hold", "reject"] as const).map((decision) => (
+                    <button
+                      key={decision}
+                      type="button"
+                      className={`drawer-action-btn drawer-action-${decision === "advance" ? "interview" : decision}`}
+                      style={{ padding: "10px 8px", fontSize: 13, borderRadius: 8, textAlign: "center" }}
+                      onClick={() => handleDecisionAction(decision)}
+                      disabled={actionLoading !== null}
+                    >
+                      {buildDecisionLabel(decision)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : actions.length === 0 ? (
               <p className="text-sm text-muted" style={{ margin: 0 }}>Bu aşamada işlem yapılamaz.</p>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: actions.length > 1 ? "1fr 1fr" : "1fr", gap: 8 }}>
@@ -1133,7 +1832,7 @@ export default function ApplicationDetailPage() {
                   <button
                     key={act.key}
                     type="button"
-                    className={`drawer-action-btn drawer-action-${act.key === "invite_interview" ? "interview" : act.key}`}
+                    className={`drawer-action-btn drawer-action-${isInterviewInviteAction(act.key) ? "interview" : act.key}`}
                     style={{ padding: "10px 8px", fontSize: 13, borderRadius: 8, textAlign: "center" }}
                     onClick={() => handleAction(act.key as QuickActionType)}
                     disabled={actionLoading !== null}
@@ -1146,22 +1845,40 @@ export default function ApplicationDetailPage() {
           </section>
 
           {/* Confirmation Dialog */}
-          {confirmAction && (
-            <div className="confirm-overlay" onClick={() => setConfirmAction(null)}>
+          {confirmDialog && (
+            <div className="confirm-overlay" onClick={() => setConfirmDialog(null)}>
               <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
                 <h3 style={{ marginBottom: 8, fontSize: 16 }}>
-                  Adayı Reddet
+                  {confirmDialog.flow === "decision"
+                    ? `${buildDecisionLabel(confirmDialog.action as HumanDecision)} kararını kaydet`
+                    : confirmDialog.action === "send_reminder"
+                      ? "Hatırlatma Gönder"
+                      : "Adayı Reddet"}
                 </h3>
                 <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
-                  Aday reddedilecek. Bu işlem geri alınamaz.
+                  {confirmDialog.flow === "decision"
+                    ? confirmDialog.action === "advance"
+                      ? "Aday bir sonraki değerlendirme aşamasına taşınacak ve karar audit izi ile kaydedilecek."
+                      : confirmDialog.action === "hold"
+                        ? "Aday bekletme kararına alınacak ve mevcut dossier üzerinde takip edilmeye devam edecek."
+                        : "Aday reddedilecek ve karar audit izi ile kaydedilecek."
+                    : confirmDialog.action === "send_reminder"
+                      ? "Adaya mevcut AI mülakat linki için hatırlatma e-postası gönderilecek."
+                      : "Aday reddedilecek. Bu işlem geri alınamaz."}
                 </p>
                 <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button className="confirm-btn confirm-btn-cancel" onClick={() => setConfirmAction(null)}>Vazgec</button>
+                  <button className="confirm-btn confirm-btn-cancel" onClick={() => setConfirmDialog(null)}>Vazgec</button>
                   <button
-                    className="confirm-btn confirm-btn-danger"
+                    className={`confirm-btn ${
+                      confirmDialog.action === "reject" ? "confirm-btn-danger" : "confirm-btn-primary"
+                    }`}
                     onClick={() => void executeAction()}
                   >
-                    Reddet
+                    {confirmDialog.flow === "decision"
+                      ? buildDecisionLabel(confirmDialog.action as HumanDecision)
+                      : confirmDialog.action === "send_reminder"
+                        ? "Hatırlat"
+                        : "Reddet"}
                   </button>
                 </div>
               </div>
@@ -1177,6 +1894,7 @@ export default function ApplicationDetailPage() {
 
       <InterviewInviteModal
         open={inviteModalOpen}
+        action={inviteAction}
         applicationId={applicationId}
         candidateName={candidate.fullName}
         jobTitle={job.title}
@@ -1184,7 +1902,7 @@ export default function ApplicationDetailPage() {
         onClose={() => setInviteModalOpen(false)}
         onSubmitted={(result) => {
           setInviteModalOpen(false);
-          setActionMessage(buildInviteSuccessMessage(result));
+          setActionMessage(buildInviteSuccessMessage(result, inviteAction));
           setActionError("");
           void loadData();
         }}

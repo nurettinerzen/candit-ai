@@ -33,7 +33,29 @@ This covers:
 - tests
 - full workspace build
 
-### 2. Runtime verification
+### 2. Contract verification
+
+Use this to prove launch-critical guardrails before the full runtime smoke:
+
+```bash
+corepack pnpm launch:verify:contracts
+```
+
+This proves:
+
+- production runtime hardening rules
+- human-approved decision / quick-action contracts
+- auth provider boundary contract and Calendly OAuth callback guardrails
+- launch warning detection for console email, Stripe test/live drift, and local OAuth redirect mistakes
+- explicit meeting provider selection is blocked when the provider is V1 disi, setup-required, or missing a tenant connection
+- duplicate candidate provenance enrichment
+- invite reminder and re-invite workflow contracts
+- public interview consent gate
+- decision event to candidate email wiring
+- web auth/runtime and CSV intake parsing
+- worker-side minimum evidence enforcement
+
+### 3. Runtime verification
 
 Use this after web, api and worker are running:
 
@@ -44,8 +66,9 @@ corepack pnpm launch:verify:runtime
 This proves:
 
 - tenant-aware signup and session load
+- AI support center and infrastructure readiness reads
+- scheduling provider catalog and fallback visibility
 - recruiter overview
-- provider and infrastructure readiness reads
 - billing overview read
 - published job creation
 - candidate creation
@@ -55,8 +78,10 @@ This proves:
 - interview invite
 - public interview start, answer and completion
 - review pack generation
+- recruiter decision recording
+- decision-driven candidate communication and dossier governance visibility
 
-### 3. Strict runtime verification
+### 4. Strict runtime verification
 
 Use this only when launch warnings are expected to be fully gone:
 
@@ -70,6 +95,7 @@ This must fail if launch warnings remain.
 
 - Email delivery may still warn if the provider is `console`.
 - Stripe may still warn if `stripeReady=false`.
+- `Settings` can now also warn if production still uses `sk_test_...` Stripe keys or localhost OAuth redirect URIs.
 
 These warnings are acceptable only for a sales-led pilot.
 They are not acceptable for a fully self-serve launch.
@@ -83,7 +109,7 @@ They are not acceptable for a fully self-serve launch.
 - Check one public contact submission
 - Check `/admin/leads`
 - Check `/admin/red-alert`
-- Check one recruiter end-to-end flow from candidate create to interview review pack
+- Check one recruiter end-to-end flow from candidate create to recruiter decision and dossier communication log
 - Check billing configuration presence, even if self-serve billing is still closed
 
 ## Supported pilot boundaries
@@ -91,3 +117,7 @@ They are not acceptable for a fully self-serve launch.
 - Google Calendar / Google Meet / Calendly can remain active for pilot
 - `ZOOM` and `MICROSOFT_CALENDAR` must remain visibly unsupported until real adapters are ready
 - Self-serve billing can remain disabled while pilot runs through guided sales
+- Recruiter `Subscription` screen should show whether Stripe self-serve is really ready or still in sales-led pilot mode
+- Recruiter `Settings` screen should be used as the operator-facing truth source for `pilot / setup required / V1 disi` provider states
+- Recruiter `Settings > Baglanti kurulumu` cards should be used as the tenant-facing truth source for Google Calendar / Calendly connection status and OAuth callback outcomes
+- Public `login` and `signup` screens should continue to state that Enterprise SSO / OIDC is outside the V1 launch scope

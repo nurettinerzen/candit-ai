@@ -23,7 +23,7 @@ Ilgili arka plan notlari icin:
 - Bir alan launch'a dahil edilmeyecekse, "Done" yerine "Deferred from launch" olarak not dusulur.
 - Domain baglamadan, Stripe/real mail/real traffic acilmadan once bu checklist en az bir tur tam gecilmelidir.
 
-## Verification Snapshot - 2026-04-13
+## Verification Snapshot - 2026-04-17
 
 ### Guncel local pilot verification
 
@@ -35,7 +35,9 @@ Ilgili arka plan notlari icin:
     - web root
     - auth signup + session
     - recruiter overview
+    - AI support center
     - provider/infrastructure readiness
+    - scheduling provider catalog + fallback
     - job secimi / yoksa olusturma
     - candidate create
     - CV upload + parse
@@ -43,6 +45,49 @@ Ilgili arka plan notlari icin:
     - fit score tetikleme + worker sonucu
     - interview invite
     - public interview start + cevap
+    - recruiter karari kaydetme
+    - karar bildirimi / dossier governance gorunurlugu
+    - application dossier governance + transcript visibility
+- [x] Launch-kritik contract verification lane eklendi.
+  - Komut:
+    - `corepack pnpm launch:verify:contracts`
+  - Kapsam:
+    - production runtime hardening
+    - human-approved decision / reject / reminder / re-invite contractleri
+    - duplicate candidate provenance enrichment
+    - public interview consent gate
+    - decision event -> candidate email baglantisi
+    - CSV intake / source parsing
+    - report minimum evidence validator
+- [x] Recruiter settings ekraninda launch boundary gorunurlugu eklendi.
+  - Yeni durum:
+    - e-posta, billing, voice, auth ve scheduling provider'lari `hazir / pilot / kurulum gerekli / V1 disi` olarak gorunuyor
+    - `ZOOM` ve `MICROSOFT_CALENDAR` recruiter tarafinda da launch disi olarak acik isaretleniyor
+    - dahili meeting link fallback'i guvenli varsayilan yol olarak gorunuyor
+- [x] Recruiter settings icinde tenant-bazli baglanti kurulumu gorunurlugu eklendi.
+  - Yeni durum:
+    - `Google Calendar` ve `Calendly` icin gercek connection kaydi, scheduling katalog durumu ve OAuth callback sonucu ayni panelde gorunuyor
+    - cookie tabanli JWT runtime disinda OAuth connect butonlari bilincli sekilde pasif/uyari modunda kaliyor
+    - `Google Meet` ayrica ayri OAuth varmis gibi sunulmuyor; Google Calendar credential tabaniyla acikca iliskilendiriliyor
+- [x] Public auth yuzeyi V1 launch sinirlarini daha acik gosteriyor.
+  - Yeni durum:
+    - `GET /v1/auth/providers` artik `enterpriseSso` durumunu da donuyor
+    - `login` ve `signup` ekranlari Enterprise SSO / OIDC'nin V1 kapsaminda olmadigini acikca belirtiyor
+- [x] Launch warning yuzeyi test/prod credential driftini daha erken yakaliyor.
+  - Yeni durum:
+    - recruiter `Settings` icinde runtime kaynakli `Launch uyarilari` paneli var
+    - production ortaminda `EMAIL_PROVIDER=console`, `sk_test_...` Stripe key ve localhost OAuth redirect URI gibi riskler gorunur hale geliyor
+    - bu warning'ler contract verification icinde de kapsaniyor
+- [x] Subscription sayfasi self-serve billing readiness durumunu acikca gosteriyor.
+  - Yeni durum:
+    - `Subscription` yuzeyi `Stripe self-serve hazir / sales-led pilot / test modu` ayrimini acikca gosteriyor
+    - production runtime'da self-serve billing hazir degilse plan degistirme, add-on satin alma ve portal/iptal aksiyonlari proaktif olarak bloklaniyor
+    - billing launch warning'leri ayni ekranda gorunur hale geliyor
+- [x] Launch disi meeting provider secimleri sessiz fallback yerine acik neden ile bloklaniyor.
+  - Yeni durum:
+    - `ZOOM` ve `MICROSOFT_CALENDAR` explicit secilirse API acikca reddediyor
+    - `CALENDLY` / `GOOGLE_*` provider secimi aktif tenant baglantisi olmadan devam etmiyor
+    - explicit secim basarisizsa sistem baska provider'a sessizce kaymiyor; neden recruiter tarafina geri donuyor
 - [x] Recruiter cekirdek akis local ortamda uctan uca dogrulandi.
   - Olusan akis:
     - aday olustur
@@ -115,7 +160,7 @@ Ilgili arka plan notlari icin:
   - `Access-Control-Allow-Origin: https://candit-seven.vercel.app`
 - [x] Public auth provider endpoint calisiyor:
   - `GET /v1/auth/providers`
-  - response: `{"google":{"enabled":true}}`
+  - response: `{"google":{"enabled":true},"enterpriseSso":{"enabled":false,"launchStatus":"unsupported"}}`
 - [x] Supabase/Postgres baglantisi ve migration zinciri calisiyor; API Prisma ile ayaga kalkiyor.
 - [x] Frontend local production build temiz geciyor.
   - Komut:
@@ -451,8 +496,8 @@ Ilgili arka plan notlari icin:
 
 - [ ] Stripe launch oncesi acilmayacaksa UI'da yanlis yonlendirme yok.
 - [ ] Real email gonderimi acilmadan once provider ayarlari dokumante edildi.
-- [ ] Google / Calendly / Stripe / Resend / ElevenLabs icin hangi provider'lar launch'a dahil net.
-- [ ] Launch disi entegrasyonlar UI'dan gizlendi, etiketlendi ya da disabled hale getirildi.
+- [x] Google / Calendly / Stripe / Resend / ElevenLabs icin hangi provider'lar launch'a dahil net.
+- [x] Launch disi entegrasyonlar UI'dan gizlendi, etiketlendi ya da disabled hale getirildi.
 - [ ] Test credential ile prod credential karismiyor.
 - [x] Subscription yuzeyinde Stripe kapaliyken kullanici sadece disabled buton gormuyor; bir sonraki mantikli aksiyona yonlendiriliyor.
 

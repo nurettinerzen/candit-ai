@@ -24,6 +24,106 @@ export type MemberDirectoryItem = {
   createdAt: string;
 };
 
+export type TenantProfileReadModel = {
+  tenantId: string;
+  companyName: string;
+  websiteUrl: string | null;
+  logoUrl: string | null;
+  profileSummary: string | null;
+  locale: string;
+  timezone: string;
+};
+
+export type LaunchSupportStatus = "ready" | "pilot" | "setup_required" | "unsupported";
+
+export type TenantRuntimeConfigurationReadModel = {
+  tenantId: string;
+  runtime: {
+    appMode: string;
+    authMode: string;
+    demoMode: boolean;
+  };
+  safety: {
+    allowDevHeaderAuth: boolean;
+    allowDemoShortcuts: boolean;
+    autoRejectAllowed: boolean;
+    humanDecisionRequired: boolean;
+  };
+  ai: {
+    cvParsing: boolean;
+    screeningSupport: boolean;
+    reportGeneration: boolean;
+    recommendationGeneration: boolean;
+    triggerOnApplicationCreated: boolean;
+    triggerOnStageReviewPack: boolean;
+    triggerOnInterviewCompletedReviewPack: boolean;
+  };
+  launchBoundaries: {
+    email: {
+      provider: string;
+      status: LaunchSupportStatus;
+      ready: boolean;
+      liveDelivery: boolean;
+    };
+    billing: {
+      provider: string;
+      status: LaunchSupportStatus;
+      ready: boolean;
+      selfServeEnabled: boolean;
+    };
+    voiceInterviews: {
+      provider: string;
+      status: LaunchSupportStatus;
+      ready: boolean;
+      browserFallback: boolean;
+    };
+    authentication: {
+      sessionMode: string;
+      googleOAuth: {
+        provider: string;
+        status: LaunchSupportStatus;
+        ready: boolean;
+      };
+      enterpriseSso: {
+        provider: string;
+        status: LaunchSupportStatus;
+        ready: boolean;
+      };
+    };
+    scheduling: {
+      fallback: {
+        provider: string;
+        status: LaunchSupportStatus;
+        ready: boolean;
+      };
+      providers: Array<{
+        provider: string;
+        status: LaunchSupportStatus;
+        ready: boolean;
+        requiresConnection: boolean;
+        oauthConfigured: boolean;
+      }>;
+    };
+  };
+  launchWarnings: string[];
+};
+
+export type IntegrationConnectionReadModel = {
+  id: string;
+  provider: string;
+  status: string;
+  effectiveStatus: string;
+  displayName: string | null;
+  configJson: JsonValue;
+  credentialStatus: string | null;
+  credentialExpiresAt: string | null;
+  credentialLastError: string | null;
+  lastVerifiedAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ApplicationStage =
   | "APPLIED"
   | "SCREENING"
@@ -745,6 +845,23 @@ export type AuditLog = {
   createdAt: string;
 };
 
+export type NotificationDeliveryView = {
+  id: string;
+  channel: string;
+  toAddress: string;
+  subject: string | null;
+  templateKey: string | null;
+  eventType: string | null;
+  providerKey: string | null;
+  status: "QUEUED" | "SENT" | "FAILED";
+  requestedBy: string | null;
+  errorMessage: string | null;
+  queuedAt: string;
+  sentAt: string | null;
+  failedAt: string | null;
+  createdAt: string;
+};
+
 export type AiTaskRunCreatePayload = {
   taskType: AiTaskType;
   input: Record<string, unknown>;
@@ -1156,6 +1273,17 @@ export type AnalyticsSummary = {
     reportConfidenceAverage: number | null;
     transcriptQualityAverage: number | null;
     aiTaskSuccessRate: number | null;
+    calibration: {
+      recommendedCount: number;
+      humanReviewedCount: number;
+      humanDecisionCoverageRate: number | null;
+      comparableDecisionCount: number;
+      agreementRate: number | null;
+      advanceAcceptanceRate: number | null;
+      holdAcceptanceRate: number | null;
+      reviewRecommendationCount: number;
+      resolvedReviewRecommendationRate: number | null;
+    };
     estimatedTimeSavedHours: {
       screening: number;
       interviewAnalysis: number;
@@ -1166,6 +1294,8 @@ export type AnalyticsSummary = {
   definitions: {
     timeToHire: string;
     reportConfidence: string;
+    calibrationAgreement: string;
+    humanDecisionCoverage: string;
     timeSaved: string;
   };
   workload: {
@@ -1264,6 +1394,7 @@ export type AiSupportCenterReadModel = {
 
 export type InfrastructureReadinessReadModel = {
   queryWarnings?: string[];
+  launchWarnings?: string[];
   runtime: {
     parsing: {
       provider: string;
@@ -1294,10 +1425,25 @@ export type InfrastructureReadinessReadModel = {
       ready: boolean;
     };
   };
+  startupHealth?: {
+    healthy: boolean;
+    warnings: string[];
+    providers: Record<string, { ready: boolean; mode: string }>;
+  };
   ai: AiSupportCenterReadModel["providerStatus"];
   cvExtraction: AiSupportCenterReadModel["extraction"];
   speech: AiSupportCenterReadModel["speech"];
   integrations: NonNullable<AiSupportCenterReadModel["integrations"]>;
+  scheduling?: {
+    workflowsByState: Record<string, number>;
+    totalWorkflows: number;
+    catalog: InterviewSchedulingProviders["catalog"];
+    fallback: InterviewSchedulingProviders["fallback"];
+  };
+  notifications?: {
+    deliveriesByStatus: Record<string, number>;
+    totalDeliveries: number;
+  };
   sessions: Array<{
     id: string;
     runtimeProviderMode: string;
@@ -1461,6 +1607,20 @@ export type InterviewSchedulingProviders = {
     hasMeetingUrlTemplate: boolean;
     updatedAt: string;
   }>;
+  catalog: Array<{
+    provider: string;
+    status: LaunchSupportStatus;
+    ready: boolean;
+    requiresConnection: boolean;
+    oauthConfigured: boolean;
+    connected: boolean;
+    connectionId: string | null;
+    displayName: string | null;
+    hasMeetingUrlTemplate: boolean;
+    updatedAt: string | null;
+    selectable: boolean;
+    selectionReason: string | null;
+  }>;
   fallback: {
     provider: null;
     source: "internal_fallback";
@@ -1550,6 +1710,14 @@ export type PublicInterviewSessionView = {
     completedReasonCode: string | null;
   };
   invitation: InterviewInvitationView | null;
+  consent: {
+    required: boolean;
+    status: "PENDING" | "GRANTED" | "WITHDRAWN";
+    noticeVersion: string;
+    policyVersion: string | null;
+    grantedAt: string | null;
+    withdrawnAt: string | null;
+  };
 };
 
 export type ApplicationDetailReadModel = {
@@ -1596,6 +1764,7 @@ export type ApplicationDetailReadModel = {
   governance: {
     auditLogs: AuditLog[];
     humanApprovals: HumanApproval[];
+    notificationDeliveries: NotificationDeliveryView[];
   };
   timeline: {
     stageHistory: ApplicationDetail["stageHistory"];
@@ -1789,6 +1958,8 @@ export type QuickActionType =
   | "reject"
   | "hold"
   | "invite_interview"
+  | "reinvite_interview"
+  | "send_reminder"
   // legacy — kept for backward compatibility
   | "shortlist"
   | "trigger_screening"
@@ -1875,8 +2046,21 @@ export type BulkImportPayload = {
   externalSource?: string;
 };
 
+export type BulkApplicantImportResult = {
+  imported: number;
+  deduplicated: number;
+  enriched: number;
+  applications: Array<{
+    candidateId: string;
+    applicationId: string;
+    deduplicated: boolean;
+  }>;
+};
+
 export type BulkCvUploadResult = {
   imported: number;
+  deduplicated: number;
+  enriched: number;
   queued: number;
   total: number;
   items: Array<{

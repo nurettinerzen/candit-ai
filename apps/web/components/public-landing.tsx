@@ -36,8 +36,8 @@ const workflowSteps = [
 const surfaceCards = [
   {
     eyebrow: "Operasyon paneli",
-    title: "Aday akışını sadece görmezsin, hızlandırırsın.",
-    body: "hireEZ'deki hero videosunun verdiği ürün hissini burada animasyonlu bir workflow sahnesine çevirdik: başvuru, tarama, görüşme ve randevu tek bir premium hero içinde akıyor."
+    title: "Aday akışını sadece izlemez, hızlandırırsınız.",
+    body: "Başvuru, tarama, görüşme ve planlama aynı ürün akışında birleşir; ekip daha hızlı ve daha net hareket eder."
   },
   {
     eyebrow: "AI destekli ön eleme",
@@ -525,10 +525,10 @@ export function PublicLanding() {
 
           <div className="marketing-nav-actions">
             <Link href="/auth/login" className="marketing-nav-link">
-              Giriş yap
+              {t("Giriş yap")}
             </Link>
             <Link href="/auth/signup" className="marketing-nav-button">
-              Hesap oluştur
+              {t("Hesap oluştur")}
             </Link>
           </div>
         </div>
@@ -537,44 +537,42 @@ export function PublicLanding() {
       <section className="marketing-hero">
         <div className="marketing-shell marketing-hero-grid">
           <div className="marketing-copy">
-            <span className="marketing-eyebrow">From application to interview, automated.</span>
+            <span className="marketing-eyebrow">{t("Başvurudan görüşmeye, tek akışta.")}</span>
             <h1>
-              hireEZ’deki hero hissini alan,
-              <span> size özel bir AI recruiter sahnesi.</span>
+              {t("İşe alım sürecinizi tek panelden yönetin,")}
+              <span> {t("AI ile daha hızlı karar verin.")}</span>
             </h1>
             <p className="marketing-copy-body">
-              Başvuru toplama, CV tarama, aday fit sinyalleri, sesli ön görüşme ve takvimleme
-              akışını tek bir premium hero içinde canlandırdım. Gerçek video asset bağımlılığı
-              olmadan, ürün videosu hissi veren bir canvas animasyonu çalışıyor.
+              {t("Başvuru toplama, CV tarama, aday uyum sinyalleri, ön görüşme ve takvimleme adımlarını tek akışta bir araya getirin.")}
             </p>
 
             <div className="marketing-hero-actions">
               <Link href="/auth/signup" className="marketing-primary-link">
-                Hesap oluştur
+                {t("Hesap oluştur")}
               </Link>
               <a href="#workflow" className="marketing-secondary-link">
-                Akışı incele
+                {t("Akışı incele")}
               </a>
             </div>
 
             <div className="marketing-signal-row">
-              <span>Kanıt bağlantılı tarama</span>
-              <span>Türkçe AI ön görüşme</span>
-              <span>Takvim ve recruiter operasyonu</span>
+              <span>{t("Kanıt bağlantılı tarama")}</span>
+              <span>{t("Türkçe AI ön görüşme")}</span>
+              <span>{t("Takvim ve ekip operasyonu")}</span>
             </div>
           </div>
 
           <div className="marketing-stage-card">
             <div className="marketing-stage-topline">
-              <span className="marketing-stage-kicker">See the workflow</span>
-              <span className="marketing-stage-label">Hero motion concept</span>
+              <span className="marketing-stage-kicker">{t("Akışı izleyin")}</span>
+              <span className="marketing-stage-label">{t("Ürün akışı")}</span>
             </div>
             <MarketingHeroCanvas />
             <div className="marketing-stage-footer">
               {workflowSteps.map((item) => (
                 <div key={item.step} className="marketing-stage-pill">
                   <span>{item.step}</span>
-                  <strong>{item.title}</strong>
+                  <strong>{t(item.title)}</strong>
                 </div>
               ))}
             </div>
@@ -587,8 +585,8 @@ export function PublicLanding() {
           {proofStats.map((stat) => (
             <article key={stat.label} className="marketing-proof-card">
               <p className="marketing-proof-value">{stat.value}</p>
-              <h2>{stat.label}</h2>
-              <p>{stat.detail}</p>
+              <h2>{t(stat.label)}</h2>
+              <p>{t(stat.detail)}</p>
             </article>
           ))}
         </div>
@@ -597,12 +595,10 @@ export function PublicLanding() {
       <section className="marketing-workflow" id="workflow">
         <div className="marketing-shell marketing-workflow-grid">
           <div className="marketing-workflow-copy">
-            <span className="marketing-section-kicker">Hero architecture</span>
-            <h2>Video gibi akan ama koddan üreyen bir recruiter workflow hero.</h2>
+            <span className="marketing-section-kicker">{t("Nasıl çalışır")}</span>
+            <h2>{t("İşe alım akışını baştan sona tek sahnede görün.")}</h2>
             <p>
-              hireEZ referansındaki mantığı birebir kopyalamadan taşıdım: ürün anlatan hareketli bir
-              sahne, hızlı metin blokları ve sistemin hangi adımlarda değer ürettiğini gösteren net
-              aşamalar.
+              {t("Adayların başvurudan görüşmeye uzanan yolculuğunu tek ekranda takip edin; hangi adımda ne olduğunu ekipçe net şekilde görün.")}
             </p>
           </div>
 
@@ -610,8 +606,8 @@ export function PublicLanding() {
             {workflowSteps.map((item) => (
               <article key={item.step} className="marketing-step-card">
                 <span>{item.step}</span>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
+                <h3>{t(item.title)}</h3>
+                <p>{t(item.body)}</p>
               </article>
             ))}
           </div>
@@ -622,9 +618,9 @@ export function PublicLanding() {
         <div className="marketing-shell marketing-surface-grid">
           {surfaceCards.map((card) => (
             <article key={card.title} className="marketing-surface-card">
-              <span className="marketing-section-kicker">{card.eyebrow}</span>
-              <h2>{card.title}</h2>
-              <p>{card.body}</p>
+              <span className="marketing-section-kicker">{t(card.eyebrow)}</span>
+              <h2>{t(card.title)}</h2>
+              <p>{t(card.body)}</p>
             </article>
           ))}
         </div>
@@ -633,19 +629,17 @@ export function PublicLanding() {
       <section className="marketing-cta" id="cta">
         <div className="marketing-shell">
           <div className="marketing-cta-panel">
-            <span className="marketing-section-kicker">Ready to launch</span>
-            <h2>Bu hero artık ana deneyimin bir parçası olarak çalışıyor.</h2>
+            <span className="marketing-section-kicker">{t("Candit.ai")}</span>
+            <h2>{t("İşe alım sürecinizi daha hızlı ve daha net hale getirin.")}</h2>
             <p>
-              Bu hero artık `"/landing"` üzerinden her zaman erişilebilir. Oturumu olmayan
-              kullanıcılar `"/"` üzerinde de bu landing'i görür, oturumu olan recruiter
-              kullanıcılar ise mevcut dashboard akışına devam eder.
+              {t("Aday akışını tek panelden yönetin, AI destekli ön eleme ve mülakatlarla daha doğru kararlar alın.")}
             </p>
             <div className="marketing-hero-actions">
               <Link href="/auth/signup" className="marketing-primary-link">
-                Ücretsiz başla
+                {t("Ücretsiz başla")}
               </Link>
               <Link href="/auth/login" className="marketing-secondary-link">
-                Mevcut hesaba gir
+                {t("Giriş yap")}
               </Link>
             </div>
           </div>
