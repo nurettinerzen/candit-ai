@@ -98,7 +98,27 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
   - self-serve launch
   - claims that billing and transactional email are production-ready
 
-### 5. Browser surface verification
+### 5. AI quality smoke
+
+- Command:
+  - `corepack pnpm smoke:analysis`
+- Email-safe existing-account mode:
+  - `CANDIT_ANALYSIS_USE_EXISTING_ACCOUNT=1 CANDIT_SMOKE_EMAIL=<existing-user> CANDIT_SMOKE_PASSWORD=<password> corepack pnpm smoke:analysis`
+- Optional quality gate:
+  - `CANDIT_ANALYSIS_STRICT=1`
+  - or `CANDIT_ANALYSIS_MAX_WARNINGS=<n>`
+  - or `CANDIT_ANALYSIS_MIN_PASS_RATE=0.90`
+- Proves:
+  - repeated role/location scenario pack can trigger CV parse, fit score, and screening end-to-end
+  - heuristic pass/warn distribution is written as a reusable artifact under `artifacts/smoke/`
+  - AI quality review can run without consuming signup email quota when an existing account is supplied
+  - generated artifacts do not persist smoke-user passwords
+- Does not prove:
+  - interview runtime quality
+  - report/recommendation quality after a real interview transcript
+  - live staging domain callbacks
+
+### 6. Browser surface verification
 
 - Commands:
   - `npx -y agent-browser install`

@@ -271,7 +271,12 @@ export class RuntimeConfigService {
     }
 
     if (this.runtimeMode === "development") {
-      return ["http://localhost:3000", "http://localhost:3100"];
+      return [
+        "http://localhost:3000",
+        "http://localhost:3100",
+        "http://localhost:3200",
+        "http://localhost:3500"
+      ];
     }
 
     return ["http://localhost:3000"];
@@ -338,6 +343,22 @@ export class RuntimeConfigService {
         toOptionalString(this.configService.get<string>("ELEVENLABS_API_KEY"))
       )
     };
+  }
+
+  private isSpeechProviderReady(
+    provider: string,
+    speechConfig: ReturnType<RuntimeConfigService["speechRuntimeConfig"]>
+  ) {
+    switch (provider) {
+      case "browser":
+        return true;
+      case "openai":
+        return speechConfig.openAiSpeechReady;
+      case "elevenlabs":
+        return speechConfig.elevenLabsSpeechReady;
+      default:
+        return false;
+    }
   }
 
   get googleCalendarConfig() {
@@ -558,7 +579,9 @@ export class RuntimeConfigService {
       },
       speech: {
         ...speech,
-        ready: speech.providerMode === "provider_backed" ? speech.openAiSpeechReady : true
+        ready:
+          this.isSpeechProviderReady(speech.preferredSttProvider, speech) &&
+          this.isSpeechProviderReady(speech.preferredTtsProvider, speech)
       },
       googleCalendar: {
         oauthConfigured:
@@ -715,6 +738,20 @@ export class RuntimeConfigService {
       !this.speechRuntimeConfig.openAiSpeechReady
     ) {
       warnings.push("SPEECH_TTS_PROVIDER=openai but OPENAI_API_KEY is missing.");
+    }
+
+    if (
+      this.speechRuntimeConfig.preferredSttProvider === "elevenlabs" &&
+      !this.speechRuntimeConfig.elevenLabsSpeechReady
+    ) {
+      warnings.push("SPEECH_STT_PROVIDER=elevenlabs but ELEVENLABS_API_KEY is missing.");
+    }
+
+    if (
+      this.speechRuntimeConfig.preferredTtsProvider === "elevenlabs" &&
+      !this.speechRuntimeConfig.elevenLabsSpeechReady
+    ) {
+      warnings.push("SPEECH_TTS_PROVIDER=elevenlabs but ELEVENLABS_API_KEY is missing.");
     }
 
     if (this.googleSchedulingEnabled && !readiness.googleCalendar.oauthConfigured) {

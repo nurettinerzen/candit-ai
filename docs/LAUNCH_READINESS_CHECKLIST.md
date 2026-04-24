@@ -170,6 +170,16 @@ Ilgili arka plan notlari icin:
     - tenant, owner, billing snapshot ve AI defaults tek komutta hazirlaniyor
     - yeni owner icin aktivasyon linki uretiliyor
     - `artifacts/pilot/` altina JSON + Markdown handoff ozeti yaziliyor
+- [x] AI kalite analizi icin email-safe tekrar kosulabilir smoke lane eklendi.
+  - Komut:
+    - `corepack pnpm smoke:analysis`
+  - Email-safe mod:
+    - `CANDIT_ANALYSIS_USE_EXISTING_ACCOUNT=1 CANDIT_SMOKE_EMAIL=<existing-user> CANDIT_SMOKE_PASSWORD=<password> corepack pnpm smoke:analysis`
+  - Yeni durum:
+    - signup denemeden mevcut hesapla login olabiliyor; gereksiz email tuketmiyor
+    - fit + screening kalite senaryolari `artifacts/smoke/` altina rapor yaziyor
+    - artifact'lara smoke kullanici sifresi yazilmiyor
+    - istege bagli heuristic gate `CANDIT_ANALYSIS_STRICT=1` veya `CANDIT_ANALYSIS_MAX_WARNINGS=<n>` ile calistirilabiliyor
 - [ ] Stripe self-serve billing hala hazir degil.
   - Mevcut durum:
     - `stripeReady=false`
@@ -515,6 +525,11 @@ Ilgili arka plan notlari icin:
 - [ ] AI cevaplarinda hukuki/riskli claim veya kesin yargi problemi yok.
 - [ ] Ayni input tekrarlandiginda kalite kabul edilebilir stabilitede.
 - [ ] Farkli rol tipleri ve aday profillerinde sonuc kalitesi gozden gecirildi.
+- Kanit komutu:
+  - `corepack pnpm smoke:analysis`
+- Not:
+  - mevcut hesapla email harcamadan kosmak icin `CANDIT_ANALYSIS_USE_EXISTING_ACCOUNT=1` kullanilabilir
+  - artifact ciktilari `artifacts/smoke/analysis-smoke-*.json` ve `.md` altina yazilir
 
 ### P7 - Analytics, reporting ve tasarim dogrulugu
 

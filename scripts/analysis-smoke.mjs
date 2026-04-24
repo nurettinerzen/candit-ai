@@ -18,6 +18,12 @@ const WEB_BASE_URL = stripTrailingSlash(process.env.CANDIT_WEB_BASE_URL ?? "http
 const SMOKE_EMAIL = (process.env.CANDIT_SMOKE_EMAIL ?? "analysis-smoke@example.com").trim().toLowerCase();
 const SMOKE_PASSWORD = process.env.CANDIT_SMOKE_PASSWORD ?? "Analysis123!";
 const SMOKE_TENANT_ID = (process.env.CANDIT_SMOKE_TENANT_ID ?? "").trim() || null;
+const SMOKE_USE_EXISTING_ACCOUNT = parseBooleanEnv(
+  process.env.CANDIT_ANALYSIS_USE_EXISTING_ACCOUNT
+    ?? process.env.CANDIT_SMOKE_USE_EXISTING_ACCOUNT
+    ?? process.env.CANDIT_SMOKE_EXISTING_ONLY,
+  false
+);
 const SMOKE_EXISTING_JOB_ID = (process.env.CANDIT_SMOKE_EXISTING_JOB_ID ?? "").trim() || null;
 const SMOKE_COMPANY = process.env.CANDIT_SMOKE_COMPANY ?? "Candit Analysis Smoke";
 const SMOKE_FULL_NAME = process.env.CANDIT_SMOKE_FULL_NAME ?? "Analysis Smoke";
@@ -31,11 +37,58 @@ const SMOKE_AI_INTERVIEW_QUOTA = Number(process.env.CANDIT_SMOKE_AI_INTERVIEW_QU
 const SMOKE_CONCURRENCY = Math.max(1, Number.parseInt(process.env.CANDIT_SMOKE_CONCURRENCY ?? "4", 10) || 4);
 const SMOKE_SCREENING_MODE = normalizeScreeningModeEnv(process.env.CANDIT_SMOKE_SCREENING_MODE ?? "BALANCED");
 const SMOKE_LOCATION_SIGNAL_MODE = normalizeLocationSignalMode(process.env.CANDIT_SMOKE_LOCATION_SIGNAL_MODE ?? "FULL_CONTEXT");
+const ANALYSIS_STRICT = parseBooleanEnv(process.env.CANDIT_ANALYSIS_STRICT, false);
+const ANALYSIS_MAX_WARNINGS = parseOptionalNonNegativeInteger(process.env.CANDIT_ANALYSIS_MAX_WARNINGS);
+const ANALYSIS_MIN_PASS_RATE = parseOptionalRatio(process.env.CANDIT_ANALYSIS_MIN_PASS_RATE);
 const RUN_STAMP = buildRunStamp();
 const ARTIFACT_DIR = path.join(process.cwd(), "artifacts", "smoke");
 const ARTIFACT_JSON_PATH = path.join(ARTIFACT_DIR, `analysis-smoke-${RUN_STAMP}.json`);
 const ARTIFACT_MD_PATH = path.join(ARTIFACT_DIR, `analysis-smoke-${RUN_STAMP}.md`);
 const prisma = new PrismaClient();
+
+class CookieJar {
+  constructor() {
+    this.cookies = new Map();
+  }
+
+  capture(response) {
+    const rawCookies =
+      typeof response.headers.getSetCookie === "function"
+        ? response.headers.getSetCookie()
+        : [response.headers.get("set-cookie")].filter(Boolean);
+
+    for (const rawCookie of rawCookies) {
+      const [cookiePair] = String(rawCookie).split(";");
+      const [name, ...valueParts] = cookiePair.split("=");
+      const cookieName = name?.trim();
+
+      if (!cookieName || valueParts.length === 0) {
+        continue;
+      }
+
+      this.cookies.set(cookieName, valueParts.join("=").trim());
+    }
+  }
+
+  apply(headers) {
+    if (this.cookies.size === 0) {
+      return;
+    }
+
+    headers.set(
+      "cookie",
+      [...this.cookies.entries()].map(([name, value]) => `${name}=${value}`).join("; ")
+    );
+  }
+
+  hasCookies() {
+    return this.cookies.size > 0;
+  }
+
+  get(name) {
+    return this.cookies.get(name) ?? null;
+  }
+}
 
 function stripTrailingSlash(value) {
   return value.replace(/\/+$/, "");
@@ -59,6 +112,49 @@ function logStatus(kind, label, detail) {
   if (detail) {
     console.log(`    ${detail}`);
   }
+}
+
+function parseBooleanEnv(value, fallback = false) {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  return fallback;
+}
+
+function parseOptionalNonNegativeInteger(value) {
+  if (value === undefined || value === null || String(value).trim().length === 0) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function parseOptionalRatio(value) {
+  if (value === undefined || value === null || String(value).trim().length === 0) {
+    return null;
+  }
+
+  const parsed = Number(String(value));
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) {
+    return null;
+  }
+
+  return parsed;
 }
 
 function normalizeText(value) {
@@ -101,11 +197,16 @@ async function request(label, url, options = {}) {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const signal = options.signal ?? AbortSignal.timeout(45000);
+      const { cookieJar, headers: rawHeaders, ...fetchOptions } = options;
+      const signal = fetchOptions.signal ?? AbortSignal.timeout(45000);
+      const headers = new Headers(rawHeaders ?? {});
+      cookieJar?.apply(headers);
       const response = await fetch(url, {
-        ...options,
+        ...fetchOptions,
+        headers,
         signal
       });
+      cookieJar?.capture(response);
       const text = await response.text();
       let data = null;
 
@@ -133,7 +234,8 @@ async function request(label, url, options = {}) {
 
       return {
         status: response.status,
-        data
+        data,
+        url: response.url
       };
     } catch (error) {
       if (attempt >= maxAttempts) {
@@ -391,25 +493,20 @@ async function refreshSmokeSession(session) {
   }
 
   session.refreshPromise = (async () => {
-    const body = {
-      email: SMOKE_EMAIL,
-      password: SMOKE_PASSWORD,
-      ...(session.tenantId ? { tenantId: session.tenantId } : {})
-    };
+    const login = await loginSmokeUser(
+      "Smoke session refresh",
+      session.tenantId,
+      session.cookieJar ?? new CookieJar()
+    );
 
-    const login = await requestJson("Smoke session refresh", "/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body)
-    });
-
-    if (!login?.accessToken) {
-      throw new Error("Smoke session refresh returned no access token");
+    if (!login?.accessToken && !login?.cookieJar?.hasCookies()) {
+      throw new Error("Smoke session refresh returned no auth context");
     }
 
     session.token = login.accessToken;
     session.tenantId = login?.user?.tenantId ?? session.tenantId;
     session.user = login?.user ?? session.user ?? null;
+    session.cookieJar = login.cookieJar ?? session.cookieJar ?? null;
 
     return session.token;
   })().finally(() => {
@@ -435,7 +532,8 @@ async function requestJsonAsSmokeUser(session, label, pathName, options = {}) {
 
     return {
       ...options,
-      headers
+      headers,
+      cookieJar: session.cookieJar ?? options.cookieJar
     };
   };
 
@@ -1624,32 +1722,77 @@ if (SMOKE_SCENARIO_KEYS.length > 0 && ACTIVE_SCENARIOS.length === 0) {
   throw new Error("No smoke scenarios matched CANDIT_SMOKE_SCENARIO_KEYS");
 }
 
-async function ensureSmokeUser() {
-  if (SMOKE_TENANT_ID) {
-    const login = await requestJson("Smoke login", "/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        email: SMOKE_EMAIL,
-        password: SMOKE_PASSWORD,
-        tenantId: SMOKE_TENANT_ID
-      })
-    });
+async function loginSmokeUser(label, tenantId = null, cookieJar = new CookieJar()) {
+  const login = await request(label, `${API_BASE_URL}/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    cookieJar,
+    body: JSON.stringify({
+      email: SMOKE_EMAIL,
+      password: SMOKE_PASSWORD,
+      ...(tenantId ? { tenantId } : {})
+    })
+  });
 
-    logStatus("PASS", "Smoke user logged in", `${SMOKE_EMAIL} | tenant=${login?.user?.tenantId ?? SMOKE_TENANT_ID}`);
+  if (!login.data?.accessToken && !cookieJar.hasCookies()) {
+    throw new Error(`${label} returned no auth context`);
+  }
+
+  const resolvedTenantId = login.data?.user?.tenantId ?? tenantId ?? null;
+  if (!resolvedTenantId) {
+    throw new Error(
+      `${label} returned no tenant context. Existing-account mode icin CANDIT_SMOKE_TENANT_ID verin.`
+    );
+  }
+
+  return {
+    accessToken: login.data?.accessToken ?? cookieJar.get("aii_access_token"),
+    tenantId: resolvedTenantId,
+    user: login.data?.user ?? null,
+    session: login.data?.session ?? null,
+    cookieJar
+  };
+}
+
+async function ensureSmokeUser() {
+  if (SMOKE_USE_EXISTING_ACCOUNT) {
+    const login = await loginSmokeUser(
+      "Smoke login (existing account)",
+      SMOKE_TENANT_ID,
+      new CookieJar()
+    );
+    logStatus("PASS", "Smoke user logged in", `${SMOKE_EMAIL} | tenant=${login.tenantId} | mode=existing`);
     return {
       created: false,
+      authMode: "existing_login",
       token: login.accessToken,
-      tenantId: login?.user?.tenantId ?? SMOKE_TENANT_ID,
-      user: login?.user ?? null,
-      refreshPromise: null
+      tenantId: login.tenantId,
+      user: login.user,
+      refreshPromise: null,
+      cookieJar: login.cookieJar
+    };
+  }
+
+  if (SMOKE_TENANT_ID) {
+    const login = await loginSmokeUser("Smoke login", SMOKE_TENANT_ID, new CookieJar());
+    logStatus("PASS", "Smoke user logged in", `${SMOKE_EMAIL} | tenant=${login.tenantId}`);
+    return {
+      created: false,
+      authMode: "tenant_login",
+      token: login.accessToken,
+      tenantId: login.tenantId,
+      user: login.user,
+      refreshPromise: null,
+      cookieJar: login.cookieJar
     };
   }
 
   try {
-    const signup = await requestJson("Smoke signup", "/auth/signup", {
+    const cookieJar = new CookieJar();
+    const signup = await request("Smoke signup", `${API_BASE_URL}/auth/signup`, {
       method: "POST",
       headers: { "content-type": "application/json" },
+      cookieJar,
       body: JSON.stringify({
         companyName: SMOKE_COMPANY,
         fullName: SMOKE_FULL_NAME,
@@ -1657,24 +1800,29 @@ async function ensureSmokeUser() {
         password: SMOKE_PASSWORD
       })
     });
+    const signupData = signup.data;
 
-    logStatus("PASS", "Smoke user created", `${SMOKE_EMAIL} | tenant=${signup?.user?.tenantId ?? "unknown"}`);
-    const tenantId = signup?.user?.tenantId ?? null;
-    const directAccessToken = typeof signup?.accessToken === "string" ? signup.accessToken : null;
-    const directRefreshToken = typeof signup?.refreshToken === "string" ? signup.refreshToken : null;
+    logStatus("PASS", "Smoke user created", `${SMOKE_EMAIL} | tenant=${signupData?.user?.tenantId ?? "unknown"}`);
+    const tenantId = signupData?.user?.tenantId ?? null;
+    const directAccessToken =
+      typeof signupData?.accessToken === "string"
+        ? signupData.accessToken
+        : cookieJar.get("aii_access_token");
 
-    if (directAccessToken && tenantId) {
+    if ((directAccessToken || cookieJar.hasCookies()) && tenantId) {
       return {
         created: true,
+        authMode: "signup_direct_token",
         token: directAccessToken,
         tenantId,
-        user: signup?.user ?? null,
-        refreshPromise: Promise.resolve(directRefreshToken)
+        user: signupData?.user ?? null,
+        refreshPromise: null,
+        cookieJar
       };
     }
 
-    const previewUrl = typeof signup?.emailVerification?.previewUrl === "string"
-      ? signup.emailVerification.previewUrl
+    const previewUrl = typeof signupData?.emailVerification?.previewUrl === "string"
+      ? signupData.emailVerification.previewUrl
       : null;
     const verificationToken = extractVerificationToken(previewUrl);
     if (verificationToken) {
@@ -1691,28 +1839,22 @@ async function ensureSmokeUser() {
         created: true,
         token: null,
         tenantId: null,
-        user: signup?.user ?? null,
-        refreshPromise: null
+        user: signupData?.user ?? null,
+        refreshPromise: null,
+        cookieJar
       };
     }
 
-    const login = await requestJson("Smoke login after signup", "/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        email: SMOKE_EMAIL,
-        password: SMOKE_PASSWORD,
-        tenantId
-      })
-    });
-
-    logStatus("PASS", "Smoke user logged in", `${SMOKE_EMAIL} | tenant=${login?.user?.tenantId ?? tenantId}`);
+    const login = await loginSmokeUser("Smoke login after signup", tenantId, cookieJar);
+    logStatus("PASS", "Smoke user logged in", `${SMOKE_EMAIL} | tenant=${login.tenantId}`);
     return {
       created: true,
+      authMode: "signup_then_login",
       token: login.accessToken,
-      tenantId: login?.user?.tenantId ?? tenantId,
-      user: login?.user ?? signup?.user ?? null,
-      refreshPromise: null
+      tenantId: login.tenantId,
+      user: login.user ?? signupData?.user ?? null,
+      refreshPromise: null,
+      cookieJar: login.cookieJar
     };
   } catch (error) {
     const detail = normalizeText(JSON.stringify(error.detail ?? ""));
@@ -1726,22 +1868,16 @@ async function ensureSmokeUser() {
       throw error;
     }
 
-    const login = await requestJson("Smoke login", "/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        email: SMOKE_EMAIL,
-        password: SMOKE_PASSWORD
-      })
-    });
-
-    logStatus("PASS", "Smoke user logged in", `${SMOKE_EMAIL} | tenant=${login?.user?.tenantId ?? "unknown"}`);
+    const login = await loginSmokeUser("Smoke login", null, new CookieJar());
+    logStatus("PASS", "Smoke user logged in", `${SMOKE_EMAIL} | tenant=${login.tenantId} | mode=duplicate_login`);
     return {
       created: false,
+      authMode: "duplicate_login",
       token: login.accessToken,
-      tenantId: login?.user?.tenantId ?? null,
-      user: login?.user ?? null,
-      refreshPromise: null
+      tenantId: login.tenantId,
+      user: login.user,
+      refreshPromise: null,
+      cookieJar: login.cookieJar
     };
   }
 }
@@ -2376,7 +2512,7 @@ function buildMarkdownReport(summary) {
     `- Web: ${summary.webBaseUrl}`,
     `- Smoke user: ${summary.smokeUser.email}`,
     `- Tenant: ${summary.smokeUser.tenantId}`,
-    `- Password: ${summary.smokeUser.password}`,
+    `- Auth mode: ${summary.smokeUser.authMode}`,
     `- Job: ${summary.job.title} (${summary.job.id})`,
     `- Job status: ${summary.job.status}`,
     `- Screening mode: ${summary.job.screeningMode}`,
@@ -2387,10 +2523,18 @@ function buildMarkdownReport(summary) {
     `- Toplam aday: ${summary.results.length}`,
     `- Heuristic pass: ${summary.aggregate.passCount}`,
     `- Heuristic warn: ${summary.aggregate.warnCount}`,
+    `- Heuristic pass rate: ${summary.aggregate.passRate ?? "-"}`,
     `- Ortalama fit score: ${summary.aggregate.averageFitScore}`,
     `- Screening ADVANCE sayisi: ${summary.aggregate.advanceCount}`,
     `- Screening HOLD sayisi: ${summary.aggregate.holdCount}`,
     `- Screening REVIEW sayisi: ${summary.aggregate.reviewCount}`,
+    `- Quality gate: ${summary.qualityGate.enabled ? (summary.qualityGate.passed ? "PASS" : "WARN") : "devre disi"}`,
+    ...(summary.qualityGate.enabled
+      ? [
+          `- Max warning: ${summary.qualityGate.maxWarnings ?? "-"}`,
+          `- Min pass rate: ${summary.qualityGate.minPassRate ?? "-"}`
+        ]
+      : []),
     "",
     "## Hizli Tablo",
     "",
@@ -2435,6 +2579,12 @@ function buildMarkdownReport(summary) {
     lines.push("");
   });
 
+  if (summary.qualityGate.enabled && summary.qualityGate.reasons.length > 0) {
+    lines.push("## Quality Gate Notes", "");
+    lines.push(toBulletList(summary.qualityGate.reasons));
+    lines.push("");
+  }
+
   return lines.join("\n");
 }
 
@@ -2452,12 +2602,43 @@ function aggregateResults(results) {
     : null;
 
   return {
+    totalCount: results.length,
     passCount: results.filter((item) => item.heuristic.status === "pass").length,
     warnCount: results.filter((item) => item.heuristic.status !== "pass").length,
+    passRate:
+      results.length > 0
+        ? Number((results.filter((item) => item.heuristic.status === "pass").length / results.length).toFixed(3))
+        : null,
     averageFitScore,
     advanceCount: results.filter((item) => item.screening.recommendedOutcome === "ADVANCE").length,
     holdCount: results.filter((item) => item.screening.recommendedOutcome === "HOLD").length,
     reviewCount: results.filter((item) => item.screening.recommendedOutcome === "REVIEW").length
+  };
+}
+
+function evaluateQualityGate(aggregate) {
+  const maxWarnings = ANALYSIS_MAX_WARNINGS ?? (ANALYSIS_STRICT ? 0 : null);
+  const minPassRate = ANALYSIS_MIN_PASS_RATE;
+  const enabled = maxWarnings !== null || minPassRate !== null;
+  const reasons = [];
+
+  if (maxWarnings !== null && aggregate.warnCount > maxWarnings) {
+    reasons.push(`Heuristic warn sayisi ${aggregate.warnCount}; izin verilen en fazla ${maxWarnings}.`);
+  }
+
+  if (minPassRate !== null && aggregate.passRate !== null && aggregate.passRate < minPassRate) {
+    reasons.push(
+      `Heuristic pass rate ${aggregate.passRate}; beklenen minimum ${minPassRate}.`
+    );
+  }
+
+  return {
+    enabled,
+    strict: ANALYSIS_STRICT,
+    passed: reasons.length === 0,
+    maxWarnings,
+    minPassRate,
+    reasons
   };
 }
 
@@ -2496,13 +2677,17 @@ async function settleScenarios(items, concurrency, worker) {
 }
 
 async function main() {
-  logStatus("INFO", "Analysis smoke started", `${API_BASE_URL} | ${WEB_BASE_URL}`);
+  logStatus(
+    "INFO",
+    "Analysis smoke started",
+    `${API_BASE_URL} | ${WEB_BASE_URL} | existing_account=${SMOKE_USE_EXISTING_ACCOUNT ? "yes" : "no"}`
+  );
 
   await request("API health", `${API_BASE_URL}/health`);
   await request("Web root", `${WEB_BASE_URL}/`);
 
   const smokeUser = await ensureSmokeUser();
-  if (!smokeUser?.token || !smokeUser?.tenantId) {
+  if ((!smokeUser?.token && !smokeUser?.cookieJar?.hasCookies()) || !smokeUser?.tenantId) {
     throw new Error("Smoke user auth information missing");
   }
 
@@ -2573,14 +2758,15 @@ async function main() {
   }
 
   const aggregate = aggregateResults(results);
+  const qualityGate = evaluateQualityGate(aggregate);
   const summary = {
     runStamp: RUN_STAMP,
     apiBaseUrl: API_BASE_URL,
     webBaseUrl: WEB_BASE_URL,
     smokeUser: {
       email: SMOKE_EMAIL,
-      password: SMOKE_PASSWORD,
-      tenantId: smokeUser.tenantId
+      tenantId: smokeUser.tenantId,
+      authMode: smokeUser.authMode
     },
     job: {
       id: job.id,
@@ -2590,6 +2776,7 @@ async function main() {
       locationSignalMode: SMOKE_LOCATION_SIGNAL_MODE
     },
     aggregate,
+    qualityGate,
     failures,
     results
   };
@@ -2604,6 +2791,20 @@ async function main() {
     logStatus("WARN", "Analysis smoke completed with failures", `${failures.length} scenario(s) failed`);
     process.exitCode = 1;
     return;
+  }
+
+  if (qualityGate.enabled && !qualityGate.passed) {
+    logStatus("WARN", "Analysis quality gate failed", qualityGate.reasons.join(" | "));
+    process.exitCode = 1;
+    return;
+  }
+
+  if (qualityGate.enabled) {
+    logStatus(
+      "PASS",
+      "Analysis quality gate passed",
+      `warn=${aggregate.warnCount}/${qualityGate.maxWarnings ?? "-"} | pass_rate=${aggregate.passRate ?? "-"}`
+    );
   }
 
   logStatus("PASS", "Analysis smoke completed", `candidates=${results.length} avg_fit=${aggregate.averageFitScore ?? "-"}`);

@@ -172,3 +172,34 @@ test("getEnvironmentConfigurationWarnings highlights frontend/runtime drift and 
     warnings.some((warning) => warning.includes("DEV_LOGIN_PASSWORD is set to a usable value"))
   );
 });
+
+test("development corsOrigins include common local web ports used by smoke and browser QA", () => {
+  const runtimeConfig = createRuntimeConfig({});
+
+  assert.deepEqual(runtimeConfig.corsOrigins, [
+    "http://localhost:3000",
+    "http://localhost:3100",
+    "http://localhost:3200",
+    "http://localhost:3500"
+  ]);
+});
+
+test("providerReadiness marks speech unready when provider-backed speech env is missing", () => {
+  const runtimeConfig = createRuntimeConfig({
+    SPEECH_STT_PROVIDER: "openai",
+    SPEECH_TTS_PROVIDER: "elevenlabs"
+  });
+
+  const readiness = runtimeConfig.providerReadiness;
+  const warnings = runtimeConfig.getProviderConfigurationWarnings();
+
+  assert.equal(readiness.speech.ready, false);
+  assert.ok(
+    warnings.some((warning) => warning.includes("SPEECH_STT_PROVIDER=openai but OPENAI_API_KEY is missing"))
+  );
+  assert.ok(
+    warnings.some((warning) =>
+      warning.includes("SPEECH_TTS_PROVIDER=elevenlabs but ELEVENLABS_API_KEY is missing")
+    )
+  );
+});
