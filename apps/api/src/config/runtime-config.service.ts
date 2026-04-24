@@ -198,6 +198,14 @@ export class RuntimeConfigService {
     return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 1;
   }
 
+  get googleSchedulingEnabled() {
+    return toBool(this.configService.get<string>("GOOGLE_SCHEDULING_ENABLED"), !this.isProduction);
+  }
+
+  get googleAuthEnabled() {
+    return toBool(this.configService.get<string>("GOOGLE_AUTH_ENABLED"), !this.isProduction);
+  }
+
   assertProductionSafety() {
     if (!this.isProduction) {
       return;
@@ -334,6 +342,7 @@ export class RuntimeConfigService {
 
   get googleCalendarConfig() {
     return {
+      launchEnabled: this.googleSchedulingEnabled,
       oauthClientId: toOptionalString(this.configService.get<string>("GOOGLE_OAUTH_CLIENT_ID")) ?? "",
       oauthClientSecret:
         toOptionalString(this.configService.get<string>("GOOGLE_OAUTH_CLIENT_SECRET")) ?? "",
@@ -364,6 +373,7 @@ export class RuntimeConfigService {
 
   get googleAuthConfig() {
     return {
+      launchEnabled: this.googleAuthEnabled,
       clientId:
         toOptionalString(this.configService.get<string>("GOOGLE_AUTH_CLIENT_ID")) ??
         toOptionalString(this.configService.get<string>("GOOGLE_OAUTH_CLIENT_ID")) ??
@@ -552,6 +562,7 @@ export class RuntimeConfigService {
       },
       googleCalendar: {
         oauthConfigured:
+          google.launchEnabled &&
           google.oauthClientIdConfigured &&
           google.oauthClientSecretConfigured &&
           google.oauthRedirectUriConfigured
@@ -572,19 +583,25 @@ export class RuntimeConfigService {
 
   get meetingProviderCatalog() {
     const readiness = this.providerReadiness;
+    const googleLaunchEnabled = this.googleSchedulingEnabled;
     const googleReady = readiness.googleCalendar.oauthConfigured;
+    const googleStatus = !googleLaunchEnabled
+      ? ("unsupported" as const)
+      : googleReady
+        ? ("pilot" as const)
+        : ("setup_required" as const);
 
     return [
       {
         provider: "GOOGLE_CALENDAR",
-        status: googleReady ? "pilot" : "setup_required",
+        status: googleStatus,
         ready: googleReady,
         requiresConnection: true,
         oauthConfigured: googleReady
       },
       {
         provider: "GOOGLE_MEET",
-        status: googleReady ? "pilot" : "setup_required",
+        status: googleStatus,
         ready: googleReady,
         requiresConnection: true,
         oauthConfigured: googleReady
@@ -611,8 +628,16 @@ export class RuntimeConfigService {
     const emailProvider = this.emailRuntimeConfig.provider;
     const googleAuth = this.googleAuthConfig;
     const googleAuthReady = Boolean(
-      googleAuth.clientId && googleAuth.clientSecret && googleAuth.redirectUri
+      googleAuth.launchEnabled &&
+        googleAuth.clientId &&
+        googleAuth.clientSecret &&
+        googleAuth.redirectUri
     );
+    const googleAuthStatus: LaunchSupportStatus = !googleAuth.launchEnabled
+      ? "unsupported"
+      : googleAuthReady
+        ? "pilot"
+        : "setup_required";
 
     const emailStatus: LaunchSupportStatus =
       emailProvider === "resend"
@@ -648,7 +673,7 @@ export class RuntimeConfigService {
         sessionMode: this.authMode,
         googleOAuth: {
           provider: "google",
-          status: googleAuthReady ? ("pilot" as const) : ("setup_required" as const),
+          status: googleAuthStatus,
           ready: googleAuthReady
         },
         enterpriseSso: {
@@ -692,7 +717,7 @@ export class RuntimeConfigService {
       warnings.push("SPEECH_TTS_PROVIDER=openai but OPENAI_API_KEY is missing.");
     }
 
-    if (!readiness.googleCalendar.oauthConfigured) {
+    if (this.googleSchedulingEnabled && !readiness.googleCalendar.oauthConfigured) {
       warnings.push("Google OAuth env vars are incomplete (ready-after-config state).");
     }
 
@@ -724,6 +749,7 @@ export class RuntimeConfigService {
 
     if (
       this.isProduction &&
+      this.googleSchedulingEnabled &&
       this.googleCalendarConfig.oauthRedirectUri &&
       isLocalOrigin(this.googleCalendarConfig.oauthRedirectUri)
     ) {

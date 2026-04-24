@@ -133,15 +133,35 @@ function ensure(condition, label, detail) {
   }
 }
 
+async function fetchWithRetry(url, options, retryLabel, attempts = 2) {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fetch(url, options);
+    } catch (error) {
+      lastError = error;
+
+      if (attempt < attempts) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+    }
+  }
+
+  throw new Error(
+    `${retryLabel} fetch failed after ${attempts} attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`
+  );
+}
+
 async function request(label, url, options = {}) {
   const { cookieJar, headers: rawHeaders, ...fetchOptions } = options;
   const headers = new Headers(rawHeaders ?? {});
   cookieJar?.apply(headers);
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     ...fetchOptions,
     headers
-  });
+  }, label);
   cookieJar?.capture(response);
   const text = await response.text();
   let data = null;
@@ -183,10 +203,10 @@ async function requestStatus(label, path, expectedStatus, options = {}) {
   const headers = new Headers(rawHeaders ?? {});
   cookieJar?.apply(headers);
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetchWithRetry(`${API_BASE_URL}${path}`, {
     ...fetchOptions,
     headers
-  });
+  }, label);
   cookieJar?.capture(response);
   const text = await response.text();
   let data = null;
@@ -252,8 +272,8 @@ async function resolveWebBaseUrl() {
   for (const candidate of candidateWebBaseUrls()) {
     try {
       const [pricing, login] = await Promise.all([
-        fetch(`${candidate}/pricing`),
-        fetch(`${candidate}/auth/login`)
+        fetchWithRetry(`${candidate}/pricing`, undefined, `${candidate}/pricing probe`),
+        fetchWithRetry(`${candidate}/auth/login`, undefined, `${candidate}/auth/login probe`)
       ]);
 
       if (pricing.ok && login.ok) {

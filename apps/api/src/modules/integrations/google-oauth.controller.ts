@@ -59,6 +59,11 @@ export class GoogleOAuthController {
     void user;
     await this.billingService.assertFeatureEnabled(tenantId, "calendarIntegrations");
     const googleCalendar = this.runtimeConfig.googleCalendarConfig;
+
+    if (!googleCalendar.launchEnabled) {
+      throw new BadRequestException("Google scheduling pilot kapsaminda devre disi.");
+    }
+
     const clientId = googleCalendar.oauthClientId;
     const redirectUri = googleCalendar.oauthRedirectUri;
 
@@ -129,6 +134,11 @@ export class GoogleOAuthController {
 
     // Exchange authorization code for tokens
     const googleCalendar = this.runtimeConfig.googleCalendarConfig;
+
+    if (!googleCalendar.launchEnabled) {
+      return res.redirect(this.integrationsSettingsUrl({ error: "google_oauth_disabled" }));
+    }
+
     const clientId = googleCalendar.oauthClientId;
     const clientSecret = googleCalendar.oauthClientSecret;
     const redirectUri = googleCalendar.oauthRedirectUri;

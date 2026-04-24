@@ -49,3 +49,23 @@ test("getProviders disables Google when auth provider configuration is incomplet
     }
   });
 });
+
+test("getProviders keeps Google disabled in production until explicitly enabled", () => {
+  const controller = createController({
+    APP_RUNTIME_MODE: "production",
+    GOOGLE_AUTH_CLIENT_ID: "google-client-id",
+    GOOGLE_AUTH_CLIENT_SECRET: "google-client-secret",
+    GOOGLE_AUTH_REDIRECT_URI: "https://app.candit.ai/auth/google/callback"
+  });
+
+  assert.deepEqual(controller.getProviders(), {
+    google: {
+      enabled: false
+    },
+    enterpriseSso: {
+      enabled: false,
+      launchStatus: "unsupported",
+      reason: "Enterprise OIDC/SSO V1 kapsamına dahil değil."
+    }
+  });
+});

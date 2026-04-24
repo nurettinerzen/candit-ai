@@ -187,7 +187,12 @@ export class AuthController {
 
     return {
       google: {
-        enabled: Boolean(googleAuth.clientId && googleAuth.clientSecret && googleAuth.redirectUri)
+        enabled: Boolean(
+          googleAuth.launchEnabled &&
+            googleAuth.clientId &&
+            googleAuth.clientSecret &&
+            googleAuth.redirectUri
+        )
       },
       enterpriseSso: {
         enabled: false,

@@ -345,12 +345,14 @@ Ilgili arka plan notlari icin:
 - [x] Google auth public login redirect'i staging callback'e donuyor.
   - Mevcut dogrulama:
     - `/v1/auth/google/authorize` -> `redirect_uri=https://candit.onrender.com/v1/auth/google/callback`
-- [ ] Google OAuth authorize akisi hala `redirect_uri_mismatch` veriyor.
-  - Mevcut durum:
-    - Backend dogru callback URL'yi uretiyor
-    - Ancak Google tarafinda `https://candit.onrender.com/v1/auth/google/callback` henüz yetkili redirect URI olarak tanimli degil
-  - Gereken:
-    - Google Cloud Console > OAuth client > Authorized redirect URIs icine ekle:
+- [x] Google OAuth redirect mismatch pilot boundary ile neutralize edildi.
+  - Yeni durum:
+    - production/pilot runtime'da `GOOGLE_AUTH_ENABLED=false` ve `GOOGLE_SCHEDULING_ENABLED=false` varsayilani ile Google login ve Google scheduling yuzeyleri bilincli sekilde kapali
+    - bu sayede yetkili redirect URI tanimlanmadan recruiter veya aday kirik Google authorize akisina girmiyor
+  - Tekrar acmak icin:
+    - `GOOGLE_AUTH_ENABLED=true`
+    - `GOOGLE_SCHEDULING_ENABLED=true`
+    - Google Cloud Console icinde su URI'ler yetkili olmali:
       - `https://candit.onrender.com/v1/auth/google/callback`
       - `https://candit.onrender.com/v1/integrations/google/callback`
 - [x] Integrations tarafindaki Google callback env'i staging/prod formatina getirildi.

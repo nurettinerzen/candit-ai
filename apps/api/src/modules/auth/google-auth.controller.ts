@@ -38,6 +38,12 @@ export class GoogleAuthController {
     const intent = normalizeIntent(rawIntent);
     const googleAuth = this.runtimeConfig.googleAuthConfig;
 
+    if (!googleAuth.launchEnabled) {
+      return response.redirect(
+        this.toWebErrorUrl(intent, "google_auth_disabled", normalizeReturnTo(returnTo))
+      );
+    }
+
     if (!googleAuth.clientId || !googleAuth.clientSecret || !googleAuth.redirectUri) {
       return response.redirect(
         this.toWebErrorUrl(intent, "google_auth_not_configured", normalizeReturnTo(returnTo))
@@ -75,8 +81,6 @@ export class GoogleAuthController {
     @Query("error") error: string | undefined,
     @Res() response: ExpressResponse
   ) {
-    const googleAuth = this.runtimeConfig.googleAuthConfig;
-
     let decodedState: {
       intent: "login" | "signup";
       companyName?: string | null;
@@ -93,6 +97,11 @@ export class GoogleAuthController {
 
     const intent = normalizeIntent(decodedState.intent);
     const resolvedReturnTo = normalizeReturnTo(decodedState.returnTo);
+    const googleAuth = this.runtimeConfig.googleAuthConfig;
+
+    if (!googleAuth.launchEnabled) {
+      return response.redirect(this.toWebErrorUrl(intent, "google_auth_disabled", resolvedReturnTo));
+    }
 
     if (error) {
       return response.redirect(this.toWebErrorUrl(intent, error, resolvedReturnTo));

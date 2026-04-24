@@ -70,11 +70,13 @@ Amac pilot, staging ve launch runtime'larinda hangi ayarin neden var oldugunu te
 
 ## Google auth ve scheduling
 
+- `GOOGLE_SCHEDULING_ENABLED`: Google Calendar/Meet pilotta acik mi. Production/pilot varsayilani: `false`.
 - `GOOGLE_OAUTH_CLIENT_ID`: Google Calendar/Meet OAuth client id. Pilot: Google scheduling kullaniliyorsa zorunlu.
 - `GOOGLE_OAUTH_CLIENT_SECRET`: Google Calendar/Meet OAuth client secret. Pilot: zorunlu.
 - `GOOGLE_OAUTH_REDIRECT_URI`: Google scheduling callback URL. Launch: localhost olamaz.
 - `GOOGLE_OAUTH_SCOPES`: scheduling scope listesi. Pilot: zorunlu.
 - `GOOGLE_CALENDAR_DEFAULT_ID`: varsayilan calendar id. Opsiyonel.
+- `GOOGLE_AUTH_ENABLED`: Google login pilotta acik mi. Production/pilot varsayilani: `false`.
 - `GOOGLE_AUTH_CLIENT_ID`: Google login client id. Google auth aciksa zorunlu.
 - `GOOGLE_AUTH_CLIENT_SECRET`: Google login client secret. Google auth aciksa zorunlu.
 - `GOOGLE_AUTH_REDIRECT_URI`: Google login callback URL. Launch: localhost olamaz.

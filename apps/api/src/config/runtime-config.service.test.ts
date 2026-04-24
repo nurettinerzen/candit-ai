@@ -69,6 +69,39 @@ test("launchBoundaries expose pilot, setup-required, and unsupported providers c
   );
 });
 
+test("launchBoundaries keep Google surfaces unsupported in production until explicitly enabled", () => {
+  const runtimeConfig = createRuntimeConfig({
+    APP_RUNTIME_MODE: "production",
+    AUTH_SESSION_MODE: "jwt",
+    AUTH_TOKEN_TRANSPORT: "cookie",
+    AUTH_COOKIE_SECURE: "true",
+    JWT_SECRET: "super-secure-launch-secret",
+    PUBLIC_WEB_BASE_URL: "https://app.candit.ai",
+    CORS_ORIGIN: "https://app.candit.ai",
+    GOOGLE_OAUTH_CLIENT_ID: "google_client",
+    GOOGLE_OAUTH_CLIENT_SECRET: "google_secret",
+    GOOGLE_OAUTH_REDIRECT_URI: "https://app.candit.ai/v1/integrations/google/callback",
+    GOOGLE_AUTH_CLIENT_ID: "google-client-id",
+    GOOGLE_AUTH_CLIENT_SECRET: "google-client-secret",
+    GOOGLE_AUTH_REDIRECT_URI: "https://app.candit.ai/auth/google/callback"
+  });
+
+  const boundaries = runtimeConfig.launchBoundaries;
+
+  assert.equal(boundaries.authentication.googleOAuth.status, "unsupported");
+  assert.equal(boundaries.authentication.googleOAuth.ready, false);
+  assert.equal(
+    boundaries.scheduling.providers.find((provider) => provider.provider === "GOOGLE_CALENDAR")?.status,
+    "unsupported"
+  );
+  assert.equal(
+    runtimeConfig.getProviderConfigurationWarnings().some((warning) =>
+      warning.includes("Google OAuth env vars are incomplete")
+    ),
+    false
+  );
+});
+
 test("getProviderConfigurationWarnings highlights production credential drift and local OAuth redirects", () => {
   const runtimeConfig = createRuntimeConfig({
     APP_RUNTIME_MODE: "production",
@@ -80,6 +113,7 @@ test("getProviderConfigurationWarnings highlights production credential drift an
     CORS_ORIGIN: "https://app.candit.ai",
     EMAIL_PROVIDER: "console",
     STRIPE_SECRET_KEY: "sk_test_launch_drift",
+    GOOGLE_SCHEDULING_ENABLED: "true",
     GOOGLE_OAUTH_CLIENT_ID: "google_client",
     GOOGLE_OAUTH_CLIENT_SECRET: "google_secret",
     GOOGLE_OAUTH_REDIRECT_URI: "http://localhost:4000/v1/integrations/google/callback"
