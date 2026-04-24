@@ -2,7 +2,14 @@
 
 const API_BASE_URL = stripTrailingSlash(process.env.CANDIT_API_BASE_URL ?? "http://localhost:4000/v1");
 const STRICT_MODE = isTruthy(process.env.CANDIT_SMOKE_STRICT);
+const EMAIL_SAFE_MODE = isTruthy(process.env.CANDIT_SMOKE_EMAIL_SAFE);
 const DEFAULT_PASSWORD = process.env.CANDIT_SMOKE_PASSWORD ?? "Launch123!";
+const EXISTING_SMOKE_EMAIL = process.env.CANDIT_SMOKE_EXISTING_EMAIL?.trim() ?? "";
+const EXISTING_SMOKE_PASSWORD = process.env.CANDIT_SMOKE_EXISTING_PASSWORD?.trim() ?? "";
+const EXISTING_SMOKE_TENANT_ID = process.env.CANDIT_SMOKE_EXISTING_TENANT_ID?.trim() ?? "";
+const ISOLATED_SMOKE_EMAIL = process.env.CANDIT_SMOKE_ISOLATED_EMAIL?.trim() ?? "";
+const ISOLATED_SMOKE_PASSWORD = process.env.CANDIT_SMOKE_ISOLATED_PASSWORD?.trim() ?? "";
+const ISOLATED_SMOKE_TENANT_ID = process.env.CANDIT_SMOKE_ISOLATED_TENANT_ID?.trim() ?? "";
 
 const warnings = [];
 
@@ -491,6 +498,75 @@ async function signupPilotUser() {
   };
 }
 
+async function resolvePilotUser() {
+  if (EXISTING_SMOKE_EMAIL && EXISTING_SMOKE_PASSWORD && EXISTING_SMOKE_TENANT_ID) {
+    const cookieJar = new CookieJar();
+    const login = await loginPilotUser(
+      {
+        email: EXISTING_SMOKE_EMAIL,
+        tenantId: EXISTING_SMOKE_TENANT_ID,
+        cookieJar
+      },
+      {
+        label: "Pilot login with existing account",
+        password: EXISTING_SMOKE_PASSWORD,
+        cookieJar
+      }
+    );
+
+    logStatus("PASS", "Using existing pilot account", EXISTING_SMOKE_TENANT_ID);
+    return {
+      stamp: Date.now().toString(),
+      email: EXISTING_SMOKE_EMAIL,
+      token: login.token,
+      cookieJar: login.cookieJar,
+      tenantId: EXISTING_SMOKE_TENANT_ID,
+      userId: login.user?.id ?? null
+    };
+  }
+
+  return signupPilotUser();
+}
+
+async function resolveIsolatedTenant() {
+  if (ISOLATED_SMOKE_EMAIL && ISOLATED_SMOKE_PASSWORD && ISOLATED_SMOKE_TENANT_ID) {
+    const cookieJar = new CookieJar();
+    const login = await loginPilotUser(
+      {
+        email: ISOLATED_SMOKE_EMAIL,
+        tenantId: ISOLATED_SMOKE_TENANT_ID,
+        cookieJar
+      },
+      {
+        label: "Isolated tenant login with existing account",
+        password: ISOLATED_SMOKE_PASSWORD,
+        cookieJar
+      }
+    );
+
+    logStatus("PASS", "Using existing isolated tenant", ISOLATED_SMOKE_TENANT_ID);
+    return {
+      stamp: Date.now().toString(),
+      email: ISOLATED_SMOKE_EMAIL,
+      token: login.token,
+      cookieJar: login.cookieJar,
+      tenantId: ISOLATED_SMOKE_TENANT_ID,
+      userId: login.user?.id ?? null
+    };
+  }
+
+  if (EXISTING_SMOKE_EMAIL) {
+    logStatus(
+      "INFO",
+      "Skipping isolated tenant signup",
+      "provide CANDIT_SMOKE_ISOLATED_* vars to keep tenant isolation proof email-free"
+    );
+    return null;
+  }
+
+  return signupPilotUser();
+}
+
 function buildCrudJobPayload(stamp) {
   return {
     title: `Pilot CRUD ${stamp.slice(-6)}`,
@@ -622,7 +698,7 @@ async function main() {
   }
   logStatus("PASS", "Public web surfaces loaded", `pages=${publicPages.length}`);
 
-  const pilot = await signupPilotUser();
+  const pilot = await resolvePilotUser();
   let auth = authenticatedRequestOptions(pilot, pilot.tenantId);
 
   const session = await requestJson("Auth session", "/auth/session", {
@@ -715,7 +791,13 @@ async function main() {
     ? billingOverview.usage.quotas.find((quota) => quota?.key === "SEATS")
     : null;
 
-  if ((seatQuota?.remaining ?? 0) >= 1) {
+  if (EMAIL_SAFE_MODE) {
+    logStatus(
+      "INFO",
+      "Skipping invite/password-reset proof",
+      "email-safe mode enabled"
+    );
+  } else if ((seatQuota?.remaining ?? 0) >= 1) {
     const invitedMemberEmail = `pilot-team-${pilot.stamp}@example.com`;
     const invitedMemberName = `Pilot Team ${pilot.stamp.slice(-6)}`;
     const invitedMemberPassword = "Launch456!";
@@ -1054,17 +1136,19 @@ async function main() {
   );
   logStatus("PASS", "Candidates list includes created candidate", candidateId);
 
-  const isolatedTenant = await signupPilotUser();
+  const isolatedTenant = await resolveIsolatedTenant();
 
-  await requestStatus("Tenant header mismatch", "/auth/session", 403, {
-    ...authenticatedRequestOptions(pilot, isolatedTenant.tenantId)
-  });
-  logStatus("PASS", "Tenant header mismatch blocked");
+  if (isolatedTenant) {
+    await requestStatus("Tenant header mismatch", "/auth/session", 403, {
+      ...authenticatedRequestOptions(pilot, isolatedTenant.tenantId)
+    });
+    logStatus("PASS", "Tenant header mismatch blocked");
 
-  await requestStatus("Cross-tenant candidate read blocked", `/candidates/${candidateId}`, 404, {
-    ...authenticatedRequestOptions(isolatedTenant, isolatedTenant.tenantId)
-  });
-  logStatus("PASS", "Cross-tenant candidate read blocked", candidateId);
+    await requestStatus("Cross-tenant candidate read blocked", `/candidates/${candidateId}`, 404, {
+      ...authenticatedRequestOptions(isolatedTenant, isolatedTenant.tenantId)
+    });
+    logStatus("PASS", "Cross-tenant candidate read blocked", candidateId);
+  }
 
   const cvUpload = await uploadPilotCv(pilot, pilot.tenantId, candidateId, pilot.stamp);
 
@@ -1285,6 +1369,28 @@ async function main() {
       "Screening run not terminal",
       screeningStatus ?? "latestScreeningRun missing"
     );
+  }
+
+  if (EMAIL_SAFE_MODE) {
+    logStatus(
+      "INFO",
+      "Skipping interview invite and downstream notification proof",
+      "email-safe mode enabled"
+    );
+
+    if (warnings.length > 0) {
+      const detailText = warnings
+        .map((warning) => `${warning.label}${warning.detail ? ` (${warning.detail})` : ""}`)
+        .join(" | ");
+      if (STRICT_MODE) {
+        throw new Error(`Strict smoke failed because launch warnings remain: ${detailText}`);
+      }
+
+      logStatus("WARN", "Smoke completed with launch warnings", detailText);
+    } else {
+      logStatus("PASS", "Smoke completed with no warnings");
+    }
+    return;
   }
 
   const inviteResult = await requestJson("Invite interview", `/applications/${applicationId}/quick-action`, {
