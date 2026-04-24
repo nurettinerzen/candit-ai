@@ -687,6 +687,17 @@ async function main() {
     `jobs=${recruiterOverview?.pipeline?.activeJobs ?? "?"}, candidates=${recruiterOverview?.pipeline?.totalCandidates ?? "?"}`
   );
 
+  await requestStatus("Internal admin dashboard blocked", "/internal-admin/dashboard", 403, {
+    ...auth
+  });
+  await requestStatus("Internal admin accounts blocked", "/internal-admin/accounts", 403, {
+    ...auth
+  });
+  await requestStatus("Internal admin red alert blocked", "/internal-admin/red-alert", 403, {
+    ...auth
+  });
+  logStatus("PASS", "Internal admin APIs blocked for recruiter tenant");
+
   const providerHealth = await requestJson("Provider health", "/read-models/provider-health", {
     ...auth
   });
@@ -699,6 +710,218 @@ async function main() {
   const billingOverview = await requestJson("Billing overview", "/billing/overview", {
     ...auth
   });
+
+  const seatQuota = Array.isArray(billingOverview?.usage?.quotas)
+    ? billingOverview.usage.quotas.find((quota) => quota?.key === "SEATS")
+    : null;
+
+  if ((seatQuota?.remaining ?? 0) >= 1) {
+    const invitedMemberEmail = `pilot-team-${pilot.stamp}@example.com`;
+    const invitedMemberName = `Pilot Team ${pilot.stamp.slice(-6)}`;
+    const invitedMemberPassword = "Launch456!";
+    const invitedMemberResetPassword = "Launch789!";
+
+    const inviteMemberResult = await requestJson("Invite team member", "/members/invitations", {
+      ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+        method: "POST",
+        body: JSON.stringify({
+          email: invitedMemberEmail,
+          fullName: invitedMemberName,
+          role: "manager"
+        })
+      })
+    });
+    ensure(inviteMemberResult?.userId, "Invite member returned no user id");
+    ensure(inviteMemberResult?.invitationUrl, "Invite member returned no invitation URL");
+    logStatus("PASS", "Team member invited", inviteMemberResult.userId);
+
+    const membersAfterInvite = await requestJson("Members list after invite", "/members", {
+      ...auth
+    });
+    const invitedMemberBeforeAccept = Array.isArray(membersAfterInvite)
+      ? membersAfterInvite.find((member) => member?.userId === inviteMemberResult.userId)
+      : null;
+    ensure(invitedMemberBeforeAccept, "Members list missing invited user");
+    ensure(invitedMemberBeforeAccept?.status === "INVITED", "Invited user status mismatch before accept");
+    ensure(Boolean(invitedMemberBeforeAccept?.hasPendingInvitation), "Invited user missing pending invitation flag");
+    logStatus("PASS", "Invited team member visible in members list", inviteMemberResult.userId);
+
+    const invitationToken = extractVerificationToken(inviteMemberResult.invitationUrl);
+    ensure(invitationToken, "Invitation URL missing token");
+
+    const invitationAcceptPath = `/auth/invitations/accept?token=${encodeURIComponent(invitationToken)}`;
+    const invitationAcceptPage = await requestWebPage("Invitation accept page", invitationAcceptPath, {
+      webBaseUrl
+    });
+    ensure(typeof invitationAcceptPage.data === "string" && invitationAcceptPage.data.length > 0, "Invitation accept page empty");
+    ensureFinalPath(invitationAcceptPage, "/auth/invitations/accept", "Invitation accept page");
+    logStatus("PASS", "Invitation accept page loaded");
+
+    const invitationDetail = await requestJson(
+      "Resolve invitation",
+      `/auth/invitations/resolve?token=${encodeURIComponent(invitationToken)}`
+    );
+    ensure(invitationDetail?.invitation?.email === invitedMemberEmail, "Invitation resolve email mismatch");
+    ensure(invitationDetail?.invitation?.status === "pending", "Invitation resolve status mismatch");
+    logStatus("PASS", "Invitation resolved", invitationDetail.invitation.email);
+
+    const invitedCookieJar = new CookieJar();
+    const acceptedInvitation = await request("Accept invitation", `${API_BASE_URL}/auth/invitations/accept`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      cookieJar: invitedCookieJar,
+      body: JSON.stringify({
+        token: invitationToken,
+        password: invitedMemberPassword,
+        fullName: invitedMemberName
+      })
+    });
+    ensure(
+      acceptedInvitation.data?.accessToken || invitedCookieJar.hasCookies(),
+      "Accepted invitation auth context missing"
+    );
+    const invitedSession = {
+      email: invitedMemberEmail,
+      tenantId: invitationDetail.invitation.tenantId,
+      token: acceptedInvitation.data?.accessToken ?? null,
+      cookieJar: invitedCookieJar,
+      userId: acceptedInvitation.data?.user?.id ?? inviteMemberResult.userId
+    };
+    logStatus("PASS", "Invitation accepted", invitedSession.userId);
+
+    const invitedAuthSession = await requestJson("Invited member session", "/auth/session", {
+      ...authenticatedRequestOptions(invitedSession, invitedSession.tenantId)
+    });
+    ensure(invitedAuthSession?.user?.email === invitedMemberEmail, "Invited member session email mismatch");
+    logStatus("PASS", "Invited member session loaded", invitedAuthSession.user.email ?? invitedSession.userId);
+
+    const invitedDashboardPage = await requestWebPage("Invited member dashboard page", "/dashboard", {
+      webBaseUrl,
+      cookieJar: invitedSession.cookieJar
+    });
+    ensure(typeof invitedDashboardPage.data === "string" && invitedDashboardPage.data.length > 0, "Invited member dashboard page empty");
+    ensureFinalPath(invitedDashboardPage, "/dashboard", "Invited member dashboard page");
+    logStatus("PASS", "Invited member dashboard loaded");
+
+    const membersAfterAccept = await requestJson("Members list after accept", "/members", {
+      ...auth
+    });
+    const invitedMemberAfterAccept = Array.isArray(membersAfterAccept)
+      ? membersAfterAccept.find((member) => member?.userId === inviteMemberResult.userId)
+      : null;
+    ensure(invitedMemberAfterAccept, "Members list missing accepted user");
+    ensure(invitedMemberAfterAccept?.status === "ACTIVE", "Invited user status mismatch after accept");
+    ensure(!invitedMemberAfterAccept?.hasPendingInvitation, "Accepted user still has pending invitation");
+    logStatus("PASS", "Accepted team member active in members list", inviteMemberResult.userId);
+
+    const passwordResetRequest = await requestJson("Request password reset", "/auth/password/forgot", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email: invitedMemberEmail
+      })
+    });
+    ensure(passwordResetRequest?.ok, "Password reset request did not succeed");
+    ensure(passwordResetRequest?.previewUrl, "Password reset request returned no preview URL");
+    logStatus("PASS", "Password reset requested", invitedMemberEmail);
+
+    const passwordResetToken = extractVerificationToken(passwordResetRequest.previewUrl);
+    ensure(passwordResetToken, "Password reset preview URL missing token");
+
+    const passwordResetPage = await requestWebPage(
+      "Password reset page",
+      `/auth/reset-password?token=${encodeURIComponent(passwordResetToken)}`,
+      {
+        webBaseUrl
+      }
+    );
+    ensure(typeof passwordResetPage.data === "string" && passwordResetPage.data.length > 0, "Password reset page empty");
+    ensureFinalPath(passwordResetPage, "/auth/reset-password", "Password reset page");
+    logStatus("PASS", "Password reset page loaded");
+
+    const passwordResetDetail = await requestJson(
+      "Resolve password reset",
+      `/auth/password/reset/resolve?token=${encodeURIComponent(passwordResetToken)}`
+    );
+    ensure(passwordResetDetail?.reset?.email === invitedMemberEmail, "Password reset resolve email mismatch");
+    ensure(passwordResetDetail?.reset?.status === "pending", "Password reset resolve status mismatch");
+    logStatus("PASS", "Password reset resolved", passwordResetDetail.reset.email);
+
+    const resetCookieJar = new CookieJar();
+    const passwordResetResponse = await request("Reset password", `${API_BASE_URL}/auth/password/reset`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      cookieJar: resetCookieJar,
+      body: JSON.stringify({
+        token: passwordResetToken,
+        password: invitedMemberResetPassword
+      })
+    });
+    ensure(
+      passwordResetResponse.data?.accessToken || resetCookieJar.hasCookies(),
+      "Password reset auth context missing"
+    );
+    const resetSession = {
+      email: invitedMemberEmail,
+      tenantId: invitationDetail.invitation.tenantId,
+      token: passwordResetResponse.data?.accessToken ?? null,
+      cookieJar: resetCookieJar,
+      userId: passwordResetResponse.data?.user?.id ?? inviteMemberResult.userId
+    };
+    logStatus("PASS", "Password reset completed", resetSession.userId);
+
+    const resetAuthSession = await requestJson("Password reset session", "/auth/session", {
+      ...authenticatedRequestOptions(resetSession, resetSession.tenantId)
+    });
+    ensure(resetAuthSession?.user?.email === invitedMemberEmail, "Password reset session email mismatch");
+    logStatus("PASS", "Password reset session loaded", resetAuthSession.user.email ?? resetSession.userId);
+
+    await requestStatus("Old password login rejected", "/auth/login", 401, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email: invitedMemberEmail,
+        password: invitedMemberPassword,
+        tenantId: invitationDetail.invitation.tenantId
+      })
+    });
+    logStatus("PASS", "Old password rejected after reset", invitedMemberEmail);
+
+    const invitedReloginCookieJar = new CookieJar();
+    const invitedRelogin = await loginPilotUser(
+      {
+        email: invitedMemberEmail,
+        tenantId: invitationDetail.invitation.tenantId,
+        cookieJar: invitedReloginCookieJar
+      },
+      {
+        label: "Invited member login after reset",
+        password: invitedMemberResetPassword,
+        cookieJar: invitedReloginCookieJar
+      }
+    );
+    const invitedReloginSession = {
+      email: invitedMemberEmail,
+      tenantId: invitationDetail.invitation.tenantId,
+      token: invitedRelogin.token,
+      cookieJar: invitedRelogin.cookieJar,
+      userId: invitedRelogin.user?.id ?? inviteMemberResult.userId
+    };
+    const invitedReloginAuthSession = await requestJson("Invited member session after reset login", "/auth/session", {
+      ...authenticatedRequestOptions(invitedReloginSession, invitedReloginSession.tenantId)
+    });
+    ensure(
+      invitedReloginAuthSession?.user?.email === invitedMemberEmail,
+      "Invited member relogin session email mismatch"
+    );
+    logStatus("PASS", "Invited member login works after reset", invitedMemberEmail);
+  } else {
+    logStatus(
+      "INFO",
+      "Skipping invite/password-reset proof",
+      `remainingSeats=${seatQuota?.remaining ?? 0}; run this segment on a provisioned pilot tenant with spare seats.`
+    );
+  }
 
   if (providerHealth?.overall === "degraded") {
     addWarning("Provider health degraded", formatWarnings(providerHealth.warnings ?? []));

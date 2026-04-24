@@ -60,6 +60,7 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
   - logout + relogin
   - recruiter web surfaces load for dashboard / jobs / candidates / applications / team / interviews / settings / subscription / ai-support
   - tenant-aware auth requests
+  - internal-admin API access is rejected for a normal recruiter tenant
   - recruiter overview
   - AI support center and infrastructure readiness surfaces
   - scheduling provider catalog + fallback visibility

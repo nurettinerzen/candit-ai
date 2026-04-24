@@ -39,6 +39,7 @@ Ilgili arka plan notlari icin:
     - auth logout + relogin
     - recruiter dashboard / jobs / candidates / applications / team / interviews / settings / subscription / ai-support sayfa yukleme
     - recruiter overview
+    - recruiter tenant icin internal-admin API erisim reddi
     - AI support center
     - provider/infrastructure readiness
     - scheduling provider catalog + fallback
