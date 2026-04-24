@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
+import { PublicIntegrationsPage } from "../../../components/public-site";
 
 export default function IntegrationsPage() {
-  notFound();
+  return <PublicIntegrationsPage />;
 }

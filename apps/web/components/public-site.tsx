@@ -1447,6 +1447,82 @@ export function PublicHelpPage() {
   );
 }
 
+export function PublicIntegrationsPage() {
+  return (
+    <PublicSiteFrame>
+      <section className={styles.heroSectionSlim}>
+        <div className={styles.shell}>
+          <SectionHeader
+            eyebrow="Entegrasyonlar"
+            title="Candit'i mevcut işe alım akışınıza kontrollü şekilde bağlayın"
+            subtitle="Pilot aşamasında API, webhook ve sınırlı ATS senaryolarıyla ilerliyoruz. Takvim ve Google bağlantıları yalnızca bilinçli olarak açıldığında devreye alınır."
+            align="center"
+          />
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.shell}>
+          <SectionHeader
+            eyebrow="Bugün Hazır"
+            title="İlk günden değer üreten entegrasyon yüzeyleri"
+          />
+          <CardGrid
+            columns={3}
+            cards={[
+              {
+                title: "REST API erişimi",
+                body: "Aday oluşturma, süreç güncelleme ve recruiter operasyonları için kontrollü API senaryoları ile başlayabilirsiniz."
+              },
+              {
+                title: "Webhook akışları",
+                body: "Başvuru, mülakat ve karar olaylarını dış sistemlere taşımak için desteklenen webhook senaryolarını kullanabilirsiniz."
+              },
+              {
+                title: "Pilot onboarding",
+                body: "Alan eşleme, retry davranışı ve operasyon sahipliği gibi kritik kararları teknik ekip ile birlikte netleştiriyoruz."
+              }
+            ]}
+          />
+        </div>
+      </section>
+
+      <section className={cn(styles.section, styles.sectionMuted)}>
+        <div className={styles.shell}>
+          <SectionHeader
+            eyebrow="Launch Sınırı"
+            title="Hangi entegrasyonlar kontrollü açılıyor?"
+          />
+          <CardGrid
+            columns={3}
+            cards={[
+              {
+                title: "Hazır senaryolar",
+                body: "API dokümantasyonu, webhook olayları ve temel ATS veri senkronizasyonu pilot aşamada planlanabilir."
+              },
+              {
+                title: "Setup ile açılanlar",
+                body: "Google login, Google Calendar ve Google Meet yalnızca explicit enable ve doğru OAuth kurulumu tamamlandıktan sonra devreye alınır."
+              },
+              {
+                title: "V1 dışı alanlar",
+                body: "Self-serve marketplace bağlantıları, tek tık third-party onboarding ve desteklenmeyen takvim sağlayıcıları bu launch kapsamına dahil değil."
+              }
+            ]}
+          />
+        </div>
+      </section>
+
+      <CTASection
+        title="Entegrasyon planınızı birlikte netleştirelim"
+        body="Mevcut ATS, webhook veya raporlama ihtiyacınızı paylaşın; ekibimiz sizin için uygun pilot kapsamını birlikte belirlesin."
+        primary={{ label: "İletişime geçin", href: "/contact" }}
+        secondary={{ label: "API dokümantasyonu", href: "/docs/api", tone: "secondary" }}
+      />
+    </PublicSiteFrame>
+  );
+}
+
 export function PublicDocsApiPage() {
   const { t } = useUiText();
 

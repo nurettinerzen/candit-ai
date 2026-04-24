@@ -406,9 +406,9 @@ Ilgili arka plan notlari icin:
 
 ### Bir sonraki faz
 
-- [ ] P0/P1 icinde kalan blocker'lari kapat:
-  - Google OAuth redirect mismatch
-  - public integrations copy / scheduling readiness hizasi
+- [x] P0/P1 icinde kalan blocker'lar kapatildi.
+  - Google OAuth redirect mismatch explicit launch flags ile pilot boundary'ye alindi
+  - public `/integrations` sayfasi 404 yerine kontrollu pilot mesaji ile acildi
 - [ ] Ardindan P2'ye gec:
   - landing page claim/copy/dogruluk kontrolu
 
