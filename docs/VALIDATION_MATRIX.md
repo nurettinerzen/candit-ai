@@ -58,7 +58,7 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
 - Proves:
   - signup + session
   - logout + relogin
-  - recruiter web surfaces load for dashboard / jobs / candidates / applications / settings / subscription / ai-support
+  - recruiter web surfaces load for dashboard / jobs / candidates / applications / team / interviews / settings / subscription / ai-support
   - tenant-aware auth requests
   - recruiter overview
   - AI support center and infrastructure readiness surfaces
@@ -72,6 +72,7 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
   - CV parsing
   - application create
   - applications list + detail
+  - recruiter entity detail pages load for created jobs / candidates / applications
   - dedicated application stage transition + stage-filter proof
   - fit score
   - screening

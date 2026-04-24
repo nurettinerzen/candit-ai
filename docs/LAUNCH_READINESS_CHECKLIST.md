@@ -37,7 +37,7 @@ Ilgili arka plan notlari icin:
     - web root
     - auth signup + session
     - auth logout + relogin
-    - recruiter dashboard / jobs / candidates / applications / settings / subscription / ai-support sayfa yukleme
+    - recruiter dashboard / jobs / candidates / applications / team / interviews / settings / subscription / ai-support sayfa yukleme
     - recruiter overview
     - AI support center
     - provider/infrastructure readiness
@@ -50,6 +50,7 @@ Ilgili arka plan notlari icin:
     - application create
     - applications list + detail
     - application stage transition + stage filter
+    - recruiter entity detail page yukleme (`/jobs/:id`, `/candidates/:id`, `/applications/:id`)
     - fit score tetikleme + worker sonucu
     - interview invite
     - public interview start + cevap

@@ -661,6 +661,8 @@ async function main() {
     { path: "/jobs", label: "Jobs page" },
     { path: "/candidates", label: "Candidates page" },
     { path: "/applications", label: "Applications page" },
+    { path: "/team", label: "Team page" },
+    { path: "/interviews", label: "Interviews page" },
     { path: "/settings", label: "Settings page" },
     { path: "/subscription", label: "Subscription page" },
     { path: "/ai-support", label: "AI support page" }
@@ -913,6 +915,22 @@ async function main() {
   });
   ensure(applicationApiDetail?.id === applicationId, "Application API detail mismatch");
   logStatus("PASS", "Application API detail loaded", applicationApiDetail.id);
+
+  const recruiterDetailPages = [
+    { path: `/jobs/${encodeURIComponent(job.id)}`, label: "Job detail page" },
+    { path: `/candidates/${encodeURIComponent(candidateId)}`, label: "Candidate detail page" },
+    { path: `/applications/${encodeURIComponent(applicationId)}`, label: "Application detail page" }
+  ];
+
+  for (const page of recruiterDetailPages) {
+    const response = await requestWebPage(page.label, page.path, {
+      webBaseUrl,
+      cookieJar: pilot.cookieJar
+    });
+    ensure(typeof response.data === "string" && response.data.length > 0, `${page.label} empty`);
+    ensureFinalPath(response, page.path, page.label);
+  }
+  logStatus("PASS", "Recruiter detail web surfaces loaded", `pages=${recruiterDetailPages.length}`);
 
   await requestJson("Application detail", `/read-models/applications/${applicationId}`, {
     ...auth
