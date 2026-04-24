@@ -7,6 +7,7 @@
 - Internal admin and red-alert visibility are database-backed.
 - Real transactional email is configured; Stripe self-serve billing is still a launch warning until the provider is configured.
 - Environment variable ownership and launch/runtime separation are documented in [LAUNCH_ENVIRONMENT_MATRIX.md](/Users/nurettinerzen/Desktop/ai-interviewer/docs/LAUNCH_ENVIRONMENT_MATRIX.md).
+- Secret rotation, incident response, rollback, and launch-day owner template are documented in [LAUNCH_OPERATIONS_RUNBOOK.md](/Users/nurettinerzen/Desktop/ai-interviewer/docs/LAUNCH_OPERATIONS_RUNBOOK.md).
 - Pilot tenant provisioning and account handoff flow are documented in [PILOT_ACCOUNT_HANDOFF_RUNBOOK.md](/Users/nurettinerzen/Desktop/ai-interviewer/docs/PILOT_ACCOUNT_HANDOFF_RUNBOOK.md).
 
 ## Environment gates

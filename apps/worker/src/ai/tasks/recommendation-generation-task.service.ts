@@ -35,6 +35,7 @@ import {
   textsOverlap
 } from "./task-text-sanitizer.utils.js";
 import { alignDecisionCopy } from "./decision-copy-alignment.utils.js";
+import { guardRecommendationDecision } from "./recommendation-guardrail.utils.js";
 
 const FIT_SCORING_RUBRIC_KEY_PREFIX = "fit_scoring_";
 
@@ -261,36 +262,51 @@ export class RecommendationGenerationTaskService {
       session && !latestReport ? 0.72 : 1
     );
     const uncertaintyLevel = this.policy.uncertaintyLevel(confidence);
-    const recommendation = this.limitRecommendation(
-      this.policy.normalizeRecommendation(sections.recommendedOutcome),
-      transcriptSignals.maxRecommendation
-    );
+    const guardedDecision = guardRecommendationDecision({
+      recommendation: this.limitRecommendation(
+        this.policy.normalizeRecommendation(sections.recommendedOutcome),
+        transcriptSignals.maxRecommendation
+      ),
+      confidence,
+      evidenceCount: sections.evidenceLinks.length,
+      missingInformation: sections.missingInformation,
+      uncertaintyReasons: sections.uncertaintyReasons,
+      flags: sections.flags,
+      hasSessionReport: Boolean(latestReport)
+    });
+    const guardedSections = {
+      ...sections,
+      flags: guardedDecision.flags,
+      missingInformation: guardedDecision.missingInformation,
+      uncertaintyReasons: guardedDecision.uncertaintyReasons
+    };
+    const recommendation = guardedDecision.recommendation;
     const decisionCopy = alignDecisionCopy({
       mode: "review_pack",
       recommendation,
-      summary: sections.recommendationSummary,
-      action: sections.recommendationAction,
-      strengths: sections.strengths ?? [],
-      weaknesses: sections.weaknesses ?? [],
-      missingInformation: sections.missingInformation
+      summary: guardedSections.recommendationSummary,
+      action: guardedSections.recommendationAction,
+      strengths: guardedSections.strengths ?? [],
+      weaknesses: guardedSections.weaknesses ?? [],
+      missingInformation: guardedSections.missingInformation
     });
 
     const summaryText = decisionCopy.summary;
     const rationaleJson = {
       schemaVersion: "application_recommendation.v1.tr",
-      facts: sections.facts,
-      interpretation: sections.interpretation,
+      facts: guardedSections.facts,
+      interpretation: guardedSections.interpretation,
       recommendation: {
         summary: summaryText,
         action: decisionCopy.action,
         recommendedOutcome: recommendation
       },
-      flags: sections.flags,
-      missingInformation: sections.missingInformation,
-      interviewSummary: sections.interviewSummary,
-      strengths: sections.strengths ?? [],
-      weaknesses: sections.weaknesses ?? [],
-      evidenceLinks: sections.evidenceLinks,
+      flags: guardedSections.flags,
+      missingInformation: guardedSections.missingInformation,
+      interviewSummary: guardedSections.interviewSummary,
+      strengths: guardedSections.strengths ?? [],
+      weaknesses: guardedSections.weaknesses ?? [],
+      evidenceLinks: guardedSections.evidenceLinks,
       sourceArtifacts: {
         reportId: latestReport?.id ?? null,
         screeningTaskRunId: latestScreening?.id ?? null,
@@ -307,7 +323,7 @@ export class RecommendationGenerationTaskService {
     const uncertaintyJson = {
       level: uncertaintyLevel,
       confidence,
-      reasons: sections.uncertaintyReasons,
+      reasons: guardedSections.uncertaintyReasons,
       explicitReviewerAction: "Nihai karar icin recruiter onayi zorunludur."
     };
 
@@ -340,7 +356,7 @@ export class RecommendationGenerationTaskService {
         summaryText,
         rationaleJson,
         uncertaintyJson,
-        evidenceCount: sections.evidenceLinks.length,
+        evidenceCount: guardedSections.evidenceLinks.length,
         requiresHumanApproval: true,
         createdBy: context.taskRun.requestedBy
       }
@@ -353,24 +369,24 @@ export class RecommendationGenerationTaskService {
         providerKey: generation.providerKey,
         modelKey: generation.modelKey,
         fallback: generation.mode === "deterministic_fallback",
-        facts: sections.facts,
-        interpretation: sections.interpretation,
-        interviewSummary: sections.interviewSummary,
-        strengths: sections.strengths,
-        weaknesses: sections.weaknesses,
+        facts: guardedSections.facts,
+        interpretation: guardedSections.interpretation,
+        interviewSummary: guardedSections.interviewSummary,
+        strengths: guardedSections.strengths,
+        weaknesses: guardedSections.weaknesses,
         recommendation: {
           summary: summaryText,
           action: decisionCopy.action,
           recommendedOutcome: recommendation
         },
-        flags: sections.flags,
-        missingInformation: sections.missingInformation,
+        flags: guardedSections.flags,
+        missingInformation: guardedSections.missingInformation,
         uncertainty: {
           level: uncertaintyLevel,
-          reasons: sections.uncertaintyReasons,
+          reasons: guardedSections.uncertaintyReasons,
           confidence
         },
-        evidenceLinks: sections.evidenceLinks,
+        evidenceLinks: guardedSections.evidenceLinks,
         additional: {
           recommendationId: recommendationRecord.id,
           requiresHumanApproval: recommendationRecord.requiresHumanApproval,
@@ -647,24 +663,31 @@ export class RecommendationGenerationTaskService {
   }
 
   private sanitizeSections(sections: StructuredTaskSections): StructuredTaskSections {
+    const interviewSummary = sections.interviewSummary ?? "";
+    const recommendation =
+      sections.recommendedOutcome === Recommendation.ADVANCE
+        ? Recommendation.ADVANCE
+        : sections.recommendedOutcome === Recommendation.HOLD
+          ? Recommendation.HOLD
+          : Recommendation.REVIEW;
     const strengths = this.filterSectionLines(sections.strengths ?? [], {
       limit: 6,
-      references: [sections.interviewSummary]
+      references: [interviewSummary]
     });
     const weaknesses = this.filterSectionLines(sections.weaknesses ?? [], {
       limit: 6,
-      references: [sections.interviewSummary]
+      references: [interviewSummary]
     });
     const facts = this.filterSectionLines(
       sections.facts.filter((line) => !/^Aday:|^Pozisyon:/i.test(line)),
       {
         limit: 8,
-        references: [sections.interviewSummary, ...strengths, ...weaknesses]
+        references: [interviewSummary, ...strengths, ...weaknesses]
       }
     );
     const interpretation = this.filterSectionLines(sections.interpretation, {
       limit: 6,
-      references: [sections.interviewSummary, ...facts, ...strengths, ...weaknesses]
+      references: [interviewSummary, ...facts, ...strengths, ...weaknesses]
     });
     const flags = this.uniqueFlags(
       sections.flags.filter(
@@ -689,8 +712,8 @@ export class RecommendationGenerationTaskService {
       weaknesses,
       recommendationSummary: this.sanitizeDecisionSummary({
         summary: sections.recommendationSummary,
-        interviewSummary: sections.interviewSummary,
-        recommendation: sections.recommendedOutcome,
+        interviewSummary,
+        recommendation,
         strengths,
         weaknesses
       }),

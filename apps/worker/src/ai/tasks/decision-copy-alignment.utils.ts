@@ -22,6 +22,8 @@ const HOLD_SIGNAL_PATTERN =
   /(teyit|dogrula|follow up|follow-up|acik nokta|ek gorusme|kisa gorusme|incelemesinde tut|kritik nokta|beklet)/;
 const REVIEW_SIGNAL_PATTERN =
   /(manuel inceleme|daha siki|ilerletmeden once|ilerletme karari vermeden once|yakindan incele|uyum net degil|risk|review|yeniden degerlendir)/;
+const OVERCONFIDENT_DECISION_PATTERN =
+  /(kesin|kesinlikle|garanti|mutlaka|suphesiz|tereddutsuz|hemen|hic beklemeden|ise alinmali|ise al|without hesitation|definitely|guarantee|must hire|hire immediately)/;
 
 function hasPattern(value: string, pattern: RegExp) {
   return pattern.test(normalizeComparableText(value));
@@ -63,6 +65,11 @@ function actionLooksAligned(action: string, recommendation: Recommendation) {
     default:
       return false;
   }
+}
+
+function decisionTextNeedsSoftening(value: string) {
+  const normalized = normalizeComparableText(value);
+  return OVERCONFIDENT_DECISION_PATTERN.test(normalized);
 }
 
 function buildFallbackSummary(input: AlignDecisionCopyInput) {
@@ -113,12 +120,18 @@ function buildFallbackAction(input: AlignDecisionCopyInput) {
 }
 
 export function alignDecisionCopy(input: AlignDecisionCopyInput) {
-  const summary = summaryLooksAligned(input.summary, input.recommendation)
+  const alignedSummary = summaryLooksAligned(input.summary, input.recommendation)
     ? input.summary.trim().slice(0, 700)
     : buildFallbackSummary(input).slice(0, 700);
-  const action = actionLooksAligned(input.action, input.recommendation)
+  const alignedAction = actionLooksAligned(input.action, input.recommendation)
     ? input.action.trim().slice(0, 700)
     : buildFallbackAction(input).slice(0, 700);
+  const summary = decisionTextNeedsSoftening(alignedSummary)
+    ? buildFallbackSummary(input).slice(0, 700)
+    : alignedSummary;
+  const action = decisionTextNeedsSoftening(alignedAction)
+    ? buildFallbackAction(input).slice(0, 700)
+    : alignedAction;
 
   return {
     summary,

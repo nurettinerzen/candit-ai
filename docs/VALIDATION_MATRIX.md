@@ -11,7 +11,10 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
 
 - Command:
   - `corepack pnpm launch:verify`
+- Includes:
+  - `corepack pnpm launch:verify:secrets`
 - Proves:
+  - checked-in repository files do not contain known secret key signatures
   - Prisma client generation
   - lint
   - tests
@@ -87,6 +90,23 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
 - Required for:
   - self-serve launch
   - claims that billing and transactional email are production-ready
+
+### 5. Browser surface verification
+
+- Commands:
+  - `npx -y agent-browser install`
+  - `npx -y agent-browser --session pilot-desktop open http://localhost:3200/pricing`
+  - `npx -y agent-browser --session pilot-mobile set viewport 390 844`
+  - `npx -y agent-browser --session pilot-mobile open http://localhost:3200/auth/login`
+- Proves:
+  - public page content is not blank in a real browser
+  - Next.js error overlay is absent on sampled routes
+  - desktop and mobile viewport rendering passes a basic gut-check
+  - login/pricing key UI elements are present in the accessibility snapshot
+- Does not prove:
+  - every recruiter flow in-browser
+  - authenticated interaction depth beyond the sampled routes
+  - full visual QA across all breakpoints
 
 ## Guardrails we have already proven
 

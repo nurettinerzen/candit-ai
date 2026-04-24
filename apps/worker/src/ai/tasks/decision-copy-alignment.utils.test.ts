@@ -41,3 +41,20 @@ test("alignDecisionCopy preserves already aligned hold copy", () => {
     "Adayi recruiter incelemesinde tutun; eksik noktalar icin hedefli bir follow-up planlayin."
   );
 });
+
+test("alignDecisionCopy softens overconfident advance wording into recruiter-safe guidance", () => {
+  const result = alignDecisionCopy({
+    mode: "review_pack",
+    recommendation: Recommendation.ADVANCE,
+    summary:
+      "Aday kesinlikle uygundur ve ise alinmali. Hic beklemeden sonraki asamaya gecirilmelidir.",
+    action: "Adayi hemen ilerletin ve tereddutsuz teklif surecine alin.",
+    strengths: ["Mulakat sinyalleri role yakin guclu bir tablo sunuyor."],
+    weaknesses: ["Teklif oncesi hiring manager kalibrasyonu halen gerekli."]
+  });
+
+  assert.doesNotMatch(result.summary, /kesin|ise alinmali|hic beklemeden/i);
+  assert.doesNotMatch(result.action, /hemen|tereddutsuz/i);
+  assert.match(result.summary, /(sonraki asama|recruiter teyidi|risk)/i);
+  assert.match(result.action, /(sonraki asama|recruiter teyidi|kalan risk)/i);
+});

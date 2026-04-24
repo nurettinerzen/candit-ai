@@ -36,6 +36,7 @@ import {
   textsOverlap
 } from "./task-text-sanitizer.utils.js";
 import { alignDecisionCopy } from "./decision-copy-alignment.utils.js";
+import { guardRecommendationDecision } from "./recommendation-guardrail.utils.js";
 
 const MIN_REPORT_EVIDENCE_LINKS = 2;
 
@@ -257,43 +258,57 @@ export class ReportGenerationTaskService {
       transcriptSignals.maxConfidence
     );
     const uncertaintyLevel = this.policy.uncertaintyLevel(confidence);
-    const recommendation = this.limitRecommendation(
-      this.policy.normalizeRecommendation(sections.recommendedOutcome),
-      transcriptSignals.maxRecommendation
-    );
+    const guardedDecision = guardRecommendationDecision({
+      recommendation: this.limitRecommendation(
+        this.policy.normalizeRecommendation(sections.recommendedOutcome),
+        transcriptSignals.maxRecommendation
+      ),
+      confidence,
+      evidenceCount: sections.evidenceLinks.length,
+      missingInformation: sections.missingInformation,
+      uncertaintyReasons: sections.uncertaintyReasons,
+      flags: sections.flags
+    });
+    const guardedSections = {
+      ...sections,
+      flags: guardedDecision.flags,
+      missingInformation: guardedDecision.missingInformation,
+      uncertaintyReasons: guardedDecision.uncertaintyReasons
+    };
+    const recommendation = guardedDecision.recommendation;
     const decisionCopy = alignDecisionCopy({
       mode: "review_pack",
       recommendation,
-      summary: sections.recommendationSummary,
-      action: sections.recommendationAction,
-      strengths: sections.strengths ?? [],
-      weaknesses: sections.weaknesses ?? [],
-      missingInformation: sections.missingInformation
+      summary: guardedSections.recommendationSummary,
+      action: guardedSections.recommendationAction,
+      strengths: guardedSections.strengths ?? [],
+      weaknesses: guardedSections.weaknesses ?? [],
+      missingInformation: guardedSections.missingInformation
     });
     const overallScore = this.policy.normalizeConfidence(confidence * 0.9 + 0.05, 0.5);
 
     const reportJson = {
       schemaVersion: "ai_report.v1.tr",
       sections: {
-        facts: sections.facts,
-        interpretation: sections.interpretation,
-        interviewSummary: sections.interviewSummary,
-        strengths: sections.strengths ?? [],
-        weaknesses: sections.weaknesses ?? [],
+        facts: guardedSections.facts,
+        interpretation: guardedSections.interpretation,
+        interviewSummary: guardedSections.interviewSummary,
+        strengths: guardedSections.strengths ?? [],
+        weaknesses: guardedSections.weaknesses ?? [],
         recommendation: {
           summary: decisionCopy.summary,
           action: decisionCopy.action,
           recommendedOutcome: recommendation
         },
-        flags: sections.flags,
-        missingInformation: sections.missingInformation
+        flags: guardedSections.flags,
+        missingInformation: guardedSections.missingInformation
       },
       uncertainty: {
         level: uncertaintyLevel,
-        reasons: sections.uncertaintyReasons,
+        reasons: guardedSections.uncertaintyReasons,
         confidence
       },
-      evidenceLinks: sections.evidenceLinks,
+      evidenceLinks: guardedSections.evidenceLinks,
       safety: {
         recruiterReviewRequired: true,
         autoDecisionApplied: false,
@@ -332,7 +347,7 @@ export class ReportGenerationTaskService {
       tenantId: context.tenantId,
       reportId: report.id,
       transcriptSegments,
-      evidenceLinks: sections.evidenceLinks
+      evidenceLinks: guardedSections.evidenceLinks
     });
 
     await this.prisma.aiRun.create({
@@ -364,24 +379,24 @@ export class ReportGenerationTaskService {
         providerKey: generation.providerKey,
         modelKey: generation.modelKey,
         fallback: generation.mode === "deterministic_fallback",
-        facts: sections.facts,
-        interpretation: sections.interpretation,
-        interviewSummary: sections.interviewSummary,
-        strengths: sections.strengths,
-        weaknesses: sections.weaknesses,
+        facts: guardedSections.facts,
+        interpretation: guardedSections.interpretation,
+        interviewSummary: guardedSections.interviewSummary,
+        strengths: guardedSections.strengths,
+        weaknesses: guardedSections.weaknesses,
         recommendation: {
           summary: decisionCopy.summary,
           action: decisionCopy.action,
           recommendedOutcome: recommendation
         },
-        flags: sections.flags,
-        missingInformation: sections.missingInformation,
+        flags: guardedSections.flags,
+        missingInformation: guardedSections.missingInformation,
         uncertainty: {
           level: uncertaintyLevel,
-          reasons: sections.uncertaintyReasons,
+          reasons: guardedSections.uncertaintyReasons,
           confidence
         },
-        evidenceLinks: sections.evidenceLinks,
+        evidenceLinks: guardedSections.evidenceLinks,
         additional: {
           reportId: report.id,
           overallScore,
@@ -392,7 +407,7 @@ export class ReportGenerationTaskService {
       uncertaintyJson: asJsonObject({
         level: uncertaintyLevel,
         confidence,
-        reasons: sections.uncertaintyReasons
+        reasons: guardedSections.uncertaintyReasons
       }),
       guardrailFlags: asJsonObject(this.policy.getGuardrailFlags(AiTaskType.REPORT_GENERATION)),
       providerKey: generation.providerKey,
@@ -599,24 +614,31 @@ export class ReportGenerationTaskService {
   }
 
   private sanitizeReportSections(sections: StructuredTaskSections): StructuredTaskSections {
+    const interviewSummary = sections.interviewSummary ?? "";
+    const recommendation =
+      sections.recommendedOutcome === Recommendation.ADVANCE
+        ? Recommendation.ADVANCE
+        : sections.recommendedOutcome === Recommendation.HOLD
+          ? Recommendation.HOLD
+          : Recommendation.REVIEW;
     const strengths = this.filterSectionLines(sections.strengths ?? [], {
       limit: 6,
-      references: [sections.interviewSummary]
+      references: [interviewSummary]
     });
     const weaknesses = this.filterSectionLines(sections.weaknesses ?? [], {
       limit: 6,
-      references: [sections.interviewSummary]
+      references: [interviewSummary]
     });
     const facts = this.filterSectionLines(
       sections.facts.filter((line) => !/^Aday:|^Pozisyon:|^Session:/i.test(line)),
       {
         limit: 8,
-        references: [sections.interviewSummary, ...strengths, ...weaknesses]
+        references: [interviewSummary, ...strengths, ...weaknesses]
       }
     );
     const interpretation = this.filterSectionLines(sections.interpretation, {
       limit: 6,
-      references: [sections.interviewSummary, ...facts, ...strengths, ...weaknesses]
+      references: [interviewSummary, ...facts, ...strengths, ...weaknesses]
     });
     const flags = this.uniqueFlags(
       sections.flags.filter(
@@ -641,8 +663,8 @@ export class ReportGenerationTaskService {
       weaknesses,
       recommendationSummary: this.sanitizeDecisionSummary({
         summary: sections.recommendationSummary,
-        interviewSummary: sections.interviewSummary,
-        recommendation: sections.recommendedOutcome,
+        interviewSummary,
+        recommendation,
         strengths,
         weaknesses
       }),

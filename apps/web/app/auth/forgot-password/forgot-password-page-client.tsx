@@ -1,0 +1,105 @@
+"use client";
+
+import Link from "next/link";
+import { useState, type CSSProperties, type FormEvent } from "react";
+import { AuthNotice, AuthShell } from "../../../components/auth-shell";
+import { useUiText } from "../../../components/site-language-provider";
+import { requestPasswordReset } from "../../../lib/auth/session";
+
+export default function ForgotPasswordPage() {
+  const { t } = useUiText();
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(false);
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      await requestPasswordReset({ email });
+      setResult(true);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : t("Şifre sıfırlama talebi gönderilemedi.")
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <AuthShell
+      badge={t("Şifre sıfırlama")}
+      title={t("Şifrenizi sıfırlayın")}
+      description={t("Kayıtlı e-posta adresinizi girin. Hesabınız varsa, şifrenizi yenilemeniz için size bir bağlantı gönderelim.")}
+      footer={
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <Link href="/auth/login" style={{ color: "inherit", textDecoration: "none" }}>
+            {t("Giriş ekranına dön")}
+          </Link>
+          <Link href="/auth/signup" style={{ color: "inherit", textDecoration: "none" }}>
+            {t("Yeni hesap oluştur")}
+          </Link>
+        </div>
+      }
+    >
+      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }}>
+        {error ? <AuthNotice tone="danger" message={error} /> : null}
+        {result ? (
+          <AuthNotice
+            tone="success"
+            message={t("Hesabınız varsa, şifre sıfırlama bağlantısını e-posta kutunuza gönderdik.")}
+          />
+        ) : null}
+
+        <label style={{ display: "grid", gap: 8 }}>
+          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Kayıtlı e-posta adresi")}</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            style={inputStyle}
+          />
+        </label>
+
+        <button type="submit" disabled={loading} style={primaryButtonStyle}>
+          {loading ? t("Hazırlanıyor...") : t("Sıfırlama bağlantısını gönder")}
+        </button>
+      </form>
+    </AuthShell>
+  );
+}
+
+const inputStyle: CSSProperties = {
+  width: "100%",
+  borderRadius: 16,
+  border: "1px solid rgba(148,163,184,0.18)",
+  background: "rgba(15,23,42,0.9)",
+  color: "#f8fafc",
+  padding: "14px 16px",
+  fontSize: 15,
+  outline: "none",
+  fontFamily: "inherit"
+};
+
+const primaryButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "100%",
+  border: "none",
+  borderRadius: 16,
+  background: "#5046e5",
+  color: "#fff",
+  fontSize: 15,
+  fontWeight: 700,
+  padding: "14px 18px",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  textDecoration: "none"
+};

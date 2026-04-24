@@ -393,7 +393,14 @@ Ilgili arka plan notlari icin:
     - ilk soru ve follow-up akisi ilerliyor
   - Not:
     - `answerSource: "text"` gecersiz; frontend/manual smoke icin `manual_text` kullanilmali
-- [ ] Browser tabanli interaktif smoke testi icin local `agent-browser` araci ortamda mevcut degil; ilk tur HTTP smoke + deploy/log dogrulamasi ile yapildi.
+- [x] Browser tabanli interaktif smoke testi local `agent-browser` ile dogrulandi.
+  - Kurulum:
+    - `npx -y agent-browser install`
+  - Son dogrulama:
+    - desktop `http://localhost:3200/pricing`
+    - mobile viewport `390x844` ile `http://localhost:3200/auth/login`
+    - error overlay: `OK`
+    - page errors: bos
 
 ### Bir sonraki faz
 
@@ -436,11 +443,16 @@ Ilgili arka plan notlari icin:
 - [x] Hero mesajlari abarti, yanlis vaat veya launch disi capability icermiyor.
 - [x] Ozellik kartlari gercekten mevcut capability'lerle uyumlu.
 - [x] CTA'ler dogru sayfaya gidiyor.
-- [ ] Fiyat/plan mesajlari gercek backlog ve launch planina uygun.
+- [x] Fiyat/plan mesajlari gercek backlog ve launch planina uygun.
+  - Kanit:
+    - `pricing` sayfasi self-serve satin alma yerine `Pilot erisimi iste` ve `Iletisime gecin` CTA'leri gosteriyor
+- [x] Mobile ve desktop gorunumu gozden gecirildi.
+  - Kanit:
+    - desktop browser smoke: `/pricing`
+    - mobile browser smoke: `/auth/login`
 - [x] Blog/solution/public sayfalarda yanlis claim yok.
 - [x] Interview/AI claims gercekte calisan modlarla uyumlu.
 - [x] Public forms, waitlist, contact, docs linkleri calisiyor.
-- [ ] Mobile ve desktop gorunumu gozden gecirildi.
 - [x] Public sayfalarda copy, typo, TR/EN karismasi temizlendi.
 
 ### P3 - Recruiter panel temel akislar
@@ -519,8 +531,10 @@ Ilgili arka plan notlari icin:
 
 ### P9 - Launch oncesi acilmamasi gereken entegrasyonlar
 
-- [ ] Stripe launch oncesi acilmayacaksa UI'da yanlis yonlendirme yok.
-- [ ] Real email gonderimi acilmadan once provider ayarlari dokumante edildi.
+- [x] Stripe launch oncesi acilmayacaksa UI'da yanlis yonlendirme yok.
+    - public pricing ve recruiter subscription yuzeyi self-serve kapaliyken guided onboarding / contact akisina yonlendiriyor
+- [x] Real email gonderimi acilmadan once provider ayarlari dokumante edildi.
+    - `LAUNCH_ENVIRONMENT_MATRIX.md` ve `CANDID_PILOT_LAUNCH_RUNBOOK.md` email provider ownership ve sender beklentisini acikliyor
 - [x] Google / Stripe / Resend / ElevenLabs icin hangi provider'lar launch'a dahil net.
 - [x] Launch disi entegrasyonlar UI'dan gizlendi, etiketlendi ya da disabled hale getirildi.
 - [ ] Test credential ile prod credential karismiyor.
@@ -528,11 +542,16 @@ Ilgili arka plan notlari icin:
 
 ### P10 - Security, privacy ve operasyon hazirligi
 
-- [ ] Secret rotation planı hazir.
+- [x] Secret rotation planı hazir.
+    - `LAUNCH_OPERATIONS_RUNBOOK.md` icinde launch oncesi rotate edilmesi gereken tum kritik secret'lar ve sira tanimli
 - [ ] Public repo / screenshot / log uzerinden sizmis secret kalmadi.
-- [ ] Demo shortcut / dev auth / debug modlar launch'ta kapatilacak sekilde planlandi.
-- [ ] Error logging / incident response / rollback adimlari dokumante edildi.
+    - `corepack pnpm launch:verify:secrets` checked-in repo yuzeyini tarar; sohbet, log ve screenshot kaynakli ifsalar ayrica rotate edilmelidir
+- [x] Demo shortcut / dev auth / debug modlar launch'ta kapatilacak sekilde planlandi.
+    - runtime warning'leri, env matrisi ve launch-safe seed davranisi demo credential sarkmasini erken yakaliyor
+- [x] Error logging / incident response / rollback adimlari dokumante edildi.
+    - `LAUNCH_OPERATIONS_RUNBOOK.md` incident source, severity, containment ve rollback kurallarini topluyor
 - [ ] Launch gunu icin owner, sorumlu ve go/no-go karari net.
+    - owner tablosu `LAUNCH_OPERATIONS_RUNBOOK.md` icinde hazir; final isimler launch gununden once doldurulmali
 
 ## Go / No-Go Kapilari
 

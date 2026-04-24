@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const API_BASE_URL = stripTrailingSlash(process.env.CANDIT_API_BASE_URL ?? "http://localhost:4000/v1");
-const WEB_BASE_URL = stripTrailingSlash(process.env.CANDIT_WEB_BASE_URL ?? "http://localhost:3000");
 const STRICT_MODE = isTruthy(process.env.CANDIT_SMOKE_STRICT);
 const DEFAULT_PASSWORD = process.env.CANDIT_SMOKE_PASSWORD ?? "Launch123!";
 
@@ -53,6 +52,15 @@ function stripTrailingSlash(value) {
 
 function isTruthy(value) {
   return ["1", "true", "yes", "on"].includes(String(value ?? "").trim().toLowerCase());
+}
+
+function candidateWebBaseUrls() {
+  const explicit = process.env.CANDIT_WEB_BASE_URL?.trim();
+  if (explicit) {
+    return [stripTrailingSlash(explicit)];
+  }
+
+  return ["http://localhost:3000", "http://localhost:3100", "http://localhost:3200"];
 }
 
 function normalizeComparableText(value) {
@@ -153,13 +161,21 @@ async function request(label, url, options = {}) {
 
   return {
     status: response.status,
-    data
+    data,
+    url: response.url
   };
 }
 
 async function requestJson(label, path, options = {}) {
   const response = await request(label, `${API_BASE_URL}${path}`, options);
   return response.data;
+}
+
+async function requestWebPage(label, path, options = {}) {
+  const webBaseUrl = options.webBaseUrl;
+  ensure(typeof webBaseUrl === "string" && webBaseUrl.length > 0, `${label} web base URL missing`);
+  const { webBaseUrl: _ignored, ...requestOptions } = options;
+  return request(label, `${webBaseUrl}${path}`, requestOptions);
 }
 
 async function requestStatus(label, path, expectedStatus, options = {}) {
@@ -216,6 +232,45 @@ function formatWarnings(items) {
   return items
     .filter((item) => typeof item === "string" && item.trim().length > 0)
     .join(" | ");
+}
+
+function ensureFinalPath(response, expectedPath, label) {
+  const finalUrl = response?.url;
+  ensure(finalUrl, `${label} final URL missing`);
+
+  try {
+    const parsed = new URL(finalUrl);
+    ensure(parsed.pathname === expectedPath, label, `redirected to ${parsed.pathname}`);
+  } catch {
+    throw new Error(`${label}: invalid final URL ${finalUrl}`);
+  }
+}
+
+async function resolveWebBaseUrl() {
+  const diagnostics = [];
+
+  for (const candidate of candidateWebBaseUrls()) {
+    try {
+      const [pricing, login] = await Promise.all([
+        fetch(`${candidate}/pricing`),
+        fetch(`${candidate}/auth/login`)
+      ]);
+
+      if (pricing.ok && login.ok) {
+        return candidate;
+      }
+
+      diagnostics.push(`${candidate} (pricing=${pricing.status}, login=${login.status})`);
+    } catch (error) {
+      diagnostics.push(
+        `${candidate} (${error instanceof Error ? error.message : String(error)})`
+      );
+    }
+  }
+
+  throw new Error(
+    `No compatible web runtime found. Tried: ${diagnostics.join(" | ")}`
+  );
 }
 
 function extractVerificationToken(previewUrl) {
@@ -478,14 +533,30 @@ async function uploadPilotCv(session, tenantId, candidateId, stamp) {
 }
 
 async function main() {
-  logStatus("INFO", "Pilot smoke started", `${API_BASE_URL} | ${WEB_BASE_URL}`);
+  const webBaseUrl = await resolveWebBaseUrl();
+  logStatus("INFO", "Pilot smoke started", `${API_BASE_URL} | ${webBaseUrl}`);
 
   const apiHealth = await request("API health", `${API_BASE_URL}/health`);
   logStatus("PASS", "API reachable", `status=${apiHealth.status}`);
 
-  const webRoot = await request("Web root", `${WEB_BASE_URL}/`);
+  const webRoot = await request("Web root", `${webBaseUrl}/`);
   ensure(typeof webRoot.data === "string" && webRoot.data.length > 0, "Web root empty");
   logStatus("PASS", "Web reachable", `status=${webRoot.status}`);
+
+  const publicPages = [
+    { path: "/auth/login", label: "Login page" },
+    { path: "/auth/signup", label: "Signup page" },
+    { path: "/pricing", label: "Pricing page" }
+  ];
+
+  for (const page of publicPages) {
+    const response = await requestWebPage(page.label, page.path, {
+      webBaseUrl
+    });
+    ensure(typeof response.data === "string" && response.data.length > 0, `${page.label} empty`);
+    ensureFinalPath(response, page.path, page.label);
+  }
+  logStatus("PASS", "Public web surfaces loaded", `pages=${publicPages.length}`);
 
   const pilot = await signupPilotUser();
   const auth = authenticatedRequestOptions(pilot, pilot.tenantId);
@@ -494,6 +565,23 @@ async function main() {
     ...auth
   });
   logStatus("PASS", "Auth session loaded", session?.runtime?.authTransport ?? "unknown");
+
+  const recruiterPages = [
+    { path: "/dashboard", label: "Dashboard page" },
+    { path: "/settings", label: "Settings page" },
+    { path: "/subscription", label: "Subscription page" },
+    { path: "/ai-support", label: "AI support page" }
+  ];
+
+  for (const page of recruiterPages) {
+    const response = await requestWebPage(page.label, page.path, {
+      webBaseUrl,
+      cookieJar: pilot.cookieJar
+    });
+    ensure(typeof response.data === "string" && response.data.length > 0, `${page.label} empty`);
+    ensureFinalPath(response, page.path, page.label);
+  }
+  logStatus("PASS", "Recruiter web surfaces loaded", `pages=${recruiterPages.length}`);
 
   const recruiterOverview = await requestJson("Recruiter overview", "/read-models/recruiter-overview", {
     ...auth
