@@ -1000,6 +1000,8 @@ export class ReadModelsService {
 
     return {
       queryWarnings,
+      environment: this.runtimeConfig.launchEnvironment,
+      environmentWarnings: this.runtimeConfig.getEnvironmentConfigurationWarnings(),
       runtime: this.runtimeConfig.providerReadiness,
       launchWarnings: this.runtimeConfig.getProviderConfigurationWarnings(),
       startupHealth: {

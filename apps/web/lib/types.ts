@@ -168,7 +168,6 @@ export type InterviewInvitationView = {
 };
 
 export type MeetingProvider =
-  | "CALENDLY"
   | "GOOGLE_CALENDAR"
   | "MICROSOFT_CALENDAR"
   | "ZOOM"
@@ -1412,10 +1411,6 @@ export type InfrastructureReadinessReadModel = {
       providerMode: string;
       openAiSpeechReady: boolean;
       ready: boolean;
-    };
-    calendly: {
-      oauthConfigured: boolean;
-      webhookSigningSecretConfigured: boolean;
     };
     googleCalendar: {
       oauthConfigured: boolean;

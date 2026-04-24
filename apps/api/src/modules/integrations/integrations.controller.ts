@@ -12,7 +12,6 @@ import { BillingService } from "../billing/billing.service";
 import { IntegrationsService } from "./integrations.service";
 
 const INTEGRATION_PROVIDERS = [
-  "CALENDLY",
   "GOOGLE_CALENDAR",
   "MICROSOFT_CALENDAR",
   "ZOOM",
@@ -88,7 +87,6 @@ export class IntegrationsController {
     if (
       provider === "GOOGLE_CALENDAR" ||
       provider === "GOOGLE_MEET" ||
-      provider === "CALENDLY" ||
       provider === "MICROSOFT_CALENDAR"
     ) {
       await this.billingService.assertFeatureEnabled(tenantId, "calendarIntegrations");

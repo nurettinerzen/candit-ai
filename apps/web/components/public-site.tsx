@@ -1099,12 +1099,29 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
 
 export function PublicPricingPage() {
   const { t, locale } = useUiText();
+  const pilotAccessLabel = locale === "en" ? "Request pilot access" : "Pilot erişimi iste";
+  const contactLabel = locale === "en" ? "Contact us" : "İletişime geçin";
+  const pricingHeroSubtitle =
+    locale === "en"
+      ? "Start with the free trial, then unlock monthly packages through guided pilot onboarding. Online self-serve billing opens in the next stage."
+      : "14 günlük denemeyle başlayın; aylık paketleri kontrollü pilot onboarding ile açıyoruz. Çevrimiçi self-serve ödeme bir sonraki aşamada devreye alınacak.";
+  const pricingPilotNoticeTitle =
+    locale === "en"
+      ? "Pilot billing access is guided"
+      : "Pilot ödeme erişimi kontrollü ilerliyor";
+  const pricingPilotNoticeBody =
+    locale === "en"
+      ? "Free trial signup is live. Starter, Growth, and add-on activations are opened together with the team during pilot so package changes do not depend on unfinished self-serve billing flows."
+      : "Ücretsiz deneme kaydı açık. Starter, Growth ve ek kredi aktivasyonlarını pilot sürecinde ekiple birlikte açıyoruz; böylece paket değişiklikleri henüz tamamlanmamış self-serve ödeme akışlarına bağlı kalmıyor.";
   const pricingPlans = buildBillingPlanCatalogCards(locale, {
-    enterprisePriceLabel: locale === "en" ? "Contact Us" : "İletişime geçin"
+    enterprisePriceLabel: contactLabel
   }).map((plan) => ({
     ...plan,
-    href: plan.key === "ENTERPRISE" ? "/contact" : "/auth/signup",
-    actionLabel: plan.key === "ENTERPRISE" ? "İletişime geçin" : "Ücretsiz deneme"
+    href:
+      plan.key === "ENTERPRISE"
+        ? "/contact?source=pricing-enterprise"
+        : `/contact?source=pricing-plan&plan=${plan.key.toLowerCase()}`,
+    actionLabel: plan.key === "ENTERPRISE" ? contactLabel : pilotAccessLabel
   }));
 
   return (
@@ -1123,7 +1140,7 @@ export function PublicPricingPage() {
             {t("İhtiyacınıza uygun planı seçin")}
           </h1>
           <p className={styles.prHeroSubtitle}>
-            {t("Kullandıkça öde, aylık paketler veya kurumsal kurulum arasından seçim yapın. İhtiyacınıza göre ilerleyin.")}
+            {pricingHeroSubtitle}
           </p>
         </div>
       </section>
@@ -1131,6 +1148,21 @@ export function PublicPricingPage() {
       {/* ══ Plan Cards ══ */}
       <section className={styles.prPlansSection}>
         <div className={styles.shell}>
+          <div
+            style={{
+              marginBottom: 24,
+              padding: "18px 20px",
+              borderRadius: 24,
+              border: "1px solid rgba(148, 163, 184, 0.22)",
+              background: "rgba(15, 23, 42, 0.72)",
+              display: "grid",
+              gap: 8
+            }}
+          >
+            <strong style={{ color: "#f8fafc", fontSize: 16 }}>{pricingPilotNoticeTitle}</strong>
+            <p style={{ margin: 0, color: "#cbd5e1", lineHeight: 1.6 }}>{pricingPilotNoticeBody}</p>
+          </div>
+
           <div className={styles.prCardsGrid}>
             {pricingPlans.map((plan) => {
               return (

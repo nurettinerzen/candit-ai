@@ -73,7 +73,7 @@ test("createWorkflow rejects missing applications before provider setup", async 
         tenantId: "ten_1",
         applicationId: "missing_app",
         initiatedBy: "usr_1",
-        provider: IntegrationProvider.CALENDLY
+        provider: IntegrationProvider.GOOGLE_CALENDAR
       }),
     (error: unknown) => error instanceof NotFoundException
   );
@@ -86,7 +86,7 @@ test("createWorkflow enforces provider selectability before creating the workflo
     createService();
 
   setProviderCheckError(
-    new BadRequestException("CALENDLY için aktif tenant baglantisi bulunmuyor.")
+    new BadRequestException("GOOGLE_CALENDAR için aktif tenant baglantisi bulunmuyor.")
   );
 
   await assert.rejects(
@@ -95,16 +95,16 @@ test("createWorkflow enforces provider selectability before creating the workflo
         tenantId: "ten_1",
         applicationId: "app_1",
         initiatedBy: "usr_1",
-        provider: IntegrationProvider.CALENDLY
+        provider: IntegrationProvider.GOOGLE_CALENDAR
       }),
     (error: unknown) =>
       error instanceof BadRequestException &&
-      error.message.includes("CALENDLY için aktif tenant baglantisi bulunmuyor")
+      error.message.includes("GOOGLE_CALENDAR için aktif tenant baglantisi bulunmuyor")
   );
 
   assert.deepEqual(getCapturedProviderCheck(), {
     tenantId: "ten_1",
-    provider: IntegrationProvider.CALENDLY
+    provider: IntegrationProvider.GOOGLE_CALENDAR
   });
   assert.equal(getSchedulingWorkflowCreateCalls(), 0);
 });

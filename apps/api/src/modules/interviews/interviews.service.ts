@@ -44,7 +44,6 @@ const INTERVIEW_COMPLETION_REVIEW_PACK_FLAG =
   "ai.system_triggers.interview_completed.review_pack.enabled";
 
 const MEETING_PROVIDERS = [
-  IntegrationProvider.CALENDLY,
   IntegrationProvider.GOOGLE_MEET,
   IntegrationProvider.ZOOM,
   IntegrationProvider.GOOGLE_CALENDAR,
@@ -622,13 +621,6 @@ export class InterviewsService {
       displayName: connection.displayName,
       hasMeetingUrlTemplate: (() => {
         const config = connection.configJson as Record<string, unknown>;
-        if (connection.provider === IntegrationProvider.CALENDLY) {
-          return (
-            typeof config.schedulingUrl === "string" ||
-            typeof config.schedulingUrlTemplate === "string"
-          );
-        }
-
         return typeof config.baseMeetingUrl === "string";
       })(),
       updatedAt: connection.updatedAt

@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "node ../../scripts/run-ts-tests.mjs src",
-    "test:contracts": "node --import tsx --test src/ai/tasks/report-generation-task.service.test.ts"
+    "test:contracts": "node --import tsx --test src/ai/tasks/decision-copy-alignment.utils.test.ts src/ai/tasks/report-generation-task.service.test.ts src/ai/tasks/recommendation-generation-task.service.test.ts src/ai/tasks/screening-support-task.service.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.6.0",

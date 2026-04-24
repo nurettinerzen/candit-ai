@@ -640,10 +640,6 @@ export function getGoogleCalendarIntegrationAuthorizeUrl() {
   return buildPublicApiUrl("integrations/google/authorize");
 }
 
-export function getCalendlyIntegrationAuthorizeUrl() {
-  return buildPublicApiUrl("integrations/calendly/authorize");
-}
-
 export async function refreshJwtSession(session: WebAuthSession): Promise<WebAuthSession | null> {
   if (session.authMode === "jwt_cookie") {
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {

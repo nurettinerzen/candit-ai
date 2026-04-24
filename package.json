@@ -15,6 +15,7 @@
     "launch:verify:runtime:strict": "CANDIT_SMOKE_STRICT=1 node scripts/pilot-smoke.mjs",
     "smoke:pilot": "node scripts/pilot-smoke.mjs",
     "smoke:billing": "corepack pnpm --filter @ai-interviewer/api smoke:billing",
+    "pilot:provision": "corepack pnpm --filter @ai-interviewer/api exec tsx ../../scripts/provision-pilot-account.ts",
     "format": "corepack pnpm -r --if-present format",
     "i18n:audit": "node scripts/translate-audit.mjs",
     "db:generate": "corepack pnpm --filter @ai-interviewer/api prisma:generate",

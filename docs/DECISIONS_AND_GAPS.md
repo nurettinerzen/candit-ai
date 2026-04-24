@@ -49,7 +49,7 @@
   - Pilot can still run as sales-led.
 
 - Not every marketed integration is equally launch-ready.
-  - Google Calendar / Meet / Calendly can be piloted.
+  - Google Calendar / Meet can be piloted.
   - Unsupported providers must keep failing visibly instead of being marketed as ready.
 
 - Admin and recruiter surfaces still need ongoing UX simplification.

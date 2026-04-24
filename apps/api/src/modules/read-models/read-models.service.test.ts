@@ -14,6 +14,24 @@ function createService() {
   };
 
   const runtimeConfig = {
+    launchEnvironment: {
+      runtimeMode: "production",
+      authMode: "jwt",
+      authTokenTransport: "cookie",
+      requireTenantHeader: false,
+      allowDevHeaderAuth: false,
+      allowDemoShortcuts: false,
+      allowDemoCredentialLogin: false,
+      devLoginPasswordConfigured: false,
+      publicWebBaseUrl: "https://app.candit.ai",
+      corsOrigins: ["https://app.candit.ai"],
+      frontend: {
+        runtimeMode: "production",
+        authSessionMode: "jwt",
+        authTokenTransport: "cookie",
+        enableDemoSession: false
+      }
+    },
     providerReadiness: {
       parsing: {
         provider: "openai",
@@ -32,10 +50,6 @@ function createService() {
         openAiSpeechReady: false,
         ready: true
       },
-      calendly: {
-        oauthConfigured: false,
-        webhookSigningSecretConfigured: false
-      },
       googleCalendar: {
         oauthConfigured: false
       },
@@ -47,6 +61,7 @@ function createService() {
     getProviderConfigurationWarnings: () => [
       "EMAIL_PROVIDER=console in production; candidate-facing emails will not be delivered."
     ],
+    getEnvironmentConfigurationWarnings: () => [],
     validateAtStartup: () => ({
       healthy: false,
       warnings: ["Email provider selected but provider credentials are missing."],
@@ -86,7 +101,7 @@ function createService() {
         providers: [],
         catalog: [
           {
-            provider: "CALENDLY",
+            provider: "GOOGLE_CALENDAR",
             status: "pilot",
             ready: true,
             requiresConnection: true,
@@ -97,7 +112,7 @@ function createService() {
             hasMeetingUrlTemplate: false,
             updatedAt: null,
             selectable: false,
-            selectionReason: "CALENDLY için aktif tenant baglantisi bulunmuyor."
+            selectionReason: "GOOGLE_CALENDAR için aktif tenant baglantisi bulunmuyor."
           }
         ],
         fallback: {
@@ -157,6 +172,8 @@ test("infrastructureReadiness exposes startup health and launch warnings togethe
   assert.deepEqual(result.launchWarnings, [
     "EMAIL_PROVIDER=console in production; candidate-facing emails will not be delivered."
   ]);
+  assert.equal(result.environment.runtimeMode, "production");
+  assert.deepEqual(result.environmentWarnings, []);
   assert.equal(result.startupHealth.healthy, false);
   assert.deepEqual(result.startupHealth.warnings, [
     "Email provider selected but provider credentials are missing."
@@ -174,7 +191,7 @@ test("infrastructureReadiness exposes startup health and launch warnings togethe
     totalWorkflows: 0,
     catalog: [
       {
-        provider: "CALENDLY",
+        provider: "GOOGLE_CALENDAR",
         status: "pilot",
         ready: true,
         requiresConnection: true,
@@ -185,7 +202,7 @@ test("infrastructureReadiness exposes startup health and launch warnings togethe
         hasMeetingUrlTemplate: false,
         updatedAt: null,
         selectable: false,
-        selectionReason: "CALENDLY için aktif tenant baglantisi bulunmuyor."
+        selectionReason: "GOOGLE_CALENDAR için aktif tenant baglantisi bulunmuyor."
       }
     ],
     fallback: {

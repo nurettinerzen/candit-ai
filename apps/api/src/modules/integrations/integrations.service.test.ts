@@ -23,25 +23,18 @@ function createService() {
     {
       meetingProviderCatalog: [
         {
-          provider: "CALENDLY",
+          provider: "GOOGLE_CALENDAR",
           status: "pilot",
           ready: true,
           requiresConnection: true,
           oauthConfigured: true
         },
         {
-          provider: "GOOGLE_CALENDAR",
-          status: "setup_required",
-          ready: false,
-          requiresConnection: true,
-          oauthConfigured: false
-        },
-        {
           provider: "GOOGLE_MEET",
-          status: "setup_required",
-          ready: false,
+          status: "pilot",
+          ready: true,
           requiresConnection: true,
-          oauthConfigured: false
+          oauthConfigured: true
         },
         {
           provider: "ZOOM",
@@ -93,11 +86,11 @@ test("resolveMeetingContext blocks an explicitly selected provider when the tena
         tenantId: "ten_1",
         sessionId: "sess_1",
         mode: "MEETING_LINK",
-        preferredProvider: IntegrationProvider.CALENDLY
+        preferredProvider: IntegrationProvider.GOOGLE_CALENDAR
       }),
     (error: unknown) =>
       error instanceof BadRequestException &&
-      error.message.includes("CALENDLY için aktif tenant baglantisi bulunmuyor")
+      error.message.includes("GOOGLE_CALENDAR için aktif tenant baglantisi bulunmuyor")
   );
 });
 

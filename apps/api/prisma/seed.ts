@@ -31,6 +31,57 @@ const sessionAccessTokens = {
   sess_demo_3: "demo_voice_token_sess_3"
 } as const;
 
+function toBool(value: string | undefined, fallback: boolean) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true" || normalized === "1" || normalized === "yes") {
+    return true;
+  }
+
+  if (normalized === "false" || normalized === "0" || normalized === "no") {
+    return false;
+  }
+
+  return fallback;
+}
+
+function resolveSeedCredentialMode() {
+  const runtimeMode =
+    (process.env.APP_RUNTIME_MODE ?? process.env.NODE_ENV ?? "development").trim().toLowerCase();
+  const configuredPassword = process.env.DEV_LOGIN_PASSWORD?.trim();
+  const allowDemoCredentialLogin =
+    runtimeMode === "production"
+      ? false
+      : toBool(process.env.ALLOW_DEMO_CREDENTIAL_LOGIN, true);
+
+  if (configuredPassword && configuredPassword !== "disabled-for-production") {
+    return {
+      password: configuredPassword,
+      enabled: true,
+      source: "env" as const
+    };
+  }
+
+  if (allowDemoCredentialLogin) {
+    return {
+      password: "demo12345",
+      enabled: true,
+      source: "local_default" as const
+    };
+  }
+
+  return {
+    password: createHash("sha256")
+      .update(`${runtimeMode}:launch-safe-seed:${tenantId}`)
+      .digest("hex"),
+    enabled: false,
+    source: "disabled" as const
+  };
+}
+
 function hoursAgo(hours: number) {
   return new Date(Date.now() - hours * 60 * 60 * 1000);
 }
@@ -102,8 +153,8 @@ async function writeSeedCvFile(storageKey: string, content: string) {
 }
 
 async function upsertUsers() {
-  const defaultPassword = process.env.DEV_LOGIN_PASSWORD ?? "demo12345";
-  const passwordHash = await hashPassword(defaultPassword);
+  const seedCredentialMode = resolveSeedCredentialMode();
+  const passwordHash = await hashPassword(seedCredentialMode.password);
   const passwordSetAt = new Date();
 
   // Legacy duplicate internal-admin kaydini kaldirip owner hesabi info@candit.ai'a tasiyoruz.
@@ -430,21 +481,6 @@ async function upsertIntegrationConnections() {
       lastError: "oauth_not_configured"
     },
     {
-      // Calendly: Needs CALENDLY_OAUTH_CLIENT_ID/SECRET or personal access token
-      // Supports webhook-driven scheduling + direct booking via scheduling links
-      id: "conn_demo_calendly",
-      provider: "CALENDLY" as const,
-      status: "INACTIVE" as const,
-      displayName: "Calendly — OAuth or personal token required",
-      configJson: {
-        schedulingUrlTemplate: "https://calendly.com/demo-org/{sessionId}",
-        webhookSigningSecretConfigured: false,
-        _setup_hint: "Set CALENDLY_OAUTH_CLIENT_ID, CALENDLY_OAUTH_CLIENT_SECRET, or provide personalAccessToken in credentials"
-      },
-      credentialsJson: {},
-      lastError: "oauth_not_configured"
-    },
-    {
       id: "conn_demo_zoom_template",
       provider: "ZOOM" as const,
       status: "ACTIVE" as const,
@@ -496,7 +532,7 @@ async function upsertIntegrationConnections() {
     where: {
       tenantId,
       provider: {
-        in: ["CALENDLY", "GOOGLE_CALENDAR", "GOOGLE_MEET"]
+        in: ["GOOGLE_CALENDAR", "GOOGLE_MEET"]
       }
     },
     select: {
@@ -1675,49 +1711,6 @@ async function upsertSchedulingWorkflowSeeds() {
       ],
       selectedSlotJson: null,
       bookingResultJson: null
-    },
-    {
-      id: "swf_demo_calendly_needs_auth",
-      applicationId: "app_demo_mehmet_support",
-      provider: "CALENDLY",
-      state: "SLOT_SELECTED",
-      status: "ACTIVE",
-      recruiterConstraintsJson: {
-        timezone: "Europe/Istanbul",
-        slotDurationMinutes: 30,
-        windows: [
-          {
-            start: hoursFromNow(40).toISOString(),
-            end: hoursFromNow(43).toISOString()
-          }
-        ]
-      },
-      candidateAvailabilityJson: {
-        timezone: "Europe/Istanbul",
-        windows: [
-          {
-            start: hoursFromNow(40.5).toISOString(),
-            end: hoursFromNow(42.5).toISOString()
-          }
-        ]
-      },
-      proposedSlotsJson: [
-        {
-          slotId: "slot_demo_calendly_1",
-          start: hoursFromNow(41).toISOString(),
-          end: hoursFromNow(41.5).toISOString(),
-          source: "intersection"
-        }
-      ],
-      selectedSlotJson: {
-        slotId: "slot_demo_calendly_1",
-        start: hoursFromNow(41).toISOString(),
-        end: hoursFromNow(41.5).toISOString(),
-        source: "intersection"
-      },
-      bookingResultJson: {
-        status: "awaiting_calendly_auth"
-      }
     },
     {
       id: "swf_demo_provider_ready",
@@ -3839,7 +3832,12 @@ async function seed() {
   console.log("- info@candit.ai (owner + internal super admin)");
   console.log("- manager@demo.local (manager)");
   console.log("- staff@demo.local (staff)");
-  console.log("Sifre (.env DEV_LOGIN_PASSWORD): demo12345");
+  const seedCredentialMode = resolveSeedCredentialMode();
+  if (seedCredentialMode.enabled) {
+    console.log(`Sifre (${seedCredentialMode.source === "env" ? ".env DEV_LOGIN_PASSWORD" : "local default"}): ${seedCredentialMode.password}`);
+  } else {
+    console.log("Sifre: disabled (launch-safe seed mode)");
+  }
   console.log("Demo basvurular:");
   console.log("- app_demo_mehmet_support: interview yok (aday intake asamasi)");
   console.log("- app_demo_zeynep_cashier: interview schedule edildi (session aktif)");

@@ -5,6 +5,7 @@ import { InterviewSessionStatus } from "@prisma/client";
 import { InterviewsService } from "./interviews.service";
 
 function createPublicSession() {
+  const now = Date.now();
   return {
     id: "sess_1",
     tenantId: "ten_1",
@@ -17,7 +18,7 @@ function createPublicSession() {
     invitationReminderCount: 0,
     invitationReminder1SentAt: null,
     invitationReminder2SentAt: null,
-    candidateAccessExpiresAt: new Date("2026-04-20T10:00:00.000Z"),
+    candidateAccessExpiresAt: new Date(now + 48 * 60 * 60 * 1000),
     candidateLocale: "tr-TR",
     runtimeMode: "guided_voice_turn_v1",
     runtimeProviderMode: "browser_native",
@@ -35,7 +36,7 @@ function createPublicSession() {
     abandonedAt: null,
     completedReasonCode: null,
     lastCandidateActivityAt: null,
-    scheduledAt: new Date("2026-04-17T10:00:00.000Z"),
+    scheduledAt: new Date(now + 24 * 60 * 60 * 1000),
     template: {
       id: "tmpl_1",
       name: "Template",
@@ -131,25 +132,18 @@ function createService() {
     {
       meetingProviderCatalog: [
         {
-          provider: "CALENDLY",
+          provider: "GOOGLE_CALENDAR",
           status: "pilot",
           ready: true,
           requiresConnection: true,
           oauthConfigured: true
         },
         {
-          provider: "GOOGLE_CALENDAR",
-          status: "setup_required",
-          ready: false,
-          requiresConnection: true,
-          oauthConfigured: false
-        },
-        {
           provider: "GOOGLE_MEET",
-          status: "setup_required",
-          ready: false,
+          status: "pilot",
+          ready: true,
           requiresConnection: true,
-          oauthConfigured: false
+          oauthConfigured: true
         },
         {
           provider: "ZOOM",
@@ -253,10 +247,10 @@ test("listSchedulingProviders exposes launch boundary catalog alongside active c
   setIntegrationConnections([
     {
       id: "conn_1",
-      provider: "CALENDLY",
-      displayName: "Calendly Team",
+      provider: "GOOGLE_MEET",
+      displayName: "Google Meet Team",
       configJson: {
-        schedulingUrl: "https://calendly.com/candit/intro"
+        baseMeetingUrl: "https://meet.google.com"
       },
       updatedAt: new Date("2026-04-17T10:00:00.000Z")
     }
@@ -265,21 +259,21 @@ test("listSchedulingProviders exposes launch boundary catalog alongside active c
   const result = await service.listSchedulingProviders("ten_1");
 
   assert.equal(result.providers.length, 1);
-  assert.equal(result.providers[0]?.provider, "CALENDLY");
+  assert.equal(result.providers[0]?.provider, "GOOGLE_MEET");
   assert.equal(result.providers[0]?.hasMeetingUrlTemplate, true);
 
-  const calendly = result.catalog.find((item: { provider: string }) => item.provider === "CALENDLY");
+  const googleMeet = result.catalog.find((item: { provider: string }) => item.provider === "GOOGLE_MEET");
   const zoom = result.catalog.find((item: { provider: string }) => item.provider === "ZOOM");
 
-  assert.deepEqual(calendly, {
-    provider: "CALENDLY",
+  assert.deepEqual(googleMeet, {
+    provider: "GOOGLE_MEET",
     status: "pilot",
     ready: true,
     requiresConnection: true,
     oauthConfigured: true,
     connected: true,
     connectionId: "conn_1",
-    displayName: "Calendly Team",
+    displayName: "Google Meet Team",
     hasMeetingUrlTemplate: true,
     updatedAt: new Date("2026-04-17T10:00:00.000Z"),
     selectable: true,

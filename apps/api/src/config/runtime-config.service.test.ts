@@ -45,11 +45,9 @@ test("launchBoundaries expose pilot, setup-required, and unsupported providers c
   const runtimeConfig = createRuntimeConfig({
     AUTH_SESSION_MODE: "jwt",
     EMAIL_PROVIDER: "console",
-    CALENDLY_OAUTH_CLIENT_ID: "cal_client",
-    CALENDLY_OAUTH_CLIENT_SECRET: "cal_secret",
-    CALENDLY_OAUTH_REDIRECT_URI: "https://app.candit.ai/auth/calendly/callback",
     GOOGLE_OAUTH_CLIENT_ID: "google_client",
     GOOGLE_OAUTH_CLIENT_SECRET: "google_secret",
+    GOOGLE_OAUTH_REDIRECT_URI: "https://app.candit.ai/v1/integrations/google/callback",
     GOOGLE_AUTH_REDIRECT_URI: "https://app.candit.ai/auth/google/callback"
   });
 
@@ -62,7 +60,7 @@ test("launchBoundaries expose pilot, setup-required, and unsupported providers c
   assert.equal(boundaries.authentication.googleOAuth.status, "pilot");
   assert.equal(boundaries.authentication.enterpriseSso.status, "unsupported");
   assert.equal(
-    boundaries.scheduling.providers.find((provider) => provider.provider === "CALENDLY")?.status,
+    boundaries.scheduling.providers.find((provider) => provider.provider === "GOOGLE_CALENDAR")?.status,
     "pilot"
   );
   assert.equal(
@@ -84,10 +82,7 @@ test("getProviderConfigurationWarnings highlights production credential drift an
     STRIPE_SECRET_KEY: "sk_test_launch_drift",
     GOOGLE_OAUTH_CLIENT_ID: "google_client",
     GOOGLE_OAUTH_CLIENT_SECRET: "google_secret",
-    GOOGLE_OAUTH_REDIRECT_URI: "http://localhost:4000/v1/integrations/google/callback",
-    CALENDLY_OAUTH_CLIENT_ID: "cal_client",
-    CALENDLY_OAUTH_CLIENT_SECRET: "cal_secret",
-    CALENDLY_OAUTH_REDIRECT_URI: "http://localhost:4000/v1/integrations/calendly/callback"
+    GOOGLE_OAUTH_REDIRECT_URI: "http://localhost:4000/v1/integrations/google/callback"
   });
 
   const warnings = runtimeConfig.getProviderConfigurationWarnings();
@@ -101,9 +96,45 @@ test("getProviderConfigurationWarnings highlights production credential drift an
   assert.ok(
     warnings.some((warning) => warning.includes("Google OAuth redirect URI still points to a local origin"))
   );
+});
+
+test("getEnvironmentConfigurationWarnings highlights frontend/runtime drift and demo shortcuts", () => {
+  const runtimeConfig = createRuntimeConfig({
+    APP_RUNTIME_MODE: "production",
+    AUTH_SESSION_MODE: "jwt",
+    AUTH_TOKEN_TRANSPORT: "cookie",
+    AUTH_COOKIE_SECURE: "true",
+    JWT_SECRET: "super-secure-launch-secret",
+    PUBLIC_WEB_BASE_URL: "https://app.candit.ai",
+    CORS_ORIGIN: "https://app.candit.ai",
+    NEXT_PUBLIC_APP_RUNTIME_MODE: "demo",
+    NEXT_PUBLIC_AUTH_SESSION_MODE: "hybrid",
+    NEXT_PUBLIC_AUTH_TOKEN_TRANSPORT: "header",
+    NEXT_PUBLIC_ENABLE_DEMO_SESSION: "true",
+    DEV_LOGIN_PASSWORD: "demo12345"
+  });
+
+  const warnings = runtimeConfig.getEnvironmentConfigurationWarnings();
+
   assert.ok(
     warnings.some((warning) =>
-      warning.includes("Calendly OAuth redirect URI still points to a local origin")
+      warning.includes("NEXT_PUBLIC_APP_RUNTIME_MODE (demo) does not match APP_RUNTIME_MODE (production)")
     )
+  );
+  assert.ok(
+    warnings.some((warning) =>
+      warning.includes("NEXT_PUBLIC_AUTH_SESSION_MODE (hybrid) does not match AUTH_SESSION_MODE (jwt)")
+    )
+  );
+  assert.ok(
+    warnings.some((warning) =>
+      warning.includes("NEXT_PUBLIC_AUTH_TOKEN_TRANSPORT (header) does not match AUTH_TOKEN_TRANSPORT (cookie)")
+    )
+  );
+  assert.ok(
+    warnings.some((warning) => warning.includes("NEXT_PUBLIC_ENABLE_DEMO_SESSION is active"))
+  );
+  assert.ok(
+    warnings.some((warning) => warning.includes("DEV_LOGIN_PASSWORD is set to a usable value"))
   );
 });

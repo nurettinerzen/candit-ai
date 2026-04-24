@@ -1,4 +1,4 @@
-import { AiTaskType, ApplicationStage, Prisma, PrismaClient } from "@prisma/client";
+import { AiTaskType, ApplicationStage, Prisma, PrismaClient, Recommendation } from "@prisma/client";
 import { AiTaskPolicyService } from "../policy/ai-task-policy.service.js";
 import { StructuredAiProvider } from "../providers/structured-ai-provider.js";
 import { TaskProcessingError } from "../task-processing-error.js";
@@ -15,8 +15,15 @@ import {
   type StructuredTaskSections
 } from "./task-output.utils.js";
 import { type LoadedPromptTemplate } from "./prompt-template.utils.js";
+import {
+  looksLikeLowSignalDecisionSummary,
+  textsOverlap
+} from "./task-text-sanitizer.utils.js";
+import { alignDecisionCopy } from "./decision-copy-alignment.utils.js";
 
 type ScreeningMode = "WIDE_POOL" | "BALANCED" | "STRICT";
+
+const FIT_SCORING_RUBRIC_KEY_PREFIX = "fit_scoring_";
 
 export class ScreeningSupportTaskService {
   constructor(
@@ -234,6 +241,15 @@ export class ScreeningSupportTaskService {
       recommendationAction: sections.recommendationAction,
       recommendedOutcome
     });
+    const decisionCopy = alignDecisionCopy({
+      mode: "screening",
+      recommendation: recommendedOutcome as Recommendation,
+      summary: sections.recommendationSummary,
+      action: recommendationAction,
+      strengths: sections.facts,
+      weaknesses: sections.missingInformation,
+      missingInformation: sections.missingInformation
+    });
 
     return {
       outputJson: toOutputJson({
@@ -245,8 +261,8 @@ export class ScreeningSupportTaskService {
         facts: sections.facts,
         interpretation: sections.interpretation,
         recommendation: {
-          summary: sections.recommendationSummary,
-          action: recommendationAction,
+          summary: decisionCopy.summary,
+          action: decisionCopy.action,
           recommendedOutcome
         },
         flags: sections.flags,
@@ -262,7 +278,8 @@ export class ScreeningSupportTaskService {
             ...screeningSupport,
             rubric: rubricNotes,
             screeningMode,
-            recruiterReviewSafe: true
+            recruiterReviewSafe: true,
+            decisionCopyAligned: true
           }
         }
       }),
@@ -355,15 +372,31 @@ export class ScreeningSupportTaskService {
       }
     }
 
+    const preferredRubric = await this.prisma.scoringRubric.findFirst({
+      where: {
+        tenantId,
+        domain: roleFamily,
+        isActive: true,
+        key: {
+          not: {
+            startsWith: FIT_SCORING_RUBRIC_KEY_PREFIX
+          }
+        }
+      },
+      orderBy: [{ version: "desc" }, { updatedAt: "desc" }]
+    });
+
+    if (preferredRubric) {
+      return preferredRubric;
+    }
+
     return this.prisma.scoringRubric.findFirst({
       where: {
         tenantId,
         domain: roleFamily,
         isActive: true
       },
-      orderBy: {
-        version: "desc"
-      }
+      orderBy: [{ version: "desc" }, { updatedAt: "desc" }]
     });
   }
 
@@ -991,6 +1024,13 @@ export class ScreeningSupportTaskService {
       facts: facts.length > 0 ? facts : sections.facts.slice(0, 6),
       interpretation,
       flags,
+      recommendationSummary: this.sanitizeDecisionSummary({
+        summary: sections.recommendationSummary,
+        recommendedOutcome: sections.recommendedOutcome,
+        interviewSummary: interpretation[0] ?? "",
+        strengths: facts,
+        weaknesses: missingInformation
+      }),
       missingInformation,
       uncertaintyReasons: this.uniqueStrings(sections.uncertaintyReasons).slice(0, 6),
       evidenceLinks: this.uniqueEvidenceLinks(sections.evidenceLinks).slice(0, 10)
@@ -1095,6 +1135,45 @@ export class ScreeningSupportTaskService {
     }
 
     return "Adayi manuel recruiter incelemesine al.";
+  }
+
+  private sanitizeDecisionSummary(input: {
+    summary: string;
+    recommendedOutcome: string | undefined;
+    interviewSummary: string;
+    strengths: string[];
+    weaknesses: string[];
+  }) {
+    const summary = input.summary?.trim() ?? "";
+
+    if (
+      summary &&
+      !looksLikeLowSignalDecisionSummary(summary) &&
+      !textsOverlap(summary, input.interviewSummary, {
+        minSharedTokens: 4,
+        minSimilarityRatio: 0.7
+      })
+    ) {
+      return summary.slice(0, 700);
+    }
+
+    const normalizedOutcome = this.policy.normalizeRecommendation(input.recommendedOutcome);
+
+    if (normalizedOutcome === "ADVANCE") {
+      const leadingSignal = input.strengths[0] ?? "Role yakin guclu sinyaller mevcut.";
+      return `${leadingSignal} Recruiter ilk gorusmeye alip kritik gereksinimleri hizlica dogrulayabilir.`
+        .slice(0, 700);
+    }
+
+    if (normalizedOutcome === "REVIEW") {
+      const mainRisk = input.weaknesses[0] ?? "Bu role gore fit zayif veya uzak gorunuyor.";
+      return `${mainRisk} Ilerletmeden once manuel recruiter incelemesi yapin.`
+        .slice(0, 700);
+    }
+
+    const openQuestion = input.weaknesses[0] ?? "Karar icin birkac kritik nokta acik kaliyor.";
+    return `${openQuestion} Bu nedenle kisa bir recruiter gorusmesiyle teyit onerilir.`
+      .slice(0, 700);
   }
 
   private parseFitBand(value: unknown): "direct_fit" | "adjacent_fit" | "weak_fit" | null {

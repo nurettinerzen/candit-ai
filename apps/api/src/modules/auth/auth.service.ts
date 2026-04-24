@@ -13,6 +13,7 @@ import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import type { Role as AppRole } from "@ai-interviewer/domain";
 import {
+  AuditActorType,
   AuthActionTokenType,
   AuthProvider,
   AuthSessionStatus,
@@ -907,6 +908,16 @@ export class AuthService {
       const users = await this.findUsersByEmail(normalizedEmail);
 
       if (users.length > 1) {
+        await this.reportSecurityEvent({
+          source: "auth.password.reset",
+          code: "auth.password.reset.ambiguous_email",
+          message: "Birden fazla hesaba ait e-posta icin sifre sifirlama talebi reddedildi.",
+          severity: SecurityEventSeverity.WARNING,
+          metadata: {
+            email: normalizedEmail
+          }
+        });
+
         throw new BadRequestException(
           "Bu e-posta birden fazla hesapta kayıtlı. Şifre yenileme için destek ekibiyle iletişime geçin."
         );
@@ -950,6 +961,18 @@ export class AuthService {
         requestedBy: user.id
       });
 
+      await this.writeAuditLog({
+        tenantId: user.tenantId,
+        actorUserId: user.id,
+        action: "auth.password.reset_requested",
+        entityType: "User",
+        entityId: user.id,
+        metadata: {
+          email: user.email,
+          expiresAt: token.expiresAt.toISOString()
+        }
+      });
+
       return {
         ok: true,
         expiresAt: token.expiresAt.toISOString(),
@@ -990,12 +1013,53 @@ export class AuthService {
     const token = await this.findActionTokenByRawToken(input.token, AuthActionTokenType.PASSWORD_RESET);
 
     if (!token || !token.user) {
+      await this.reportSecurityEvent({
+        source: "auth.password.reset",
+        code: "auth.password.reset.token_not_found",
+        message: "Gecersiz veya bulunamayan sifre sifirlama tokeni kullanildi.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent
+      });
       throw new NotFoundException("Sifre sifirlama baglantisi bulunamadi veya gecersiz.");
     }
 
-    this.assertActionTokenUsable(token, "Bu sifre sifirlama baglantisinin suresi doldu.");
+    try {
+      this.assertActionTokenUsable(token, "Bu sifre sifirlama baglantisinin suresi doldu.");
+    } catch (error) {
+      await this.reportSecurityEvent({
+        tenantId: token.user.tenantId,
+        userId: token.user.id,
+        source: "auth.password.reset",
+        code: "auth.password.reset.token_unusable",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Sifre sifirlama tokeni kullanilamaz durumda bulundu.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        metadata: {
+          tokenId: token.id
+        }
+      });
+      throw error;
+    }
 
     if (token.user.deletedAt || token.user.status !== UserStatus.ACTIVE) {
+      await this.reportSecurityEvent({
+        tenantId: token.user.tenantId,
+        userId: token.user.id,
+        source: "auth.password.reset",
+        code: "auth.password.reset.user_inactive",
+        message: "Pasif veya silinmis kullanici icin sifre sifirlama talebi reddedildi.",
+        severity: SecurityEventSeverity.WARNING,
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        metadata: {
+          userStatus: token.user.status
+        }
+      });
       throw new ForbiddenException("Bu kullanici sifre sifirlama islemi yapamaz.");
     }
 
@@ -1043,7 +1107,7 @@ export class AuthService {
         }
       });
 
-      await tx.authSession.updateMany({
+      const revokedSessions = await tx.authSession.updateMany({
         where: {
           userId: token.user!.id,
           status: AuthSessionStatus.ACTIVE
@@ -1055,7 +1119,7 @@ export class AuthService {
         }
       });
 
-      await tx.authRefreshToken.updateMany({
+      const revokedRefreshTokens = await tx.authRefreshToken.updateMany({
         where: {
           userId: token.user!.id,
           revokedAt: null
@@ -1063,6 +1127,22 @@ export class AuthService {
         data: {
           revokedAt: now,
           revokedReason: "password_reset"
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: token.user!.tenantId,
+          actorUserId: token.user!.id,
+          actorType: AuditActorType.USER,
+          action: "auth.password.reset_completed",
+          entityType: "User",
+          entityId: token.user!.id,
+          metadata: {
+            tokenId: token.id,
+            revokedSessionCount: revokedSessions.count,
+            revokedRefreshTokenCount: revokedRefreshTokens.count
+          } satisfies Prisma.InputJsonValue
         }
       });
     });
@@ -1163,7 +1243,7 @@ export class AuthService {
         }
       });
 
-      await tx.authSession.updateMany({
+      const revokedSessions = await tx.authSession.updateMany({
         where: {
           userId: user.id,
           status: AuthSessionStatus.ACTIVE
@@ -1175,7 +1255,7 @@ export class AuthService {
         }
       });
 
-      await tx.authRefreshToken.updateMany({
+      const revokedRefreshTokens = await tx.authRefreshToken.updateMany({
         where: {
           userId: user.id,
           revokedAt: null
@@ -1183,6 +1263,22 @@ export class AuthService {
         data: {
           revokedAt: now,
           revokedReason: "password_changed"
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: user.tenantId,
+          actorUserId: user.id,
+          actorType: AuditActorType.USER,
+          action: "auth.password.changed",
+          entityType: "User",
+          entityId: user.id,
+          metadata: {
+            sessionId: input.sessionId ?? null,
+            revokedSessionCount: revokedSessions.count,
+            revokedRefreshTokenCount: revokedRefreshTokens.count
+          } satisfies Prisma.InputJsonValue
         }
       });
     });
@@ -2181,6 +2277,27 @@ export class AuthService {
     } catch {
       // Security telemetry should never break the primary auth flow.
     }
+  }
+
+  private async writeAuditLog(input: {
+    tenantId: string;
+    actorUserId?: string | null;
+    action: string;
+    entityType: string;
+    entityId?: string | null;
+    metadata?: Prisma.InputJsonValue;
+  }) {
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: input.tenantId,
+        actorUserId: input.actorUserId ?? null,
+        actorType: AuditActorType.USER,
+        action: input.action,
+        entityType: input.entityType,
+        entityId: input.entityId ?? null,
+        ...(input.metadata === undefined ? {} : { metadata: input.metadata })
+      }
+    });
   }
 
   private async revokeSession(sessionId: string, reason: string) {

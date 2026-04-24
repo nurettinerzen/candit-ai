@@ -18,7 +18,7 @@ import type { RequestContext } from "../../common/interfaces/request-context.int
 import type { RequestUser } from "../../common/interfaces/request-user.interface";
 import { SchedulingService } from "./scheduling.service";
 
-const SCHEDULING_PROVIDERS = ["CALENDLY", "GOOGLE_CALENDAR", "GOOGLE_MEET"] as const;
+const SCHEDULING_PROVIDERS = ["GOOGLE_CALENDAR", "GOOGLE_MEET"] as const;
 
 class CreateWorkflowBody {
   @IsString()

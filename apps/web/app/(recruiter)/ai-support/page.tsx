@@ -284,10 +284,6 @@ export default function AiSupportCenterPage() {
                     <td>{infrastructure.runtime.speech.providerMode}</td>
                   </tr>
                   <tr>
-                    <td>Calendly OAuth</td>
-                    <td>{infrastructure.runtime.calendly.oauthConfigured ? "Hazır" : "Eksik"}</td>
-                  </tr>
-                  <tr>
                     <td>Google OAuth</td>
                     <td>{infrastructure.runtime.googleCalendar.oauthConfigured ? "Hazır" : "Eksik"}</td>
                   </tr>

@@ -28,7 +28,6 @@ import type {
 import { IntegrationIdentityMapperService } from "./integration-identity-mapper.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AtsGenericHttpAdapter } from "./providers/ats-generic-http.adapter";
-import { CalendlyAdapter } from "./providers/calendly.adapter";
 import { GoogleCalendarAdapter } from "./providers/google-calendar.adapter";
 
 class StubIntegrationAdapter implements IntegrationProviderAdapter {
@@ -122,7 +121,6 @@ function isLaunchUnsupportedProvider(provider: IntegrationProvider) {
 }
 
 const MEETING_PROVIDERS = [
-  IntegrationProvider.CALENDLY,
   IntegrationProvider.GOOGLE_MEET,
   IntegrationProvider.ZOOM,
   IntegrationProvider.GOOGLE_CALENDAR,
@@ -206,7 +204,6 @@ function mapExternalJobStatus(raw: string | null) {
 @Injectable()
 export class IntegrationsService {
   private readonly adapters: Record<IntegrationProvider, IntegrationProviderAdapter> = {
-    CALENDLY: new CalendlyAdapter(),
     GOOGLE_CALENDAR: new GoogleCalendarAdapter(IntegrationProvider.GOOGLE_CALENDAR),
     MICROSOFT_CALENDAR: new StubIntegrationAdapter(IntegrationProvider.MICROSOFT_CALENDAR),
     ZOOM: new StubIntegrationAdapter(IntegrationProvider.ZOOM),
@@ -742,10 +739,9 @@ export class IntegrationsService {
           ? "inactive"
           : isLaunchUnsupportedProvider(connection.provider)
             ? "unsupported_provider"
-          : !hasConfig
+            : !hasConfig
             ? "missing_config"
-            : connection.provider === IntegrationProvider.CALENDLY ||
-                connection.provider === IntegrationProvider.GOOGLE_CALENDAR ||
+            : connection.provider === IntegrationProvider.GOOGLE_CALENDAR ||
                 connection.provider === IntegrationProvider.GOOGLE_MEET
               ? credentialStatus === "ACTIVE" || hasCredentials
                 ? "configured"
@@ -982,19 +978,7 @@ export class IntegrationsService {
               client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim() ?? ""
             }
           }
-        : input.provider === IntegrationProvider.CALENDLY
-          ? {
-              endpoint:
-                process.env.CALENDLY_OAUTH_TOKEN_URL?.trim() ??
-                "https://auth.calendly.com/oauth/token",
-              body: {
-                grant_type: "refresh_token",
-                refresh_token: refreshToken,
-                client_id: process.env.CALENDLY_OAUTH_CLIENT_ID?.trim() ?? "",
-                client_secret: process.env.CALENDLY_OAUTH_CLIENT_SECRET?.trim() ?? ""
-              }
-            }
-          : null;
+        : null;
 
     if (!tokenPayload) {
       await this.reportOpsIncident({
@@ -1371,15 +1355,6 @@ export class IntegrationsService {
       });
     }
 
-    if (processed.status === "processed") {
-      await this.applyWebhookInterviewSessionSync({
-        tenantId: input.tenantId,
-        provider: input.provider,
-        payload: input.payload,
-        traceId: input.traceId
-      });
-    }
-
     return {
       provider: input.provider,
       eventKey: input.eventKey,
@@ -1497,185 +1472,6 @@ export class IntegrationsService {
     };
   }
 
-  private async applyWebhookInterviewSessionSync(input: {
-    tenantId: string;
-    provider: IntegrationProvider;
-    payload: Record<string, unknown>;
-    traceId?: string;
-  }) {
-    if (input.provider !== IntegrationProvider.CALENDLY) {
-      return;
-    }
-
-    const eventType = asString(input.payload.event);
-    if (!eventType || (eventType !== "invitee.created" && eventType !== "invitee.canceled")) {
-      return;
-    }
-
-    const payload = asRecord(input.payload.payload);
-    const event = asRecord(payload.event);
-    const invitee = asRecord(payload.invitee);
-    const location = asRecord(event.location);
-    const scheduledEventUri = asString(event.uri);
-    const inviteeUri = asString(invitee.uri);
-    const inviteeEmail = asString(invitee.email);
-    const startTime = asDate(event.start_time);
-    const joinUrl =
-      asString(location.join_url) ?? asString(location.location) ?? asString(event.location);
-
-    let sessionId: string | null = null;
-    if (scheduledEventUri) {
-      const mapped = await this.identityMapper.findByExternal({
-        tenantId: input.tenantId,
-        provider: IntegrationProvider.CALENDLY,
-        externalEntityType: "meeting",
-        externalEntityId: scheduledEventUri
-      });
-
-      sessionId = mapped?.internalEntityId ?? null;
-    }
-
-    if (!sessionId && inviteeEmail) {
-      const byEmail = await this.prisma.interviewSession.findFirst({
-        where: {
-          tenantId: input.tenantId,
-          mode: "MEETING_LINK",
-          application: {
-            candidate: {
-              email: inviteeEmail
-            }
-          }
-        },
-        select: {
-          id: true
-        },
-        orderBy: [{ scheduledAt: "desc" }, { createdAt: "desc" }]
-      });
-
-      sessionId = byEmail?.id ?? null;
-    }
-
-    if (!sessionId) {
-      return;
-    }
-
-    const session = await this.prisma.interviewSession.findFirst({
-      where: {
-        id: sessionId,
-        tenantId: input.tenantId
-      },
-      select: {
-        id: true,
-        applicationId: true,
-        scheduledAt: true,
-        rescheduleCount: true
-      }
-    });
-
-    if (!session) {
-      return;
-    }
-
-    if (scheduledEventUri) {
-      await this.identityMapper.upsert({
-        tenantId: input.tenantId,
-        provider: IntegrationProvider.CALENDLY,
-        internalEntityType: "InterviewSession",
-        internalEntityId: session.id,
-        externalEntityType: "meeting",
-        externalEntityId: scheduledEventUri,
-        metadata: {
-          syncedFrom: "calendly_webhook",
-          eventType,
-          traceId: input.traceId ?? null
-        }
-      });
-    }
-
-    if (inviteeUri) {
-      await this.identityMapper.upsert({
-        tenantId: input.tenantId,
-        provider: IntegrationProvider.CALENDLY,
-        internalEntityType: "InterviewSession",
-        internalEntityId: session.id,
-        externalEntityType: "invitee",
-        externalEntityId: inviteeUri,
-        metadata: {
-          email: inviteeEmail,
-          syncedFrom: "calendly_webhook",
-          traceId: input.traceId ?? null
-        }
-      });
-    }
-
-    if (eventType === "invitee.created") {
-      const rescheduleIncrement =
-        session.scheduledAt && startTime && session.scheduledAt.getTime() !== startTime.getTime() ? 1 : 0;
-
-      await this.prisma.interviewSession.update({
-        where: {
-          id: session.id
-        },
-        data: {
-          status: "SCHEDULED",
-          schedulingSource: "assistant_calendly",
-          meetingProvider: IntegrationProvider.CALENDLY,
-          meetingProviderSource: "calendly_webhook",
-          meetingExternalRef: scheduledEventUri ?? undefined,
-          meetingCalendarEventRef: scheduledEventUri ?? undefined,
-          meetingJoinUrl: joinUrl ?? undefined,
-          ...(startTime ? { scheduledAt: startTime } : {}),
-          ...(rescheduleIncrement > 0
-            ? {
-                rescheduleCount: {
-                  increment: rescheduleIncrement
-                },
-                lastRescheduledAt: new Date(),
-                lastRescheduledBy: "integration:calendly",
-                lastRescheduleReasonCode: "calendly_reschedule_sync"
-              }
-            : {}),
-          cancelledAt: null,
-          cancelledBy: null,
-          cancelReasonCode: null
-        }
-      });
-    } else {
-      await this.prisma.interviewSession.update({
-        where: {
-          id: session.id
-        },
-        data: {
-          status: "CANCELLED",
-          meetingProvider: IntegrationProvider.CALENDLY,
-          meetingProviderSource: "calendly_webhook",
-          cancelledAt: new Date(),
-          cancelledBy: "integration:calendly",
-          cancelReasonCode: "calendly_invitee_canceled"
-        }
-      });
-    }
-
-    await this.auditWriterService.write({
-      tenantId: input.tenantId,
-      actorType: AuditActorType.INTEGRATION,
-      action:
-        eventType === "invitee.created"
-          ? "integration.calendly.invitee_created.synced"
-          : "integration.calendly.invitee_canceled.synced",
-      entityType: "InterviewSession",
-      entityId: session.id,
-      traceId: input.traceId,
-      metadata: {
-        applicationId: session.applicationId,
-        scheduledEventUri,
-        inviteeUri,
-        inviteeEmail,
-        startTime: startTime?.toISOString() ?? null
-      }
-    });
-  }
-
   private async upsertOAuthCredentialIfNeeded(input: {
     tenantId: string;
     provider: IntegrationProvider;
@@ -1683,7 +1479,6 @@ export class IntegrationsService {
     credentials: Record<string, unknown>;
   }) {
     const oauthProviders: IntegrationProvider[] = [
-      IntegrationProvider.CALENDLY,
       IntegrationProvider.GOOGLE_CALENDAR,
       IntegrationProvider.GOOGLE_MEET
     ];

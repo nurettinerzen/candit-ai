@@ -332,28 +332,6 @@ export class RuntimeConfigService {
     };
   }
 
-  get calendlyConfig() {
-    return {
-      apiBaseUrl:
-        toOptionalString(this.configService.get<string>("CALENDLY_API_BASE_URL")) ??
-        "https://api.calendly.com",
-      oauthRedirectUri:
-        toOptionalString(this.configService.get<string>("CALENDLY_OAUTH_REDIRECT_URI")) ?? "",
-      webhookSigningSecretConfigured: Boolean(
-        toOptionalString(this.configService.get<string>("CALENDLY_WEBHOOK_SIGNING_SECRET"))
-      ),
-      oauthClientIdConfigured: Boolean(
-        toOptionalString(this.configService.get<string>("CALENDLY_OAUTH_CLIENT_ID"))
-      ),
-      oauthClientSecretConfigured: Boolean(
-        toOptionalString(this.configService.get<string>("CALENDLY_OAUTH_CLIENT_SECRET"))
-      ),
-      oauthRedirectUriConfigured: Boolean(
-        toOptionalString(this.configService.get<string>("CALENDLY_OAUTH_REDIRECT_URI"))
-      )
-    };
-  }
-
   get googleCalendarConfig() {
     return {
       oauthClientId: toOptionalString(this.configService.get<string>("GOOGLE_OAUTH_CLIENT_ID")) ?? "",
@@ -414,6 +392,40 @@ export class RuntimeConfigService {
       agentId,
       webhookSecret,
       isConfigured: Boolean(apiKey && agentId)
+    };
+  }
+
+  get launchEnvironment() {
+    const nextPublicRuntimeMode =
+      this.configService.get<string>("NEXT_PUBLIC_APP_RUNTIME_MODE")?.trim().toLowerCase() ?? null;
+    const nextPublicAuthSessionMode =
+      this.configService.get<string>("NEXT_PUBLIC_AUTH_SESSION_MODE")?.trim().toLowerCase() ?? null;
+    const nextPublicAuthTokenTransport =
+      this.configService.get<string>("NEXT_PUBLIC_AUTH_TOKEN_TRANSPORT")?.trim().toLowerCase() ?? null;
+    const devLoginPassword = this.configService.get<string>("DEV_LOGIN_PASSWORD")?.trim();
+
+    return {
+      runtimeMode: this.runtimeMode,
+      authMode: this.authMode,
+      authTokenTransport: this.authTokenTransport,
+      requireTenantHeader: this.requireTenantHeader,
+      allowDevHeaderAuth: this.allowDevHeaderAuth,
+      allowDemoShortcuts: this.allowDemoShortcuts,
+      allowDemoCredentialLogin: this.allowDemoCredentialLogin,
+      devLoginPasswordConfigured: Boolean(
+        devLoginPassword && devLoginPassword !== "disabled-for-production"
+      ),
+      publicWebBaseUrl: this.publicWebBaseUrl,
+      corsOrigins: this.corsOrigins,
+      frontend: {
+        runtimeMode: nextPublicRuntimeMode,
+        authSessionMode: nextPublicAuthSessionMode,
+        authTokenTransport: nextPublicAuthTokenTransport,
+        enableDemoSession: toBool(
+          this.configService.get<string>("NEXT_PUBLIC_ENABLE_DEMO_SESSION"),
+          false
+        )
+      }
     };
   }
 
@@ -514,7 +526,6 @@ export class RuntimeConfigService {
 
   get providerReadiness() {
     const openAi = this.openAiConfig;
-    const calendly = this.calendlyConfig;
     const google = this.googleCalendarConfig;
     const email = this.emailRuntimeConfig;
     const speech = this.speechRuntimeConfig;
@@ -539,13 +550,6 @@ export class RuntimeConfigService {
         ...speech,
         ready: speech.providerMode === "provider_backed" ? speech.openAiSpeechReady : true
       },
-      calendly: {
-        oauthConfigured:
-          calendly.oauthClientIdConfigured &&
-          calendly.oauthClientSecretConfigured &&
-          calendly.oauthRedirectUriConfigured,
-        webhookSigningSecretConfigured: calendly.webhookSigningSecretConfigured
-      },
       googleCalendar: {
         oauthConfigured:
           google.oauthClientIdConfigured &&
@@ -569,16 +573,8 @@ export class RuntimeConfigService {
   get meetingProviderCatalog() {
     const readiness = this.providerReadiness;
     const googleReady = readiness.googleCalendar.oauthConfigured;
-    const calendlyReady = readiness.calendly.oauthConfigured;
 
     return [
-      {
-        provider: "CALENDLY",
-        status: calendlyReady ? "pilot" : "setup_required",
-        ready: calendlyReady,
-        requiresConnection: true,
-        oauthConfigured: calendlyReady
-      },
       {
         provider: "GOOGLE_CALENDAR",
         status: googleReady ? "pilot" : "setup_required",
@@ -696,10 +692,6 @@ export class RuntimeConfigService {
       warnings.push("SPEECH_TTS_PROVIDER=openai but OPENAI_API_KEY is missing.");
     }
 
-    if (!readiness.calendly.oauthConfigured) {
-      warnings.push("Calendly OAuth env vars are incomplete (ready-after-config state).");
-    }
-
     if (!readiness.googleCalendar.oauthConfigured) {
       warnings.push("Google OAuth env vars are incomplete (ready-after-config state).");
     }
@@ -738,18 +730,64 @@ export class RuntimeConfigService {
       warnings.push("Google OAuth redirect URI still points to a local origin in production runtime.");
     }
 
-    if (
-      this.isProduction &&
-      this.calendlyConfig.oauthRedirectUri &&
-      isLocalOrigin(this.calendlyConfig.oauthRedirectUri)
-    ) {
-      warnings.push("Calendly OAuth redirect URI still points to a local origin in production runtime.");
-    }
-
     if (!readiness.elevenLabs.configured) {
       warnings.push(
         "ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID missing; voice interviews will use browser speech fallback."
       );
+    }
+
+    return warnings;
+  }
+
+  getEnvironmentConfigurationWarnings() {
+    const warnings: string[] = [];
+    const environment = this.launchEnvironment;
+
+    if (
+      environment.frontend.runtimeMode &&
+      environment.frontend.runtimeMode !== environment.runtimeMode
+    ) {
+      warnings.push(
+        `NEXT_PUBLIC_APP_RUNTIME_MODE (${environment.frontend.runtimeMode}) does not match APP_RUNTIME_MODE (${environment.runtimeMode}).`
+      );
+    }
+
+    if (
+      environment.frontend.authSessionMode &&
+      environment.frontend.authSessionMode !== environment.authMode
+    ) {
+      warnings.push(
+        `NEXT_PUBLIC_AUTH_SESSION_MODE (${environment.frontend.authSessionMode}) does not match AUTH_SESSION_MODE (${environment.authMode}).`
+      );
+    }
+
+    if (
+      environment.frontend.authTokenTransport &&
+      environment.frontend.authTokenTransport !== environment.authTokenTransport
+    ) {
+      warnings.push(
+        `NEXT_PUBLIC_AUTH_TOKEN_TRANSPORT (${environment.frontend.authTokenTransport}) does not match AUTH_TOKEN_TRANSPORT (${environment.authTokenTransport}).`
+      );
+    }
+
+    if (environment.allowDevHeaderAuth) {
+      warnings.push("ALLOW_DEV_AUTH_HEADERS is active; header-based dev auth should stay disabled for pilot/launch runtimes.");
+    }
+
+    if (environment.allowDemoShortcuts) {
+      warnings.push("ALLOW_DEMO_SHORTCUTS is active; demo shortcuts should stay disabled for pilot/launch runtimes.");
+    }
+
+    if (environment.allowDemoCredentialLogin) {
+      warnings.push("ALLOW_DEMO_CREDENTIAL_LOGIN is active; demo credential login should stay disabled for pilot/launch runtimes.");
+    }
+
+    if (environment.frontend.enableDemoSession) {
+      warnings.push("NEXT_PUBLIC_ENABLE_DEMO_SESSION is active; demo session UX should stay disabled for pilot/launch runtimes.");
+    }
+
+    if (environment.devLoginPasswordConfigured) {
+      warnings.push("DEV_LOGIN_PASSWORD is set to a usable value; seeded demo credentials should not remain active in pilot/launch runtimes.");
     }
 
     return warnings;
@@ -783,10 +821,6 @@ export class RuntimeConfigService {
       speech: {
         ready: readiness.speech.ready,
         mode: readiness.speech.providerMode
-      },
-      calendly: {
-        ready: readiness.calendly.oauthConfigured,
-        mode: readiness.calendly.oauthConfigured ? "oauth_configured" : "not_configured"
       },
       google_calendar: {
         ready: readiness.googleCalendar.oauthConfigured,

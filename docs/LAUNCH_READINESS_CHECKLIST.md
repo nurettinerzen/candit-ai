@@ -15,6 +15,8 @@ dogrulamaktir.
 Ilgili arka plan notlari icin:
 
 - `docs/TELYX_CANDID_LAUNCH_GAP_ANALYSIS.md`
+- `docs/LAUNCH_ENVIRONMENT_MATRIX.md`
+- `docs/PILOT_ACCOUNT_HANDOFF_RUNBOOK.md`
 
 ## Kullanim Sekli
 
@@ -66,7 +68,7 @@ Ilgili arka plan notlari icin:
     - dahili meeting link fallback'i guvenli varsayilan yol olarak gorunuyor
 - [x] Recruiter settings icinde tenant-bazli baglanti kurulumu gorunurlugu eklendi.
   - Yeni durum:
-    - `Google Calendar` ve `Calendly` icin gercek connection kaydi, scheduling katalog durumu ve OAuth callback sonucu ayni panelde gorunuyor
+    - `Google Calendar` ve `Google Meet` icin gercek connection kaydi, scheduling katalog durumu ve OAuth callback sonucu ayni panelde gorunuyor
     - cookie tabanli JWT runtime disinda OAuth connect butonlari bilincli sekilde pasif/uyari modunda kaliyor
     - `Google Meet` ayrica ayri OAuth varmis gibi sunulmuyor; Google Calendar credential tabaniyla acikca iliskilendiriliyor
 - [x] Public auth yuzeyi V1 launch sinirlarini daha acik gosteriyor.
@@ -86,7 +88,7 @@ Ilgili arka plan notlari icin:
 - [x] Launch disi meeting provider secimleri sessiz fallback yerine acik neden ile bloklaniyor.
   - Yeni durum:
     - `ZOOM` ve `MICROSOFT_CALENDAR` explicit secilirse API acikca reddediyor
-    - `CALENDLY` / `GOOGLE_*` provider secimi aktif tenant baglantisi olmadan devam etmiyor
+    - `GOOGLE_*` provider secimi aktif tenant baglantisi olmadan devam etmiyor
     - explicit secim basarisizsa sistem baska provider'a sessizce kaymiyor; neden recruiter tarafina geri donuyor
 - [x] Recruiter cekirdek akis local ortamda uctan uca dogrulandi.
   - Olusan akis:
@@ -129,14 +131,37 @@ Ilgili arka plan notlari icin:
 - [x] Brand asset eksigi icin temel logo mark eklendi ve public + recruiter shell icine baglandi.
   - Kaynak:
     - `/Users/nurettinerzen/Desktop/ai-interviewer/apps/web/public/brand/candit-mark.svg`
-- [ ] Gercek email delivery hala launch blocker.
+- [x] Runtime smoke tenant izolasyon proof'u ile sertlestirildi.
+  - Yeni durum:
+    - ikinci tenant otomatik aciliyor
+    - farkli tenant header ile session yukleme `403` veriyor
+    - farkli tenant token ile recruiter candidate verisi `404` ile izole kaliyor
+  - Komut:
+    - `corepack pnpm smoke:pilot`
+- [x] Password reset / owner reset gibi kritik akislara audit izi eklendi.
+  - Yeni durum:
+    - password reset request / completion audit log'a yaziliyor
+    - owner reset invite internal admin audit ve security event izi uretiyor
+    - bu davranis contract test lane icinde dogrulaniyor
+- [x] Launch env ayrimi operator tarafinda gorunur hale getirildi.
+  - Yeni durum:
+    - `infrastructure-readiness` artik `environment` ve `environmentWarnings` alanlarini donuyor
+    - frontend/backend runtime drift'i, demo session flag'i ve kullanilabilir dev login sifresi ayni payload'da gorunuyor
+    - tum env variable'lar icin launch matrisi dokumani eklendi:
+      - `/Users/nurettinerzen/Desktop/ai-interviewer/docs/LAUNCH_ENVIRONMENT_MATRIX.md`
+- [x] Gercek email delivery launch seviyesinde konfigure edildi.
   - Mevcut durum:
-    - notification provider `console-email`
-    - invite event'i DB/outbox tarafinda olusuyor ama gercek mail provider'a gitmiyor
-  - Gereken:
-    - `EMAIL_PROVIDER=resend`
-    - `RESEND_API_KEY`
-    - `EMAIL_FROM`
+    - notification provider `resend`
+    - strict runtime smoke candidate-facing email provider'i `ready` olarak goruyor
+  - Gerekli kanit:
+    - `corepack pnpm launch:verify:runtime:strict`
+- [x] Pilot tenant provisioning ve handoff script'i eklendi.
+  - Komut:
+    - `corepack pnpm pilot:provision --help`
+  - Yeni durum:
+    - tenant, owner, billing snapshot ve AI defaults tek komutta hazirlaniyor
+    - yeni owner icin aktivasyon linki uretiliyor
+    - `artifacts/pilot/` altina JSON + Markdown handoff ozeti yaziliyor
 - [ ] Stripe self-serve billing hala hazir degil.
   - Mevcut durum:
     - `stripeReady=false`
@@ -337,7 +362,7 @@ Ilgili arka plan notlari icin:
     - response icinde `persistence: "stored"`
   - Not:
     - Migration uygulandiktan sonra kalici inbox/persistence aktif hale geldi
-- [x] Public integrations copy'sindeki Calendly ve entegrasyon hazirlik seviyesi yeniden hizalandi.
+- [x] Public integrations copy'sindeki takvim entegrasyonlari ve hazirlik seviyesi yeniden hizalandi.
   - Uygulanan duzeltme:
     - entegrasyon rozetleri `pilot kurulum / kontrollu erisim / degerlendirme` diline cekildi
     - takvim ve ATS yuzeyi kademeli rollout mantigina gore yeniden yazildi
@@ -374,7 +399,7 @@ Ilgili arka plan notlari icin:
 
 - [ ] P0/P1 icinde kalan blocker'lari kapat:
   - Google OAuth redirect mismatch
-  - public integrations copy / Calendly readiness hizasi
+  - public integrations copy / scheduling readiness hizasi
 - [ ] Ardindan P2'ye gec:
   - landing page claim/copy/dogruluk kontrolu
 
@@ -496,7 +521,7 @@ Ilgili arka plan notlari icin:
 
 - [ ] Stripe launch oncesi acilmayacaksa UI'da yanlis yonlendirme yok.
 - [ ] Real email gonderimi acilmadan once provider ayarlari dokumante edildi.
-- [x] Google / Calendly / Stripe / Resend / ElevenLabs icin hangi provider'lar launch'a dahil net.
+- [x] Google / Stripe / Resend / ElevenLabs icin hangi provider'lar launch'a dahil net.
 - [x] Launch disi entegrasyonlar UI'dan gizlendi, etiketlendi ya da disabled hale getirildi.
 - [ ] Test credential ile prod credential karismiyor.
 - [x] Subscription yuzeyinde Stripe kapaliyken kullanici sadece disabled buton gormuyor; bir sonraki mantikli aksiyona yonlendiriliyor.

@@ -672,7 +672,7 @@ export const apiClient = {
   listIntegrationConnections() {
     return request<IntegrationConnectionReadModel[]>("integrations/connections");
   },
-  refreshIntegrationCredential(provider: "CALENDLY" | "GOOGLE_CALENDAR" | "GOOGLE_MEET") {
+  refreshIntegrationCredential(provider: "GOOGLE_CALENDAR" | "GOOGLE_MEET") {
     return request<{
       refreshed: boolean;
       reason?: string;

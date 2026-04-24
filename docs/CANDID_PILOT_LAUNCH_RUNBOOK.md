@@ -5,10 +5,13 @@
 - Public contact intake is live and persists to the database.
 - Recruiter core flow has a repeatable runtime smoke proof.
 - Internal admin and red-alert visibility are database-backed.
-- Self-serve billing and real transactional email are still launch warnings unless their providers are configured.
+- Real transactional email is configured; Stripe self-serve billing is still a launch warning until the provider is configured.
+- Environment variable ownership and launch/runtime separation are documented in [LAUNCH_ENVIRONMENT_MATRIX.md](/Users/nurettinerzen/Desktop/ai-interviewer/docs/LAUNCH_ENVIRONMENT_MATRIX.md).
+- Pilot tenant provisioning and account handoff flow are documented in [PILOT_ACCOUNT_HANDOFF_RUNBOOK.md](/Users/nurettinerzen/Desktop/ai-interviewer/docs/PILOT_ACCOUNT_HANDOFF_RUNBOOK.md).
 
 ## Environment gates
 
+- Review [LAUNCH_ENVIRONMENT_MATRIX.md](/Users/nurettinerzen/Desktop/ai-interviewer/docs/LAUNCH_ENVIRONMENT_MATRIX.md) before changing any runtime variables
 - Set `APP_RUNTIME_MODE=production`
 - Set `JWT_SECRET` to a real 32+ char secret
 - Set `CORS_ORIGIN=https://app.candit.ai`
@@ -45,7 +48,7 @@ This proves:
 
 - production runtime hardening rules
 - human-approved decision / quick-action contracts
-- auth provider boundary contract and Calendly OAuth callback guardrails
+- auth provider boundary contract and Google OAuth callback guardrails
 - launch warning detection for console email, Stripe test/live drift, and local OAuth redirect mistakes
 - explicit meeting provider selection is blocked when the provider is V1 disi, setup-required, or missing a tenant connection
 - duplicate candidate provenance enrichment
@@ -66,6 +69,8 @@ corepack pnpm launch:verify:runtime
 This proves:
 
 - tenant-aware signup and session load
+- tenant header mismatch rejection
+- cross-tenant resource isolation on recruiter data
 - AI support center and infrastructure readiness reads
 - scheduling provider catalog and fallback visibility
 - recruiter overview
@@ -106,6 +111,7 @@ They are not acceptable for a fully self-serve launch.
 - Check login flow
 - Check one password reset flow
 - Check one email verification flow
+- Check tenant isolation proof in runtime smoke output
 - Check one public contact submission
 - Check `/admin/leads`
 - Check `/admin/red-alert`
@@ -114,10 +120,10 @@ They are not acceptable for a fully self-serve launch.
 
 ## Supported pilot boundaries
 
-- Google Calendar / Google Meet / Calendly can remain active for pilot
+- Google Calendar / Google Meet can remain active for pilot
 - `ZOOM` and `MICROSOFT_CALENDAR` must remain visibly unsupported until real adapters are ready
 - Self-serve billing can remain disabled while pilot runs through guided sales
 - Recruiter `Subscription` screen should show whether Stripe self-serve is really ready or still in sales-led pilot mode
 - Recruiter `Settings` screen should be used as the operator-facing truth source for `pilot / setup required / V1 disi` provider states
-- Recruiter `Settings > Baglanti kurulumu` cards should be used as the tenant-facing truth source for Google Calendar / Calendly connection status and OAuth callback outcomes
+- Recruiter `Settings > Baglanti kurulumu` cards should be used as the tenant-facing truth source for Google Calendar / Google Meet connection status and OAuth callback outcomes
 - Public `login` and `signup` screens should continue to state that Enterprise SSO / OIDC is outside the V1 launch scope

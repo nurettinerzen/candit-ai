@@ -30,6 +30,12 @@ import {
   analyzeInterviewTranscript,
   type InterviewTranscriptSignals
 } from "./interview-signal.utils.js";
+import {
+  looksLikeDerivedContextLeakage,
+  looksLikeLowSignalDecisionSummary,
+  textsOverlap
+} from "./task-text-sanitizer.utils.js";
+import { alignDecisionCopy } from "./decision-copy-alignment.utils.js";
 
 const MIN_REPORT_EVIDENCE_LINKS = 2;
 
@@ -255,6 +261,15 @@ export class ReportGenerationTaskService {
       this.policy.normalizeRecommendation(sections.recommendedOutcome),
       transcriptSignals.maxRecommendation
     );
+    const decisionCopy = alignDecisionCopy({
+      mode: "review_pack",
+      recommendation,
+      summary: sections.recommendationSummary,
+      action: sections.recommendationAction,
+      strengths: sections.strengths ?? [],
+      weaknesses: sections.weaknesses ?? [],
+      missingInformation: sections.missingInformation
+    });
     const overallScore = this.policy.normalizeConfidence(confidence * 0.9 + 0.05, 0.5);
 
     const reportJson = {
@@ -266,8 +281,8 @@ export class ReportGenerationTaskService {
         strengths: sections.strengths ?? [],
         weaknesses: sections.weaknesses ?? [],
         recommendation: {
-          summary: sections.recommendationSummary,
-          action: sections.recommendationAction,
+          summary: decisionCopy.summary,
+          action: decisionCopy.action,
           recommendedOutcome: recommendation
         },
         flags: sections.flags,
@@ -355,8 +370,8 @@ export class ReportGenerationTaskService {
         strengths: sections.strengths,
         weaknesses: sections.weaknesses,
         recommendation: {
-          summary: sections.recommendationSummary,
-          action: sections.recommendationAction,
+          summary: decisionCopy.summary,
+          action: decisionCopy.action,
           recommendedOutcome: recommendation
         },
         flags: sections.flags,
@@ -584,17 +599,56 @@ export class ReportGenerationTaskService {
   }
 
   private sanitizeReportSections(sections: StructuredTaskSections): StructuredTaskSections {
+    const strengths = this.filterSectionLines(sections.strengths ?? [], {
+      limit: 6,
+      references: [sections.interviewSummary]
+    });
+    const weaknesses = this.filterSectionLines(sections.weaknesses ?? [], {
+      limit: 6,
+      references: [sections.interviewSummary]
+    });
+    const facts = this.filterSectionLines(
+      sections.facts.filter((line) => !/^Aday:|^Pozisyon:|^Session:/i.test(line)),
+      {
+        limit: 8,
+        references: [sections.interviewSummary, ...strengths, ...weaknesses]
+      }
+    );
+    const interpretation = this.filterSectionLines(sections.interpretation, {
+      limit: 6,
+      references: [sections.interviewSummary, ...facts, ...strengths, ...weaknesses]
+    });
+    const flags = this.uniqueFlags(
+      sections.flags.filter(
+        (flag) =>
+          !looksLikeDerivedContextLeakage(flag.note) &&
+          !this.overlapsAny(flag.note, [...weaknesses, ...sections.missingInformation], {
+            minSharedTokens: 4,
+            minSimilarityRatio: 0.74
+          })
+      )
+    ).slice(0, 8);
+    const missingInformation = this.filterSectionLines(sections.missingInformation, {
+      limit: 8,
+      references: [...weaknesses, ...flags.map((flag) => flag.note), ...facts, ...interpretation]
+    });
+
     return {
       ...sections,
-      facts: this.uniqueStrings(
-        sections.facts.filter((line) => !/^Aday:|^Pozisyon:|^Session:/i.test(line))
-      ).slice(0, 8),
-      interpretation: this.uniqueStrings(sections.interpretation).slice(0, 6),
-      strengths: this.uniqueStrings(sections.strengths ?? []).slice(0, 6),
-      weaknesses: this.uniqueStrings(sections.weaknesses ?? []).slice(0, 6),
-      missingInformation: this.uniqueStrings(sections.missingInformation).slice(0, 8),
+      facts,
+      interpretation,
+      strengths,
+      weaknesses,
+      recommendationSummary: this.sanitizeDecisionSummary({
+        summary: sections.recommendationSummary,
+        interviewSummary: sections.interviewSummary,
+        recommendation: sections.recommendedOutcome,
+        strengths,
+        weaknesses
+      }),
+      missingInformation,
       uncertaintyReasons: this.uniqueStrings(sections.uncertaintyReasons).slice(0, 6),
-      flags: this.uniqueFlags(sections.flags).slice(0, 8),
+      flags,
       evidenceLinks: this.uniqueEvidenceLinks(sections.evidenceLinks).slice(0, 12)
     };
   }
@@ -721,6 +775,73 @@ export class ReportGenerationTaskService {
     }
 
     return output.slice(0, 8);
+  }
+
+  private filterSectionLines(
+    values: string[],
+    input: {
+      limit: number;
+      references?: string[];
+    }
+  ) {
+    return this.uniqueStrings(values)
+      .filter(
+        (value) =>
+          !looksLikeDerivedContextLeakage(value) &&
+          !this.overlapsAny(value, input.references ?? [], {
+            minSharedTokens: 4,
+            minSimilarityRatio: 0.74
+          })
+      )
+      .slice(0, input.limit);
+  }
+
+  private overlapsAny(
+    value: string,
+    references: string[],
+    options?: {
+      minSharedTokens?: number;
+      minSimilarityRatio?: number;
+    }
+  ) {
+    return references.some((reference) => textsOverlap(value, reference, options));
+  }
+
+  private sanitizeDecisionSummary(input: {
+    summary: string;
+    interviewSummary: string;
+    recommendation: Recommendation;
+    strengths: string[];
+    weaknesses: string[];
+  }) {
+    const rawSummary = input.summary.trim();
+
+    if (
+      rawSummary &&
+      !looksLikeLowSignalDecisionSummary(rawSummary) &&
+      !textsOverlap(rawSummary, input.interviewSummary, {
+        minSharedTokens: 4,
+        minSimilarityRatio: 0.7
+      })
+    ) {
+      return rawSummary.slice(0, 700);
+    }
+
+    if (input.recommendation === Recommendation.ADVANCE) {
+      const leadingSignal = input.strengths[0] ?? "Mulakatta ilerlemeyi destekleyen yeterli sinyal var.";
+      return `${leadingSignal} Recruiter kisa bir teyit sonrasi adayi sonraki asamaya tasiyabilir.`
+        .slice(0, 700);
+    }
+
+    if (input.recommendation === Recommendation.REVIEW) {
+      const mainRisk = input.weaknesses[0] ?? "Role uyum ve execution sinyali netlesmedi.";
+      return `${mainRisk} Ilerletme karari vermeden once daha siki bir recruiter incelemesi yapin.`
+        .slice(0, 700);
+    }
+
+    const openQuestion = input.weaknesses[0] ?? "Karar icin ek dogrulama gerekiyor.";
+    return `${openQuestion} Hedefli bir follow-up ile acik noktalar kapatildiktan sonra karar verin.`
+      .slice(0, 700);
   }
 
   private uniqueFlags(

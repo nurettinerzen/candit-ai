@@ -65,3 +65,61 @@ test("enforceMinimumEvidenceLinks marks the report when minimum evidence still c
   );
   assert.equal(result.missingInformation.includes("minimum_evidence_validation"), true);
 });
+
+test("sanitizeReportSections strips context leakage and rewrites low-signal summaries", () => {
+  const service = new ReportGenerationTaskService({} as never, {} as never, {} as never);
+
+  const result = (service as any).sanitizeReportSections({
+    facts: [
+      "CV ozeti: adayin 6 yil deneyimi var.",
+      "Mevcut fit score baglami: 88/100",
+      "Aday musteri itirazlarini sakin sekilde yonettigini anlatti."
+    ],
+    interpretation: [
+      "Aday musteri itirazlarini sakin sekilde yonettigini anlatti.",
+      "Profil ozeti guclu."
+    ],
+    interviewSummary: "Aday musteri itirazlarini sakin sekilde yonettigini anlatti.",
+    strengths: [
+      "Ozgecmise gore liderlik gecmisi var.",
+      "Sakin ve cozum odakli ornekler verdi."
+    ],
+    weaknesses: ["Rol sahipligi ornekleri yuzeysel kaldi."],
+    recommendationSummary: "Aday musteri itirazlarini sakin sekilde yonettigini anlatti.",
+    recommendationAction: "Follow-up sorulari sor.",
+    recommendedOutcome: "HOLD",
+    flags: [
+      {
+        code: "RISK",
+        severity: "medium",
+        note: "Rol sahipligi ornekleri yuzeysel kaldi."
+      }
+    ],
+    missingInformation: [
+      "Rol sahipligi ornekleri yuzeysel kaldi.",
+      "Karar oncesi daha net execution ornegi alin."
+    ],
+    evidenceLinks: [],
+    confidence: 0.62,
+    uncertaintyReasons: []
+  });
+
+  assert.equal(
+    result.facts.some((line: string) => /cv ozeti|fit score/i.test(line)),
+    false
+  );
+  assert.equal(
+    result.interpretation.some((line: string) => /profil ozeti/i.test(line)),
+    false
+  );
+  assert.equal(
+    result.strengths.some((line: string) => /ozgecmis|liderlik gecmisi/i.test(line)),
+    false
+  );
+  assert.equal(result.missingInformation.includes("Rol sahipligi ornekleri yuzeysel kaldi."), false);
+  assert.notEqual(
+    result.recommendationSummary,
+    "Aday musteri itirazlarini sakin sekilde yonettigini anlatti."
+  );
+  assert.match(result.recommendationSummary, /(follow-up|teyit|inceleme)/i);
+});

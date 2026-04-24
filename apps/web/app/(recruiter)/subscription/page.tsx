@@ -36,6 +36,13 @@ type EnterpriseQuoteFormState = {
   note: string;
 };
 
+type EnterpriseRequestPrefill = Partial<
+  Pick<
+    EnterpriseQuoteFormState,
+    "company" | "phone" | "seats" | "activeJobs" | "candidateProcessing" | "aiInterviews" | "note"
+  >
+>;
+
 const INITIAL_ENTERPRISE_QUOTE_FORM: EnterpriseQuoteFormState = {
   fullName: "",
   company: "",
@@ -108,6 +115,42 @@ function planActionLabel(
   }
 
   return mode === "current" ? "Mevcut Paket" : mode === "upgrade" ? "Yükselt" : "Düşür";
+}
+
+function assistedPlanActionLabel(locale: "tr" | "en") {
+  return locale === "en" ? "Request onboarding" : "Onboarding talep et";
+}
+
+function assistedAddOnActionLabel(locale: "tr" | "en") {
+  return locale === "en" ? "Request add-on" : "Ek paket talep et";
+}
+
+function buildBillingAssistanceNote(locale: "tr" | "en") {
+  return locale === "en"
+    ? "Pilot request: guided billing onboarding and package activation support."
+    : "Pilot talebi: yönlendirmeli ödeme onboarding'i ve paket aktivasyon desteği.";
+}
+
+function buildPlanAssistanceNote(
+  planLabel: string,
+  mode: PlanActionMode,
+  locale: "tr" | "en"
+) {
+  if (locale === "en") {
+    return mode === "downgrade"
+      ? `Pilot request: review the downgrade path for the ${planLabel} package with manual support.`
+      : `Pilot request: open the ${planLabel} package with guided onboarding.`;
+  }
+
+  return mode === "downgrade"
+    ? `Pilot talebi: ${planLabel} paketine geçişi manuel destekle planlayalım.`
+    : `Pilot talebi: ${planLabel} paketini yönlendirmeli onboarding ile açalım.`;
+}
+
+function buildAddOnAssistanceNote(quotaLabel: string, locale: "tr" | "en") {
+  return locale === "en"
+    ? `Pilot request: activate an add-on pack for ${quotaLabel.toLowerCase()}.`
+    : `Pilot talebi: ${quotaLabel.toLowerCase()} için ek kredi paketi aktivasyonu.`;
 }
 
 function buildEnterpriseQuoteMessage(
@@ -225,8 +268,8 @@ export default function SubscriptionPage() {
   const selfServeBlocked = productionRuntime && !selfServeReady;
   const billingBlockedMessage =
     locale === "en"
-      ? "Online billing is not currently available. Continue through the contact or sales flow."
-      : "Çevrimiçi abonelik şu anda kullanıma açık değil. İletişim veya satış akışı üzerinden ilerleyin.";
+      ? "Online billing is not currently available. Continue through the guided pilot onboarding flow."
+      : "Çevrimiçi abonelik şu anda kullanıma açık değil. Yönlendirmeli pilot onboarding akışı üzerinden ilerleyin.";
 
   const activeQuotaAddOns =
     billing?.addOnCatalog.filter((addOn) => addOn.quotaKey === activeAddOnQuotaKey) ?? [];
@@ -281,13 +324,27 @@ export default function SubscriptionPage() {
     };
   }
 
-  function openEnterpriseModal() {
+  function openEnterpriseModal(prefill?: EnterpriseRequestPrefill) {
     setEnterpriseError("");
     setActionNotice("");
-    setEnterpriseForm((current) => ({
-      ...current,
-      email: current.email || billing?.account.billingEmail || ""
-    }));
+    setEnterpriseForm((current) => {
+      const preservedIdentity = {
+        fullName: current.fullName,
+        company: prefill?.company ?? current.company,
+        email: current.email || billing?.account.billingEmail || "",
+        phone: prefill?.phone ?? current.phone
+      };
+
+      return {
+        ...INITIAL_ENTERPRISE_QUOTE_FORM,
+        ...preservedIdentity,
+        seats: prefill?.seats ?? "",
+        activeJobs: prefill?.activeJobs ?? "",
+        candidateProcessing: prefill?.candidateProcessing ?? "",
+        aiInterviews: prefill?.aiInterviews ?? "",
+        note: prefill?.note ?? ""
+      };
+    });
     setIsEnterpriseModalOpen(true);
   }
 
@@ -610,9 +667,24 @@ export default function SubscriptionPage() {
             </div>
 
             {selfServeBlocked ? (
-              <p className="small text-muted" style={{ marginTop: 14, marginBottom: 0 }}>
-                {billingBlockedMessage}
-              </p>
+              <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+                <p className="small text-muted" style={{ margin: 0 }}>
+                  {billingBlockedMessage}
+                </p>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() =>
+                      openEnterpriseModal({
+                        note: buildBillingAssistanceNote(locale)
+                      })
+                    }
+                  >
+                    {locale === "en" ? "Request pilot onboarding" : "Pilot onboarding talep et"}
+                  </button>
+                </div>
+              </div>
             ) : !selfServeReady ? (
               <p className="small text-muted" style={{ marginTop: 14, marginBottom: 0 }}>
                 {locale === "en"
@@ -630,10 +702,23 @@ export default function SubscriptionPage() {
                   <button
                     type="button"
                     className="ghost-button"
-                    disabled={busyKey === "portal" || selfServeBlocked}
-                    onClick={() => void handleBillingPortalOpen()}
+                    disabled={busyKey === "portal"}
+                    onClick={() =>
+                      selfServeBlocked
+                        ? openEnterpriseModal({
+                            note:
+                              locale === "en"
+                                ? "Pilot request: billing portal access and subscription support."
+                                : "Pilot talebi: faturalandırma portalı erişimi ve abonelik desteği."
+                          })
+                        : void handleBillingPortalOpen()
+                    }
                   >
-                    {busyKey === "portal"
+                    {selfServeBlocked
+                      ? locale === "en"
+                        ? "Request billing help"
+                        : "Faturalandırma desteği iste"
+                      : busyKey === "portal"
                       ? t("Hazırlanıyor...")
                       : locale === "en"
                         ? "Manage billing"
@@ -724,6 +809,16 @@ export default function SubscriptionPage() {
               </div>
             </div>
 
+            {selfServeBlocked ? (
+              <div className="panel" style={{ marginBottom: 16 }}>
+                <p className="small text-muted" style={{ margin: 0 }}>
+                  {locale === "en"
+                    ? "Package upgrades and downgrades are opened with manual support during pilot. Use the request buttons below to send the exact package need to the team."
+                    : "Pilot boyunca paket yükseltme ve düşürmeler manuel destekle açılır. Aşağıdaki talep butonlarıyla ihtiyacınız olan paketi ekibe iletebilirsiniz."}
+                </p>
+              </div>
+            ) : null}
+
             <div className="tlx-plan-grid">
               {billing.planCatalog.map((plan) => {
                 const actionMode = getPlanActionMode(billing.account.currentPlanKey, plan.key);
@@ -731,6 +826,7 @@ export default function SubscriptionPage() {
                 const planCard = buildBillingPlanCardModel(plan, locale, {
                   enterprisePriceLabel: locale === "en" ? "Contact Us" : "İletişime Geçin"
                 });
+                const planLabel = formatBillingPlanLabel(plan.key, locale);
                 return (
                   <article
                     key={plan.key}
@@ -761,7 +857,11 @@ export default function SubscriptionPage() {
 
                     <div className="tlx-plan-card-action">
                       {plan.key === "ENTERPRISE" ? (
-                        <button type="button" className="tlx-plan-btn" onClick={openEnterpriseModal}>
+                        <button
+                          type="button"
+                          className="tlx-plan-btn"
+                          onClick={() => openEnterpriseModal()}
+                        >
                           {enterpriseCta}
                         </button>
                       ) : actionMode === "current" ? (
@@ -772,14 +872,24 @@ export default function SubscriptionPage() {
                         <button
                           type="button"
                           className="tlx-plan-btn"
-                          disabled={busyKey === `plan:${plan.key}` || selfServeBlocked}
+                          disabled={busyKey === `plan:${plan.key}`}
                           onClick={() =>
-                            void handlePlanCheckout(
-                              plan.key as Exclude<BillingPlanKey, "ENTERPRISE">
-                            )
+                            selfServeBlocked
+                              ? openEnterpriseModal({
+                                  seats: String(plan.seatsIncluded),
+                                  activeJobs: String(plan.activeJobsIncluded),
+                                  candidateProcessing: String(plan.candidateProcessingIncluded),
+                                  aiInterviews: String(plan.aiInterviewsIncluded),
+                                  note: buildPlanAssistanceNote(planLabel, actionMode, locale)
+                                })
+                              : void handlePlanCheckout(
+                                  plan.key as Exclude<BillingPlanKey, "ENTERPRISE">
+                                )
                           }
                         >
-                          {busyKey === `plan:${plan.key}`
+                          {selfServeBlocked
+                            ? assistedPlanActionLabel(locale)
+                            : busyKey === `plan:${plan.key}`
                             ? t("Hazırlanıyor...")
                             : planActionLabel(actionMode, locale)}
                         </button>
@@ -787,12 +897,22 @@ export default function SubscriptionPage() {
                         <button
                           type="button"
                           className="tlx-plan-btn"
-                          disabled={
-                            busyKey === `plan:${plan.key}` || selfServeBlocked
+                          disabled={busyKey === `plan:${plan.key}`}
+                          onClick={() =>
+                            selfServeBlocked
+                              ? openEnterpriseModal({
+                                  seats: String(plan.seatsIncluded),
+                                  activeJobs: String(plan.activeJobsIncluded),
+                                  candidateProcessing: String(plan.candidateProcessingIncluded),
+                                  aiInterviews: String(plan.aiInterviewsIncluded),
+                                  note: buildPlanAssistanceNote(planLabel, actionMode, locale)
+                                })
+                              : void handlePlanCheckout(plan.key as Exclude<BillingPlanKey, "ENTERPRISE">)
                           }
-                          onClick={() => void handlePlanCheckout(plan.key as Exclude<BillingPlanKey, "ENTERPRISE">)}
                         >
-                          {busyKey === `plan:${plan.key}`
+                          {selfServeBlocked
+                            ? assistedPlanActionLabel(locale)
+                            : busyKey === `plan:${plan.key}`
                             ? t("Hazırlanıyor...")
                             : planActionLabel(actionMode, locale)}
                         </button>
@@ -824,10 +944,19 @@ export default function SubscriptionPage() {
                         <button
                           type="button"
                           className="ghost-button billing-addon-compact-button"
-                          disabled={selfServeBlocked}
-                          onClick={() => setActiveAddOnQuotaKey(quota.key as BillingQuotaKeyWithAddOns)}
+                          onClick={() =>
+                            selfServeBlocked
+                              ? openEnterpriseModal({
+                                  note: buildAddOnAssistanceNote(t(quota.label), locale)
+                                })
+                              : setActiveAddOnQuotaKey(quota.key as BillingQuotaKeyWithAddOns)
+                          }
                         >
-                        {locale === "en" ? "Buy add-on" : "Ek paket al"}
+                        {selfServeBlocked
+                          ? assistedAddOnActionLabel(locale)
+                          : locale === "en"
+                            ? "Buy add-on"
+                            : "Ek paket al"}
                       </button>
                     </article>
                   );

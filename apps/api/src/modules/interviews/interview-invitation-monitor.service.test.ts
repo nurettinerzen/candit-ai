@@ -3,6 +3,7 @@ import test from "node:test";
 import { InterviewInvitationMonitorService } from "./interview-invitation-monitor.service";
 
 function createService() {
+  const now = Date.now();
   const domainEvents: Array<Record<string, unknown>> = [];
   const audits: Array<Record<string, unknown>> = [];
   let updateInput: { where: Record<string, unknown>; data: Record<string, unknown> } | null = null;
@@ -13,8 +14,8 @@ function createService() {
         id: "session_1",
         tenantId: "ten_1",
         applicationId: "app_1",
-        candidateAccessExpiresAt: new Date("2026-04-20T10:00:00.000Z"),
-        invitationIssuedAt: new Date("2026-04-16T10:00:00.000Z"),
+        candidateAccessExpiresAt: new Date(now + 48 * 60 * 60 * 1000),
+        invitationIssuedAt: new Date(now - 2 * 60 * 60 * 1000),
         invitationReminderCount: 0,
         invitationReminder1SentAt: null,
         invitationReminder2SentAt: null,

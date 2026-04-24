@@ -354,7 +354,7 @@ Eklenmesi gereken dökümanlar:
 
 Bulgu:
 
-- `Calendly` adapter var
+- Google odakli scheduling adapterlari var
 - `Google Calendar` / `Google Meet` adapter var
 - `ATS_GENERIC` var
 - `Microsoft Calendar` ve `Zoom` halen stub adapter

@@ -30,7 +30,7 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
   - launch-critical guardrails and service contracts
   - production runtime hardening rules
   - decision / reject / reminder / re-invite control flow
-  - auth provider boundary response and Calendly OAuth callback guardrails
+  - auth provider boundary response and Google OAuth callback guardrails
   - launch warning detection for common test-vs-production credential drift
   - explicit scheduling provider guardrails for unsupported, unconfigured, or disconnected providers
   - duplicate candidate provenance enrichment

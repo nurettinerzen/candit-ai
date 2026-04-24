@@ -7,12 +7,102 @@ const DEFAULT_PASSWORD = process.env.CANDIT_SMOKE_PASSWORD ?? "Launch123!";
 
 const warnings = [];
 
+class CookieJar {
+  constructor() {
+    this.cookies = new Map();
+  }
+
+  capture(response) {
+    const rawCookies =
+      typeof response.headers.getSetCookie === "function"
+        ? response.headers.getSetCookie()
+        : [response.headers.get("set-cookie")].filter(Boolean);
+
+    for (const rawCookie of rawCookies) {
+      const [cookiePair] = String(rawCookie).split(";");
+      const [name, ...valueParts] = cookiePair.split("=");
+      const cookieName = name?.trim();
+
+      if (!cookieName || valueParts.length === 0) {
+        continue;
+      }
+
+      this.cookies.set(cookieName, valueParts.join("=").trim());
+    }
+  }
+
+  apply(headers) {
+    if (this.cookies.size === 0) {
+      return;
+    }
+
+    headers.set(
+      "cookie",
+      [...this.cookies.entries()].map(([name, value]) => `${name}=${value}`).join("; ")
+    );
+  }
+
+  hasCookies() {
+    return this.cookies.size > 0;
+  }
+}
+
 function stripTrailingSlash(value) {
   return value.replace(/\/+$/, "");
 }
 
 function isTruthy(value) {
   return ["1", "true", "yes", "on"].includes(String(value ?? "").trim().toLowerCase());
+}
+
+function normalizeComparableText(value) {
+  return String(value ?? "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[ıİ]/g, "i")
+    .replace(/[şŞ]/g, "s")
+    .replace(/[ğĞ]/g, "g")
+    .replace(/[üÜ]/g, "u")
+    .replace(/[öÖ]/g, "o")
+    .replace(/[çÇ]/g, "c")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasDecisionPattern(value, pattern) {
+  return pattern.test(normalizeComparableText(value));
+}
+
+function recommendationCopyLooksAligned(outcome, summary, action) {
+  const advancePattern =
+    /(uygun oldugu|uygun gorunuyor|guclu aday|\bilerlet(?!me)\w*|sonraki asama|mulakata al|mulakata davet|gorusmeye al|gorusmeye davet)/;
+  const holdPattern =
+    /(teyit|dogrula|follow up|follow-up|acik nokta|ek gorusme|kisa gorusme|incelemesinde tut|kritik nokta|beklet)/;
+  const reviewPattern =
+    /(manuel inceleme|daha siki|ilerletmeden once|ilerletme karari vermeden once|yakindan incele|uyum net degil|risk|review|yeniden degerlendir)/;
+
+  const summaryHasAdvance = hasDecisionPattern(summary, advancePattern);
+  const summaryHasHold = hasDecisionPattern(summary, holdPattern);
+  const summaryHasReview = hasDecisionPattern(summary, reviewPattern);
+  const actionHasAdvance = hasDecisionPattern(action, advancePattern);
+  const actionHasHold = hasDecisionPattern(action, holdPattern);
+  const actionHasReview = hasDecisionPattern(action, reviewPattern);
+
+  if (outcome === "ADVANCE") {
+    return summaryHasAdvance && actionHasAdvance && !summaryHasReview && !actionHasReview;
+  }
+
+  if (outcome === "HOLD") {
+    return summaryHasHold && actionHasHold && !summaryHasAdvance && !actionHasAdvance;
+  }
+
+  if (outcome === "REVIEW") {
+    return summaryHasReview && actionHasReview && !summaryHasAdvance && !actionHasAdvance;
+  }
+
+  return true;
 }
 
 function logStatus(kind, label, detail) {
@@ -36,7 +126,15 @@ function ensure(condition, label, detail) {
 }
 
 async function request(label, url, options = {}) {
-  const response = await fetch(url, options);
+  const { cookieJar, headers: rawHeaders, ...fetchOptions } = options;
+  const headers = new Headers(rawHeaders ?? {});
+  cookieJar?.apply(headers);
+
+  const response = await fetch(url, {
+    ...fetchOptions,
+    headers
+  });
+  cookieJar?.capture(response);
   const text = await response.text();
   let data = null;
 
@@ -64,6 +162,38 @@ async function requestJson(label, path, options = {}) {
   return response.data;
 }
 
+async function requestStatus(label, path, expectedStatus, options = {}) {
+  const { cookieJar, headers: rawHeaders, ...fetchOptions } = options;
+  const headers = new Headers(rawHeaders ?? {});
+  cookieJar?.apply(headers);
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...fetchOptions,
+    headers
+  });
+  cookieJar?.capture(response);
+  const text = await response.text();
+  let data = null;
+
+  if (text.length > 0) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  }
+
+  if (response.status !== expectedStatus) {
+    const detail = typeof data === "string" ? data : JSON.stringify(data);
+    throw new Error(`${label} failed (${response.status}): ${detail}`);
+  }
+
+  return {
+    status: response.status,
+    data
+  };
+}
+
 async function poll(label, callback, predicate, options = {}) {
   const attempts = options.attempts ?? 15;
   const intervalMs = options.intervalMs ?? 2000;
@@ -88,11 +218,28 @@ function formatWarnings(items) {
     .join(" | ");
 }
 
+function extractVerificationToken(previewUrl) {
+  if (typeof previewUrl !== "string" || previewUrl.trim().length === 0) {
+    return null;
+  }
+
+  try {
+    const url = new URL(previewUrl);
+    const token = url.searchParams.get("token");
+    return token?.trim() ? token.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 function authHeaders(token, tenantId, contentType = null) {
   const headers = {
-    authorization: `Bearer ${token}`,
     "x-tenant-id": tenantId
   };
+
+  if (token) {
+    headers.authorization = `Bearer ${token}`;
+  }
 
   if (contentType) {
     headers["content-type"] = contentType;
@@ -103,6 +250,31 @@ function authHeaders(token, tenantId, contentType = null) {
 
 function jsonHeaders(token, tenantId) {
   return authHeaders(token, tenantId, "application/json");
+}
+
+function authenticatedRequestOptions(session, tenantId, options = {}) {
+  const headers = new Headers(options.headers ?? {});
+  headers.set("x-tenant-id", tenantId);
+
+  if (session.token) {
+    headers.set("authorization", `Bearer ${session.token}`);
+  }
+
+  return {
+    ...options,
+    headers,
+    cookieJar: session.cookieJar ?? options.cookieJar
+  };
+}
+
+function authenticatedJsonRequestOptions(session, tenantId, options = {}) {
+  return authenticatedRequestOptions(session, tenantId, {
+    ...options,
+    headers: {
+      ...(options.headers ?? {}),
+      "content-type": "application/json"
+    }
+  });
 }
 
 function buildPilotCv(stamp) {
@@ -126,36 +298,99 @@ function buildPilotCv(stamp) {
 
 async function signupPilotUser() {
   const stamp = Date.now().toString();
-  const email = `pilot-smoke-${stamp}@example.com`;
+  const suffix = Math.random().toString(36).slice(2, 8);
+  const email = `pilot-smoke-${stamp}-${suffix}@example.com`;
+  const cookieJar = new CookieJar();
+  let signup = null;
 
-  const signup = await requestJson("Pilot signup", "/auth/signup", {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const signupResponse = await request("Pilot signup", `${API_BASE_URL}/auth/signup`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        cookieJar,
+        body: JSON.stringify({
+          companyName: `Candit ${suffix} Pilot ${stamp}`,
+          fullName: "Pilot Smoke",
+          email,
+          password: DEFAULT_PASSWORD
+        })
+      });
+      signup = signupResponse.data;
+      break;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const retryable = /failed \((5\d{2})\):/i.test(message);
+      if (!retryable || attempt === 3) {
+        throw error;
+      }
+
+      logStatus("INFO", "Pilot signup retrying", `attempt=${attempt + 1}`);
+      await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+    }
+  }
+
+  const tenantId = signup?.user?.tenantId ?? null;
+  const directAccessToken = typeof signup?.accessToken === "string" ? signup.accessToken : null;
+
+  ensure(tenantId, "Signup tenant id missing");
+  ensure(signup?.user?.id, "Signup user id missing");
+
+  if (directAccessToken) {
+    logStatus("PASS", "Pilot tenant created", tenantId ?? email);
+    return {
+      stamp,
+      token: directAccessToken,
+      cookieJar,
+      tenantId,
+      userId: signup.user?.id ?? null
+    };
+  }
+
+  const previewUrl = typeof signup?.emailVerification?.previewUrl === "string"
+    ? signup.emailVerification.previewUrl
+    : null;
+  const verificationToken = extractVerificationToken(previewUrl);
+
+  if (verificationToken) {
+    await requestJson("Pilot email verification confirm", "/auth/email-verification/confirm", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: verificationToken })
+    });
+    logStatus("PASS", "Pilot user email verified", email);
+  }
+
+  const login = await request("Pilot login after signup", `${API_BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },
+    cookieJar,
     body: JSON.stringify({
-      companyName: `Candit Pilot ${stamp}`,
-      fullName: "Pilot Smoke",
       email,
-      password: DEFAULT_PASSWORD
+      password: DEFAULT_PASSWORD,
+      tenantId
     })
   });
 
-  ensure(signup?.accessToken, "Signup access token missing");
-  ensure(signup?.user?.tenantId, "Signup tenant id missing");
-  ensure(signup?.user?.id, "Signup user id missing");
+  ensure(
+    login.data?.accessToken || cookieJar.hasCookies(),
+    "Login auth context missing"
+  );
 
-  logStatus("PASS", "Pilot tenant created", signup.user?.tenantId ?? email);
+  logStatus("PASS", "Pilot tenant created", login.data?.user?.tenantId ?? tenantId ?? email);
 
   return {
     stamp,
-    token: signup.accessToken,
-    tenantId: signup.user?.tenantId ?? null,
+    token: login.data?.accessToken ?? null,
+    cookieJar,
+    tenantId: login.data?.user?.tenantId ?? tenantId,
     userId: signup.user?.id ?? null
   };
 }
 
-async function ensurePublishedJob(token, tenantId) {
+async function ensurePublishedJob(session, tenantId) {
   const jobs = await requestJson("Jobs list", "/jobs", {
-    headers: authHeaders(token, tenantId)
+    ...authenticatedRequestOptions(session, tenantId)
   });
 
   const existing = Array.isArray(jobs)
@@ -182,12 +417,13 @@ async function ensurePublishedJob(token, tenantId) {
 
   try {
     const created = await requestJson("Create job", "/jobs", {
-      method: "POST",
-      headers: jsonHeaders(token, tenantId),
-      body: JSON.stringify({
-        ...baseJobPayload,
-        status: "PUBLISHED"
-      })
+      ...authenticatedJsonRequestOptions(session, tenantId, {
+        method: "POST",
+        body: JSON.stringify({
+          ...baseJobPayload,
+          status: "PUBLISHED"
+        })
+      }),
     });
 
     logStatus("PASS", "Published job created", `${created.id} (${created.title})`);
@@ -205,11 +441,12 @@ async function ensurePublishedJob(token, tenantId) {
     );
 
     const fallback = await requestJson("Create draft job", "/jobs", {
-      method: "POST",
-      headers: jsonHeaders(token, tenantId),
-      body: JSON.stringify({
-        ...baseJobPayload,
-        status: "DRAFT"
+      ...authenticatedJsonRequestOptions(session, tenantId, {
+        method: "POST",
+        body: JSON.stringify({
+          ...baseJobPayload,
+          status: "DRAFT"
+        })
       })
     });
 
@@ -218,7 +455,7 @@ async function ensurePublishedJob(token, tenantId) {
   }
 }
 
-async function uploadPilotCv(token, tenantId, candidateId, stamp) {
+async function uploadPilotCv(session, tenantId, candidateId, stamp) {
   const formData = new FormData();
   formData.set(
     "file",
@@ -228,9 +465,10 @@ async function uploadPilotCv(token, tenantId, candidateId, stamp) {
   );
 
   const upload = await requestJson("Upload CV", `/candidates/${candidateId}/cv-files`, {
-    method: "POST",
-    headers: authHeaders(token, tenantId),
-    body: formData
+    ...authenticatedRequestOptions(session, tenantId, {
+      method: "POST",
+      body: formData
+    })
   });
 
   ensure(upload?.id, "CV upload returned no id");
@@ -250,15 +488,15 @@ async function main() {
   logStatus("PASS", "Web reachable", `status=${webRoot.status}`);
 
   const pilot = await signupPilotUser();
-  const auth = authHeaders(pilot.token, pilot.tenantId);
+  const auth = authenticatedRequestOptions(pilot, pilot.tenantId);
 
   const session = await requestJson("Auth session", "/auth/session", {
-    headers: auth
+    ...auth
   });
   logStatus("PASS", "Auth session loaded", session?.runtime?.authTransport ?? "unknown");
 
   const recruiterOverview = await requestJson("Recruiter overview", "/read-models/recruiter-overview", {
-    headers: auth
+    ...auth
   });
   logStatus(
     "PASS",
@@ -267,16 +505,16 @@ async function main() {
   );
 
   const providerHealth = await requestJson("Provider health", "/read-models/provider-health", {
-    headers: auth
+    ...auth
   });
   const aiSupportCenter = await requestJson("AI support center", "/read-models/ai-support-center", {
-    headers: auth
+    ...auth
   });
   const infrastructure = await requestJson("Infrastructure readiness", "/read-models/infrastructure-readiness", {
-    headers: auth
+    ...auth
   });
   const billingOverview = await requestJson("Billing overview", "/billing/overview", {
-    headers: auth
+    ...auth
   });
 
   if (providerHealth?.overall === "degraded") {
@@ -324,7 +562,7 @@ async function main() {
     logStatus("PASS", "Stripe billing configured");
   }
 
-  const job = await ensurePublishedJob(pilot.token, pilot.tenantId);
+  const job = await ensurePublishedJob(pilot, pilot.tenantId);
   const candidatePayload = {
     fullName: `Pilot Smoke ${pilot.stamp.slice(-6)}`,
     email: `pilot-candidate-${pilot.stamp}@example.com`,
@@ -333,21 +571,35 @@ async function main() {
   };
 
   const candidateResult = await requestJson("Create candidate", "/candidates", {
-    method: "POST",
-    headers: jsonHeaders(pilot.token, pilot.tenantId),
-    body: JSON.stringify(candidatePayload)
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "POST",
+      body: JSON.stringify(candidatePayload)
+    })
   });
   const candidateId = candidateResult?.candidate?.id ?? candidateResult?.id ?? null;
   ensure(candidateId, "Candidate creation returned no id");
   logStatus("PASS", "Candidate created", candidateId);
 
-  const cvUpload = await uploadPilotCv(pilot.token, pilot.tenantId, candidateId, pilot.stamp);
+  const isolatedTenant = await signupPilotUser();
+
+  await requestStatus("Tenant header mismatch", "/auth/session", 403, {
+    ...authenticatedRequestOptions(pilot, isolatedTenant.tenantId)
+  });
+  logStatus("PASS", "Tenant header mismatch blocked");
+
+  await requestStatus("Cross-tenant candidate read blocked", `/candidates/${candidateId}`, 404, {
+    ...authenticatedRequestOptions(isolatedTenant, isolatedTenant.tenantId)
+  });
+  logStatus("PASS", "Cross-tenant candidate read blocked", candidateId);
+
+  const cvUpload = await uploadPilotCv(pilot, pilot.tenantId, candidateId, pilot.stamp);
 
   const cvParseTrigger = await requestJson("Trigger CV parsing", `/candidates/${candidateId}/cv-parsing/trigger`, {
-    method: "POST",
-    headers: jsonHeaders(pilot.token, pilot.tenantId),
-    body: JSON.stringify({
-      cvFileId: cvUpload.id
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "POST",
+      body: JSON.stringify({
+        cvFileId: cvUpload.id
+      })
     })
   });
   logStatus("PASS", "CV parsing queued", cvParseTrigger?.taskRun?.taskRunId ?? cvUpload.id);
@@ -356,7 +608,7 @@ async function main() {
     "CV parsing completion",
     () =>
       requestJson(`Poll latest CV parsing`, `/candidates/${candidateId}/cv-parsing/latest?cvFileId=${encodeURIComponent(cvUpload.id)}`, {
-        headers: auth
+        ...auth
       }),
     (detail) => {
       const status = detail?.taskRun?.status;
@@ -374,11 +626,12 @@ async function main() {
   logStatus("PASS", "CV parsing completed", latestCvParsing.parsedProfile.id);
 
   const applicationResult = await requestJson("Create application", "/applications", {
-    method: "POST",
-    headers: jsonHeaders(pilot.token, pilot.tenantId),
-    body: JSON.stringify({
-      candidateId,
-      jobId: process.env.CANDIT_JOB_ID ?? job.id
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "POST",
+      body: JSON.stringify({
+        candidateId,
+        jobId: process.env.CANDIT_JOB_ID ?? job.id
+      })
     })
   });
   const applicationId = applicationResult?.id ?? applicationResult?.application?.id ?? null;
@@ -386,14 +639,15 @@ async function main() {
   logStatus("PASS", "Application created", applicationId);
 
   await requestJson("Application detail", `/read-models/applications/${applicationId}`, {
-    headers: auth
+    ...auth
   });
   logStatus("PASS", "Application detail loaded");
 
   await requestJson("Trigger fit score", `/applications/${applicationId}/quick-action`, {
-    method: "POST",
-    headers: jsonHeaders(pilot.token, pilot.tenantId),
-    body: JSON.stringify({ action: "trigger_fit_score" })
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "POST",
+      body: JSON.stringify({ action: "trigger_fit_score" })
+    })
   });
   logStatus("PASS", "Fit score queued");
 
@@ -402,10 +656,10 @@ async function main() {
     async () => {
       const [detail, latestFitScore] = await Promise.all([
         requestJson("Poll application detail", `/read-models/applications/${applicationId}`, {
-          headers: auth
+          ...auth
         }),
         requestJson("Poll latest fit score", `/applications/${applicationId}/fit-score/latest`, {
-          headers: auth
+          ...auth
         })
       ]);
 
@@ -455,9 +709,10 @@ async function main() {
   }
 
   const inviteResult = await requestJson("Invite interview", `/applications/${applicationId}/quick-action`, {
-    method: "POST",
-    headers: jsonHeaders(pilot.token, pilot.tenantId),
-    body: JSON.stringify({ action: "invite_interview" })
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "POST",
+      body: JSON.stringify({ action: "invite_interview" })
+    })
   });
   const sessionId = inviteResult?.sessionId ?? null;
   const interviewLink = inviteResult?.interviewLink ?? null;
@@ -477,6 +732,7 @@ async function main() {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       token,
+      consentAccepted: true,
       capabilities: {
         speechRecognition: false,
         speechSynthesis: false,
@@ -544,10 +800,10 @@ async function main() {
     async () => {
       const [reports, recommendation] = await Promise.all([
         requestJson("Poll report list", `/reports/applications/${applicationId}`, {
-          headers: auth
+          ...auth
         }),
         requestJson("Poll latest recommendation", `/recommendations/applications/${applicationId}/latest`, {
-          headers: auth
+          ...auth
         })
       ]);
 
@@ -557,7 +813,8 @@ async function main() {
       Array.isArray(snapshot?.reports) &&
       snapshot.reports.length > 0 &&
       Boolean(snapshot?.recommendation?.id),
-    { attempts: 25, intervalMs: 2000 }
+    // Report and recommendation generation can legitimately take longer under live providers.
+    { attempts: 40, intervalMs: 2000 }
   );
 
   ensure(Array.isArray(reviewPack.reports) && reviewPack.reports.length > 0, "Report generation did not complete");
@@ -568,17 +825,45 @@ async function main() {
     `${reviewPack.reports[0]?.id ?? "report"} | ${reviewPack.recommendation.id}`
   );
 
+  const recommendationOutcome =
+    reviewPack.recommendation?.recommendation ??
+    reviewPack.recommendation?.rationaleJson?.recommendation?.recommendedOutcome ??
+    null;
+  const recommendationSummary =
+    reviewPack.recommendation?.summaryText ??
+    reviewPack.recommendation?.rationaleJson?.recommendation?.summary ??
+    "";
+  const recommendationAction =
+    reviewPack.recommendation?.rationaleJson?.recommendation?.action ?? "";
+
+  if (
+    recommendationOutcome &&
+    recommendationCopyLooksAligned(
+      recommendationOutcome,
+      recommendationSummary,
+      recommendationAction
+    )
+  ) {
+    logStatus("PASS", "Recommendation copy aligned", recommendationOutcome);
+  } else if (recommendationOutcome) {
+    addWarning(
+      "Recommendation copy misaligned",
+      `${recommendationOutcome} | ${recommendationSummary} | ${recommendationAction}`
+    );
+  }
+
   const latestReportId = reviewPack.reports[0]?.id ?? null;
   ensure(latestReportId, "Latest report id missing after review pack completion");
 
   const decisionResult = await requestJson("Record recruiter decision", `/applications/${applicationId}/decision`, {
-    method: "POST",
-    headers: jsonHeaders(pilot.token, pilot.tenantId),
-    body: JSON.stringify({
-      decision: "advance",
-      reasonCode: "advanced_by_recruiter",
-      aiReportId: latestReportId,
-      humanApprovedBy: pilot.userId
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "POST",
+      body: JSON.stringify({
+        decision: "advance",
+        reasonCode: "advanced_by_recruiter",
+        aiReportId: latestReportId,
+        humanApprovedBy: pilot.userId
+      })
     })
   });
   ensure(decisionResult?.applicationId === applicationId, "Decision response application mismatch");
@@ -588,7 +873,7 @@ async function main() {
     "Application decision propagation",
     () =>
       requestJson("Final application detail", `/read-models/applications/${applicationId}`, {
-        headers: auth
+        ...auth
       }),
     (detail) => {
       const decisionRecorded = detail?.summary?.humanDecision === "advance";

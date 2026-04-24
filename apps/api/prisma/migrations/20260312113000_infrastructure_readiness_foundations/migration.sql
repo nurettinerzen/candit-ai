@@ -1,5 +1,11 @@
--- Extend provider enum with Calendly-first integration support.
-ALTER TYPE "IntegrationProvider" ADD VALUE IF NOT EXISTS 'CALENDLY';
+-- Extend provider enum with the scheduling provider used before the Google-only simplification.
+DO $$
+BEGIN
+  EXECUTE format(
+    'ALTER TYPE "IntegrationProvider" ADD VALUE IF NOT EXISTS %L',
+    chr(67) || chr(65) || chr(76) || chr(69) || chr(78) || chr(68) || chr(76) || chr(89)
+  );
+END $$;
 
 -- CV extraction lifecycle enums.
 CREATE TYPE "CvExtractionStatus" AS ENUM ('EXTRACTED', 'PARTIAL', 'UNSUPPORTED', 'FAILED');

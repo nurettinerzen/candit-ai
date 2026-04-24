@@ -18,6 +18,7 @@ import {
   Prisma,
   PublicLeadStatus,
   Role,
+  SecurityEventSeverity,
   TenantStatus,
   UserStatus
 } from "@prisma/client";
@@ -28,6 +29,8 @@ import { BILLING_PLAN_CATALOG, buildPlanSnapshot } from "../billing/billing-cata
 import { BillingService } from "../billing/billing.service";
 import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { SecurityEventsService } from "../security-events/security-events.service";
+import { ensurePilotWorkspaceAndAiDefaults } from "./pilot-provisioning-defaults";
 
 const GLOBAL_AUTH_FLAG_KEYS = [
   "auth.email_verification.required",
@@ -169,7 +172,9 @@ export class InternalAdminService {
     @Inject(BillingService) private readonly billingService: BillingService,
     @Inject(AuthService) private readonly authService: AuthService,
     @Inject(FeatureFlagsService) private readonly featureFlagsService: FeatureFlagsService,
-    @Inject(NotificationsService) private readonly notificationsService: NotificationsService
+    @Inject(NotificationsService) private readonly notificationsService: NotificationsService,
+    @Inject(SecurityEventsService)
+    private readonly securityEventsService: SecurityEventsService
   ) {}
 
   private assertInternalAdmin(email?: string | null) {
@@ -178,6 +183,22 @@ export class InternalAdminService {
     }
 
     throw new ForbiddenException("Bu alan yalnızca iç yönetim ekibi için açıktır.");
+  }
+
+  private async reportSecurityEvent(input: {
+    tenantId?: string | null;
+    userId?: string | null;
+    source: string;
+    code: string;
+    message: string;
+    severity?: SecurityEventSeverity;
+    metadata?: Prisma.InputJsonValue | null;
+  }) {
+    try {
+      await this.securityEventsService.recordSecurityEvent(input);
+    } catch {
+      // Internal admin flows should not fail because telemetry persistence is unavailable.
+    }
   }
 
   async listGlobalAuthFlags(viewerEmail?: string | null) {
@@ -1348,7 +1369,7 @@ export class InternalAdminService {
         }
       });
 
-      await tx.authSession.updateMany({
+      const revokedSessions = await tx.authSession.updateMany({
         where: {
           tenantId: input.tenantId,
           userId: owner.id,
@@ -1361,7 +1382,7 @@ export class InternalAdminService {
         }
       });
 
-      await tx.authRefreshToken.updateMany({
+      const revokedRefreshTokens = await tx.authRefreshToken.updateMany({
         where: {
           tenantId: input.tenantId,
           userId: owner.id,
@@ -1370,6 +1391,23 @@ export class InternalAdminService {
         data: {
           revokedAt: now,
           revokedReason: "owner_password_reset_by_internal_admin"
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: input.tenantId,
+          actorUserId: input.actorUserId,
+          actorType: "USER",
+          action: "internal_admin.owner_password_reset_requested",
+          entityType: "User",
+          entityId: owner.id,
+          metadata: {
+            ownerEmail: owner.email,
+            expiresAt: invitationToken.expiresAt.toISOString(),
+            revokedSessionCount: revokedSessions.count,
+            revokedRefreshTokenCount: revokedRefreshTokens.count
+          } satisfies Prisma.InputJsonValue
         }
       });
     });
@@ -1394,6 +1432,19 @@ export class InternalAdminService {
       templateKey: "internal_admin_password_reset",
       eventType: "internal_admin_password_reset",
       requestedBy: input.actorUserId
+    });
+
+    await this.reportSecurityEvent({
+      tenantId: input.tenantId,
+      userId: owner.id,
+      source: "internal_admin.owner_password_reset",
+      code: "internal_admin.owner_password_reset.invitation_issued",
+      message: "Ic yonetim ekibi tenant owner icin yeni sifre belirleme baglantisi olusturdu.",
+      severity: SecurityEventSeverity.WARNING,
+      metadata: {
+        actorUserId: input.actorUserId,
+        ownerEmail: owner.email
+      }
     });
 
     return {
@@ -1436,12 +1487,7 @@ export class InternalAdminService {
         }
       });
 
-      await tx.workspace.create({
-        data: {
-          tenantId: createdTenant.id,
-          name: "Ana Çalışma Alanı"
-        }
-      });
+      await ensurePilotWorkspaceAndAiDefaults(tx, createdTenant.id);
 
       await tx.user.create({
         data: {

@@ -2188,7 +2188,6 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Ödeme linki göndermek için e-posta giriniz.":
     "Enter an email to send the payment link.",
   "Ödeme linki gönderilemedi.": "Payment link could not be sent.",
-  "Calendly henüz yapılandırılmamış.": "Calendly is not configured yet.",
   "Henüz yapılandırılmamış.": "Not configured yet."
 });
 
@@ -2221,7 +2220,6 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Infrastructure Readiness": "Infrastructure Readiness",
   "CV Extraction": "CV Extraction",
   "Speech Runtime": "Speech Runtime",
-  "Calendly OAuth": "Calendly OAuth",
   "Google OAuth": "Google OAuth",
   "Email Provider": "Email Provider",
   "Demo akışında kullanılan AI bayrakları. `ai.auto_reject.enabled` kural gereği açılamaz.":
@@ -2774,7 +2772,6 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Takvim ve API entegrasyonlarını ekip ihtiyacına göre planlayın.":
     "Plan calendar and API integrations based on your team needs.",
   "Google Calendar ve Google Meet": "Google Calendar and Google Meet",
-  "Calendly bağlantısı": "Calendly connection",
   "ATS genel API / webhook": "ATS generic API / webhook",
   "Kaynak Bulma": "Sourcing",
 
@@ -3131,8 +3128,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Platform; rol bazlı erişim, veri maskeleme, audit log ve yaşam döngüsü kontrolleriyle güvenli kullanım için tasarlanmıştır. KVKK ve GDPR süreçleri için gerekli operasyonel kontroller ekip bazında yapılandırılmalıdır.":
     "The platform is designed for secure use with role-based access, data masking, audit logs, and lifecycle controls. Operational controls required for KVKK and GDPR processes must be configured on a team basis.",
   "Mevcut ATS sistemimle entegre olabilir mi?": "Can it integrate with my existing ATS?",
-  "Evet. REST API ve webhook desteği ile ATS sistemleriyle entegrasyon senaryoları planlanabilir. Google Calendar, Google Meet ve Calendly odaklı bağlantılar için ekibimiz sizinle uygun akışı birlikte netleştirir.":
-    "Yes. Integration scenarios with ATS systems can be planned through REST API and webhook support. For Google Calendar, Google Meet, and Calendly-focused connections, our team helps you clarify the right setup together.",
+  "Evet. REST API ve webhook desteği ile ATS sistemleriyle entegrasyon senaryoları planlanabilir. Google Calendar ve Google Meet odaklı bağlantılar için ekibimiz sizinle uygun akışı birlikte netleştirir.":
+    "Yes. Integration scenarios with ATS systems can be planned through REST API and webhook support. For Google Calendar and Google Meet focused connections, our team helps you clarify the right setup together.",
 
   // Integrations page
   Entegrasyonlar: "Integrations",
@@ -3557,11 +3554,10 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Üretim ortamı kimlik doğrulama varsayılanları sertleştirildi": "Production environment authentication defaults hardened",
   "Mart 2026": "March 2026",
   "Takvim ve Planlama Akışı": "Calendar and Scheduling Flow",
-  "Mülakat planlama tarafında Google ekosistemi ve Calendly odaklı planlama akışları güçlendirildi.":
-    "Interview scheduling workflows focused on the Google ecosystem and Calendly were strengthened.",
+  "Mülakat planlama tarafında Google ekosistemi odaklı planlama akışları güçlendirildi.":
+    "Interview scheduling workflows focused on the Google ecosystem were strengthened.",
   "Google Calendar bağlantı akışı güncellendi": "Google Calendar connection flow updated",
   "Google Meet / planlama bağlam desteği genişletildi": "Google Meet / scheduling context support expanded",
-  "Calendly webhook senkronizasyonu geliştirildi": "Calendly webhook synchronization improved",
   "Yedek toplantı akışı görünür hale getirildi": "Fallback meeting flow made visible",
   "Şubat 2026": "February 2026",
   "Kaynak Bulma ve Aday Havuzu": "Sourcing and Candidate Pool",

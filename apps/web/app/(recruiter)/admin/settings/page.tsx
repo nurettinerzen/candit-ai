@@ -91,12 +91,6 @@ function toErrorMessage(error: unknown, fallback: string) {
 }
 
 function friendlyWarning(raw: string, locale: "tr" | "en") {
-  if (raw.includes("Calendly") && raw.includes("OAuth")) {
-    return locale === "en"
-      ? "Calendly is not configured yet."
-      : "Calendly henüz yapılandırılmamış.";
-  }
-
   if (raw.includes("not_configured")) {
     return locale === "en" ? "Not configured yet." : "Henüz yapılandırılmamış.";
   }
