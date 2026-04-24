@@ -57,16 +57,22 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
   - database and redis reachable
 - Proves:
   - signup + session
+  - logout + relogin
+  - recruiter web surfaces load for dashboard / jobs / candidates / applications / settings / subscription / ai-support
   - tenant-aware auth requests
   - recruiter overview
   - AI support center and infrastructure readiness surfaces
   - scheduling provider catalog + fallback visibility
   - billing overview read
   - job create / publish path
+  - jobs list + isolated draft create / edit / archive proof
   - candidate create
+  - candidates list + detail
   - CV upload
   - CV parsing
   - application create
+  - applications list + detail
+  - dedicated application stage transition + stage-filter proof
   - fit score
   - screening
   - interview invite
@@ -77,7 +83,6 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
   - application dossier governance visibility
   - transcript evidence visible in application detail
 - Current expected result:
-  - pass with warnings if email provider is `console`
   - pass with warnings if `stripeReady=false`
 
 ### 4. Strict runtime smoke
@@ -116,6 +121,6 @@ Launch oncesi yesil build ile yesil runtime akis birbirine karistirilmamalidir.
 
 ## Still open before a fully self-serve launch
 
-- Real transactional email provider
 - Stripe self-serve billing readiness
-- Provider support boundaries finalized in product copy
+- Full invitation / password-reset journey proof on the real launch domain
+- Mock interview quality review across multiple role types

@@ -36,14 +36,20 @@ Ilgili arka plan notlari icin:
     - API health
     - web root
     - auth signup + session
+    - auth logout + relogin
+    - recruiter dashboard / jobs / candidates / applications / settings / subscription / ai-support sayfa yukleme
     - recruiter overview
     - AI support center
     - provider/infrastructure readiness
     - scheduling provider catalog + fallback
     - job secimi / yoksa olusturma
+    - jobs list + draft create/edit/archive
     - candidate create
+    - candidates list + detail
     - CV upload + parse
     - application create
+    - applications list + detail
+    - application stage transition + stage filter
     - fit score tetikleme + worker sonucu
     - interview invite
     - public interview start + cevap
@@ -459,15 +465,15 @@ Ilgili arka plan notlari icin:
 
 ### P3 - Recruiter panel temel akislar
 
-- [ ] Login/logout calisiyor.
+- [x] Login/logout calisiyor.
 - [ ] Signup / invitation / password reset akislarinda kopukluk yok.
-- [ ] Dashboard verileri dogru yukleniyor.
-- [ ] Jobs list/create/edit/archive akislari test edildi.
-- [ ] Candidates list/create/detail akislarinda sorun yok.
-- [ ] Applications list/detail/stage transition akislari calisiyor.
-- [ ] Read models recruiter gorunumleri beklenen veriyi donuyor.
-- [ ] Settings sayfasi kirmiyor.
-- [ ] Subscription sayfasi gercekten hazir olmayan alanlari yanlis gostermiyor.
+- [x] Dashboard verileri dogru yukleniyor.
+- [x] Jobs list/create/edit/archive akislari test edildi.
+- [x] Candidates list/create/detail akislarinda sorun yok.
+- [x] Applications list/detail/stage transition akislari calisiyor.
+- [x] Read models recruiter gorunumleri beklenen veriyi donuyor.
+- [x] Settings sayfasi kirmiyor.
+- [x] Subscription sayfasi gercekten hazir olmayan alanlari yanlis gostermiyor.
 - [ ] Tum kritik butonlar, modallar, tablolar ve filtreler gozden gecirildi.
 
 ### P4 - CV, screening, AI destek ve worker akislar

@@ -371,6 +371,32 @@ function buildPilotCv(stamp) {
   ].join("\n");
 }
 
+async function loginPilotUser(session, options = {}) {
+  const cookieJar = options.cookieJar ?? session.cookieJar;
+  const login = await request(options.label ?? "Pilot login", `${API_BASE_URL}/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    cookieJar,
+    body: JSON.stringify({
+      email: session.email,
+      password: options.password ?? DEFAULT_PASSWORD,
+      tenantId: session.tenantId
+    })
+  });
+
+  ensure(
+    login.data?.accessToken || cookieJar?.hasCookies(),
+    "Login auth context missing"
+  );
+
+  return {
+    token: login.data?.accessToken ?? null,
+    user: login.data?.user ?? null,
+    session: login.data?.session ?? null,
+    cookieJar
+  };
+}
+
 async function signupPilotUser() {
   const stamp = Date.now().toString();
   const suffix = Math.random().toString(36).slice(2, 8);
@@ -415,6 +441,7 @@ async function signupPilotUser() {
     logStatus("PASS", "Pilot tenant created", tenantId ?? email);
     return {
       stamp,
+      email,
       token: directAccessToken,
       cookieJar,
       tenantId,
@@ -456,10 +483,27 @@ async function signupPilotUser() {
 
   return {
     stamp,
+    email,
     token: login.data?.accessToken ?? null,
     cookieJar,
     tenantId: login.data?.user?.tenantId ?? tenantId,
     userId: signup.user?.id ?? null
+  };
+}
+
+function buildCrudJobPayload(stamp) {
+  return {
+    title: `Pilot CRUD ${stamp.slice(-6)}`,
+    roleFamily: "Operasyon",
+    department: "Operasyon",
+    locationText: "Istanbul",
+    shiftType: "Vardiyali",
+    status: "DRAFT",
+    jdText: "Pilot recruiter CRUD proof icin olusturulan taslak ilan.",
+    requirements: [
+      { key: "koordinasyon", value: "Saha ve ekip koordinasyonu", required: true },
+      { key: "raporlama", value: "Gunluk operasyon raporlamasi", required: true }
+    ]
   };
 }
 
@@ -579,15 +623,44 @@ async function main() {
   logStatus("PASS", "Public web surfaces loaded", `pages=${publicPages.length}`);
 
   const pilot = await signupPilotUser();
-  const auth = authenticatedRequestOptions(pilot, pilot.tenantId);
+  let auth = authenticatedRequestOptions(pilot, pilot.tenantId);
 
   const session = await requestJson("Auth session", "/auth/session", {
     ...auth
   });
   logStatus("PASS", "Auth session loaded", session?.runtime?.authTransport ?? "unknown");
 
+  await requestJson("Auth logout", "/auth/logout", {
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "POST",
+      body: JSON.stringify({})
+    })
+  });
+  logStatus("PASS", "Auth logout completed");
+
+  await requestStatus("Auth session blocked after logout", "/auth/session", 401, {
+    ...authenticatedRequestOptions(pilot, pilot.tenantId)
+  });
+  logStatus("PASS", "Auth session blocked after logout");
+
+  const relogin = await loginPilotUser(pilot, {
+    label: "Pilot login after logout"
+  });
+  pilot.token = relogin.token;
+  pilot.cookieJar = relogin.cookieJar;
+  auth = authenticatedRequestOptions(pilot, pilot.tenantId);
+  logStatus("PASS", "Auth login completed after logout", relogin.user?.id ?? pilot.userId ?? pilot.email);
+
+  const restoredSession = await requestJson("Auth session after relogin", "/auth/session", {
+    ...authenticatedRequestOptions(pilot, pilot.tenantId)
+  });
+  logStatus("PASS", "Auth session restored after relogin", restoredSession?.session?.id ?? "active");
+
   const recruiterPages = [
     { path: "/dashboard", label: "Dashboard page" },
+    { path: "/jobs", label: "Jobs page" },
+    { path: "/candidates", label: "Candidates page" },
+    { path: "/applications", label: "Applications page" },
     { path: "/settings", label: "Settings page" },
     { path: "/subscription", label: "Subscription page" },
     { path: "/ai-support", label: "AI support page" }
@@ -671,6 +744,64 @@ async function main() {
   }
 
   const job = await ensurePublishedJob(pilot, pilot.tenantId);
+  const crudJobPayload = buildCrudJobPayload(pilot.stamp);
+  const crudJob = await requestJson("Create draft CRUD job", "/jobs", {
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "POST",
+      body: JSON.stringify(crudJobPayload)
+    })
+  });
+  ensure(crudJob?.id, "CRUD draft job creation returned no id");
+  logStatus("PASS", "Draft CRUD job created", `${crudJob.id} (${crudJob.title})`);
+
+  const jobsList = await requestJson("Jobs list", "/jobs", {
+    ...auth
+  });
+  ensure(Array.isArray(jobsList), "Jobs list response invalid");
+  ensure(
+    jobsList.some((item) => item?.id === crudJob.id),
+    "Jobs list missing CRUD draft job"
+  );
+  logStatus("PASS", "Jobs list includes CRUD draft job", crudJob.id);
+
+  const crudJobDetail = await requestJson("Draft CRUD job detail", `/jobs/${crudJob.id}`, {
+    ...auth
+  });
+  ensure(crudJobDetail?.id === crudJob.id, "CRUD draft job detail mismatch");
+  logStatus("PASS", "Draft CRUD job detail loaded", crudJobDetail.id);
+
+  const crudJobUpdatedTitle = `${crudJob.title} Guncellendi`;
+  const crudJobUpdatedLocation = "Ankara";
+  const updatedCrudJob = await requestJson("Update draft CRUD job", `/jobs/${crudJob.id}`, {
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: crudJobUpdatedTitle,
+        locationText: crudJobUpdatedLocation
+      })
+    })
+  });
+  ensure(updatedCrudJob?.title === crudJobUpdatedTitle, "Draft CRUD job title did not update");
+  ensure(updatedCrudJob?.locationText === crudJobUpdatedLocation, "Draft CRUD job location did not update");
+  logStatus("PASS", "Draft CRUD job updated", `${updatedCrudJob.title} | ${updatedCrudJob.locationText}`);
+
+  const archivedCrudJob = await requestJson("Archive draft CRUD job", `/jobs/${crudJob.id}`, {
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "PATCH",
+      body: JSON.stringify({
+        status: "ARCHIVED"
+      })
+    })
+  });
+  ensure(archivedCrudJob?.status === "ARCHIVED", "Draft CRUD job did not archive");
+  logStatus("PASS", "Draft CRUD job archived", archivedCrudJob.id);
+
+  const archivedCrudJobDetail = await requestJson("Archived CRUD job detail", `/jobs/${crudJob.id}`, {
+    ...auth
+  });
+  ensure(archivedCrudJobDetail?.status === "ARCHIVED", "Archived CRUD job detail mismatch");
+  logStatus("PASS", "Archived CRUD job detail loaded", archivedCrudJobDetail.id);
+
   const candidatePayload = {
     fullName: `Pilot Smoke ${pilot.stamp.slice(-6)}`,
     email: `pilot-candidate-${pilot.stamp}@example.com`,
@@ -687,6 +818,16 @@ async function main() {
   const candidateId = candidateResult?.candidate?.id ?? candidateResult?.id ?? null;
   ensure(candidateId, "Candidate creation returned no id");
   logStatus("PASS", "Candidate created", candidateId);
+
+  const candidatesList = await requestJson("Candidates list", "/candidates", {
+    ...auth
+  });
+  ensure(Array.isArray(candidatesList), "Candidates list response invalid");
+  ensure(
+    candidatesList.some((item) => item?.id === candidateId),
+    "Candidates list missing created candidate"
+  );
+  logStatus("PASS", "Candidates list includes created candidate", candidateId);
 
   const isolatedTenant = await signupPilotUser();
 
@@ -746,10 +887,99 @@ async function main() {
   ensure(applicationId, "Application creation returned no id");
   logStatus("PASS", "Application created", applicationId);
 
+  const candidateDetail = await requestJson("Candidate detail", `/candidates/${candidateId}`, {
+    ...auth
+  });
+  ensure(candidateDetail?.id === candidateId, "Candidate detail mismatch");
+  ensure(
+    Array.isArray(candidateDetail?.applications) &&
+      candidateDetail.applications.some((item) => item?.id === applicationId),
+    "Candidate detail missing linked application"
+  );
+  logStatus("PASS", "Candidate detail loaded", `${candidateDetail.id} | applications=${candidateDetail.applications.length}`);
+
+  const applicationsList = await requestJson("Applications list", `/applications?jobId=${encodeURIComponent(job.id)}`, {
+    ...auth
+  });
+  ensure(Array.isArray(applicationsList), "Applications list response invalid");
+  ensure(
+    applicationsList.some((item) => item?.id === applicationId),
+    "Applications list missing created application"
+  );
+  logStatus("PASS", "Applications list includes created application", applicationId);
+
+  const applicationApiDetail = await requestJson("Application API detail", `/applications/${applicationId}`, {
+    ...auth
+  });
+  ensure(applicationApiDetail?.id === applicationId, "Application API detail mismatch");
+  logStatus("PASS", "Application API detail loaded", applicationApiDetail.id);
+
   await requestJson("Application detail", `/read-models/applications/${applicationId}`, {
     ...auth
   });
   logStatus("PASS", "Application detail loaded");
+
+  const stageCandidateResult = await requestJson("Create stage-transition candidate", "/candidates", {
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "POST",
+      body: JSON.stringify({
+        fullName: `Pilot Stage ${pilot.stamp.slice(-6)}`,
+        email: `pilot-stage-${pilot.stamp}@example.com`,
+        phone: `+90544${pilot.stamp.slice(-7)}`,
+        source: "manual"
+      })
+    })
+  });
+  const stageCandidateId = stageCandidateResult?.candidate?.id ?? stageCandidateResult?.id ?? null;
+  ensure(stageCandidateId, "Stage-transition candidate creation returned no id");
+  logStatus("PASS", "Stage-transition candidate created", stageCandidateId);
+
+  const stageApplicationResult = await requestJson("Create stage-transition application", "/applications", {
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "POST",
+      body: JSON.stringify({
+        candidateId: stageCandidateId,
+        jobId: process.env.CANDIT_JOB_ID ?? job.id
+      })
+    })
+  });
+  const stageApplicationId = stageApplicationResult?.id ?? stageApplicationResult?.application?.id ?? null;
+  ensure(stageApplicationId, "Stage-transition application creation returned no id");
+  logStatus("PASS", "Stage-transition application created", stageApplicationId);
+
+  const stageTransitionResult = await requestJson("Stage-transition application", `/applications/${stageApplicationId}/stage-transition`, {
+    ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
+      method: "POST",
+      body: JSON.stringify({
+        toStage: "SCREENING",
+        reasonCode: "pilot_smoke_stage_transition"
+      })
+    })
+  });
+  ensure(stageTransitionResult?.applicationId === stageApplicationId, "Stage-transition response mismatch");
+  ensure(stageTransitionResult?.toStage === "SCREENING", "Stage-transition target stage mismatch");
+  logStatus("PASS", "Application stage transitioned", `${stageApplicationId} -> ${stageTransitionResult.toStage}`);
+
+  const screeningApplications = await requestJson(
+    "Applications list filtered by stage",
+    `/applications?stage=SCREENING&jobId=${encodeURIComponent(job.id)}`,
+    {
+      ...auth
+    }
+  );
+  ensure(Array.isArray(screeningApplications), "Screening applications list response invalid");
+  ensure(
+    screeningApplications.some((item) => item?.id === stageApplicationId),
+    "Stage-filtered applications list missing transitioned application"
+  );
+  logStatus("PASS", "Applications stage filter includes transitioned application", stageApplicationId);
+
+  const stageApplicationDetail = await requestJson("Stage-transition application detail", `/applications/${stageApplicationId}`, {
+    ...auth
+  });
+  ensure(stageApplicationDetail?.id === stageApplicationId, "Stage-transition application detail mismatch");
+  ensure(stageApplicationDetail?.currentStage === "SCREENING", "Stage-transition application detail stage mismatch");
+  logStatus("PASS", "Stage-transition application detail loaded", `${stageApplicationDetail.id} | ${stageApplicationDetail.currentStage}`);
 
   await requestJson("Trigger fit score", `/applications/${applicationId}/quick-action`, {
     ...authenticatedJsonRequestOptions(pilot, pilot.tenantId, {
