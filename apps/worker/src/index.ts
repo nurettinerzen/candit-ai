@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { PrismaClient, WorkflowStatus, type Prisma } from "@prisma/client";
 import { Job, Worker } from "bullmq";
 import { AiTaskExecutionOrchestrator, type WorkerPayload } from "./ai/ai-task-execution-orchestrator.js";
+import { normalizeDatabaseUrl } from "./prisma-database-url.js";
 import { classifyError, computeBackoffMs } from "./workflow/retry-policy.js";
 import { createTaskRegistry } from "./workflow/task-registry.js";
 import { WorkerLogger } from "./workflow/worker-logger.js";
@@ -18,7 +19,18 @@ const connection = {
 };
 
 const queueName = "ai-interviewer-jobs";
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: process.env.DATABASE_URL
+    ? {
+        db: {
+          url: normalizeDatabaseUrl(process.env.DATABASE_URL, {
+            defaultConnectionLimit: 2,
+            defaultPoolTimeoutSeconds: 20
+          })
+        }
+      }
+    : undefined
+});
 const aiTaskExecutionOrchestrator = new AiTaskExecutionOrchestrator(prisma);
 const registry = createTaskRegistry(aiTaskExecutionOrchestrator);
 const logger = new WorkerLogger();
@@ -259,7 +271,6 @@ worker.on("failed", (job, error) => {
 });
 
 async function bootstrap() {
-  await prisma.$connect();
   await worker.waitUntilReady();
 
   logger.info("worker.started", {
