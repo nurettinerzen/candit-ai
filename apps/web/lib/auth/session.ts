@@ -738,50 +738,83 @@ export async function resolveSessionFromServer(currentSession: WebAuthSession | 
     return currentSession;
   }
 
-  const response = await fetch(`${API_BASE_URL}/auth/session`, {
-    method: "GET",
-    headers: {
-      ...buildAuthHeaders(currentSession)
-    },
-    credentials: "include",
-    cache: "no-store"
-  });
+  const cookieSessionHeaders =
+    AUTH_TOKEN_TRANSPORT === "cookie"
+      ? currentSession?.tenantId
+        ? { "x-tenant-id": currentSession.tenantId }
+        : {}
+      : buildAuthHeaders(currentSession);
 
-  if (!response.ok) {
-    return null;
-  }
+  const readServerSession = async () =>
+    fetch(`${API_BASE_URL}/auth/session`, {
+      method: "GET",
+      headers: {
+        ...cookieSessionHeaders
+      },
+      credentials: "include",
+      cache: "no-store"
+    });
 
-  const payload = (await response.json()) as {
-    user?: {
-      id?: string;
-      tenantId?: string;
-      email?: string | null;
-      fullName?: string | null;
-      roles?: string[];
-      emailVerifiedAt?: string | null;
-      avatarUrl?: string | null;
+  const hydrateServerSession = async (response: Response) => {
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as {
+      user?: {
+        id?: string;
+        tenantId?: string;
+        email?: string | null;
+        fullName?: string | null;
+        roles?: string[];
+        emailVerifiedAt?: string | null;
+        avatarUrl?: string | null;
+      };
+      session?: {
+        id?: string | null;
+      };
     };
-    session?: {
-      id?: string | null;
-    };
+
+    if (!payload.user?.id || !payload.user.tenantId) {
+      return null;
+    }
+
+    const session = buildSessionFromPayload(
+      {
+        user: payload.user,
+        session: {
+          id: payload.session?.id ?? undefined
+        }
+      },
+      "jwt_cookie"
+    );
+
+    persistSession(session);
+    return session;
   };
 
-  if (!payload.user?.id || !payload.user.tenantId) {
-    return null;
+  let response = await readServerSession();
+
+  if (!response.ok && AUTH_TOKEN_TRANSPORT === "cookie" && (response.status === 401 || response.status === 403)) {
+    const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...cookieSessionHeaders
+      },
+      credentials: "include",
+      body: JSON.stringify({}),
+      cache: "no-store"
+    });
+
+    if (refreshResponse.ok) {
+      response = await readServerSession();
+    } else {
+      clearStoredSession();
+    }
   }
 
-  const session = buildSessionFromPayload(
-    {
-      user: payload.user,
-      session: {
-        id: payload.session?.id ?? undefined
-      }
-    },
-    "jwt_cookie"
-  );
-
-  persistSession(session);
-  return session;
+  return hydrateServerSession(response);
 }
 
 export function clearAuthSession() {

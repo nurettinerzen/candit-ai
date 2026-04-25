@@ -128,7 +128,7 @@ function applicantNextAction(applicant: JobInboxApplicant) {
   if (hasCompletedAiScreening) {
     return {
       label: "AI Ön Eleme Tamamlandı",
-      detail: "Fit score ve screening hazır; recruiter değerlendirmesi yapılabilir."
+      detail: "Fit score ve screening hazır; recruiter değerlendirmesine geçin."
     };
   }
 

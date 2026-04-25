@@ -182,7 +182,7 @@ function applicantNextAction(applicant: JobInboxApplicant, locale: SiteLocale) {
   if (applicant.stage === "RECRUITER_REVIEW") {
     return {
       label: "Recruiter Değerlendirmesi",
-      detail: "Fit score ve screening hazır. Recruiter değerlendirmesi yapılabilir.",
+      detail: "Fit score ve screening hazır. Recruiter değerlendirmesine geçin.",
       tone: "success" as const
     };
   }
@@ -214,7 +214,7 @@ function applicantNextAction(applicant: JobInboxApplicant, locale: SiteLocale) {
   if (hasCompletedAiScreening) {
     return {
       label: "AI Ön Eleme Tamamlandı",
-      detail: "Fit score ve screening hazır. Recruiter değerlendirmesine geçilebilir.",
+      detail: "Fit score ve screening hazır. Recruiter değerlendirmesine geçin.",
       tone: "success" as const
     };
   }
@@ -1410,8 +1410,15 @@ export default function JobDetailPage() {
                                 >
                                   {t(stageTextStyle(a.stage as ApplicationStage).label)}
                                 </span>
-                                <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                                  <div>{t(nextAction.detail)}</div>
+                                <div className="text-xs" style={{ color: "var(--text-secondary)", lineHeight: 1.45 }}>
+                                  <div
+                                    style={{
+                                      whiteSpace: "normal",
+                                      overflowWrap: "anywhere",
+                                    }}
+                                  >
+                                    {t(nextAction.detail)}
+                                  </div>
                                   {a.interview?.candidateInterviewUrl ? (
                                     <a
                                       href={a.interview.candidateInterviewUrl}
@@ -1422,7 +1429,7 @@ export default function JobDetailPage() {
                                       {t("Aday görüşme linki")}
                                     </a>
                                   ) : a.interview && interviewMeta.detail && interviewMeta.detail !== nextAction.detail ? (
-                                    <div>{t(interviewMeta.detail)}</div>
+                                    <div style={{ whiteSpace: "normal", overflowWrap: "anywhere" }}>{t(interviewMeta.detail)}</div>
                                   ) : null}
                                 </div>
                               </div>
