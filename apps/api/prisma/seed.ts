@@ -717,7 +717,7 @@ async function upsertPromptTemplatesAndRubrics() {
         roleFamily: "retail",
         categories: [
           {
-            key: "musteri_iliskisi", label: "Musteri Iliskisi Deneyimi", weight: 0.25,
+            key: "musteri_iliskisi", label: "Müşteri İlişkisi Deneyimi", weight: 0.25,
             description: "Musteri odakli is deneyimi",
             deterministicSignals: ["recentRoles", "sectorSignals", "skills"],
             scoringGuidance: "Perakende, musteri destek veya satis deneyimi varsa yuksek puan"
@@ -729,7 +729,7 @@ async function upsertPromptTemplatesAndRubrics() {
             scoringGuidance: "Kasa islemleri, POS veya nakit yonetimi deneyimi varsa yuksek puan"
           },
           {
-            key: "iletisim_becerisi", label: "Iletisim Becerisi", weight: 0.2,
+            key: "iletisim_becerisi", label: "İletişim Becerisi", weight: 0.2,
             description: "Iletisim ve dil becerileri",
             deterministicSignals: ["languages", "educationSummary"],
             scoringGuidance: "Birden fazla dil veya iletisim odakli egitim varsa yuksek puan"
@@ -770,7 +770,7 @@ async function upsertPromptTemplatesAndRubrics() {
             scoringGuidance: "Pozisyon icin gerekli beceriler varsa yuksek puan"
           },
           {
-            key: "egitim_sertifika", label: "Egitim ve Sertifika", weight: 0.2,
+            key: "egitim_sertifika", label: "Eğitim ve Sertifika", weight: 0.2,
             description: "Egitim durumu ve mesleki sertifikalar",
             deterministicSignals: ["educationSummary", "certifications"],
             scoringGuidance: "Ilgili egitim veya sertifika varsa yuksek puan"

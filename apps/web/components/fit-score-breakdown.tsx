@@ -3,11 +3,19 @@ import type { ApplicantFitScoreCategory, ApplicantFitScoreView } from "../lib/ty
 import { FitScoreBar } from "./fit-score-bar";
 
 function SubScoreRow({ sub }: { sub: ApplicantFitScoreCategory }) {
+  const isInformational = typeof sub.weight === "number" && sub.weight <= 0;
+
   return (
     <div className="fit-sub-row">
-      <span className="fit-sub-label">{sub.label}</span>
+      <div className="fit-sub-label-group">
+        <span className="fit-sub-label">{sub.label}</span>
+        {isInformational && <span className="fit-sub-badge">Bilgilendirici</span>}
+      </div>
       <FitScoreBar score={sub.score} confidence={sub.confidence} size="sm" />
-      <span className="fit-sub-reason">{sub.reasoning || "Bu kategori için ek açıklama yok."}</span>
+      <span className="fit-sub-reason">
+        {sub.reasoning || "Bu kategori için ek açıklama yok."}
+        {isInformational && " Bu alt skor genel uyum skoruna dahil edilmez; recruiter kararı için ek bağlam sağlar."}
+      </span>
     </div>
   );
 }
@@ -23,6 +31,7 @@ export function FitScoreBreakdown({ fitScore }: { fitScore: ApplicantFitScoreVie
   const overallScore = toFitScorePercent(fitScore.overallScore) ?? 0;
   const confidence = toConfidencePercent(fitScore.confidence) ?? 0;
   const confidenceInfo = getConfidenceInterpretation(fitScore.confidence);
+  const hasInformationalCategory = categories.some((category) => typeof category.weight === "number" && category.weight <= 0);
 
   return (
     <div className="fit-breakdown">
@@ -32,6 +41,12 @@ export function FitScoreBreakdown({ fitScore }: { fitScore: ApplicantFitScoreVie
         <div style={{ fontSize: "0.85rem", color: confidenceInfo.color, marginTop: "0.25rem" }}>
           {confidenceInfo.text}
         </div>
+        {hasInformationalCategory && (
+          <div className="fit-breakdown-note">
+            Bazı alt skorlar bilgilendiricidir. Özellikle lokasyon ve çalışma modeli gibi alanlar genel uyum skoruna
+            doğrudan eklenmez; recruiter kararına bağlam sağlamak için ayrı gösterilir.
+          </div>
+        )}
       </div>
 
       {categories.length > 0 && (

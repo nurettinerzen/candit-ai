@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { guardLocationCategoryScore } from "./location-score-guardrail.utils.js";
 
-test("guardLocationCategoryScore protects same-city strong commute-open candidates from over-penalized AI location scores", () => {
+test("guardLocationCategoryScore always preserves deterministic location score", () => {
   const score = guardLocationCategoryScore({
     aiScore: 70,
     deterministicScore: 92,
@@ -12,10 +12,10 @@ test("guardLocationCategoryScore protects same-city strong commute-open candidat
     commuteSeverity: "light"
   });
 
-  assert.equal(score, 84);
+  assert.equal(score, 92);
 });
 
-test("guardLocationCategoryScore keeps same-locality candidates near deterministic location confidence", () => {
+test("guardLocationCategoryScore keeps same-locality candidates fully deterministic", () => {
   const score = guardLocationCategoryScore({
     aiScore: 73,
     deterministicScore: 95,
@@ -25,10 +25,10 @@ test("guardLocationCategoryScore keeps same-locality candidates near determinist
     commuteSeverity: "minimal"
   });
 
-  assert.equal(score, 91);
+  assert.equal(score, 95);
 });
 
-test("guardLocationCategoryScore does not override remote-only or remote-mode penalties", () => {
+test("guardLocationCategoryScore ignores arbitrary AI variation for remote-only or remote roles too", () => {
   const remoteOnlyScore = guardLocationCategoryScore({
     aiScore: 38,
     deterministicScore: 88,
@@ -46,6 +46,6 @@ test("guardLocationCategoryScore does not override remote-only or remote-mode pe
     commuteSeverity: "light"
   });
 
-  assert.equal(remoteOnlyScore, 38);
-  assert.equal(remoteRoleScore, 44);
+  assert.equal(remoteOnlyScore, 88);
+  assert.equal(remoteRoleScore, 90);
 });

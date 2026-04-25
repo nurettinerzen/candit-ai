@@ -137,7 +137,7 @@ const DEFAULT_RUBRICS: Record<string, FitScoringRubric> = {
       },
       {
         key: "beceri_ve_arac_uyumu",
-        label: "Beceri ve Arac Uyumu",
+        label: "Beceri ve Araç Uyumu",
         weight: 0.26,
         description: "Ilanda aranan kanal, platform, arac ve teknik uygulama becerileri",
         deterministicSignals: ["skills", "certifications", "workHistorySignals"],
@@ -145,7 +145,7 @@ const DEFAULT_RUBRICS: Record<string, FitScoringRubric> = {
       },
       {
         key: "uygulama_ve_sonuc_kaniti",
-        label: "Uygulama ve Sonuc Kaniti",
+        label: "Uygulama ve Sonuç Kanıtı",
         weight: 0.2,
         description: "Kampanya, icerik, buyume veya raporlama isini bizzat yurutup olculebilir sonuc uretebilme kaniti",
         deterministicSignals: ["workHistorySignals", "skills", "sectorSignals"],
@@ -153,7 +153,7 @@ const DEFAULT_RUBRICS: Record<string, FitScoringRubric> = {
       },
       {
         key: "lokasyon_ve_calisma_modeli_uyumu",
-        label: "Lokasyon ve Calisma Modeli Uyumu",
+        label: "Lokasyon ve Çalışma Modeli Uyumu",
         weight: 0,
         description: "Adayin lokasyonu, hibrit/ofis/remote ritmi ve fiziksel katilim beklentisi ile uyumu",
         deterministicSignals: ["locationSignals", "contactInfo", "recentRoles", "workHistorySignals"],
@@ -161,7 +161,7 @@ const DEFAULT_RUBRICS: Record<string, FitScoringRubric> = {
       },
       {
         key: "egitim_ve_sertifika_uyumu",
-        label: "Egitim ve Sertifika Uyumu",
+        label: "Eğitim ve Sertifika Uyumu",
         weight: 0.08,
         description: "Rol icin ilgili egitim gecmisi veya role anlamli katki saglayan sertifika varligi",
         deterministicSignals: ["educationSummary", "certifications"],
@@ -221,7 +221,7 @@ const DEFAULT_RUBRICS: Record<string, FitScoringRubric> = {
     categories: [
       {
         key: "musteri_iliskisi",
-        label: "Musteri Iliskisi Deneyimi",
+        label: "Müşteri İlişkisi Deneyimi",
         weight: 0.25,
         description: "Musteri odakli is deneyimi",
         deterministicSignals: ["recentRoles", "sectorSignals", "skills"],
@@ -237,7 +237,7 @@ const DEFAULT_RUBRICS: Record<string, FitScoringRubric> = {
       },
       {
         key: "iletisim_becerisi",
-        label: "Iletisim Becerisi",
+        label: "İletişim Becerisi",
         weight: 0.2,
         description: "Iletisim ve dil becerileri",
         deterministicSignals: ["languages", "educationSummary"],
@@ -283,7 +283,7 @@ const DEFAULT_RUBRICS: Record<string, FitScoringRubric> = {
       },
       {
         key: "egitim_sertifika",
-        label: "Egitim ve Sertifika",
+        label: "Eğitim ve Sertifika",
         weight: 0.2,
         description: "Egitim durumu ve mesleki sertifikalar",
         deterministicSignals: ["educationSummary", "certifications"],
@@ -1134,23 +1134,25 @@ export class ApplicantFitScoringTaskService {
 
       return {
         key: category.key,
-        score: Math.min(blendedScore, 100),
-        confidence,
+        score: isLocationCategory ? this.clampScore(detScore) : Math.min(blendedScore, 100),
+        confidence: isLocationCategory ? locationAnalysis.locationConfidence : confidence,
         deterministicScore: detScore,
-        aiScore,
+        aiScore: isLocationCategory ? this.clampScore(detScore) : aiScore,
         strengths: isLocationCategory
           ? this.uniqueList(deterministicStrengths)
           : (aiStrengths.length > 0 ? aiStrengths : this.uniqueList(deterministicStrengths)),
         risks: isLocationCategory
           ? this.uniqueList(deterministicRisks)
           : this.uniqueList([...(aiCategory?.risks ?? []), ...deterministicRisks]),
-        reasoning: (
-          (
-            aiCategory?.reasoning
-            ?? (("reasoning" in (det ?? {})) ? ((det as { reasoning?: string }).reasoning ?? "") : "")
-          )
-          || "Deterministik sinyal bazli degerlendirme."
-        )
+        reasoning: isLocationCategory
+          ? this.buildLocationCategoryReasoning(locationAnalysis)
+          : (
+              (
+                aiCategory?.reasoning
+                ?? (("reasoning" in (det ?? {})) ? ((det as { reasoning?: string }).reasoning ?? "") : "")
+              )
+              || "Deterministik sinyal bazli degerlendirme."
+            )
       };
     });
 
@@ -1242,22 +1244,26 @@ export class ApplicantFitScoringTaskService {
       return {
         key: category.key,
         score: this.clampScore(aiScore),
-        confidence: aiCategory ? this.clampConfidence(aiCategory.confidence) : 0.35,
+        confidence: isLocationCategory
+          ? input.locationAnalysis.locationConfidence
+          : aiCategory ? this.clampConfidence(aiCategory.confidence) : 0.35,
         deterministicScore,
-        aiScore: this.clampScore(aiScore),
+        aiScore: isLocationCategory ? deterministicScore : this.clampScore(aiScore),
         strengths: isLocationCategory
-          ? this.uniqueList([...aiStrengths, ...input.locationAnalysis.strengths])
+          ? this.uniqueList(input.locationAnalysis.strengths)
           : (aiStrengths.length > 0 ? aiStrengths : this.uniqueList(deterministicStrengths)).slice(0, 4),
         risks: isLocationCategory
-          ? this.uniqueList([...aiRisks, ...input.locationAnalysis.risks])
+          ? this.uniqueList(input.locationAnalysis.risks)
           : (aiRisks.length > 0 ? aiRisks : this.uniqueList(deterministicRisks)).slice(0, 4),
-        reasoning: (
-          (
-            aiCategory?.reasoning
-            ?? (("reasoning" in (det ?? {})) ? ((det as { reasoning?: string }).reasoning ?? "") : "")
-          )
-          || "AI recruiter degerlendirmesi role ve kanitlara gore olusturuldu."
-        )
+        reasoning: isLocationCategory
+          ? this.buildLocationCategoryReasoning(input.locationAnalysis)
+          : (
+              (
+                aiCategory?.reasoning
+                ?? (("reasoning" in (det ?? {})) ? ((det as { reasoning?: string }).reasoning ?? "") : "")
+              )
+              || "AI recruiter degerlendirmesi role ve kanitlara gore olusturuldu."
+            )
       };
     });
 

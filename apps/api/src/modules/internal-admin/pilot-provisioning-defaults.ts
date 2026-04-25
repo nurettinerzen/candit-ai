@@ -106,7 +106,7 @@ const PILOT_SCORING_RUBRICS = [
       categories: [
         {
           key: "musteri_iliskisi",
-          label: "Musteri Iliskisi Deneyimi",
+          label: "Müşteri İlişkisi Deneyimi",
           weight: 0.25,
           description: "Musteri odakli is deneyimi",
           deterministicSignals: ["recentRoles", "sectorSignals", "skills"],
@@ -122,7 +122,7 @@ const PILOT_SCORING_RUBRICS = [
         },
         {
           key: "iletisim_becerisi",
-          label: "Iletisim Becerisi",
+          label: "İletişim Becerisi",
           weight: 0.2,
           description: "Iletisim ve dil becerileri",
           deterministicSignals: ["languages", "educationSummary"],
@@ -178,7 +178,7 @@ const PILOT_SCORING_RUBRICS = [
         },
         {
           key: "egitim_sertifika",
-          label: "Egitim ve Sertifika",
+          label: "Eğitim ve Sertifika",
           weight: 0.2,
           description: "Egitim durumu ve mesleki sertifikalar",
           deterministicSignals: ["educationSummary", "certifications"],

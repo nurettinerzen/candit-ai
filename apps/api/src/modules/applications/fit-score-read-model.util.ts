@@ -5,6 +5,44 @@ const LEGACY_CATEGORY_LABELS: Record<string, string> = {
   roleFit: "Rol Uyumu"
 };
 
+const CANONICAL_CATEGORY_LABELS: Record<string, string> = {
+  deneyim_uyumu: "Deneyim Uyumu",
+  beceri_uyumu: "Beceri Uyumu",
+  beceri_ve_arac_uyumu: "Beceri ve Araç Uyumu",
+  uygulama_ve_sonuc_kaniti: "Uygulama ve Sonuç Kanıtı",
+  lokasyon_ve_calisma_modeli_uyumu: "Lokasyon ve Çalışma Modeli Uyumu",
+  lokasyon_uyumu: "Lokasyon Uyumu",
+  egitim_ve_sertifika_uyumu: "Eğitim ve Sertifika Uyumu",
+  egitim_sertifika: "Eğitim ve Sertifika",
+  musteri_iliskisi: "Müşteri İlişkisi Deneyimi",
+  iletisim_becerisi: "İletişim Becerisi",
+  uygunluk_vardiya: "Uygunluk ve Vardiya",
+  genel_profil: "Genel Profil"
+};
+
+const CANONICAL_LABEL_BY_ASCII: Record<string, string> = {
+  "Rol ve Deneyim Uyumu": "Rol ve Deneyim Uyumu",
+  "Beceri ve Arac Uyumu": "Beceri ve Araç Uyumu",
+  "Uygulama ve Sonuc Kaniti": "Uygulama ve Sonuç Kanıtı",
+  "Lokasyon ve Calisma Modeli Uyumu": "Lokasyon ve Çalışma Modeli Uyumu",
+  "Egitim ve Sertifika Uyumu": "Eğitim ve Sertifika Uyumu",
+  "Egitim ve Sertifika": "Eğitim ve Sertifika",
+  "Musteri Iliskisi Deneyimi": "Müşteri İlişkisi Deneyimi",
+  "Iletisim Becerisi": "İletişim Becerisi"
+};
+
+function canonicalizeCategoryLabel(key: string, label: string | null | undefined) {
+  if (key && CANONICAL_CATEGORY_LABELS[key]) {
+    return CANONICAL_CATEGORY_LABELS[key];
+  }
+
+  if (label && CANONICAL_LABEL_BY_ASCII[label]) {
+    return CANONICAL_LABEL_BY_ASCII[label];
+  }
+
+  return label ?? key;
+}
+
 type UnknownRecord = Record<string, unknown>;
 
 function asRecord(value: unknown): UnknownRecord | null {
@@ -101,9 +139,12 @@ function normalizeCategory(value: unknown, fallbackKey: string) {
   }
 
   const key = typeof record.key === "string" && record.key.trim() ? record.key.trim() : fallbackKey;
-  const label = typeof record.label === "string" && record.label.trim()
-    ? record.label.trim()
-    : (LEGACY_CATEGORY_LABELS[key] ?? key);
+  const label = canonicalizeCategoryLabel(
+    key,
+    typeof record.label === "string" && record.label.trim()
+      ? record.label.trim()
+      : (LEGACY_CATEGORY_LABELS[key] ?? key)
+  );
   const weight = toFiniteNumber(record.weight);
   const deterministicScore = toFiniteNumber(record.deterministicScore);
   const aiScore = toFiniteNumber(record.aiScore);
