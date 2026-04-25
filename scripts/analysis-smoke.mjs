@@ -1738,12 +1738,14 @@ if (SMOKE_SCENARIO_KEYS.length > 0 && ACTIVE_SCENARIOS.length === 0) {
 async function loginSmokeUser(label, tenantId = null, cookieJar = new CookieJar()) {
   const login = await request(label, `${API_BASE_URL}/auth/login`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      ...(tenantId ? { "x-tenant-id": tenantId } : {})
+    },
     cookieJar,
     body: JSON.stringify({
       email: SMOKE_EMAIL,
-      password: SMOKE_PASSWORD,
-      ...(tenantId ? { tenantId } : {})
+      password: SMOKE_PASSWORD
     })
   });
 

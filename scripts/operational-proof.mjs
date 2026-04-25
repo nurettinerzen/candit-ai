@@ -131,6 +131,78 @@ function extractVerificationToken(previewUrl) {
   }
 }
 
+async function findNotificationPrimaryLink({
+  tenantId,
+  toAddress,
+  eventType,
+  attempts = 4
+}) {
+  if (!process.env.DATABASE_URL || !tenantId || !toAddress || !eventType) {
+    return null;
+  }
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const command = spawnSync(
+      "corepack",
+      [
+        "pnpm",
+        "--filter",
+        "@ai-interviewer/api",
+        "exec",
+        "tsx",
+        "-e",
+        [
+          "import { PrismaClient } from '@prisma/client';",
+          "(async () => {",
+          "  const prisma = new PrismaClient();",
+          "  const delivery = await prisma.notificationDelivery.findFirst({",
+          "    where: {",
+          "      tenantId: process.env.NOTIFICATION_TENANT_ID,",
+          "      toAddress: process.env.NOTIFICATION_TO_ADDRESS,",
+          "      eventType: process.env.NOTIFICATION_EVENT_TYPE",
+          "    },",
+          "    orderBy: { createdAt: 'desc' },",
+          "    select: { metadata: true }",
+          "  });",
+          "  const metadata = delivery?.metadata && typeof delivery.metadata === 'object' && !Array.isArray(delivery.metadata) ? delivery.metadata : null;",
+          "  const primaryLink = metadata && typeof metadata.primaryLink === 'string' ? metadata.primaryLink : null;",
+          "  console.log(JSON.stringify({ primaryLink }));",
+          "  await prisma.$disconnect();",
+          "})();"
+        ].join(" ")
+      ],
+      {
+        cwd: WORKSPACE_ROOT,
+        env: {
+          ...process.env,
+          NOTIFICATION_TENANT_ID: tenantId,
+          NOTIFICATION_TO_ADDRESS: toAddress,
+          NOTIFICATION_EVENT_TYPE: eventType
+        }
+      }
+    );
+
+    const output =
+      command.status === 0
+        ? parseJsonOutput(command.stdout, `${eventType} notification lookup`)
+        : { primaryLink: null };
+    const primaryLink =
+      typeof output?.primaryLink === "string" && output.primaryLink.trim().length > 0
+        ? output.primaryLink.trim()
+        : null;
+
+    if (primaryLink) {
+      return primaryLink;
+    }
+
+    if (attempt < attempts) {
+      await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+    }
+  }
+
+  return null;
+}
+
 async function fetchWithRetry(url, options, label, attempts = 2) {
   let lastError = null;
 
@@ -260,12 +332,14 @@ async function loginUser({ label, email, password, tenantId }) {
   const cookieJar = new CookieJar();
   const result = await request(`${label} login`, `${API_BASE_URL}/auth/login`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      "x-tenant-id": tenantId
+    },
     cookieJar,
     body: JSON.stringify({
       email,
-      password,
-      tenantId
+      password
     })
   });
 
@@ -518,13 +592,20 @@ async function main() {
     })
   });
   ensure(memberInvite?.userId, "Team invite returned no user id");
-  ensure(memberInvite?.invitationUrl, "Team invite returned no invitation URL");
+  const memberInvitationUrl =
+    memberInvite?.invitationUrl ??
+    (await findNotificationPrimaryLink({
+      tenantId: provisioning.tenantId,
+      toAddress: memberEmail,
+      eventType: "member_invitation"
+    }));
+  ensure(memberInvitationUrl, "Team invite returned no invitation URL");
   logStatus("PASS", "Team member invited", memberInvite.userId);
 
-  const memberToken = extractVerificationToken(memberInvite.invitationUrl);
+  const memberToken = extractVerificationToken(memberInvitationUrl);
   ensure(memberToken, "Team invitation token missing");
 
-  const memberAcceptPage = await requestWebPage("Team invitation page", memberInvite.invitationUrl);
+  const memberAcceptPage = await requestWebPage("Team invitation page", memberInvitationUrl);
   ensure(typeof memberAcceptPage.data === "string" && memberAcceptPage.data.length > 0, "Team invitation page empty");
   ensureFinalPath(memberAcceptPage, "/auth/invitations/accept", "Team invitation page");
   logStatus("PASS", "Team invitation page loaded");
@@ -577,13 +658,20 @@ async function main() {
       email: memberEmail
     })
   });
-  ensure(passwordResetRequest?.previewUrl, "Password reset preview URL missing");
+  const passwordResetPreviewUrl =
+    passwordResetRequest?.previewUrl ??
+    (await findNotificationPrimaryLink({
+      tenantId: provisioning.tenantId,
+      toAddress: memberEmail,
+      eventType: "auth.password_reset_requested"
+    }));
+  ensure(passwordResetPreviewUrl, "Password reset preview URL missing");
   logStatus("PASS", "Password reset preview generated", memberEmail);
 
-  const passwordResetToken = extractVerificationToken(passwordResetRequest.previewUrl);
+  const passwordResetToken = extractVerificationToken(passwordResetPreviewUrl);
   ensure(passwordResetToken, "Password reset token missing");
 
-  const passwordResetPage = await requestWebPage("Password reset page", passwordResetRequest.previewUrl);
+  const passwordResetPage = await requestWebPage("Password reset page", passwordResetPreviewUrl);
   ensure(typeof passwordResetPage.data === "string" && passwordResetPage.data.length > 0, "Password reset page empty");
   ensureFinalPath(passwordResetPage, "/auth/reset-password", "Password reset page");
   logStatus("PASS", "Password reset page loaded");
@@ -610,11 +698,13 @@ async function main() {
 
   await requestStatus("Old member password rejected", "/auth/login", 401, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      "x-tenant-id": provisioning.tenantId
+    },
     body: JSON.stringify({
       email: memberEmail,
-      password: MEMBER_PASSWORD,
-      tenantId: provisioning.tenantId
+      password: MEMBER_PASSWORD
     })
   });
   logStatus("PASS", "Old member password rejected");
@@ -760,13 +850,20 @@ async function main() {
     }
   );
   ensure(ownerReset?.sent === true, "Owner reset did not return sent=true");
-  ensure(ownerReset?.invitationUrl, "Owner reset invitation URL missing");
+  const ownerResetInvitationUrl =
+    ownerReset?.invitationUrl ??
+    (await findNotificationPrimaryLink({
+      tenantId: provisioning.tenantId,
+      toAddress: provisioning.ownerEmail,
+      eventType: "internal_admin_password_reset"
+    }));
+  ensure(ownerResetInvitationUrl, "Owner reset invitation URL missing");
   logStatus("PASS", "Owner reset invitation generated", provisioning.ownerEmail);
 
-  const ownerResetToken = extractVerificationToken(ownerReset.invitationUrl);
+  const ownerResetToken = extractVerificationToken(ownerResetInvitationUrl);
   ensure(ownerResetToken, "Owner reset token missing");
 
-  const ownerResetPage = await requestWebPage("Owner reset page", ownerReset.invitationUrl);
+  const ownerResetPage = await requestWebPage("Owner reset page", ownerResetInvitationUrl);
   ensure(typeof ownerResetPage.data === "string" && ownerResetPage.data.length > 0, "Owner reset page empty");
   ensureFinalPath(ownerResetPage, "/auth/invitations/accept", "Owner reset page");
   logStatus("PASS", "Owner reset page loaded");
@@ -794,11 +891,13 @@ async function main() {
 
   await requestStatus("Old owner password rejected", "/auth/login", 401, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      "x-tenant-id": provisioning.tenantId
+    },
     body: JSON.stringify({
       email: provisioning.ownerEmail,
-      password: OWNER_PASSWORD,
-      tenantId: provisioning.tenantId
+      password: OWNER_PASSWORD
     })
   });
   logStatus("PASS", "Old owner password rejected");

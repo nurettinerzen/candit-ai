@@ -388,12 +388,14 @@ async function loginPilotUser(session, options = {}) {
   const cookieJar = options.cookieJar ?? session.cookieJar;
   const login = await request(options.label ?? "Pilot login", `${API_BASE_URL}/auth/login`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      "x-tenant-id": session.tenantId
+    },
     cookieJar,
     body: JSON.stringify({
       email: session.email,
-      password: options.password ?? DEFAULT_PASSWORD,
-      tenantId: session.tenantId
+      password: options.password ?? session.password ?? DEFAULT_PASSWORD
     })
   });
 
@@ -455,6 +457,7 @@ async function signupPilotUser() {
     return {
       stamp,
       email,
+      password: DEFAULT_PASSWORD,
       token: directAccessToken,
       cookieJar,
       tenantId,
@@ -478,12 +481,14 @@ async function signupPilotUser() {
 
   const login = await request("Pilot login after signup", `${API_BASE_URL}/auth/login`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      "x-tenant-id": tenantId
+    },
     cookieJar,
     body: JSON.stringify({
       email,
-      password: DEFAULT_PASSWORD,
-      tenantId
+      password: DEFAULT_PASSWORD
     })
   });
 
@@ -496,10 +501,11 @@ async function signupPilotUser() {
 
   return {
     stamp,
-    email,
-    token: login.data?.accessToken ?? null,
-    cookieJar,
-    tenantId: login.data?.user?.tenantId ?? tenantId,
+      email,
+      password: DEFAULT_PASSWORD,
+      token: login.data?.accessToken ?? null,
+      cookieJar,
+      tenantId: login.data?.user?.tenantId ?? tenantId,
     userId: signup.user?.id ?? null
   };
 }
@@ -524,6 +530,7 @@ async function resolvePilotUser() {
     return {
       stamp: Date.now().toString(),
       email: EXISTING_SMOKE_EMAIL,
+      password: EXISTING_SMOKE_PASSWORD,
       token: login.token,
       cookieJar: login.cookieJar,
       tenantId: EXISTING_SMOKE_TENANT_ID,
@@ -554,6 +561,7 @@ async function resolveIsolatedTenant() {
     return {
       stamp: Date.now().toString(),
       email: ISOLATED_SMOKE_EMAIL,
+      password: ISOLATED_SMOKE_PASSWORD,
       token: login.token,
       cookieJar: login.cookieJar,
       tenantId: ISOLATED_SMOKE_TENANT_ID,

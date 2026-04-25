@@ -259,6 +259,20 @@ async function resolveActorUser(prisma: PrismaClient, actorEmail: string) {
   });
 }
 
+async function hasTenantWebsiteUrlColumn(prisma: PrismaClient) {
+  const rows = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND LOWER(table_name) = LOWER('Tenant')
+        AND LOWER(column_name) = LOWER('websiteUrl')
+    ) AS "exists"
+  `;
+
+  return rows[0]?.exists === true;
+}
+
 async function writeArtifacts(tenantId: string, stamp: string, payload: Record<string, unknown>) {
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
@@ -452,32 +466,42 @@ async function main() {
       return;
     }
 
+    const tenantHasWebsiteUrl = await hasTenantWebsiteUrlColumn(prisma);
     const now = new Date();
     const periodStart = startOfCurrentMonth(now);
     const periodEnd = startOfNextMonth(now);
     let activationUrl: string | null = null;
 
     const result = await prisma.$transaction(async (tx) => {
-      const tenant = await tx.tenant.upsert({
-        where: {
-          id: tenantId
-        },
-        update: {
-          name: companyName,
-          websiteUrl,
-          locale,
-          timezone,
-          status: "ACTIVE"
-        },
-        create: {
-          id: tenantId,
-          name: companyName,
-          websiteUrl,
-          locale,
-          timezone,
-          status: "ACTIVE"
-        }
-      });
+      if (tenantHasWebsiteUrl) {
+        await tx.$executeRaw`
+          INSERT INTO "Tenant" ("id", "name", "websiteUrl", "locale", "timezone", "status", "updatedAt")
+          VALUES (${tenantId}, ${companyName}, ${websiteUrl}, ${locale}, ${timezone}, 'ACTIVE', ${now})
+          ON CONFLICT ("id") DO UPDATE SET
+            "name" = EXCLUDED."name",
+            "websiteUrl" = EXCLUDED."websiteUrl",
+            "locale" = EXCLUDED."locale",
+            "timezone" = EXCLUDED."timezone",
+            "status" = EXCLUDED."status",
+            "updatedAt" = EXCLUDED."updatedAt"
+        `;
+      } else {
+        await tx.$executeRaw`
+          INSERT INTO "Tenant" ("id", "name", "locale", "timezone", "status", "updatedAt")
+          VALUES (${tenantId}, ${companyName}, ${locale}, ${timezone}, 'ACTIVE', ${now})
+          ON CONFLICT ("id") DO UPDATE SET
+            "name" = EXCLUDED."name",
+            "locale" = EXCLUDED."locale",
+            "timezone" = EXCLUDED."timezone",
+            "status" = EXCLUDED."status",
+            "updatedAt" = EXCLUDED."updatedAt"
+        `;
+      }
+
+      const tenant = {
+        id: tenantId,
+        name: companyName
+      };
 
       await ensurePilotWorkspaceAndAiDefaults(tx, tenant.id);
 
