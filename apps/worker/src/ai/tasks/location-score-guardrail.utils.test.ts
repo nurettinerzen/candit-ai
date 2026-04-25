@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { guardLocationCategoryScore } from "./location-score-guardrail.utils.js";
 
-test("guardLocationCategoryScore always preserves deterministic location score", () => {
+test("guardLocationCategoryScore keeps same-city candidates AI-first but inside a sane band", () => {
   const score = guardLocationCategoryScore({
     aiScore: 70,
     deterministicScore: 92,
@@ -12,10 +12,10 @@ test("guardLocationCategoryScore always preserves deterministic location score",
     commuteSeverity: "light"
   });
 
-  assert.equal(score, 92);
+  assert.equal(score, 82);
 });
 
-test("guardLocationCategoryScore keeps same-locality candidates fully deterministic", () => {
+test("guardLocationCategoryScore protects same-locality matches from overly low AI scores", () => {
   const score = guardLocationCategoryScore({
     aiScore: 73,
     deterministicScore: 95,
@@ -25,18 +25,32 @@ test("guardLocationCategoryScore keeps same-locality candidates fully determinis
     commuteSeverity: "minimal"
   });
 
-  assert.equal(score, 95);
+  assert.equal(score, 88);
 });
 
-test("guardLocationCategoryScore ignores arbitrary AI variation for remote-only or remote roles too", () => {
-  const remoteOnlyScore = guardLocationCategoryScore({
-    aiScore: 38,
-    deterministicScore: 88,
-    presenceMode: "hybrid",
-    candidateFlexibility: "remote_only",
-    mismatchLevel: "same_city",
-    commuteSeverity: "light"
+test("guardLocationCategoryScore still allows cross-city AI variation but blocks absurd extremes", () => {
+  const penalizedTooHard = guardLocationCategoryScore({
+    aiScore: 0,
+    deterministicScore: 24,
+    presenceMode: "onsite",
+    candidateFlexibility: "unknown",
+    mismatchLevel: "cross_city",
+    commuteSeverity: "severe"
   });
+  const rewardedTooMuch = guardLocationCategoryScore({
+    aiScore: 58,
+    deterministicScore: 24,
+    presenceMode: "onsite",
+    candidateFlexibility: "unknown",
+    mismatchLevel: "cross_city",
+    commuteSeverity: "severe"
+  });
+
+  assert.equal(penalizedTooHard, 14);
+  assert.equal(rewardedTooMuch, 34);
+});
+
+test("guardLocationCategoryScore keeps remote roles AI-first without collapsing the score", () => {
   const remoteRoleScore = guardLocationCategoryScore({
     aiScore: 44,
     deterministicScore: 90,
@@ -46,6 +60,5 @@ test("guardLocationCategoryScore ignores arbitrary AI variation for remote-only 
     commuteSeverity: "light"
   });
 
-  assert.equal(remoteOnlyScore, 88);
-  assert.equal(remoteRoleScore, 90);
+  assert.equal(remoteRoleScore, 80);
 });

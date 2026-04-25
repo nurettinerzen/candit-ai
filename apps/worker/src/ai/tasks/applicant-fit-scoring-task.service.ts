@@ -1116,14 +1116,24 @@ export class ApplicantFitScoringTaskService {
       const det = deterministicScores.find((d) => d.key === category.key);
       const detScore = det?.score ?? 30;
       const aiCategory = aiData?.categoryScores.find((a) => a.key === category.key);
-      const aiScore = aiCategory?.score ?? detScore;
+      const rawAiScore = aiCategory?.score ?? detScore;
 
-      const blendedScore = Math.round(detScore * detWeight + aiScore * aiWeight);
+      const blendedScore = Math.round(detScore * detWeight + rawAiScore * aiWeight);
       const confidence = aiCategory
         ? toNumberValue(aiCategory.confidence, 0.5)
         : 0.3;
 
       const isLocationCategory = this.isLocationCategory(category);
+      const locationScore = isLocationCategory
+        ? guardLocationCategoryScore({
+            aiScore: rawAiScore,
+            deterministicScore: detScore,
+            presenceMode: locationAnalysis.presenceMode,
+            candidateFlexibility: locationAnalysis.candidateFlexibility,
+            mismatchLevel: locationAnalysis.mismatchLevel,
+            commuteSeverity: locationAnalysis.commuteSeverity
+          })
+        : null;
       const deterministicStrengths = ("strengths" in (det ?? {}))
         ? ((det as { strengths?: string[] }).strengths ?? det?.signals ?? [])
         : this.humanizeDeterministicSignals(det?.signals ?? []);
@@ -1134,18 +1144,27 @@ export class ApplicantFitScoringTaskService {
 
       return {
         key: category.key,
-        score: isLocationCategory ? this.clampScore(detScore) : Math.min(blendedScore, 100),
-        confidence: isLocationCategory ? locationAnalysis.locationConfidence : confidence,
+        score: isLocationCategory ? (locationScore ?? this.clampScore(detScore)) : Math.min(blendedScore, 100),
+        confidence: isLocationCategory ? (aiCategory ? this.clampConfidence(confidence) : locationAnalysis.locationConfidence) : confidence,
         deterministicScore: detScore,
-        aiScore: isLocationCategory ? this.clampScore(detScore) : aiScore,
+        aiScore: rawAiScore,
         strengths: isLocationCategory
-          ? this.uniqueList(deterministicStrengths)
+          ? this.uniqueList([
+              ...aiStrengths,
+              ...deterministicStrengths
+            ])
           : (aiStrengths.length > 0 ? aiStrengths : this.uniqueList(deterministicStrengths)),
         risks: isLocationCategory
-          ? this.uniqueList(deterministicRisks)
+          ? this.uniqueList([
+              ...(aiCategory?.risks ?? []),
+              ...deterministicRisks
+            ])
           : this.uniqueList([...(aiCategory?.risks ?? []), ...deterministicRisks]),
         reasoning: isLocationCategory
-          ? this.buildLocationCategoryReasoning(locationAnalysis)
+          ? (
+              aiCategory?.reasoning
+              ?? this.buildLocationCategoryReasoning(locationAnalysis)
+            )
           : (
               (
                 aiCategory?.reasoning
@@ -1230,7 +1249,7 @@ export class ApplicantFitScoringTaskService {
         ? this.clampScore(aiCategory.score * aiScaleMultiplier)
         : fallbackScore;
       const deterministicScore = this.clampScore(fallbackScore);
-      const aiScore = isLocationCategory
+      const guardedLocationScore = isLocationCategory
         ? guardLocationCategoryScore({
             aiScore: rawAiScore,
             deterministicScore,
@@ -1243,20 +1262,29 @@ export class ApplicantFitScoringTaskService {
 
       return {
         key: category.key,
-        score: this.clampScore(aiScore),
+        score: this.clampScore(guardedLocationScore),
         confidence: isLocationCategory
-          ? input.locationAnalysis.locationConfidence
+          ? aiCategory ? this.clampConfidence(aiCategory.confidence) : input.locationAnalysis.locationConfidence
           : aiCategory ? this.clampConfidence(aiCategory.confidence) : 0.35,
         deterministicScore,
-        aiScore: isLocationCategory ? deterministicScore : this.clampScore(aiScore),
+        aiScore: this.clampScore(rawAiScore),
         strengths: isLocationCategory
-          ? this.uniqueList(input.locationAnalysis.strengths)
+          ? this.uniqueList([
+              ...aiStrengths,
+              ...input.locationAnalysis.strengths
+            ])
           : (aiStrengths.length > 0 ? aiStrengths : this.uniqueList(deterministicStrengths)).slice(0, 4),
         risks: isLocationCategory
-          ? this.uniqueList(input.locationAnalysis.risks)
+          ? this.uniqueList([
+              ...aiRisks,
+              ...input.locationAnalysis.risks
+            ])
           : (aiRisks.length > 0 ? aiRisks : this.uniqueList(deterministicRisks)).slice(0, 4),
         reasoning: isLocationCategory
-          ? this.buildLocationCategoryReasoning(input.locationAnalysis)
+          ? (
+              aiCategory?.reasoning
+              ?? this.buildLocationCategoryReasoning(input.locationAnalysis)
+            )
           : (
               (
                 aiCategory?.reasoning
