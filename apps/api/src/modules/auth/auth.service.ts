@@ -989,6 +989,63 @@ export class AuthService {
     }
   }
 
+  async requestEmailVerification(input: { email: string }) {
+    const normalizedEmail = normalizeEmailAddress(input.email);
+
+    try {
+      const users = await this.findUsersByEmail(normalizedEmail);
+
+      if (users.length > 1) {
+        await this.reportSecurityEvent({
+          source: "auth.email_verification",
+          code: "auth.email_verification.ambiguous_email",
+          message: "Birden fazla hesaba ait e-posta icin dogrulama talebi reddedildi.",
+          severity: SecurityEventSeverity.WARNING,
+          metadata: {
+            email: normalizedEmail
+          }
+        });
+
+        throw new BadRequestException(
+          "Bu e-posta birden fazla hesapta kayıtlı. Doğrulama için destek ekibiyle iletişime geçin."
+        );
+      }
+
+      const [user] = users;
+
+      if (!user || user.deletedAt || user.status !== UserStatus.ACTIVE) {
+        return {
+          ok: true
+        };
+      }
+
+      const result = await this.sendEmailVerificationForUser(user);
+
+      await this.writeAuditLog({
+        tenantId: user.tenantId,
+        actorUserId: user.id,
+        action: "auth.email_verification_requested",
+        entityType: "User",
+        entityId: user.id,
+        metadata: {
+          email: user.email,
+          expiresAt: result.expiresAt ?? null,
+          deliveryEnabled: result.deliveryEnabled ?? false
+        }
+      });
+
+      return result;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      return {
+        ok: true
+      };
+    }
+  }
+
   async resolvePasswordReset(rawToken: string) {
     const token = await this.findActionTokenByRawToken(rawToken, AuthActionTokenType.PASSWORD_RESET);
 

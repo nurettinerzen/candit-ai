@@ -1,4 +1,5 @@
 export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_PATTERN = String.raw`(?=.*\p{Lu})(?=.*\p{Ll})(?=.*[^\p{L}\p{N}\s]).{8,}`;
 
 const UPPERCASE_REGEX = /\p{Lu}/u;
 const LOWERCASE_REGEX = /\p{Ll}/u;

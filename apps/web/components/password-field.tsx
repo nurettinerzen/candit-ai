@@ -19,6 +19,8 @@ type PasswordFieldProps = {
   placeholder?: string;
   required?: boolean;
   minLength?: number;
+  pattern?: string;
+  title?: string;
   disabled?: boolean;
   name?: string;
   helperText?: ReactNode;
@@ -45,6 +47,8 @@ export function PasswordField({
   placeholder,
   required,
   minLength,
+  pattern,
+  title,
   disabled,
   name,
   helperText,
@@ -78,6 +82,8 @@ export function PasswordField({
           placeholder={placeholder}
           required={required}
           minLength={minLength}
+          pattern={pattern}
+          title={title}
           disabled={disabled}
           name={name}
           aria-label={!hasLabel ? label : undefined}

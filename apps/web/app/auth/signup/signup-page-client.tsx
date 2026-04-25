@@ -7,11 +7,17 @@ import { AuthNotice, AuthShell } from "../../../components/auth-shell";
 import { PasswordField, PasswordRequirements } from "../../../components/password-field";
 import { useUiText } from "../../../components/site-language-provider";
 import { formatAuthErrorMessage } from "../../../lib/auth/error";
-import { PASSWORD_MIN_LENGTH, PASSWORD_POLICY_ERROR_MESSAGE, getPasswordPolicyStatus } from "../../../lib/auth/password-policy";
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_PATTERN,
+  PASSWORD_POLICY_ERROR_MESSAGE,
+  getPasswordPolicyStatus
+} from "../../../lib/auth/password-policy";
 import {
   type AuthEmailVerificationPayload,
   getAuthProviders,
   getGoogleAuthAuthorizeUrl,
+  requestEmailVerification,
   signupWithPassword
 } from "../../../lib/auth/session";
 
@@ -37,6 +43,8 @@ function SignupPageContent() {
   const [loading, setLoading] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [error, setError] = useState("");
+  const [verificationBusy, setVerificationBusy] = useState(false);
+  const [verificationNotice, setVerificationNotice] = useState("");
   const [createdState, setCreatedState] = useState<{
     email: string;
     emailVerification?: AuthEmailVerificationPayload;
@@ -105,6 +113,33 @@ function SignupPageContent() {
     companyName: companyName.trim() || undefined,
     returnTo: nextPath
   });
+
+  async function handleVerificationResend() {
+    if (!createdState?.email) {
+      return;
+    }
+
+    setVerificationBusy(true);
+    setVerificationNotice("");
+
+    try {
+      await requestEmailVerification({
+        email: createdState.email
+      });
+      setVerificationNotice(
+        t("Doğrulama e-postasını tekrar gönderdik. Gelen kutunuzu ve spam klasörünü kontrol edin.")
+      );
+    } catch (resendError) {
+      setError(
+        resendError instanceof Error
+          ? resendError.message
+          : t("Doğrulama e-postası tekrar gönderilemedi.")
+      );
+    } finally {
+      setVerificationBusy(false);
+    }
+  }
+
   if (createdState) {
     const emailVerification = createdState.emailVerification;
     const verificationEnabled = Boolean(emailVerification?.enabled);
@@ -168,11 +203,29 @@ function SignupPageContent() {
               message={infoMessage}
             />
           ) : null}
+          {verificationNotice ? (
+            <AuthNotice
+              tone="success"
+              message={verificationNotice}
+            />
+          ) : null}
 
           {!verificationRequired ? (
             <a href={nextPath} style={secondaryButtonStyle}>
               {t("Panele devam et")}
             </a>
+          ) : null}
+          {verificationEnabled ? (
+            <button
+              type="button"
+              onClick={handleVerificationResend}
+              disabled={verificationBusy}
+              style={secondaryButtonStyle}
+            >
+              {verificationBusy
+                ? t("Doğrulama e-postası gönderiliyor...")
+                : t("Doğrulama e-postasını tekrar gönder")}
+            </button>
           ) : null}
         </div>
       </AuthShell>
@@ -205,6 +258,7 @@ function SignupPageContent() {
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
             autoComplete="name"
+            name="name"
             required
             style={inputStyle}
           />
@@ -215,6 +269,8 @@ function SignupPageContent() {
           <input
             value={companyName}
             onChange={(event) => setCompanyName(event.target.value)}
+            autoComplete="organization"
+            name="organization"
             required
             style={inputStyle}
           />
@@ -227,6 +283,7 @@ function SignupPageContent() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
+            name="email"
             required
             style={inputStyle}
           />
@@ -238,7 +295,10 @@ function SignupPageContent() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             autoComplete="new-password"
+            name="new-password"
             minLength={PASSWORD_MIN_LENGTH}
+            pattern={PASSWORD_PATTERN}
+            title={t(PASSWORD_POLICY_ERROR_MESSAGE)}
             required
             inputStyle={inputStyle}
           />
@@ -247,7 +307,10 @@ function SignupPageContent() {
             value={passwordConfirm}
             onChange={(event) => setPasswordConfirm(event.target.value)}
             autoComplete="new-password"
+            name="confirm-password"
             minLength={PASSWORD_MIN_LENGTH}
+            pattern={PASSWORD_PATTERN}
+            title={t(PASSWORD_POLICY_ERROR_MESSAGE)}
             required
             inputStyle={inputStyle}
           />

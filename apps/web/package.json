@@ -9,7 +9,7 @@
     "lint": "tsc --noEmit -p tsconfig.json",
     "i18n:audit": "node ./scripts/i18n-audit.mjs",
     "test": "node ../../scripts/run-ts-tests.mjs lib",
-    "test:contracts": "node --import tsx --test lib/auth/runtime.test.ts lib/csv-import.test.ts"
+    "test:contracts": "node --import tsx --test lib/auth/runtime.test.ts lib/auth/password-policy.test.ts lib/csv-import.test.ts"
   },
   "dependencies": {
     "@ai-interviewer/domain": "workspace:*",

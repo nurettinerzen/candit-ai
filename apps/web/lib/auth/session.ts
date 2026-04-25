@@ -368,6 +368,30 @@ export async function requestPasswordReset(input: { email: string }) {
   return payload;
 }
 
+export async function requestEmailVerification(input: { email: string }) {
+  const response = await fetch(`${API_BASE_URL}/auth/email-verification/request`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(input),
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as {
+    ok?: boolean;
+    expiresAt?: string;
+    previewUrl?: string | null;
+    message?: string;
+  };
+
+  if (!response.ok || !payload.ok) {
+    throw new Error(resolveErrorMessage(payload.message, `Doğrulama e-postası gönderilemedi (${response.status}).`));
+  }
+
+  return payload;
+}
+
 export async function resolvePasswordReset(token: string) {
   const response = await fetch(
     `${API_BASE_URL}/auth/password/reset/resolve?token=${encodeURIComponent(token)}`,

@@ -65,6 +65,11 @@ class ForgotPasswordRequest {
   email!: string;
 }
 
+class EmailVerificationRequest {
+  @IsEmail()
+  email!: string;
+}
+
 class ResolveTokenRequest {
   @IsString()
   token!: string;
@@ -206,6 +211,12 @@ export class AuthController {
   @Public()
   forgotPassword(@Body() body: ForgotPasswordRequest) {
     return this.authService.requestPasswordReset(body);
+  }
+
+  @Post("email-verification/request")
+  @Public()
+  requestEmailVerification(@Body() body: EmailVerificationRequest) {
+    return this.authService.requestEmailVerification(body);
   }
 
   @Get("password/reset/resolve")

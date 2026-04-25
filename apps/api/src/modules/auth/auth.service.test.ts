@@ -48,6 +48,7 @@ function createService() {
 
   const runtimeConfig = {
     passwordResetTtlHours: 2,
+    emailVerificationTtlHours: 24,
     publicWebBaseUrl: "https://app.candit.ai",
     isProduction: false
   };
@@ -172,6 +173,94 @@ test("requestPasswordReset reports ambiguous multi-tenant emails as a security e
 
   assert.equal(securityEvents.length, 1);
   assert.equal(securityEvents[0]?.code, "auth.password.reset.ambiguous_email");
+});
+
+test("requestEmailVerification records audit and notification for active users", async () => {
+  const { service, audits, notifications } = createService();
+
+  (service as unknown as { findUsersByEmail: (email: string) => Promise<unknown[]> }).findUsersByEmail =
+    async () => [
+      {
+        id: "usr_owner",
+        tenantId: "ten_launch",
+        email: "owner@candit.ai",
+        fullName: "Launch Owner",
+        role: Role.OWNER,
+        status: UserStatus.ACTIVE,
+        deletedAt: null,
+        passwordHash: "hashed-password",
+        emailVerifiedAt: null,
+        avatarUrl: null
+      }
+    ];
+  (service as unknown as { createActionToken: () => Promise<{ rawToken: string; expiresAt: Date }> }).createActionToken =
+    async () => ({
+      rawToken: "verify-token",
+      expiresAt: new Date("2026-05-01T12:00:00.000Z")
+    });
+  (service as unknown as { resolveEmailVerificationState: () => Promise<Record<string, unknown>> }).resolveEmailVerificationState =
+    async () => ({
+      enabled: true,
+      required: true,
+      deliveryEnabled: true
+    });
+
+  const result = await service.requestEmailVerification({
+    email: "owner@candit.ai"
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(notifications.length, 1);
+  assert.equal(audits.length, 1);
+  assert.equal(audits[0]?.action, "auth.email_verification_requested");
+  assert.deepEqual(audits[0]?.metadata, {
+    email: "owner@candit.ai",
+    expiresAt: "2026-05-01T12:00:00.000Z",
+    deliveryEnabled: true
+  });
+});
+
+test("requestEmailVerification reports ambiguous multi-tenant emails as a security event", async () => {
+  const { service, securityEvents } = createService();
+
+  (service as unknown as { findUsersByEmail: (email: string) => Promise<unknown[]> }).findUsersByEmail =
+    async () => [
+      {
+        id: "usr_owner_1",
+        tenantId: "ten_a",
+        email: "shared@candit.ai",
+        fullName: "Owner A",
+        role: Role.OWNER,
+        status: UserStatus.ACTIVE,
+        deletedAt: null,
+        passwordHash: "hashed-password",
+        emailVerifiedAt: null,
+        avatarUrl: null
+      },
+      {
+        id: "usr_owner_2",
+        tenantId: "ten_b",
+        email: "shared@candit.ai",
+        fullName: "Owner B",
+        role: Role.OWNER,
+        status: UserStatus.ACTIVE,
+        deletedAt: null,
+        passwordHash: "hashed-password",
+        emailVerifiedAt: null,
+        avatarUrl: null
+      }
+    ];
+
+  await assert.rejects(
+    () =>
+      service.requestEmailVerification({
+        email: "shared@candit.ai"
+      }),
+    /birden fazla hesapta kayıtlı/i
+  );
+
+  assert.equal(securityEvents.length, 1);
+  assert.equal(securityEvents[0]?.code, "auth.email_verification.ambiguous_email");
 });
 
 test("resetPassword reports invalid tokens and audits successful completions", async () => {

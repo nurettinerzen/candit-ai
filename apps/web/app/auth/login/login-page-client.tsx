@@ -11,6 +11,7 @@ import {
   getAuthProviders,
   getGoogleAuthAuthorizeUrl,
   loginWithPassword,
+  requestEmailVerification,
   readAuthFlowError
 } from "../../../lib/auth/session";
 
@@ -34,6 +35,9 @@ function LoginPageContent() {
   const [loading, setLoading] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [error, setError] = useState("");
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [verificationBusy, setVerificationBusy] = useState(false);
+  const [verificationNotice, setVerificationNotice] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +66,8 @@ function LoginPageContent() {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setVerificationNotice("");
+    setVerificationEmail("");
 
     try {
       await loginWithPassword({
@@ -71,9 +77,39 @@ function LoginPageContent() {
       window.location.assign(nextPath);
     } catch (loginError) {
       const authFlowError = readAuthFlowError(loginError);
+      if (authFlowError?.code === "EMAIL_VERIFICATION_REQUIRED") {
+        setVerificationEmail(email.trim());
+      }
       setError(authFlowError?.message ?? (loginError instanceof Error ? loginError.message : t("Giriş başarısız.")));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleVerificationResend() {
+    if (!verificationEmail) {
+      return;
+    }
+
+    setVerificationBusy(true);
+    setVerificationNotice("");
+    setError("");
+
+    try {
+      await requestEmailVerification({
+        email: verificationEmail
+      });
+      setVerificationNotice(
+        t("Doğrulama e-postasını tekrar gönderdik. Gelen kutunuzu ve spam klasörünü kontrol edin.")
+      );
+    } catch (resendError) {
+      setError(
+        resendError instanceof Error
+          ? resendError.message
+          : t("Doğrulama e-postası tekrar gönderilemedi.")
+      );
+    } finally {
+      setVerificationBusy(false);
     }
   }
 
@@ -106,6 +142,7 @@ function LoginPageContent() {
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }}>
         {oauthError ? <AuthNotice tone="danger" message={oauthError} /> : null}
         {error ? <AuthNotice tone="danger" message={error} /> : null}
+        {verificationNotice ? <AuthNotice tone="success" message={verificationNotice} /> : null}
 
         <label style={{ display: "grid", gap: 8 }}>
           <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("E-posta")}</span>
@@ -131,6 +168,19 @@ function LoginPageContent() {
         <button type="submit" disabled={loading} style={primaryButtonStyle}>
           {loading ? t("Giriş yapılıyor...") : t("Giriş Yap")}
         </button>
+
+        {verificationEmail ? (
+          <button
+            type="button"
+            onClick={handleVerificationResend}
+            disabled={verificationBusy}
+            style={secondaryButtonStyle}
+          >
+            {verificationBusy
+              ? t("Doğrulama e-postası gönderiliyor...")
+              : t("Doğrulama e-postasını tekrar gönder")}
+          </button>
+        ) : null}
       </form>
 
       {googleEnabled ? (
