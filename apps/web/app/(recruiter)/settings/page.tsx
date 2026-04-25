@@ -320,15 +320,15 @@ export default function SettingsPage() {
               profileLooksComplete
                 ? locale === "en"
                   ? "Profile ready"
-                  : "Profil hazir"
+                  : "Profil hazır"
                 : locale === "en"
-                  ? "Profile needs context"
-                  : "Profil biraz daha baglam istiyor"
+                  ? "Complete profile"
+                  : "Profili tamamla"
             }
           />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
           <QuickLinkCard
             href={"/team" as Route}
             title={locale === "en" ? "Team access" : "Ekip erişimi"}
@@ -340,11 +340,11 @@ export default function SettingsPage() {
           />
           <QuickLinkCard
             href={"/subscription" as Route}
-            title={locale === "en" ? "Package and seats" : "Paket ve koltuklar"}
+            title={locale === "en" ? "Package and limits" : "Paket ve limitler"}
             description={
               locale === "en"
-                ? "Review package limits before the pilot company hits a blocker."
-                : "Pilot firma blokaja girmeden önce paket limitlerini gözden geçirin."
+                ? "Review user, job, and interview limits before your team grows."
+                : "Ekip büyümeden önce kullanıcı, ilan ve mülakat limitlerini gözden geçirin."
             }
           />
           <QuickLinkCard
@@ -352,8 +352,8 @@ export default function SettingsPage() {
             title={locale === "en" ? "AI defaults" : "AI varsayılanları"}
             description={
               locale === "en"
-                ? "Review prompts, rubrics, and provider readiness from one place."
-                : "Prompt, rubric ve provider hazırlığını tek yerden gözden geçirin."
+                ? "Review prompts, rubrics, and AI service readiness from one place."
+                : "Prompt, rubric ve AI servis hazırlığını tek yerden gözden geçirin."
             }
           />
         </div>
@@ -646,7 +646,11 @@ function StatusBadge({ ready, label }: { ready: boolean; label: string }) {
         background: `rgba(${color},0.12)`,
         color: ready ? "var(--success, #22c55e)" : "var(--warn, #f59e0b)",
         fontSize: 12,
-        fontWeight: 700
+        fontWeight: 700,
+        lineHeight: 1.3,
+        textAlign: "center",
+        whiteSpace: "normal",
+        maxWidth: "100%"
       }}
     >
       {label}
@@ -668,16 +672,28 @@ function QuickLinkCard({
       href={href}
       className="ghost-button"
       style={{
-        display: "grid",
-        gap: 6,
-        justifyItems: "flex-start",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        justifyContent: "flex-start",
+        gap: 8,
         textAlign: "left",
-        minHeight: 96,
-        alignContent: "start"
+        minHeight: 112,
+        width: "100%",
+        minWidth: 0,
+        padding: "16px 18px",
+        whiteSpace: "normal",
+        lineHeight: 1.45,
+        overflow: "visible"
       }}
     >
-      <strong>{title}</strong>
-      <span className="small text-muted">{description}</span>
+      <strong style={{ whiteSpace: "normal", lineHeight: 1.35 }}>{title}</strong>
+      <span
+        className="small text-muted"
+        style={{ whiteSpace: "normal", lineHeight: 1.5, overflowWrap: "anywhere" }}
+      >
+        {description}
+      </span>
     </Link>
   );
 }

@@ -445,11 +445,13 @@ export default function JobDetailPage() {
           setBilling(overview);
           setBillingError("");
         }
-      } catch (loadError) {
+      } catch {
         if (!cancelled) {
           setBilling(null);
           setBillingError(
-            loadError instanceof Error ? loadError.message : t("Abonelik kullanımı şu an yüklenemedi.")
+            locale === "en"
+              ? "Usage visibility is temporarily unavailable. You can still review applicants and keep the job as draft."
+              : "Kredi görünümü geçici olarak alınamadı. Adayları incelemeye ve ilanı taslakta tutmaya devam edebilirsiniz."
           );
         }
       }
@@ -460,7 +462,7 @@ export default function JobDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [locale, t]);
 
   useEffect(() => {
     const silent = hasLoadedInboxRef.current;
@@ -1085,8 +1087,15 @@ export default function JobDetailPage() {
         ) : null}
 
         {billingError ? (
-          <div className="panel nested-panel" style={{ marginTop: 12 }}>
-            <ErrorState title={translateUiText("Abonelik görünürlüğü", locale)} error={billingError} />
+          <div className="panel nested-panel" style={{ marginTop: 12, background: "var(--surface-muted)" }}>
+            <div style={{ display: "grid", gap: 8 }}>
+              <strong style={{ display: "block" }}>
+                {locale === "en" ? "Usage snapshot is unavailable" : "Kredi görünümü şu an alınamadı"}
+              </strong>
+              <p className="small text-muted" style={{ margin: 0 }}>
+                {billingError}
+              </p>
+            </div>
           </div>
         ) : null}
       </section>

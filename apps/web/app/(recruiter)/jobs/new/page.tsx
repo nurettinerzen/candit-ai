@@ -102,7 +102,7 @@ const DEPARTMENT_REQUIREMENTS: Record<string, RequirementDraft[]> = {
 /* ── Page ── */
 
 export default function NewJobPage() {
-  const { t } = useUiText();
+  const { t, locale } = useUiText();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [department, setDepartment] = useState("");
@@ -138,10 +138,14 @@ export default function NewJobPage() {
           setBilling(overview);
           setBillingLoadError("");
         }
-      } catch (loadError) {
+      } catch {
         if (!cancelled) {
           setBilling(null);
-          setBillingLoadError(loadError instanceof Error ? loadError.message : t("Abonelik kullanımı şu an yüklenemedi."));
+          setBillingLoadError(
+            locale === "en"
+              ? "Usage visibility is temporarily unavailable. You can keep drafting the job."
+              : "Kredi görünümü geçici olarak alınamadı. İlan taslağını hazırlamaya devam edebilirsiniz."
+          );
         }
       }
     }
@@ -151,7 +155,7 @@ export default function NewJobPage() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [locale, t]);
 
   // Departman değişince otomatik nitelik önerisi
   useEffect(() => {
@@ -403,8 +407,15 @@ export default function NewJobPage() {
           ) : null}
 
           {billingLoadError ? (
-            <div className="panel nested-panel">
-              <ErrorState title={t("Abonelik görünürlüğü")} error={billingLoadError} />
+            <div className="panel nested-panel" style={{ background: "var(--surface-muted)" }}>
+              <div style={{ display: "grid", gap: 8 }}>
+                <strong style={{ display: "block" }}>
+                  {locale === "en" ? "Usage snapshot is unavailable" : "Kredi görünümü şu an alınamadı"}
+                </strong>
+                <p className="small text-muted" style={{ margin: 0 }}>
+                  {billingLoadError}
+                </p>
+              </div>
             </div>
           ) : null}
 

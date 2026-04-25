@@ -117,42 +117,6 @@ function planActionLabel(
   return mode === "current" ? "Mevcut Paket" : mode === "upgrade" ? "Yükselt" : "Düşür";
 }
 
-function assistedPlanActionLabel(locale: "tr" | "en") {
-  return locale === "en" ? "Request onboarding" : "Onboarding talep et";
-}
-
-function assistedAddOnActionLabel(locale: "tr" | "en") {
-  return locale === "en" ? "Request add-on" : "Ek paket talep et";
-}
-
-function buildBillingAssistanceNote(locale: "tr" | "en") {
-  return locale === "en"
-    ? "Pilot request: guided billing onboarding and package activation support."
-    : "Pilot talebi: yönlendirmeli ödeme onboarding'i ve paket aktivasyon desteği.";
-}
-
-function buildPlanAssistanceNote(
-  planLabel: string,
-  mode: PlanActionMode,
-  locale: "tr" | "en"
-) {
-  if (locale === "en") {
-    return mode === "downgrade"
-      ? `Pilot request: review the downgrade path for the ${planLabel} package with manual support.`
-      : `Pilot request: open the ${planLabel} package with guided onboarding.`;
-  }
-
-  return mode === "downgrade"
-    ? `Pilot talebi: ${planLabel} paketine geçişi manuel destekle planlayalım.`
-    : `Pilot talebi: ${planLabel} paketini yönlendirmeli onboarding ile açalım.`;
-}
-
-function buildAddOnAssistanceNote(quotaLabel: string, locale: "tr" | "en") {
-  return locale === "en"
-    ? `Pilot request: activate an add-on pack for ${quotaLabel.toLowerCase()}.`
-    : `Pilot talebi: ${quotaLabel.toLowerCase()} için ek kredi paketi aktivasyonu.`;
-}
-
 function buildEnterpriseQuoteMessage(
   form: EnterpriseQuoteFormState,
   t: (value: string) => string
@@ -174,34 +138,22 @@ function buildEnterpriseQuoteMessage(
   return lines.join("\n");
 }
 
-function formatBillingAccessStatus(
-  status: string | undefined,
-  stripeReady: boolean,
+function formatCheckoutAccessLabel(
+  selfServeReady: boolean,
+  trialActive: boolean,
+  productionRuntime: boolean,
   locale: "tr" | "en"
 ) {
-  const normalized = status ?? (stripeReady ? "ready" : "setup_required");
-
-  switch (normalized) {
-    case "ready":
-      return locale === "en" ? "Ready" : "Hazır";
-    case "pilot":
-      return locale === "en" ? "Preparation" : "Hazırlık";
-    case "setup_required":
-      return locale === "en" ? "Setup required" : "Kurulum gerekiyor";
-    case "unsupported":
-      return locale === "en" ? "Unavailable" : "Kullanılamıyor";
-    default:
-      return normalized.replace(/_/g, " ");
-  }
-}
-
-function formatCheckoutAccessLabel(selfServeReady: boolean, productionRuntime: boolean, locale: "tr" | "en") {
   if (selfServeReady) {
-    return locale === "en" ? "Online payment active" : "Çevrimiçi ödeme açık";
+    return locale === "en" ? "Payment ready" : "Ödeme hazır";
+  }
+
+  if (trialActive) {
+    return locale === "en" ? "Trial active" : "Deneme aktif";
   }
 
   if (productionRuntime) {
-    return locale === "en" ? "Contact sales" : "Satış ekibiyle ilerleyin";
+    return locale === "en" ? "Payment soon" : "Ödeme yakında";
   }
 
   return locale === "en" ? "Test mode" : "Test modu";
@@ -268,8 +220,8 @@ export default function SubscriptionPage() {
   const selfServeBlocked = productionRuntime && !selfServeReady;
   const billingBlockedMessage =
     locale === "en"
-      ? "Online billing is not currently available. Continue through the guided pilot onboarding flow."
-      : "Çevrimiçi abonelik şu anda kullanıma açık değil. Yönlendirmeli pilot onboarding akışı üzerinden ilerleyin.";
+      ? "Your trial continues normally. Package changes and extra credit purchases will appear here when online payments are enabled."
+      : "Denemeniz normal şekilde devam ediyor. Paket değişikliği ve ek kredi satın alma adımları çevrimiçi ödeme açıldığında burada görünecek.";
 
   const activeQuotaAddOns =
     billing?.addOnCatalog.filter((addOn) => addOn.quotaKey === activeAddOnQuotaKey) ?? [];
@@ -376,7 +328,7 @@ export default function SubscriptionPage() {
         setActionNotice(
           result.flow === "customer_portal"
             ? t("Abonelik yönetim sayfası yeni sekmede açıldı.")
-            : t("Stripe ödeme sayfası yeni sekmede açıldı.")
+            : t("Ödeme sayfası yeni sekmede açıldı.")
         );
       } else if (result.flow === "scheduled") {
         setActionNotice(t("Plan değişikliği dönem sonuna planlandı."));
@@ -405,7 +357,7 @@ export default function SubscriptionPage() {
     try {
       const result = await apiClient.createBillingCustomerPortal();
       window.open(result.portalUrl, "_blank", "noopener,noreferrer");
-      setActionNotice(t("Stripe müşteri portalı açıldı."));
+      setActionNotice(t("Faturalandırma portalı açıldı."));
     } catch (portalError) {
       setError(toErrorMessage(portalError, t("Müşteri portalı açılamadı.")));
     } finally {
@@ -568,9 +520,21 @@ export default function SubscriptionPage() {
   }
 
   const packageLabel = billing ? formatBillingPlanLabel(billing.account.currentPlanKey, locale) : "";
-  const summaryDateLabel = locale === "en" ? "Period End" : "Dönem Sonu";
+  const packageSummaryLabel = billing?.trial.isActive
+    ? locale === "en"
+      ? "Free trial"
+      : "Ücretsiz deneme"
+    : packageLabel;
+  const summaryDateLabel =
+    billing?.trial.isActive
+      ? locale === "en"
+        ? "Trial ends"
+        : "Deneme bitişi"
+      : locale === "en"
+        ? "Period End"
+        : "Dönem Sonu";
   const summaryDateValue = billing
-    ? formatDateOnly(billing.account.currentPeriodEnd)
+    ? formatDateOnly(billing.trial.isActive && billing.trial.endsAt ? billing.trial.endsAt : billing.account.currentPeriodEnd)
     : "";
   const pendingPlanLabel = billing?.account.pendingChange
     ? formatBillingPlanLabel(billing.account.pendingChange.planKey, locale)
@@ -589,8 +553,8 @@ export default function SubscriptionPage() {
   );
   const pageSubtitle =
     locale === "en"
-      ? "Track your package and usage from one place."
-      : "Paketinizi ve kullanım durumunuzu tek yerden takip edin.";
+      ? "Track your trial, package, and usage from one place."
+      : "Denemenizi, paketinizi ve kullanım durumunuzu tek yerden takip edin.";
   const packageHeading = locale === "en" ? "Package" : "Paket";
   const plansHeading = locale === "en" ? "Packages" : "Paketler";
   const addOnsHeading = locale === "en" ? "Credit Packs" : "Kredi Paketleri";
@@ -603,6 +567,31 @@ export default function SubscriptionPage() {
       ? "Included monthly usage resets every period. Purchased credit packs stay active for 90 days."
       : "Paket içindeki aylık kullanım her dönemde sıfırlanır. Satın aldığınız kredi paketleri 90 gün geçerlidir.";
   const enterpriseCta = t("Kurumsal Teklif İste");
+  const paymentStatusLabel = formatCheckoutAccessLabel(
+    selfServeReady,
+    Boolean(billing?.trial.isActive),
+    productionRuntime,
+    locale
+  );
+  const paymentStatusDescription =
+    selfServeReady
+      ? locale === "en"
+        ? "Plan changes, extra credits, and billing updates are available from this section."
+        : "Plan değişikliği, ek kredi ve faturalandırma güncellemeleri bu bölümden yönetilir."
+      : billingBlockedMessage;
+  const trialStatusLabel =
+    billing?.trial.isActive
+      ? locale === "en"
+        ? `Active · ${billing.trial.daysRemaining} days left`
+        : `Aktif · ${billing.trial.daysRemaining} gün kaldı`
+      : billing?.trial.isExpired
+        ? locale === "en"
+          ? "Expired"
+          : "Sona erdi"
+        : locale === "en"
+          ? "Not started"
+          : "Başlamadı";
+  const paymentActionLabel = locale === "en" ? "Payment soon" : "Ödeme yakında";
 
   return (
     <section className="page-grid">
@@ -636,89 +625,49 @@ export default function SubscriptionPage() {
             <div className="subscription-section-head" style={{ marginBottom: 16 }}>
               <div>
                 <h2 style={{ margin: 0 }}>
-                  {locale === "en" ? "Billing access" : "Ödeme erişimi"}
+                  {locale === "en" ? "Payment status" : "Ödeme durumu"}
                 </h2>
                 <p className="small text-muted" style={{ margin: "6px 0 0" }}>
                   {locale === "en"
-                    ? "This panel shows whether online billing is available for your account."
-                    : "Bu alan çevrimiçi ödeme akışının hesabınız için açık olup olmadığını gösterir."}
+                    ? "Follow your trial and see when package changes become available here."
+                    : "Deneme durumunuzu ve paket değişikliklerinin ne zaman açılacağını buradan takip edin."}
                 </p>
               </div>
               <StatusBadge
                 ready={selfServeReady}
-                variant={selfServeReady ? "success" : productionRuntime ? "danger" : "warning"}
-                label={formatCheckoutAccessLabel(selfServeReady, productionRuntime, locale)}
+                variant={selfServeReady ? "success" : billing.trial.isActive ? "warning" : productionRuntime ? "muted" : "warning"}
+                label={paymentStatusLabel}
               />
             </div>
 
             <div className="subscription-summary-grid">
               <div className="subscription-summary-item">
-                <span>{locale === "en" ? "Provider" : "Sağlayıcı"}</span>
-                <strong>{billingBoundary?.provider ?? "stripe"}</strong>
-              </div>
-              <div className="subscription-summary-item">
-                <span>{locale === "en" ? "Status" : "Durum"}</span>
-                <strong>{formatBillingAccessStatus(billingBoundary?.status, billing.stripeReady, locale)}</strong>
+                <span>{locale === "en" ? "Trial" : "Deneme"}</span>
+                <strong>{trialStatusLabel}</strong>
               </div>
               <div className="subscription-summary-item">
                 <span>{locale === "en" ? "Online payment" : "Çevrimiçi ödeme"}</span>
-                <strong>{selfServeReady ? t("Açık") : t("Kapalı")}</strong>
+                <strong>{selfServeReady ? t("Açık") : locale === "en" ? "Coming soon" : "Yakında"}</strong>
               </div>
             </div>
 
-            {selfServeBlocked ? (
-              <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
-                <p className="small text-muted" style={{ margin: 0 }}>
-                  {billingBlockedMessage}
-                </p>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() =>
-                      openEnterpriseModal({
-                        note: buildBillingAssistanceNote(locale)
-                      })
-                    }
-                  >
-                    {locale === "en" ? "Request pilot onboarding" : "Pilot onboarding talep et"}
-                  </button>
-                </div>
-              </div>
-            ) : !selfServeReady ? (
-              <p className="small text-muted" style={{ marginTop: 14, marginBottom: 0 }}>
-                {locale === "en"
-                  ? "Some payment steps may continue through test flows in this environment."
-                  : "Bu ortamda bazı ödeme adımları test akışlarıyla ilerleyebilir."}
-              </p>
-            ) : null}
+            <p className="small text-muted" style={{ marginTop: 14, marginBottom: 0 }}>
+              {paymentStatusDescription}
+            </p>
           </section>
 
           <section className="panel subscription-summary-panel">
             <div className="subscription-section-head">
               <h2>{t("Abonelik Özeti")}</h2>
               <div className="subscription-summary-actions">
-                {billing.account.stripeCustomerId ? (
+                {billing.account.stripeCustomerId && selfServeReady ? (
                   <button
                     type="button"
                     className="ghost-button"
                     disabled={busyKey === "portal"}
-                    onClick={() =>
-                      selfServeBlocked
-                        ? openEnterpriseModal({
-                            note:
-                              locale === "en"
-                                ? "Pilot request: billing portal access and subscription support."
-                                : "Pilot talebi: faturalandırma portalı erişimi ve abonelik desteği."
-                          })
-                        : void handleBillingPortalOpen()
-                    }
+                    onClick={() => void handleBillingPortalOpen()}
                   >
-                    {selfServeBlocked
-                      ? locale === "en"
-                        ? "Request billing help"
-                        : "Faturalandırma desteği iste"
-                      : busyKey === "portal"
+                    {busyKey === "portal"
                       ? t("Hazırlanıyor...")
                       : locale === "en"
                         ? "Manage billing"
@@ -730,7 +679,7 @@ export default function SubscriptionPage() {
             <div className="subscription-summary-grid">
               <div className="subscription-summary-item">
                 <span>{packageHeading}</span>
-                <strong>{packageLabel}</strong>
+                <strong>{packageSummaryLabel}</strong>
               </div>
               <div className="subscription-summary-item">
                 <span>{summaryDateLabel}</span>
@@ -805,19 +754,15 @@ export default function SubscriptionPage() {
             <div className="subscription-section-head" style={{ marginBottom: 16 }}>
               <div>
                 <h3 className="tlx-section-title">{plansHeading}</h3>
-                <p className="small text-muted" style={{ margin: "6px 0 0" }}>{planSectionHint}</p>
-              </div>
-            </div>
-
-            {selfServeBlocked ? (
-              <div className="panel" style={{ marginBottom: 16 }}>
-                <p className="small text-muted" style={{ margin: 0 }}>
-                  {locale === "en"
-                    ? "Package upgrades and downgrades are opened with manual support during pilot. Use the request buttons below to send the exact package need to the team."
-                    : "Pilot boyunca paket yükseltme ve düşürmeler manuel destekle açılır. Aşağıdaki talep butonlarıyla ihtiyacınız olan paketi ekibe iletebilirsiniz."}
+                <p className="small text-muted" style={{ margin: "6px 0 0" }}>
+                  {selfServeBlocked
+                    ? locale === "en"
+                      ? "Your trial is active. Package changes will open here as soon as online payments are available."
+                      : "Denemeniz aktif. Çevrimiçi ödeme açıldığında paket değişiklikleri bu bölümden yapılacak."
+                    : planSectionHint}
                 </p>
               </div>
-            ) : null}
+            </div>
 
             <div className="tlx-plan-grid">
               {billing.planCatalog.map((plan) => {
@@ -826,7 +771,6 @@ export default function SubscriptionPage() {
                 const planCard = buildBillingPlanCardModel(plan, locale, {
                   enterprisePriceLabel: locale === "en" ? "Contact Us" : "İletişime Geçin"
                 });
-                const planLabel = formatBillingPlanLabel(plan.key, locale);
                 return (
                   <article
                     key={plan.key}
@@ -872,23 +816,11 @@ export default function SubscriptionPage() {
                         <button
                           type="button"
                           className="tlx-plan-btn"
-                          disabled={busyKey === `plan:${plan.key}`}
-                          onClick={() =>
-                            selfServeBlocked
-                              ? openEnterpriseModal({
-                                  seats: String(plan.seatsIncluded),
-                                  activeJobs: String(plan.activeJobsIncluded),
-                                  candidateProcessing: String(plan.candidateProcessingIncluded),
-                                  aiInterviews: String(plan.aiInterviewsIncluded),
-                                  note: buildPlanAssistanceNote(planLabel, actionMode, locale)
-                                })
-                              : void handlePlanCheckout(
-                                  plan.key as Exclude<BillingPlanKey, "ENTERPRISE">
-                                )
-                          }
+                          disabled={selfServeBlocked || busyKey === `plan:${plan.key}`}
+                          onClick={() => void handlePlanCheckout(plan.key as Exclude<BillingPlanKey, "ENTERPRISE">)}
                         >
                           {selfServeBlocked
-                            ? assistedPlanActionLabel(locale)
+                            ? paymentActionLabel
                             : busyKey === `plan:${plan.key}`
                             ? t("Hazırlanıyor...")
                             : planActionLabel(actionMode, locale)}
@@ -897,21 +829,11 @@ export default function SubscriptionPage() {
                         <button
                           type="button"
                           className="tlx-plan-btn"
-                          disabled={busyKey === `plan:${plan.key}`}
-                          onClick={() =>
-                            selfServeBlocked
-                              ? openEnterpriseModal({
-                                  seats: String(plan.seatsIncluded),
-                                  activeJobs: String(plan.activeJobsIncluded),
-                                  candidateProcessing: String(plan.candidateProcessingIncluded),
-                                  aiInterviews: String(plan.aiInterviewsIncluded),
-                                  note: buildPlanAssistanceNote(planLabel, actionMode, locale)
-                                })
-                              : void handlePlanCheckout(plan.key as Exclude<BillingPlanKey, "ENTERPRISE">)
-                          }
+                          disabled={selfServeBlocked || busyKey === `plan:${plan.key}`}
+                          onClick={() => void handlePlanCheckout(plan.key as Exclude<BillingPlanKey, "ENTERPRISE">)}
                         >
                           {selfServeBlocked
-                            ? assistedPlanActionLabel(locale)
+                            ? paymentActionLabel
                             : busyKey === `plan:${plan.key}`
                             ? t("Hazırlanıyor...")
                             : planActionLabel(actionMode, locale)}
@@ -944,16 +866,11 @@ export default function SubscriptionPage() {
                         <button
                           type="button"
                           className="ghost-button billing-addon-compact-button"
-                          onClick={() =>
-                            selfServeBlocked
-                              ? openEnterpriseModal({
-                                  note: buildAddOnAssistanceNote(t(quota.label), locale)
-                                })
-                              : setActiveAddOnQuotaKey(quota.key as BillingQuotaKeyWithAddOns)
-                          }
+                          disabled={selfServeBlocked}
+                          onClick={() => setActiveAddOnQuotaKey(quota.key as BillingQuotaKeyWithAddOns)}
                         >
                         {selfServeBlocked
-                          ? assistedAddOnActionLabel(locale)
+                          ? paymentActionLabel
                           : locale === "en"
                             ? "Buy add-on"
                             : "Ek paket al"}

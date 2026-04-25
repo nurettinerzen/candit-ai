@@ -108,12 +108,9 @@ export default function TeamPage() {
       } else {
         setBilling(null);
         setBillingLoadError(
-          toErrorMessage(
-            billingResult.reason,
-            locale === "en"
-              ? "Usage limits could not be loaded."
-              : "Kullanım limitleri yüklenemedi."
-          )
+          locale === "en"
+            ? "Seat visibility is temporarily unavailable. You can still manage team members."
+            : "Koltuk görünümü geçici olarak alınamadı. Ekip üyelerini yönetmeye devam edebilirsiniz."
         );
       }
     } catch (loadError) {

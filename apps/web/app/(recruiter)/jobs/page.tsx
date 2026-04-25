@@ -51,9 +51,9 @@ export default function JobsPage() {
       } else {
         setBilling(null);
         setBillingLoadError(
-          billingResult.reason instanceof Error
-            ? billingResult.reason.message
-            : t("Abonelik kullanımı şu an yüklenemedi.")
+          locale === "en"
+            ? "Usage visibility is temporarily unavailable. You can continue preparing jobs."
+            : "Kredi görünümü geçici olarak alınamadı. İlan hazırlamaya devam edebilirsiniz."
         );
       }
     } catch (loadError) {
@@ -61,7 +61,7 @@ export default function JobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [locale, t]);
 
   useEffect(() => {
     void loadJobs();
@@ -206,8 +206,23 @@ export default function JobsPage() {
       ) : null}
 
       {!loading && billingLoadError ? (
-        <section className="panel">
-          <ErrorState title={t("Abonelik görünürlüğü")} error={billingLoadError} />
+        <section className="panel" style={{ background: "var(--surface-muted)" }}>
+          <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>
+              {locale === "en" ? "Usage snapshot is unavailable" : "Kredi görünümü şu an alınamadı"}
+            </div>
+            <p className="small text-muted" style={{ margin: 0 }}>
+              {billingLoadError}
+            </p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" className="ghost-button" onClick={() => void loadJobs()}>
+                {t("Tekrar dene")}
+              </button>
+              <Link href={"/subscription" as Route} className="ghost-button" style={{ textDecoration: "none" }}>
+                {t("Paket ve kotaları aç")}
+              </Link>
+            </div>
+          </div>
         </section>
       ) : null}
 
