@@ -93,7 +93,7 @@ function isSameLocalDay(value: string, reference: Date) {
 }
 
 export default function RecruiterOverviewPage() {
-  const { t } = useUiText();
+  const { t, locale } = useUiText();
   const [data, setData] = useState<RecruiterOverviewReadModel | null>(null);
   const [applications, setApplications] = useState<RecruiterApplicationsReadModel["items"]>([]);
   const [interviews, setInterviews] = useState<InterviewSessionView[]>([]);
@@ -270,6 +270,71 @@ export default function RecruiterOverviewPage() {
     }
   ], [data, applications.length, actionableCount, pendingInviteCount, runningInterviewCount]);
 
+  const onboardingSteps = useMemo(() => {
+    const steps = [
+      {
+        key: "job",
+        label: locale === "en" ? "Publish the first job" : "Ilk ilani yayinla",
+        helper:
+          locale === "en"
+            ? "Create or publish a live role so the hiring flow has a real starting point."
+            : "Aday akisinin baslamasi icin once canli bir pozisyon acin.",
+        href: "/jobs" as const,
+        done: (data?.kpis.publishedJobs ?? 0) > 0
+      },
+      {
+        key: "candidate",
+        label: locale === "en" ? "Add the first candidate" : "Ilk adayi ekle",
+        helper:
+          locale === "en"
+            ? "Bring in one test or real candidate and verify profile visibility."
+            : "Bir test veya gercek aday ekleyip profil gorunurlugunu dogrulayin.",
+        href: "/candidates" as const,
+        done: (data?.kpis.totalCandidates ?? 0) > 0
+      },
+      {
+        key: "application",
+        label: locale === "en" ? "Open the first application" : "Ilk basvuruyu ac",
+        helper:
+          locale === "en"
+            ? "Connect the candidate to a job so AI screening and review can start."
+            : "AI screening ve review akisinin baslamasi icin adayi ilana baglayin.",
+        href: "/applications" as const,
+        done: applications.length > 0
+      },
+      {
+        key: "interview",
+        label: locale === "en" ? "Schedule the first AI interview" : "Ilk AI mulakatini planla",
+        helper:
+          locale === "en"
+            ? "Create one interview session and check the candidate-facing experience."
+            : "Bir mulakat oturumu olusturup aday deneyimini test edin.",
+        href: "/interviews" as const,
+        done: interviews.length > 0
+      },
+      {
+        key: "report",
+        label: locale === "en" ? "Review the first AI report" : "Ilk AI raporunu incele",
+        helper:
+          locale === "en"
+            ? "Confirm the report, recommendation, and recruiter decision loop is understandable."
+            : "Rapor, recommendation ve recruiter karar dongusunun anlasilir oldugunu dogrulayin.",
+        href: "/reports" as const,
+        done: applications.some(
+          (application) => application.ai.hasReport || Boolean(application.ai.latestRecommendation)
+        )
+      }
+    ];
+
+    return steps;
+  }, [applications, data?.kpis.publishedJobs, data?.kpis.totalCandidates, interviews.length, locale]);
+
+  const onboardingCompletedCount = useMemo(
+    () => onboardingSteps.filter((step) => step.done).length,
+    [onboardingSteps]
+  );
+  const shouldShowOnboarding = onboardingCompletedCount < onboardingSteps.length;
+
   return (
     <section className="page-grid">
       <div className="section-head" style={{ marginBottom: 0 }}>
@@ -308,6 +373,103 @@ export default function RecruiterOverviewPage() {
 
       {!loading && !error && data ? (
         <>
+          {shouldShowOnboarding ? (
+            <section className="panel">
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 16,
+                  flexWrap: "wrap",
+                  marginBottom: 14
+                }}
+              >
+                <div>
+                  <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>
+                    {locale === "en" ? "First Run Checklist" : "Ilk Kurulum Kontrol Listesi"}
+                  </h3>
+                  <p className="small" style={{ margin: 0, color: "var(--text-dim)" }}>
+                    {locale === "en"
+                      ? "A new recruiter should be able to move from zero to first report without asking for help."
+                      : "Yeni bir recruiter yardim istemeden ilk rapora kadar bu sirayla ilerleyebilmelidir."}
+                  </p>
+                </div>
+                <span
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: 999,
+                    border: "1px solid var(--border)",
+                    background:
+                      onboardingCompletedCount > 0
+                        ? "rgba(34,197,94,0.12)"
+                        : "rgba(124,115,250,0.12)",
+                    color:
+                      onboardingCompletedCount > 0
+                        ? "var(--success, #22c55e)"
+                        : "var(--primary, #7c73fa)",
+                    fontSize: 12,
+                    fontWeight: 700
+                  }}
+                >
+                  {locale === "en"
+                    ? `${onboardingCompletedCount}/${onboardingSteps.length} completed`
+                    : `${onboardingCompletedCount}/${onboardingSteps.length} tamamlandi`}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 10
+                }}
+              >
+                {onboardingSteps.map((step, index) => (
+                  <Link
+                    key={step.key}
+                    href={step.href}
+                    style={{
+                      textDecoration: "none",
+                      color: "inherit",
+                      border: step.done ? "1px solid rgba(34,197,94,0.22)" : "1px solid var(--border)",
+                      background: step.done ? "rgba(34,197,94,0.05)" : "var(--surface)",
+                      borderRadius: 12,
+                      padding: "14px 16px",
+                      display: "block"
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        marginBottom: 8
+                      }}
+                    >
+                      <strong style={{ fontSize: 13 }}>
+                        {index + 1}. {step.label}
+                      </strong>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: step.done ? "var(--success, #22c55e)" : "var(--text-dim)"
+                        }}
+                      >
+                        {step.done ? (locale === "en" ? "Done" : "Tamam") : (locale === "en" ? "Open" : "Acik")}
+                      </span>
+                    </div>
+                    <p className="small" style={{ margin: 0, color: "var(--text-dim)" }}>
+                      {step.helper}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           {/* KPI Strip */}
           <div
             style={{
@@ -360,7 +522,20 @@ export default function RecruiterOverviewPage() {
                 </p>
               </div>
               {actionItems.length === 0 ? (
-                <EmptyState message={t("Şu anda öne çıkan aksiyon bulunmuyor.")} />
+                <EmptyState
+                  message={
+                    shouldShowOnboarding
+                      ? t("Siradaki ilk kurulum adimini tamamlayarak aksiyon listesini doldurabilirsiniz.")
+                      : t("Şu anda öne çıkan aksiyon bulunmuyor.")
+                  }
+                  actions={
+                    shouldShowOnboarding ? (
+                      <Link href={onboardingSteps.find((step) => !step.done)?.href ?? "/jobs"} className="ghost-button">
+                        {locale === "en" ? "Open next step" : "Siradaki adimi ac"}
+                      </Link>
+                    ) : undefined
+                  }
+                />
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {actionItems.map((item) => (
@@ -424,7 +599,20 @@ export default function RecruiterOverviewPage() {
               </div>
 
               {upcomingInterviews.length === 0 ? (
-                <EmptyState message={t("Yaklaşan planlı görüşme bulunmuyor.")} />
+                <EmptyState
+                  message={
+                    shouldShowOnboarding
+                      ? t("Ilk AI mulakatini planladiginizda burada aday oturumlarini goreceksiniz.")
+                      : t("Yaklaşan planlı görüşme bulunmuyor.")
+                  }
+                  actions={
+                    shouldShowOnboarding ? (
+                      <Link href="/interviews" className="ghost-button" style={{ fontSize: 12 }}>
+                        {locale === "en" ? "Plan first interview" : "Ilk mulakati planla"}
+                      </Link>
+                    ) : undefined
+                  }
+                />
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {upcomingInterviews.map((session) => (
@@ -498,7 +686,20 @@ export default function RecruiterOverviewPage() {
             </div>
 
             {queueItems.length === 0 ? (
-              <EmptyState message={t("Şu anda aksiyon gerektiren başvuru bulunmuyor.")} />
+              <EmptyState
+                message={
+                  shouldShowOnboarding
+                    ? t("Basvuru akisi basladiginda, recruiter karari gerektiren adaylar burada listelenecek.")
+                    : t("Şu anda aksiyon gerektiren başvuru bulunmuyor.")
+                }
+                actions={
+                  shouldShowOnboarding ? (
+                    <Link href="/applications" className="ghost-button" style={{ fontSize: 12 }}>
+                      {locale === "en" ? "Open applications" : "Basvurulara git"}
+                    </Link>
+                  ) : undefined
+                }
+              />
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>

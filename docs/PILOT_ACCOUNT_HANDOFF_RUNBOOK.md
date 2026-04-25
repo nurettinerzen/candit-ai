@@ -86,6 +86,13 @@ Dis sirketle paylasilacak minimum paket:
 - Interview invite maili ve public interview linki calisiyor mu dogrula
 - Report ve recommendation recruiter ekraninda gorunuyor mu kontrol et
 
+Mail kotasi harcamadan owner aktivasyon, team invite, password reset ve owner reset zincirini toplu proof etmek icin:
+
+```bash
+PORT=4100 EMAIL_PROVIDER=console PUBLIC_WEB_BASE_URL=http://localhost:3600 corepack pnpm --filter @ai-interviewer/api dev
+corepack pnpm launch:verify:operational
+```
+
 ## Notlar
 
 - Script varsayilan olarak mevcut owner'i durduk yere resetlemez.

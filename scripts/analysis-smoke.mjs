@@ -38,6 +38,10 @@ const SMOKE_CONCURRENCY = Math.max(1, Number.parseInt(process.env.CANDIT_SMOKE_C
 const SMOKE_SCREENING_MODE = normalizeScreeningModeEnv(process.env.CANDIT_SMOKE_SCREENING_MODE ?? "BALANCED");
 const SMOKE_LOCATION_SIGNAL_MODE = normalizeLocationSignalMode(process.env.CANDIT_SMOKE_LOCATION_SIGNAL_MODE ?? "FULL_CONTEXT");
 const ANALYSIS_STRICT = parseBooleanEnv(process.env.CANDIT_ANALYSIS_STRICT, false);
+const SMOKE_REQUIRE_EXACT_SCENARIO_KEYS = parseBooleanEnv(
+  process.env.CANDIT_SMOKE_REQUIRE_EXACT_SCENARIO_KEYS,
+  ANALYSIS_STRICT
+);
 const ANALYSIS_MAX_WARNINGS = parseOptionalNonNegativeInteger(process.env.CANDIT_ANALYSIS_MAX_WARNINGS);
 const ANALYSIS_MIN_PASS_RATE = parseOptionalRatio(process.env.CANDIT_ANALYSIS_MIN_PASS_RATE);
 const RUN_STAMP = buildRunStamp();
@@ -1717,6 +1721,15 @@ if (SCENARIOS.length !== 100) {
 const ACTIVE_SCENARIOS = SMOKE_SCENARIO_KEYS.length > 0
   ? SCENARIOS.filter((scenario) => SMOKE_SCENARIO_KEYS.includes(scenario.key))
   : SCENARIOS;
+const UNMATCHED_SCENARIO_KEYS = SMOKE_SCENARIO_KEYS.filter(
+  (key) => !SCENARIOS.some((scenario) => scenario.key === key)
+);
+
+if (UNMATCHED_SCENARIO_KEYS.length > 0 && SMOKE_REQUIRE_EXACT_SCENARIO_KEYS) {
+  throw new Error(
+    `Unknown smoke scenario keys: ${UNMATCHED_SCENARIO_KEYS.join(", ")}`
+  );
+}
 
 if (SMOKE_SCENARIO_KEYS.length > 0 && ACTIVE_SCENARIOS.length === 0) {
   throw new Error("No smoke scenarios matched CANDIT_SMOKE_SCENARIO_KEYS");
@@ -2722,6 +2735,13 @@ async function main() {
     "Scenario batch prepared",
     `total=${ACTIVE_SCENARIOS.length} | concurrency=${SMOKE_CONCURRENCY} | generated=${GENERATED_SCENARIOS.length} | base=${SCENARIOS.length - GENERATED_SCENARIOS.length} | mode=${SMOKE_SCREENING_MODE} | location_signal_mode=${SMOKE_LOCATION_SIGNAL_MODE}`
   );
+  if (UNMATCHED_SCENARIO_KEYS.length > 0) {
+    logStatus(
+      "WARN",
+      "Some requested scenario keys were ignored",
+      UNMATCHED_SCENARIO_KEYS.join(", ")
+    );
+  }
 
   const results = [];
   const failures = [];
@@ -2768,6 +2788,8 @@ async function main() {
       tenantId: smokeUser.tenantId,
       authMode: smokeUser.authMode
     },
+    requestedScenarioKeys: SMOKE_SCENARIO_KEYS,
+    unmatchedScenarioKeys: UNMATCHED_SCENARIO_KEYS,
     job: {
       id: job.id,
       title: job.title,

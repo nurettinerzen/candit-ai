@@ -267,7 +267,25 @@ export default function JobsPage() {
 
       {!loading && !error && filteredJobs.length === 0 ? (
         <section className="panel">
-          <EmptyState message={t("Bu filtreye uygun ilan bulunamadı.")} />
+          <EmptyState
+            message={
+              jobs.length === 0 && !statusFilter
+                ? t("Henüz ilan yok. Ilk ilani hazirlayip yayina aldiginizda aday akisiniz burada baslar.")
+                : t("Bu filtreye uygun ilan bulunamadı.")
+            }
+            actions={
+              jobs.length === 0 && !statusFilter && canCreateJob ? (
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                  <Link href="/jobs/new" className="button-link">
+                    {t("Ilk Ilani Hazirla")}
+                  </Link>
+                  <Link href={"/subscription" as Route} className="ghost-button" style={{ textDecoration: "none" }}>
+                    {t("Paket ve Kotalar")}
+                  </Link>
+                </div>
+              ) : undefined
+            }
+          />
         </section>
       ) : null}
 

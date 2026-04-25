@@ -35,3 +35,4 @@ minio/
 # local artifacts
 *.tsbuildinfo
 ai-interviewer.docx
+**/.vercel

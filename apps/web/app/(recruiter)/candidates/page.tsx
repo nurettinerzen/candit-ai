@@ -238,7 +238,13 @@ export default function CandidatesPage() {
             placeholder={t("Aday adı, e-posta veya telefon...")}
             style={{ width: "100%", marginBottom: 8 }}
           />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gap: 8
+            }}
+          >
             <select
               className="select"
               value={stageFilter}
@@ -293,7 +299,25 @@ export default function CandidatesPage() {
         </section>
       )}
       {!loading && !error && rows.length === 0 && (
-        <EmptyState message={t("Filtreye uygun sonuç bulunamadı.")} />
+        <EmptyState
+          message={
+            !query && !stageFilter && !jobFilter && !sourceFilter
+              ? t("Henüz aday yok. Ilk adayi ekleyip basvuru akisini buradan takip edebilirsiniz.")
+              : t("Filtreye uygun sonuç bulunamadı.")
+          }
+          actions={
+            !query && !stageFilter && !jobFilter && !sourceFilter ? (
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                <Link href="/candidates/new" className="button-link">
+                  {t("Ilk Adayi Ekle")}
+                </Link>
+                <Link href="/jobs" className="ghost-button" style={{ textDecoration: "none" }}>
+                  {t("Ilk Ilani Kontrol Et")}
+                </Link>
+              </div>
+            ) : undefined
+          }
+        />
       )}
 
       {!loading && !error && rows.length > 0 && (

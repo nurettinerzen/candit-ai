@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { BillingAccountStatus, BillingPlanKey, TenantStatus } from "@prisma/client";
 import { InternalAdminService } from "./internal-admin.service";
 
 function createService() {
@@ -94,7 +95,8 @@ test("sendOwnerResetInvite records audit and security evidence", async () => {
 
   assert.deepEqual(result, {
     sent: true,
-    email: "owner@candit.ai"
+    email: "owner@candit.ai",
+    invitationUrl: "https://app.candit.ai/auth/invitations/accept?token=invite-token"
   });
   assert.equal(audits.length, 1);
   assert.equal(audits[0]?.action, "internal_admin.owner_password_reset_requested");
@@ -113,4 +115,83 @@ test("sendOwnerResetInvite records audit and security evidence", async () => {
     securityEvents[0]?.code,
     "internal_admin.owner_password_reset.invitation_issued"
   );
+});
+
+test("listAccounts supports tenant id search", async () => {
+  const filtersSeen: Array<Record<string, unknown>> = [];
+  const service = new InternalAdminService(
+    {
+      tenant: {
+        findMany: async ({ where }: { where: Record<string, unknown> }) => {
+          filtersSeen.push(where);
+
+          return [
+            {
+              id: "ten_launch",
+              name: "Launch Account",
+              status: TenantStatus.ACTIVE,
+              createdAt: new Date("2026-04-24T00:00:00.000Z"),
+              billingAccount: {
+                billingEmail: "billing@candit.ai",
+                currentPlanKey: BillingPlanKey.ENTERPRISE,
+                status: BillingAccountStatus.ACTIVE
+              },
+              users: [
+                {
+                  id: "usr_owner",
+                  fullName: "Launch Owner",
+                  email: "owner@candit.ai",
+                  status: "ACTIVE",
+                  lastLoginAt: null
+                }
+              ]
+            }
+          ];
+        }
+      },
+      job: { count: async () => 0 },
+      candidate: { count: async () => 0 },
+      candidateApplication: { count: async () => 0 },
+      interviewSession: { count: async () => 0 }
+    } as never,
+    {
+      isInternalAdmin: () => true
+    } as never,
+    {
+      getOverview: async () => ({
+        account: {
+          billingEmail: "billing@candit.ai",
+          currentPlanKey: BillingPlanKey.ENTERPRISE,
+          status: BillingAccountStatus.ACTIVE,
+          currentPeriodEnd: "2026-05-01T00:00:00.000Z"
+        },
+        trial: {
+          isActive: false,
+          isExpired: false,
+          startedAt: null,
+          endsAt: null,
+          daysRemaining: 0
+        },
+        usage: {
+          quotas: []
+        }
+      })
+    } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never
+  );
+
+  const result = await service.listAccounts({ query: "ten_launch" }, "info@candit.ai");
+
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0]?.tenantId, "ten_launch");
+  assert.equal(filtersSeen.length, 1);
+  assert.deepEqual(filtersSeen[0]?.OR?.[0], {
+    id: {
+      contains: "ten_launch",
+      mode: "insensitive"
+    }
+  });
 });

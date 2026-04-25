@@ -3,6 +3,7 @@ import { AiTaskPolicyService } from "../policy/ai-task-policy.service.js";
 import { StructuredAiProvider } from "../providers/structured-ai-provider.js";
 import { TaskProcessingError } from "../task-processing-error.js";
 import { CvDocumentContentService } from "./cv-document-content.service.js";
+import { guardLocationCategoryScore } from "./location-score-guardrail.utils.js";
 import {
   asJsonObject,
   toArray,
@@ -1223,10 +1224,20 @@ export class ApplicantFitScoringTaskService {
         : [];
       const isLocationCategory = this.isLocationCategory(category);
       const fallbackScore = det?.score ?? (isLocationCategory ? input.locationAnalysis.score : 35);
-      const aiScore = aiCategory
+      const rawAiScore = aiCategory
         ? this.clampScore(aiCategory.score * aiScaleMultiplier)
         : fallbackScore;
       const deterministicScore = this.clampScore(fallbackScore);
+      const aiScore = isLocationCategory
+        ? guardLocationCategoryScore({
+            aiScore: rawAiScore,
+            deterministicScore,
+            presenceMode: input.locationAnalysis.presenceMode,
+            candidateFlexibility: input.locationAnalysis.candidateFlexibility,
+            mismatchLevel: input.locationAnalysis.mismatchLevel,
+            commuteSeverity: input.locationAnalysis.commuteSeverity
+          })
+        : rawAiScore;
 
       return {
         key: category.key,

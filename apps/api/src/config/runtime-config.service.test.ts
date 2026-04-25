@@ -180,7 +180,8 @@ test("development corsOrigins include common local web ports used by smoke and b
     "http://localhost:3000",
     "http://localhost:3100",
     "http://localhost:3200",
-    "http://localhost:3500"
+    "http://localhost:3500",
+    "http://localhost:3600"
   ]);
 });
 

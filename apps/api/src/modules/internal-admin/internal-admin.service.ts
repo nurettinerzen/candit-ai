@@ -740,6 +740,12 @@ export class InternalAdminService {
         OR: query
           ? [
               {
+                id: {
+                  contains: query,
+                  mode: "insensitive"
+                }
+              },
+              {
                 name: {
                   contains: query,
                   mode: "insensitive"
@@ -1449,7 +1455,8 @@ export class InternalAdminService {
 
     return {
       sent: true,
-      email: owner.email
+      email: owner.email,
+      invitationUrl: this.runtimeConfig.isProduction ? null : invitationUrl
     };
   }
 

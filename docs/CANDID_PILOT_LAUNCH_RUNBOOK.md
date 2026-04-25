@@ -97,6 +97,32 @@ corepack pnpm launch:verify:runtime:strict
 
 This must fail if launch warnings remain.
 
+### 5. Operational proof without consuming email quota
+
+Use a temporary local API instance with `EMAIL_PROVIDER=console`:
+
+```bash
+PORT=4100 EMAIL_PROVIDER=console PUBLIC_WEB_BASE_URL=http://localhost:3600 corepack pnpm --filter @ai-interviewer/api dev
+```
+
+Then run:
+
+```bash
+corepack pnpm launch:verify:operational
+```
+
+This proves:
+
+- pilot tenant provisioning and handoff artifact generation
+- owner activation link works
+- owner can load recruiter setup surfaces
+- team invite returns a local invitation link
+- invited manager can accept the invite and log in
+- password reset returns a preview URL and invalidates the old password
+- internal admin can see the tenant in account list/detail
+- internal admin owner reset returns a local invitation link
+- owner reset invalidates the old owner password and restores access with a new one
+
 ## Expected warnings today
 
 - Email delivery may still warn if the provider is `console`.
@@ -110,6 +136,7 @@ They are not acceptable for a fully self-serve launch.
 
 - Check signup flow
 - Check login flow
+- Check operational proof output
 - Check one password reset flow
 - Check one email verification flow
 - Check tenant isolation proof in runtime smoke output

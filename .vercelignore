@@ -1,0 +1,9 @@
+artifacts
+data
+.turbo
+.next
+apps/*/.next
+apps/web/.next
+apps/web/.vercel
+apps/api/.turbo
+apps/worker/.turbo

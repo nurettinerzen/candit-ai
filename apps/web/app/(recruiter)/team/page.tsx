@@ -1,5 +1,7 @@
 "use client";
 
+import type { Route } from "next";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { PageTitleWithGuide } from "../../../components/page-guide";
@@ -318,6 +320,7 @@ export default function TeamPage() {
         : "Kullanıcı limiti dolu. Yeni davet için önce planı yükseltin."
       : "";
   const inviteDisabled = busyKey === "invite" || Boolean(inviteBlockedReason);
+  const isSoloWorkspace = members.length <= 1;
   const title = locale === "en" ? "Team" : "Ekip";
   const subtitle =
     locale === "en"
@@ -356,6 +359,46 @@ export default function TeamPage() {
       {memberActionNotice ? <NoticeBox tone="success" message={memberActionNotice} /> : null}
       {billingLoadError ? <NoticeBox tone="danger" message={billingLoadError} /> : null}
 
+      {isSoloWorkspace || inviteBlockedReason ? (
+        <section className="panel" style={{ display: "grid", gap: 12 }}>
+          <div>
+            <h2 style={{ margin: "0 0 6px" }}>
+              {locale === "en" ? "Team setup guide" : "Ekip kurulum rehberi"}
+            </h2>
+            <p className="small text-muted" style={{ margin: 0 }}>
+              {inviteBlockedReason
+                ? locale === "en"
+                  ? "The seat limit is full. Open extra seats before sending a new invite."
+                  : "Kullanici kotasi dolu. Yeni davet gondermeden once ek koltuk acin."
+                : locale === "en"
+                  ? "You are currently alone in this workspace. Invite one manager or staff member so a new company can test collaboration without asking for help."
+                  : "Su an bu calisma alaninda tek kisiniz. Disaridaki ekip yardim istemeden ortak akisi test edebilsin diye en az bir manager veya staff davet edin."}
+            </p>
+          </div>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() =>
+                document.getElementById("team-invite-form")?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start"
+                })
+              }
+            >
+              {locale === "en" ? "Open invite form" : "Davet formuna git"}
+            </button>
+            <Link href={"/subscription" as Route} className="ghost-button">
+              {locale === "en" ? "Review seats and package" : "Koltuk ve paketleri kontrol et"}
+            </Link>
+            <Link href={"/settings" as Route} className="ghost-button">
+              {locale === "en" ? "Check owner settings" : "Hesap sahibi ayarlarini kontrol et"}
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
       <section className="panel">
         <h2 style={{ margin: "0 0 6px" }}>
           {locale === "en" ? "Invite teammate" : "Yeni üye davet et"}
@@ -378,8 +421,9 @@ export default function TeamPage() {
         ) : null}
 
         <form
+          id="team-invite-form"
           className="inline-grid"
-          style={{ gridTemplateColumns: "1.2fr 1.2fr 0.8fr auto", gap: 12 }}
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}
           onSubmit={handleInviteSubmit}
         >
           <input
@@ -448,7 +492,28 @@ export default function TeamPage() {
             }
           />
         ) : members.length === 0 ? (
-          <EmptyState message={t("Henüz ekip üyesi bulunmuyor.")} />
+          <EmptyState
+            message={t("Henüz ekip üyesi bulunmuyor.")}
+            actions={
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() =>
+                    document.getElementById("team-invite-form")?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start"
+                    })
+                  }
+                >
+                  {locale === "en" ? "Open invite form" : "Davet formuna git"}
+                </button>
+                <Link href={"/subscription" as Route} className="ghost-button">
+                  {locale === "en" ? "Review seats" : "Koltuklari kontrol et"}
+                </Link>
+              </div>
+            }
+          />
         ) : (
           <div className="table-scroll">
             <table className="admin-table">

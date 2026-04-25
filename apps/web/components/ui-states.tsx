@@ -32,13 +32,22 @@ export function ErrorState({
   );
 }
 
-export function EmptyState({ message }: { message: string }) {
+export function EmptyState({
+  message,
+  actions
+}: {
+  message: string;
+  actions?: ReactNode;
+}) {
   const { t } = useUiText();
 
   return (
     <div className="empty-state">
       <div className="empty-state-icon">—</div>
-      <p className="empty-state-text">{t(message)}</p>
+      <p className="empty-state-text" style={{ marginBottom: actions ? 12 : undefined }}>
+        {t(message)}
+      </p>
+      {actions}
     </div>
   );
 }

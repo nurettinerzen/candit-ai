@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageTitleWithGuide } from "../../../components/page-guide";
@@ -59,6 +60,9 @@ export default function SettingsPage() {
     currentPassword: "",
     confirmationText: ""
   });
+  const profileLooksComplete = Boolean(
+    profileForm.companyName.trim() && (profileForm.websiteUrl.trim() || profileForm.profileSummary.trim())
+  );
 
   const deleteAccountConfirmationPlaceholder =
     locale === "en" ? 'Type: "delete my account"' : 'Şunu yazın: "hesabımı sil"';
@@ -298,6 +302,63 @@ export default function SettingsPage() {
       {profileNotice ? <NoticeBox tone="success" message={profileNotice} /> : null}
       {securityNotice ? <NoticeBox tone="success" message={securityNotice} /> : null}
 
+      <section className="panel" style={{ display: "grid", gap: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <h2 style={{ margin: "0 0 6px" }}>
+              {locale === "en" ? "Next setup steps" : "Sonraki kurulum adimlari"}
+            </h2>
+            <p className="small text-muted" style={{ margin: 0 }}>
+              {locale === "en"
+                ? "A new company should be able to complete these surfaces without asking us what comes next."
+                : "Yeni bir firma sonraki adimi bize sormadan bu yuzeylerden ilerleyebilmelidir."}
+            </p>
+          </div>
+          <StatusBadge
+            ready={profileLooksComplete}
+            label={
+              profileLooksComplete
+                ? locale === "en"
+                  ? "Profile ready"
+                  : "Profil hazir"
+                : locale === "en"
+                  ? "Profile needs context"
+                  : "Profil biraz daha baglam istiyor"
+            }
+          />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+          <QuickLinkCard
+            href={"/team" as Route}
+            title={locale === "en" ? "Team access" : "Ekip erisimi"}
+            description={
+              locale === "en"
+                ? "Invite at least one teammate and verify role boundaries."
+                : "En az bir ekip arkadasi davet edin ve rol sinirlarini kontrol edin."
+            }
+          />
+          <QuickLinkCard
+            href={"/subscription" as Route}
+            title={locale === "en" ? "Package and seats" : "Paket ve koltuklar"}
+            description={
+              locale === "en"
+                ? "Review package limits before the pilot company hits a blocker."
+                : "Pilot firma blokaja girmeden once paket limitlerini gozden gecirin."
+            }
+          />
+          <QuickLinkCard
+            href={(isInternalAdmin ? "/admin/settings" : "/ai-support") as Route}
+            title={locale === "en" ? "AI defaults" : "AI varsayilanlari"}
+            description={
+              locale === "en"
+                ? "Review prompts, rubrics, and provider readiness from one place."
+                : "Prompt, rubric ve provider hazirligini tek yerden gozden gecirin."
+            }
+          />
+        </div>
+      </section>
+
       <section className="panel" style={{ display: "grid", gap: 16 }}>
         <div>
           <h2 style={{ margin: "0 0 6px" }}>{locale === "en" ? "General" : "Genel"}</h2>
@@ -309,7 +370,10 @@ export default function SettingsPage() {
         </div>
 
         <form style={{ display: "grid", gap: 14 }} onSubmit={handleProfileSave}>
-          <div className="inline-grid" style={{ gridTemplateColumns: "1.1fr 1fr", gap: 12 }}>
+          <div
+            className="inline-grid"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}
+          >
             <label style={{ display: "grid", gap: 8 }}>
               <input
                 className="input"
@@ -417,7 +481,10 @@ export default function SettingsPage() {
         </div>
 
         <form style={{ display: "grid", gap: 12 }} onSubmit={handlePasswordChange}>
-          <div className="inline-grid" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          <div
+            className="inline-grid"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}
+          >
             <PasswordField
               label={locale === "en" ? "Current password" : "Mevcut şifre"}
               showLabel={false}
@@ -493,7 +560,7 @@ export default function SettingsPage() {
 
           <form
             className="inline-grid"
-            style={{ gridTemplateColumns: "1fr 1fr auto", gap: 12 }}
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}
             onSubmit={handleDeleteAccount}
           >
             <PasswordField
@@ -561,5 +628,56 @@ function NoticeBox({
     >
       {t(message)}
     </div>
+  );
+}
+
+function StatusBadge({ ready, label }: { ready: boolean; label: string }) {
+  const color = ready ? "34,197,94" : "245,158,11";
+
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "8px 12px",
+        borderRadius: 999,
+        border: `1px solid rgba(${color},0.24)`,
+        background: `rgba(${color},0.12)`,
+        color: ready ? "var(--success, #22c55e)" : "var(--warn, #f59e0b)",
+        fontSize: 12,
+        fontWeight: 700
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function QuickLinkCard({
+  href,
+  title,
+  description
+}: {
+  href: Route;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="ghost-button"
+      style={{
+        display: "grid",
+        gap: 6,
+        justifyItems: "flex-start",
+        textAlign: "left",
+        minHeight: 96,
+        alignContent: "start"
+      }}
+    >
+      <strong>{title}</strong>
+      <span className="small text-muted">{description}</span>
+    </Link>
   );
 }

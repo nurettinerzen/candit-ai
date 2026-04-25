@@ -67,7 +67,13 @@ function candidateWebBaseUrls() {
     return [stripTrailingSlash(explicit)];
   }
 
-  return ["http://localhost:3000", "http://localhost:3100", "http://localhost:3200", "http://localhost:3500"];
+  return [
+    "http://localhost:3000",
+    "http://localhost:3100",
+    "http://localhost:3200",
+    "http://localhost:3500",
+    "http://localhost:3600"
+  ];
 }
 
 function normalizeComparableText(value) {

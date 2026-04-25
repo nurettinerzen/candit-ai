@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -241,7 +242,14 @@ export default function ApplicationsPage() {
           </button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 18 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: 10,
+            marginBottom: 18
+          }}
+        >
           {CARDS.map((card) => {
             const isActive = activeCard === card.key;
             const count = cardCounts[card.key];
@@ -330,7 +338,47 @@ export default function ApplicationsPage() {
           />
         ) : null}
         {!loading && !error && prioritizedApplications.length === 0 ? (
-          <EmptyState message={t("Filtreye uygun başvuru bulunamadı.")} />
+          <EmptyState
+            message={
+              !jobFilter && !stageFilter && activeCard === "all"
+                ? jobs.length === 0
+                  ? t("Henüz ilan yok. Önce bir ilan açın, sonra adayları bu kuyruğa bağlayın.")
+                  : candidates.length === 0
+                    ? t("Henüz aday yok. Önce aday ekleyin, sonra ilk başvuruyu açın.")
+                    : t("Henüz başvuru yok. Bir aday ile ilanı eşleştirip AI akışını başlatın.")
+                : t("Filtreye uygun başvuru bulunamadı.")
+            }
+            actions={
+              !jobFilter && !stageFilter && activeCard === "all" ? (
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                  {jobs.length === 0 ? (
+                    <Link href="/jobs/new" className="button-link">
+                      {t("Ilk Ilani Hazirla")}
+                    </Link>
+                  ) : null}
+                  {candidates.length === 0 ? (
+                    <Link href="/candidates/new" className="button-link">
+                      {t("Ilk Adayi Ekle")}
+                    </Link>
+                  ) : null}
+                  {jobs.length > 0 && candidates.length > 0 ? (
+                    <button
+                      type="button"
+                      className="button-link"
+                      onClick={() => {
+                        const createForm = document.querySelector(
+                          ".create-application-grid select"
+                        ) as HTMLSelectElement | null;
+                        createForm?.focus();
+                      }}
+                    >
+                      {t("Ilk Basvuruyu Ac")}
+                    </button>
+                  ) : null}
+                </div>
+              ) : undefined
+            }
+          />
         ) : null}
         {!loading && !error && prioritizedApplications.length > 0 ? (
           <div className="table-responsive">

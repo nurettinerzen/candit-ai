@@ -15,6 +15,7 @@
     "launch:verify:runtime": "node scripts/pilot-smoke.mjs",
     "launch:verify:runtime:strict": "CANDIT_SMOKE_STRICT=1 node scripts/pilot-smoke.mjs",
     "launch:verify:analysis": "node scripts/analysis-smoke.mjs",
+    "launch:verify:operational": "node scripts/operational-proof.mjs",
     "smoke:pilot": "node scripts/pilot-smoke.mjs",
     "smoke:analysis": "node scripts/analysis-smoke.mjs",
     "smoke:billing": "corepack pnpm --filter @ai-interviewer/api smoke:billing",

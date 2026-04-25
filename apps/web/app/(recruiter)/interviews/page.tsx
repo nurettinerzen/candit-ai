@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageTitleWithGuide } from "../../../components/page-guide";
@@ -134,7 +135,13 @@ export default function InterviewsPage() {
 
       {/* Filter Cards */}
       {!loading && !error && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: 10
+          }}
+        >
           {STAT_CARDS.map((card) => {
             const isActive = activeTab === card.key;
             const count = countForCard(card.key);
@@ -186,7 +193,20 @@ export default function InterviewsPage() {
       ) : null}
       {!loading && !error && sessions.length === 0 ? (
         <section className="panel">
-          <EmptyState message={t("Bu filtreye uygun mülakat oturumu bulunamadı.")} />
+          <EmptyState
+            message={
+              activeTab === "TUMU"
+                ? t("Henüz mülakat oturumu yok. İlk görüşmeyi planladığınızda aday oturumlarını burada izlersiniz.")
+                : t("Bu filtreye uygun mülakat oturumu bulunamadı.")
+            }
+            actions={
+              activeTab === "TUMU" ? (
+                <Link href="/applications" className="ghost-button" style={{ textDecoration: "none" }}>
+                  {t("Basvurulara Git")}
+                </Link>
+              ) : undefined
+            }
+          />
         </section>
       ) : null}
 
