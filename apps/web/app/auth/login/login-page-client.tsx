@@ -151,6 +151,7 @@ function LoginPageContent() {
             onChange={(event) => setEmail(event.target.value)}
             type="email"
             autoComplete="email"
+            name="email"
             required
             style={inputStyle}
           />
@@ -161,6 +162,7 @@ function LoginPageContent() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           autoComplete="current-password"
+          name="current-password"
           required
           inputStyle={inputStyle}
         />
