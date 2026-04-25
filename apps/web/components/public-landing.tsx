@@ -507,7 +507,7 @@ export function PublicLanding() {
 
       <header className="marketing-nav-shell">
         <div className="marketing-shell marketing-nav">
-          <Link href="/landing" className="marketing-brand" aria-label="Candit.ai landing sayfa">
+          <Link href="/landing" className="marketing-brand" aria-label={t("Candit.ai landing sayfası")}>
             <span className="marketing-brand-mark">
               <img src="/brand/candit-mark.svg" alt="" aria-hidden="true" width="42" height="42" />
             </span>

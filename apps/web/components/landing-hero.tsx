@@ -47,7 +47,6 @@ export function LandingHero() {
       const tagline = root.querySelector(".lp-hero-tagline");
       const heroBottom = root.querySelector(".lp-hero-bottom");
       let ticking = false;
-      let revealed = false;
 
       function updateHero() {
         const scrolled = window.scrollY;
@@ -60,13 +59,8 @@ export function LandingHero() {
 
           line.classList.toggle("lp-active", scrolled >= (thresholds[i] ?? 0));
         }
-        if (scrolled >= 300) {
-          tagline?.classList.add("lp-active");
-          if (!revealed) { revealed = true; heroBottom?.classList.add("lp-visible"); }
-        } else if (scrolled < 260) {
-          tagline?.classList.remove("lp-active");
-          if (revealed) { revealed = false; heroBottom?.classList.remove("lp-visible"); }
-        }
+        tagline?.classList.add("lp-active");
+        heroBottom?.classList.add("lp-visible");
         ticking = false;
       }
 

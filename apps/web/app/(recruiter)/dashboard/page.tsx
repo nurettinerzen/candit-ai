@@ -274,51 +274,51 @@ export default function RecruiterOverviewPage() {
     const steps = [
       {
         key: "job",
-        label: locale === "en" ? "Publish the first job" : "Ilk ilani yayinla",
+        label: locale === "en" ? "Publish the first job" : "İlk ilanı yayınla",
         helper:
           locale === "en"
             ? "Create or publish a live role so the hiring flow has a real starting point."
-            : "Aday akisinin baslamasi icin once canli bir pozisyon acin.",
+            : "Aday akışının başlaması için önce canlı bir pozisyon açın.",
         href: "/jobs" as const,
         done: (data?.kpis.publishedJobs ?? 0) > 0
       },
       {
         key: "candidate",
-        label: locale === "en" ? "Add the first candidate" : "Ilk adayi ekle",
+        label: locale === "en" ? "Add the first candidate" : "İlk adayı ekle",
         helper:
           locale === "en"
             ? "Bring in one test or real candidate and verify profile visibility."
-            : "Bir test veya gercek aday ekleyip profil gorunurlugunu dogrulayin.",
+            : "Bir test veya gerçek aday ekleyip profil görünürlüğünü doğrulayın.",
         href: "/candidates" as const,
         done: (data?.kpis.totalCandidates ?? 0) > 0
       },
       {
         key: "application",
-        label: locale === "en" ? "Open the first application" : "Ilk basvuruyu ac",
+        label: locale === "en" ? "Open the first application" : "İlk başvuruyu aç",
         helper:
           locale === "en"
             ? "Connect the candidate to a job so AI screening and review can start."
-            : "AI screening ve review akisinin baslamasi icin adayi ilana baglayin.",
+            : "AI screening ve review akışının başlaması için adayı ilana bağlayın.",
         href: "/applications" as const,
         done: applications.length > 0
       },
       {
         key: "interview",
-        label: locale === "en" ? "Schedule the first AI interview" : "Ilk AI mulakatini planla",
+        label: locale === "en" ? "Schedule the first AI interview" : "İlk AI mülakatını planla",
         helper:
           locale === "en"
             ? "Create one interview session and check the candidate-facing experience."
-            : "Bir mulakat oturumu olusturup aday deneyimini test edin.",
+            : "Bir mülakat oturumu oluşturup aday deneyimini test edin.",
         href: "/interviews" as const,
         done: interviews.length > 0
       },
       {
         key: "report",
-        label: locale === "en" ? "Review the first AI report" : "Ilk AI raporunu incele",
+        label: locale === "en" ? "Review the first AI report" : "İlk AI raporunu incele",
         helper:
           locale === "en"
             ? "Confirm the report, recommendation, and recruiter decision loop is understandable."
-            : "Rapor, recommendation ve recruiter karar dongusunun anlasilir oldugunu dogrulayin.",
+            : "Rapor, recommendation ve recruiter karar döngüsünün anlaşılır olduğunu doğrulayın.",
         href: "/reports" as const,
         done: applications.some(
           (application) => application.ai.hasReport || Boolean(application.ai.latestRecommendation)
@@ -387,12 +387,10 @@ export default function RecruiterOverviewPage() {
               >
                 <div>
                   <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>
-                    {locale === "en" ? "First Run Checklist" : "Ilk Kurulum Kontrol Listesi"}
+                    {t("İlk Kurulum Kontrol Listesi")}
                   </h3>
                   <p className="small" style={{ margin: 0, color: "var(--text-dim)" }}>
-                    {locale === "en"
-                      ? "A new recruiter should be able to move from zero to first report without asking for help."
-                      : "Yeni bir recruiter yardim istemeden ilk rapora kadar bu sirayla ilerleyebilmelidir."}
+                    {t("Yeni bir recruiter yardım istemeden ilk rapora kadar bu sırayla ilerleyebilmelidir.")}
                   </p>
                 </div>
                 <span
@@ -458,7 +456,7 @@ export default function RecruiterOverviewPage() {
                           color: step.done ? "var(--success, #22c55e)" : "var(--text-dim)"
                         }}
                       >
-                        {step.done ? (locale === "en" ? "Done" : "Tamam") : (locale === "en" ? "Open" : "Acik")}
+                        {step.done ? (locale === "en" ? "Done" : "Tamam") : (locale === "en" ? "Open" : "Açık")}
                       </span>
                     </div>
                     <p className="small" style={{ margin: 0, color: "var(--text-dim)" }}>
@@ -525,13 +523,13 @@ export default function RecruiterOverviewPage() {
                 <EmptyState
                   message={
                     shouldShowOnboarding
-                      ? t("Siradaki ilk kurulum adimini tamamlayarak aksiyon listesini doldurabilirsiniz.")
+                      ? t("Sıradaki ilk kurulum adımını tamamlayarak aksiyon listesini doldurabilirsiniz.")
                       : t("Şu anda öne çıkan aksiyon bulunmuyor.")
                   }
                   actions={
                     shouldShowOnboarding ? (
                       <Link href={onboardingSteps.find((step) => !step.done)?.href ?? "/jobs"} className="ghost-button">
-                        {locale === "en" ? "Open next step" : "Siradaki adimi ac"}
+                        {locale === "en" ? "Open next step" : "Sıradaki adımı aç"}
                       </Link>
                     ) : undefined
                   }
@@ -602,13 +600,13 @@ export default function RecruiterOverviewPage() {
                 <EmptyState
                   message={
                     shouldShowOnboarding
-                      ? t("Ilk AI mulakatini planladiginizda burada aday oturumlarini goreceksiniz.")
+                      ? t("İlk AI mülakatını planladığınızda burada aday oturumlarını göreceksiniz.")
                       : t("Yaklaşan planlı görüşme bulunmuyor.")
                   }
                   actions={
                     shouldShowOnboarding ? (
                       <Link href="/interviews" className="ghost-button" style={{ fontSize: 12 }}>
-                        {locale === "en" ? "Plan first interview" : "Ilk mulakati planla"}
+                        {t("İlk mülakatı planla")}
                       </Link>
                     ) : undefined
                   }
@@ -689,13 +687,13 @@ export default function RecruiterOverviewPage() {
               <EmptyState
                 message={
                   shouldShowOnboarding
-                    ? t("Basvuru akisi basladiginda, recruiter karari gerektiren adaylar burada listelenecek.")
+                    ? t("Başvuru akışı başladığında, recruiter kararı gerektiren adaylar burada listelenecek.")
                     : t("Şu anda aksiyon gerektiren başvuru bulunmuyor.")
                 }
                 actions={
                   shouldShowOnboarding ? (
                     <Link href="/applications" className="ghost-button" style={{ fontSize: 12 }}>
-                      {locale === "en" ? "Open applications" : "Basvurulara git"}
+                      {locale === "en" ? "Open applications" : "Başvurulara git"}
                     </Link>
                   ) : undefined
                 }

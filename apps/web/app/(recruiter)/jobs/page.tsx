@@ -270,14 +270,14 @@ export default function JobsPage() {
           <EmptyState
             message={
               jobs.length === 0 && !statusFilter
-                ? t("Henüz ilan yok. Ilk ilani hazirlayip yayina aldiginizda aday akisiniz burada baslar.")
+                ? t("Henüz ilan yok. İlk ilanı hazırlayıp yayına aldığınızda aday akışınız burada başlar.")
                 : t("Bu filtreye uygun ilan bulunamadı.")
             }
             actions={
               jobs.length === 0 && !statusFilter && canCreateJob ? (
                 <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                   <Link href="/jobs/new" className="button-link">
-                    {t("Ilk Ilani Hazirla")}
+                    {t("İlk İlanı Hazırla")}
                   </Link>
                   <Link href={"/subscription" as Route} className="ghost-button" style={{ textDecoration: "none" }}>
                     {t("Paket ve Kotalar")}

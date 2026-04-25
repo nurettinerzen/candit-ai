@@ -553,7 +553,7 @@ export default function InternalAdminEnterprisePage() {
             </div>
             <div className="modal-footer">
               <button type="button" className="ghost-button" onClick={() => setShowModal(false)}>
-                {locale === "en" ? "Cancel" : "Iptal"}
+                {locale === "en" ? "Cancel" : "İptal"}
               </button>
               <button type="button" className="btn-primary-sm" onClick={() => void handleCreateEnterpriseCustomer()} disabled={busy !== "" || Boolean(enterpriseFormError)}>
                 {busy === "create" ? copy.creating : copy.create}

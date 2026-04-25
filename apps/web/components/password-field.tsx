@@ -70,7 +70,7 @@ export function PasswordField({
   return (
     <label style={{ display: "grid", gap: hasLabel ? (helperText ? 6 : 8) : helperText ? 6 : 0, ...containerStyle }}>
       {hasLabel ? (
-        <span style={{ color: "#cbd5e1", fontSize: 14, ...labelStyle }}>{label}</span>
+        <span style={{ color: "var(--text-secondary)", fontSize: 14, ...labelStyle }}>{label}</span>
       ) : null}
       <div style={fieldWrapperStyle}>
         <input
@@ -146,7 +146,7 @@ export function PasswordRequirements({ password, style }: PasswordRequirementsPr
             gap: 8,
             fontSize: 12,
             lineHeight: 1.5,
-            color: requirement.isMet ? "#86efac" : "#94a3b8"
+            color: requirement.isMet ? "var(--success-text)" : "var(--text-dim)"
           }}
         >
           <span
@@ -156,7 +156,7 @@ export function PasswordRequirements({ password, style }: PasswordRequirementsPr
               height: 6,
               borderRadius: 999,
               flexShrink: 0,
-              background: requirement.isMet ? "#22c55e" : "rgba(148,163,184,0.7)"
+              background: requirement.isMet ? "var(--success)" : "color-mix(in srgb, var(--text-dim) 70%, transparent)"
             }}
           />
           <span>{requirement.label}</span>
@@ -213,9 +213,9 @@ const fieldWrapperStyle: CSSProperties = {
 const defaultInputStyle: CSSProperties = {
   width: "100%",
   borderRadius: 16,
-  border: "1px solid rgba(148,163,184,0.18)",
-  background: "rgba(15,23,42,0.9)",
-  color: "#f8fafc",
+  border: "1px solid var(--border)",
+  background: "var(--surface-raised)",
+  color: "var(--text)",
   padding: "14px 16px",
   fontSize: 15,
   outline: "none",
@@ -235,13 +235,13 @@ const toggleButtonStyle: CSSProperties = {
   border: "none",
   borderRadius: 999,
   background: "transparent",
-  color: "#94a3b8",
+  color: "var(--text-dim)",
   cursor: "pointer",
   padding: 0
 };
 
 const helperTextStyle: CSSProperties = {
-  color: "#94a3b8",
+  color: "var(--text-dim)",
   fontSize: 12,
   lineHeight: 1.5
 };

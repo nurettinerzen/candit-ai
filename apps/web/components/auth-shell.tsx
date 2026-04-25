@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { useTheme } from "./theme-provider";
 
 type AuthShellProps = {
   title: string;
@@ -12,6 +13,9 @@ type AuthShellProps = {
 };
 
 export function AuthShell({ title, description, children, footer, badge }: AuthShellProps) {
+  const { resolved } = useTheme();
+  const dark = resolved === "dark";
+
   return (
     <main
       style={{
@@ -20,7 +24,9 @@ export function AuthShell({ title, description, children, footer, badge }: AuthS
         alignItems: "center",
         justifyContent: "center",
         background:
-          "radial-gradient(circle at top left, rgba(80,70,229,0.18), transparent 34%), radial-gradient(circle at top right, rgba(124,58,237,0.14), transparent 28%), linear-gradient(180deg, #07111f 0%, #0f172a 100%)",
+          dark
+            ? "radial-gradient(circle at top left, rgba(80,70,229,0.18), transparent 34%), radial-gradient(circle at top right, rgba(124,58,237,0.14), transparent 28%), linear-gradient(180deg, #07111f 0%, #0f172a 100%)"
+            : "radial-gradient(circle at top left, rgba(80,70,229,0.12), transparent 34%), radial-gradient(circle at top right, rgba(124,58,237,0.1), transparent 28%), linear-gradient(180deg, #f8f9fb 0%, #eef2ff 100%)",
         padding: 24
       }}
     >
@@ -33,7 +39,7 @@ export function AuthShell({ title, description, children, footer, badge }: AuthS
               alignItems: "center",
               gap: 12,
               textDecoration: "none",
-              color: "#f8fafc"
+              color: "var(--text)"
             }}
           >
             <span
@@ -58,18 +64,20 @@ export function AuthShell({ title, description, children, footer, badge }: AuthS
         <section
           style={{
             borderRadius: 28,
-            border: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(15,23,42,0.88)",
-            boxShadow: "0 32px 80px rgba(2,6,23,0.45)",
+            border: "1px solid var(--border)",
+            background: dark ? "rgba(15,23,42,0.88)" : "rgba(255,255,255,0.9)",
+            boxShadow: dark ? "0 32px 80px rgba(2,6,23,0.45)" : "0 24px 64px rgba(15,23,42,0.12)",
             overflow: "hidden"
           }}
         >
           <div
             style={{
               padding: "28px 28px 18px",
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              borderBottom: "1px solid var(--border)",
               background:
-                "linear-gradient(135deg, rgba(80,70,229,0.18), rgba(124,58,237,0.12))"
+                dark
+                  ? "linear-gradient(135deg, rgba(80,70,229,0.18), rgba(124,58,237,0.12))"
+                  : "linear-gradient(135deg, rgba(80,70,229,0.1), rgba(124,58,237,0.08))"
             }}
           >
             {badge ? (
@@ -84,16 +92,16 @@ export function AuthShell({ title, description, children, footer, badge }: AuthS
                   fontWeight: 700,
                   letterSpacing: "0.01em",
                   textTransform: "none" as const,
-                  color: "#c4b5fd",
-                  background: "rgba(2,6,23,0.32)",
+                  color: "var(--primary)",
+                  background: dark ? "rgba(2,6,23,0.32)" : "rgba(80,70,229,0.08)",
                   marginBottom: 14
                 }}
               >
                 {badge}
               </div>
             ) : null}
-            <h1 style={{ margin: 0, color: "#f8fafc", fontSize: 30, lineHeight: 1.1 }}>{title}</h1>
-            <p style={{ margin: "10px 0 0", color: "rgba(226,232,240,0.78)", lineHeight: 1.6 }}>
+            <h1 style={{ margin: 0, color: "var(--text)", fontSize: 30, lineHeight: 1.1 }}>{title}</h1>
+            <p style={{ margin: "10px 0 0", color: "var(--text-secondary)", lineHeight: 1.6 }}>
               {description}
             </p>
           </div>
@@ -104,7 +112,7 @@ export function AuthShell({ title, description, children, footer, badge }: AuthS
             <div
               style={{
                 padding: "0 28px 24px",
-                color: "rgba(148,163,184,0.92)",
+                color: "var(--text-secondary)",
                 fontSize: 14
               }}
             >
@@ -127,20 +135,20 @@ export function AuthNotice({
   const palette =
     tone === "danger"
       ? {
-          color: "#fecaca",
-          border: "rgba(239,68,68,0.28)",
-          background: "rgba(127,29,29,0.28)"
+          color: "var(--risk-text)",
+          border: "var(--risk-border)",
+          background: "var(--risk-light)"
         }
       : tone === "success"
         ? {
-            color: "#bbf7d0",
-            border: "rgba(34,197,94,0.24)",
-            background: "rgba(20,83,45,0.28)"
+            color: "var(--success-text)",
+            border: "var(--success-border)",
+            background: "var(--success-light)"
           }
         : {
-            color: "#c4b5fd",
-            border: "rgba(80,70,229,0.24)",
-            background: "rgba(49,46,129,0.28)"
+            color: "var(--primary)",
+            border: "var(--primary-border)",
+            background: "var(--primary-light)"
           };
 
   return (

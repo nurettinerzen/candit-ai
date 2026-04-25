@@ -1153,14 +1153,14 @@ export function PublicPricingPage() {
               marginBottom: 24,
               padding: "18px 20px",
               borderRadius: 24,
-              border: "1px solid rgba(148, 163, 184, 0.22)",
-              background: "rgba(15, 23, 42, 0.72)",
+              border: "1px solid var(--border)",
+              background: "color-mix(in srgb, var(--surface-raised) 84%, transparent)",
               display: "grid",
               gap: 8
             }}
           >
-            <strong style={{ color: "#f8fafc", fontSize: 16 }}>{pricingPilotNoticeTitle}</strong>
-            <p style={{ margin: 0, color: "#cbd5e1", lineHeight: 1.6 }}>{pricingPilotNoticeBody}</p>
+            <strong style={{ color: "var(--text)", fontSize: 16 }}>{pricingPilotNoticeTitle}</strong>
+            <p style={{ margin: 0, color: "var(--text-secondary)", lineHeight: 1.6 }}>{pricingPilotNoticeBody}</p>
           </div>
 
           <div className={styles.prCardsGrid}>
@@ -1248,9 +1248,9 @@ export function PublicPricingPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Sık Sorulan Sorular"
-            title="Fiyatlandırma hakkında merak edilenler"
-            subtitle="Karar vermeden önce en sık gelen sorulara göz atın."
+            eyebrow={t("Sık Sorulan Sorular")}
+            title={t("Fiyatlandırma hakkında merak edilenler")}
+            subtitle={t("Karar vermeden önce en sık gelen sorulara göz atın.")}
             align="center"
           />
           <FAQBlock items={PUBLIC_FAQ} />
@@ -1277,9 +1277,9 @@ export function PublicBlogIndexPage() {
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Candit Blog"
-            title="AI destekli işe alım hakkında en son yazılar"
-            subtitle="Sektör trendleri, en iyi uygulamalar ve AI ile işe alım süreçlerinizi nasıl optimize edeceğinizi keşfedin."
+            eyebrow={t("Candit Blog")}
+            title={t("AI destekli işe alım hakkında en son yazılar")}
+            subtitle={t("Sektör trendleri, en iyi uygulamalar ve AI ile işe alım süreçlerinizi nasıl optimize edeceğinizi keşfedin.")}
             align="center"
           />
         </div>
@@ -1378,9 +1378,9 @@ export function PublicBlogArticlePage({ slug }: { slug: string }) {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="İlgili Yazılar"
-            title="Bunları da okumak isteyebilirsiniz"
-            subtitle="AI destekli işe alım ve sektör trendleri hakkında ilgili yazılar."
+            eyebrow={t("İlgili Yazılar")}
+            title={t("Bunları da okumak isteyebilirsiniz")}
+            subtitle={t("AI destekli işe alım ve sektör trendleri hakkında ilgili yazılar.")}
           />
           <div className={styles.articleGrid}>
             {relatedArticles.map((relatedArticle) => (
@@ -1391,22 +1391,23 @@ export function PublicBlogArticlePage({ slug }: { slug: string }) {
       </section>
 
       <CTASection
-        title="AI ile işe alım sürecinizi dönüştürmeye hazır mısınız?"
-        body="Platformumuzu ücretsiz deneyin ve farkı kendiniz görün."
+        title={t("AI ile işe alım sürecinizi dönüştürmeye hazır mısınız?")}
+        body={t("Platformumuzu ücretsiz deneyin ve farkı kendiniz görün.")}
       />
     </PublicSiteFrame>
   );
 }
 
 export function PublicHelpPage() {
+  const { t } = useUiText();
   return (
     <PublicSiteFrame>
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Yardım Merkezi"
-            title="Candit ile hızlı başlangıç rehberi"
-            subtitle="Platform kurulumundan ileri düzey kullanıma kadar ihtiyacınız olan tüm bilgiler burada."
+            eyebrow={t("Yardım Merkezi")}
+            title={t("Candit ile hızlı başlangıç rehberi")}
+            subtitle={t("Platform kurulumundan ileri düzey kullanıma kadar ihtiyacınız olan tüm bilgiler burada.")}
             align="center"
           />
         </div>
@@ -1415,8 +1416,8 @@ export function PublicHelpPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Hızlı Başlangıç"
-            title="Dakikalar içinde ilk mülakatınızı oluşturun"
+            eyebrow={t("Hızlı Başlangıç")}
+            title={t("Dakikalar içinde ilk mülakatınızı oluşturun")}
           />
           <StepsGrid steps={PUBLIC_HELP_QUICKSTART} />
         </div>
@@ -1425,8 +1426,8 @@ export function PublicHelpPage() {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Popüler Konular"
-            title="Sık kullanılan konular"
+            eyebrow={t("Popüler Konular")}
+            title={t("Sık kullanılan konular")}
           />
           <CardGrid cards={PUBLIC_HELP_TOPICS} columns={4} />
         </div>
@@ -1434,28 +1435,29 @@ export function PublicHelpPage() {
 
       <section className={styles.section}>
         <div className={styles.shell}>
-          <SectionHeader eyebrow="SSS" title="Başka sorunuz mu var?" />
+          <SectionHeader eyebrow={t("SSS")} title={t("Başka sorunuz mu var?")} />
           <FAQBlock items={PUBLIC_FAQ} />
         </div>
       </section>
 
       <CTASection
-        title="Aradığınızı bulamadınız mı?"
-        body="Ekibimize doğrudan ulaşın, size en kısa sürede yardımcı olalım."
+        title={t("Aradığınızı bulamadınız mı?")}
+        body={t("Ekibimize doğrudan ulaşın, size en kısa sürede yardımcı olalım.")}
       />
     </PublicSiteFrame>
   );
 }
 
 export function PublicIntegrationsPage() {
+  const { t } = useUiText();
   return (
     <PublicSiteFrame>
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Entegrasyonlar"
-            title="Candit'i mevcut işe alım akışınıza kontrollü şekilde bağlayın"
-            subtitle="Pilot aşamasında API, webhook ve sınırlı ATS senaryolarıyla ilerliyoruz. Takvim ve Google bağlantıları yalnızca bilinçli olarak açıldığında devreye alınır."
+            eyebrow={t("Entegrasyonlar")}
+            title={t("Candit'i mevcut işe alım akışınıza kontrollü şekilde bağlayın")}
+            subtitle={t("Pilot aşamasında API, webhook ve sınırlı ATS senaryolarıyla ilerliyoruz. Takvim ve Google bağlantıları yalnızca bilinçli olarak açıldığında devreye alınır.")}
             align="center"
           />
         </div>
@@ -1464,23 +1466,23 @@ export function PublicIntegrationsPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Bugün Hazır"
-            title="İlk günden değer üreten entegrasyon yüzeyleri"
+            eyebrow={t("Bugün Hazır")}
+            title={t("İlk günden değer üreten entegrasyon yüzeyleri")}
           />
           <CardGrid
             columns={3}
             cards={[
               {
-                title: "REST API erişimi",
-                body: "Aday oluşturma, süreç güncelleme ve recruiter operasyonları için kontrollü API senaryoları ile başlayabilirsiniz."
+                title: t("REST API erişimi"),
+                body: t("Aday oluşturma, süreç güncelleme ve recruiter operasyonları için kontrollü API senaryoları ile başlayabilirsiniz.")
               },
               {
-                title: "Webhook akışları",
-                body: "Başvuru, mülakat ve karar olaylarını dış sistemlere taşımak için desteklenen webhook senaryolarını kullanabilirsiniz."
+                title: t("Webhook akışları"),
+                body: t("Başvuru, mülakat ve karar olaylarını dış sistemlere taşımak için desteklenen webhook senaryolarını kullanabilirsiniz.")
               },
               {
-                title: "Pilot onboarding",
-                body: "Alan eşleme, retry davranışı ve operasyon sahipliği gibi kritik kararları teknik ekip ile birlikte netleştiriyoruz."
+                title: t("Pilot onboarding"),
+                body: t("Alan eşleme, retry davranışı ve operasyon sahipliği gibi kritik kararları teknik ekip ile birlikte netleştiriyoruz.")
               }
             ]}
           />
@@ -1490,23 +1492,23 @@ export function PublicIntegrationsPage() {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Launch Sınırı"
-            title="Hangi entegrasyonlar kontrollü açılıyor?"
+            eyebrow={t("Launch Sınırı")}
+            title={t("Hangi entegrasyonlar kontrollü açılıyor?")}
           />
           <CardGrid
             columns={3}
             cards={[
               {
-                title: "Hazır senaryolar",
-                body: "API dokümantasyonu, webhook olayları ve temel ATS veri senkronizasyonu pilot aşamada planlanabilir."
+                title: t("Hazır senaryolar"),
+                body: t("API dokümantasyonu, webhook olayları ve temel ATS veri senkronizasyonu pilot aşamada planlanabilir.")
               },
               {
-                title: "Setup ile açılanlar",
-                body: "Google login, Google Calendar ve Google Meet yalnızca explicit enable ve doğru OAuth kurulumu tamamlandıktan sonra devreye alınır."
+                title: t("Setup ile açılanlar"),
+                body: t("Google login, Google Calendar ve Google Meet yalnızca explicit enable ve doğru OAuth kurulumu tamamlandıktan sonra devreye alınır.")
               },
               {
-                title: "V1 dışı alanlar",
-                body: "Self-serve marketplace bağlantıları, tek tık third-party onboarding ve desteklenmeyen takvim sağlayıcıları bu launch kapsamına dahil değil."
+                title: t("V1 dışı alanlar"),
+                body: t("Self-serve marketplace bağlantıları, tek tık third-party onboarding ve desteklenmeyen takvim sağlayıcıları bu launch kapsamına dahil değil.")
               }
             ]}
           />
@@ -1514,10 +1516,10 @@ export function PublicIntegrationsPage() {
       </section>
 
       <CTASection
-        title="Entegrasyon planınızı birlikte netleştirelim"
-        body="Mevcut ATS, webhook veya raporlama ihtiyacınızı paylaşın; ekibimiz sizin için uygun pilot kapsamını birlikte belirlesin."
-        primary={{ label: "İletişime geçin", href: "/contact" }}
-        secondary={{ label: "API dokümantasyonu", href: "/docs/api", tone: "secondary" }}
+        title={t("Entegrasyon planınızı birlikte netleştirelim")}
+        body={t("Mevcut ATS, webhook veya raporlama ihtiyacınızı paylaşın; ekibimiz sizin için uygun pilot kapsamını birlikte belirlesin.")}
+        primary={{ label: t("İletişime geçin"), href: "/contact" }}
+        secondary={{ label: t("API dokümantasyonu"), href: "/docs/api", tone: "secondary" }}
       />
     </PublicSiteFrame>
   );
@@ -1567,22 +1569,23 @@ export function PublicDocsApiPage() {
       </section>
 
       <CTASection
-        title="API kullanımı hakkında destek mi gerekiyor?"
-        body="Teknik ekibimiz API erişimi ve webhook akışı konusunda size yardımcı olmaya hazır."
+        title={t("API kullanımı hakkında destek mi gerekiyor?")}
+        body={t("Teknik ekibimiz API erişimi ve webhook akışı konusunda size yardımcı olmaya hazır.")}
       />
     </PublicSiteFrame>
   );
 }
 
 export function PublicSecurityPage() {
+  const { t } = useUiText();
   return (
     <PublicSiteFrame>
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Verileriniz Güvende"
-            title="Kurumsal düzeyde veri güvenliği"
-            subtitle="Erişim, denetim izi ve veri yönetişimi kontrollerini kademeli olarak güçlendiren bir güvenlik yaklaşımı benimsiyoruz."
+            eyebrow={t("Verileriniz Güvende")}
+            title={t("Kurumsal düzeyde veri güvenliği")}
+            subtitle={t("Erişim, denetim izi ve veri yönetişimi kontrollerini kademeli olarak güçlendiren bir güvenlik yaklaşımı benimsiyoruz.")}
             align="center"
           />
         </div>
@@ -1595,25 +1598,26 @@ export function PublicSecurityPage() {
       </section>
 
       <CTASection
-        title="Güvenlik hakkında sorularınız mı var?"
-        body="Veri güvenliği ve uyumluluk konusundaki sorularınızı yanıtlamaktan memnuniyet duyarız."
-        primary={{ label: "İletişime geçin", href: "/contact" }}
-        secondary={{ label: "Ücretsiz deneme", href: "/auth/signup", tone: "secondary" }}
+        title={t("Güvenlik hakkında sorularınız mı var?")}
+        body={t("Veri güvenliği ve uyumluluk konusundaki sorularınızı yanıtlamaktan memnuniyet duyarız.")}
+        primary={{ label: t("İletişime geçin"), href: "/contact" }}
+        secondary={{ label: t("Ücretsiz deneme"), href: "/auth/signup", tone: "secondary" }}
       />
     </PublicSiteFrame>
   );
 }
 
 export function PublicAboutPage() {
+  const { t } = useUiText();
   return (
     <PublicSiteFrame>
       {/* ═══ Hero ═══ */}
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Hakkımızda"
-            title="İşe alımı yapay zeka ile yeniden tanımlıyoruz"
-            subtitle="Her büyüklükteki şirketin en doğru adayı en hızlı şekilde bulabilmesi için AI destekli mülakat ve ön eleme çözümleri sunuyoruz."
+            eyebrow={t("Hakkımızda")}
+            title={t("İşe alımı yapay zeka ile yeniden tanımlıyoruz")}
+            subtitle={t("Her büyüklükteki şirketin en doğru adayı en hızlı şekilde bulabilmesi için AI destekli mülakat ve ön eleme çözümleri sunuyoruz.")}
             align="center"
           />
         </div>
@@ -1630,9 +1634,9 @@ export function PublicAboutPage() {
       <section className={styles.section}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Hikayemiz"
-            title="Nereden geldik, nereye gidiyoruz"
-            subtitle="İşe alım süreçlerindeki deneyim, yapay zeka ile birleşerek Candit'i ortaya çıkardı."
+            eyebrow={t("Hikayemiz")}
+            title={t("Nereden geldik, nereye gidiyoruz")}
+            subtitle={t("İşe alım süreçlerindeki deneyim, yapay zeka ile birleşerek Candit'i ortaya çıkardı.")}
             align="center"
           />
           <CardGrid cards={PUBLIC_ABOUT_STORY} columns={2} />
@@ -1643,9 +1647,9 @@ export function PublicAboutPage() {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Ekibimiz"
-            title="Küçük ama tutkulu bir ekip"
-            subtitle="Her ürün kararı, her özellik ve her iyileştirme İK ekiplerinin ve adayların ihtiyaçlarından hareketle geliştiriliyor."
+            eyebrow={t("Ekibimiz")}
+            title={t("Küçük ama tutkulu bir ekip")}
+            subtitle={t("Her ürün kararı, her özellik ve her iyileştirme İK ekiplerinin ve adayların ihtiyaçlarından hareketle geliştiriliyor.")}
             align="center"
           />
           <CardGrid cards={PUBLIC_TEAM} columns={3} />
@@ -1654,10 +1658,10 @@ export function PublicAboutPage() {
 
       {/* ═══ CTA ═══ */}
       <CTASection
-        title="Hikayemizin bir parçası olun"
-        body="İşe alım süreçlerinizi AI ile dönüştürerek en doğru adayları en hızlı şekilde bulun."
-        primary={{ label: "Ücretsiz deneme", href: "/auth/signup" }}
-        secondary={{ label: "İletişime geçin", href: "/contact", tone: "secondary" }}
+        title={t("Hikayemizin bir parçası olun")}
+        body={t("İşe alım süreçlerinizi AI ile dönüştürerek en doğru adayları en hızlı şekilde bulun.")}
+        primary={{ label: t("Ücretsiz deneme"), href: "/auth/signup" }}
+        secondary={{ label: t("İletişime geçin"), href: "/contact", tone: "secondary" }}
       />
     </PublicSiteFrame>
   );
@@ -1767,11 +1771,13 @@ export function PublicLegalPage({
   subtitle: string;
   sections: PublicLegalSection[];
 }) {
+  const { t } = useUiText();
+
   return (
     <PublicSiteFrame>
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
-          <SectionHeader eyebrow="Yasal" title={title} subtitle={subtitle} align="center" />
+          <SectionHeader eyebrow={t("Yasal")} title={title} subtitle={subtitle} align="center" />
         </div>
       </section>
 
@@ -1785,34 +1791,37 @@ export function PublicLegalPage({
 }
 
 export function PublicPrivacyPage() {
+  const { t } = useUiText();
   return (
     <PublicLegalPage
-      title="Gizlilik Politikası (Privacy Policy)"
-      subtitle="Kişisel verilerinizin nasıl toplandığını, kullanıldığını ve korunduğunu öğrenin."
+      title={t("Gizlilik Politikası")}
+      subtitle={t("Kişisel verilerinizin nasıl toplandığını, kullanıldığını ve korunduğunu öğrenin.")}
       sections={PUBLIC_PRIVACY_SECTIONS}
     />
   );
 }
 
 export function PublicTermsPage() {
+  const { t } = useUiText();
   return (
     <PublicLegalPage
-      title="Kullanım Koşulları (Terms of Service)"
-      subtitle="Platformumuzu kullanırken geçerli olan kurallar, sorumluluklar ve haklarınız."
+      title={t("Kullanım Koşulları")}
+      subtitle={t("Platformumuzu kullanırken geçerli olan kurallar, sorumluluklar ve haklarınız.")}
       sections={PUBLIC_TERMS_SECTIONS}
     />
   );
 }
 
 export function PublicChangelogPage() {
+  const { t } = useUiText();
   return (
     <PublicSiteFrame>
       <section className={styles.heroSectionSlim}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow="Neler Değişiyor?"
-            title="Ürün güncellemeleri ve yeni özellikler"
-            subtitle="Candit platformundaki son geliştirmeleri ve yeni özellikleri takip edin."
+            eyebrow={t("Neler değişiyor?")}
+            title={t("Ürün güncellemeleri ve yeni özellikler")}
+            subtitle={t("Candit platformundaki son geliştirmeleri ve yeni özellikleri takip edin.")}
             align="center"
           />
         </div>
@@ -1825,8 +1834,8 @@ export function PublicChangelogPage() {
       </section>
 
       <CTASection
-        title="Yeni özelliklerden ilk siz haberdar olun"
-        body="Hesap oluşturun ve platform güncellemelerini doğrudan takip edin."
+        title={t("Yeni özelliklerden ilk siz haberdar olun")}
+        body={t("Hesap oluşturun ve platform güncellemelerini doğrudan takip edin.")}
       />
     </PublicSiteFrame>
   );
@@ -1840,16 +1849,16 @@ export function PublicWaitlistPage() {
         <div className={cn(styles.shell, styles.contactLayout)}>
           <div>
             <SectionHeader
-              eyebrow="Ücretsiz deneme"
-              title="Bekleme listesi yerine doğrudan hesap oluşturun"
-              subtitle="Ücretsiz hesap oluşturun ve AI destekli işe alım platformunu hemen denemeye başlayın."
+              eyebrow={t("Ücretsiz deneme")}
+              title={t("Bekleme listesi yerine doğrudan hesap oluşturun")}
+              subtitle={t("Ücretsiz hesap oluşturun ve AI destekli işe alım platformunu hemen denemeye başlayın.")}
             />
             <StepsGrid
               steps={[
-                { step: "01", title: "Owner hesabı", body: "İlk çalışma alanınızı ve yönetici hesabınızı birkaç dakika içinde oluşturun." },
-                { step: "02", title: "Temel ayarlar", body: "Takım üyeleri, çalışma alanı ayarları ve ürün yapılandırmasını içeriden yönetin." },
-                { step: "03", title: "Pilot başlangıcı", body: "İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın." },
-                { step: "04", title: "Destek kanalı", body: "Ekibimiz kurulum ve onboarding sürecinde size yardımcı olmaya hazır." }
+                { step: "01", title: t("Owner hesabı"), body: t("İlk çalışma alanınızı ve yönetici hesabınızı birkaç dakika içinde oluşturun.") },
+                { step: "02", title: t("Temel ayarlar"), body: t("Takım üyeleri, çalışma alanı ayarları ve ürün yapılandırmasını içeriden yönetin.") },
+                { step: "03", title: t("Pilot başlangıcı"), body: t("İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın.") },
+                { step: "04", title: t("Destek kanalı"), body: t("Ekibimiz kurulum ve onboarding sürecinde size yardımcı olmaya hazır.") }
               ]}
             />
           </div>

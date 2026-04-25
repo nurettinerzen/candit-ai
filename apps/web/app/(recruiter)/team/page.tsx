@@ -369,10 +369,10 @@ export default function TeamPage() {
               {inviteBlockedReason
                 ? locale === "en"
                   ? "The seat limit is full. Open extra seats before sending a new invite."
-                  : "Kullanici kotasi dolu. Yeni davet gondermeden once ek koltuk acin."
+                  : "Kullanıcı kotası dolu. Yeni davet göndermeden önce ek koltuk açın."
                 : locale === "en"
                   ? "You are currently alone in this workspace. Invite one manager or staff member so a new company can test collaboration without asking for help."
-                  : "Su an bu calisma alaninda tek kisiniz. Disaridaki ekip yardim istemeden ortak akisi test edebilsin diye en az bir manager veya staff davet edin."}
+                  : "Şu an bu çalışma alanında tek kişisiniz. Dışarıdaki ekip yardım istemeden ortak akışı test edebilsin diye en az bir manager veya staff davet edin."}
             </p>
           </div>
 
@@ -393,7 +393,7 @@ export default function TeamPage() {
               {locale === "en" ? "Review seats and package" : "Koltuk ve paketleri kontrol et"}
             </Link>
             <Link href={"/settings" as Route} className="ghost-button">
-              {locale === "en" ? "Check owner settings" : "Hesap sahibi ayarlarini kontrol et"}
+              {locale === "en" ? "Check owner settings" : "Hesap sahibi ayarlarını kontrol et"}
             </Link>
           </div>
         </section>
@@ -509,7 +509,7 @@ export default function TeamPage() {
                   {locale === "en" ? "Open invite form" : "Davet formuna git"}
                 </button>
                 <Link href={"/subscription" as Route} className="ghost-button">
-                  {locale === "en" ? "Review seats" : "Koltuklari kontrol et"}
+                  {locale === "en" ? "Review seats" : "Koltukları kontrol et"}
                 </Link>
               </div>
             }

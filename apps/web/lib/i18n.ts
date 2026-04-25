@@ -1171,6 +1171,85 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
 });
 
 Object.assign(EN_PHRASE_TRANSLATIONS, {
+  Yasal: "Legal",
+  "Gizlilik Politikası": "Privacy Policy",
+  "Kullanım Koşulları": "Terms of Service",
+  "Neler değişiyor?": "What's changing?",
+  "Ürün güncellemeleri ve yeni özellikler": "Product updates and new features",
+  "Candit platformundaki son geliştirmeleri ve yeni özellikleri takip edin.":
+    "Follow the latest product improvements and new features on the Candit platform.",
+  "Yeni özelliklerden ilk siz haberdar olun": "Be the first to hear about new features",
+  "Hesap oluşturun ve platform güncellemelerini doğrudan takip edin.":
+    "Create an account and follow platform updates directly.",
+  "Ücretsiz deneme": "Free trial",
+  "Bekleme listesi yerine doğrudan hesap oluşturun": "Create an account directly instead of joining a waitlist",
+  "Ücretsiz hesap oluşturun ve AI destekli işe alım platformunu hemen denemeye başlayın.":
+    "Create a free account and start trying the AI-powered recruiting platform right away.",
+  "İlk çalışma alanınızı ve yönetici hesabınızı birkaç dakika içinde oluşturun.":
+    "Create your first workspace and admin account in just a few minutes.",
+  "Temel ayarlar": "Core setup",
+  "Takım üyeleri, çalışma alanı ayarları ve ürün yapılandırmasını içeriden yönetin.":
+    "Manage teammates, workspace settings, and product configuration from inside the platform.",
+  "Pilot başlangıcı": "Pilot kickoff",
+  "İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın.":
+    "Run the job, candidate, and interview flows with your real usage scenarios.",
+  "Destek kanalı": "Support channel",
+  "Ekibimiz kurulum ve onboarding sürecinde size yardımcı olmaya hazır.":
+    "Our team is ready to help you through setup and onboarding.",
+  "Daveti kabul et": "Accept the invitation",
+  "Hesabını etkinleştirmek için adını ve şifreni belirle.":
+    "Set your name and password to activate your account.",
+  "Hesap etkinleştiriliyor...": "Activating account...",
+  "Hesabı etkinleştir": "Activate account",
+  "Bu davet daha önce kullanılmış.": "This invitation has already been used.",
+  "Bu davet iptal edilmiş.": "This invitation has been revoked.",
+  "Bu davetin süresi dolmuş.": "This invitation has expired.",
+  "İlk ilanı yayınla": "Publish the first job",
+  "Aday akışının başlaması için önce canlı bir pozisyon açın.":
+    "Open a live role first so the candidate flow can begin.",
+  "İlk adayı ekle": "Add the first candidate",
+  "Bir test veya gerçek aday ekleyip profil görünürlüğünü doğrulayın.":
+    "Add a test or real candidate and verify profile visibility.",
+  "İlk başvuruyu aç": "Open the first application",
+  "AI screening ve review akışının başlaması için adayı ilana bağlayın.":
+    "Connect the candidate to a job so AI screening and review can start.",
+  "İlk AI mülakatını planla": "Schedule the first AI interview",
+  "Bir mülakat oturumu oluşturup aday deneyimini test edin.":
+    "Create an interview session and test the candidate experience.",
+  "İlk AI raporunu incele": "Review the first AI report",
+  "Rapor, recommendation ve recruiter karar döngüsünün anlaşılır olduğunu doğrulayın.":
+    "Confirm that the report, recommendation, and recruiter decision loop is understandable.",
+  "Başvuru akışı başladığında, recruiter kararı gerektiren adaylar burada listelenecek.":
+    "Candidates that need a recruiter decision will appear here once the application flow starts.",
+  "Başvurulara git": "Go to applications",
+  "Henüz aday yok. İlk adayı ekleyip başvuru akışını buradan takip edebilirsiniz.":
+    "There are no candidates yet. Add the first candidate and follow the application flow from here.",
+  "İlk Adayı Ekle": "Add the first candidate",
+  "İlk İlanı Kontrol Et": "Check the first job",
+  "Ekip erişimi": "Team access",
+  "En az bir ekip arkadaşı davet edin ve rol sınırlarını kontrol edin.":
+    "Invite at least one teammate and review role boundaries.",
+  "Pilot firma blokaja girmeden önce paket limitlerini gözden geçirin.":
+    "Review package limits before the pilot company hits a blocker.",
+  "AI varsayılanları": "AI defaults",
+  "Prompt, rubric ve provider hazırlığını tek yerden gözden geçirin.":
+    "Review prompts, rubrics, and provider readiness from one place.",
+  "Kullanıcı kotası dolu. Yeni davet göndermeden önce ek koltuk açın.":
+    "The user seat quota is full. Open extra seats before sending another invite.",
+  "Şu an bu çalışma alanında tek kişisiniz. Dışarıdaki ekip yardım istemeden ortak akışı test edebilsin diye en az bir manager veya staff davet edin.":
+    "You are currently the only person in this workspace. Invite at least one manager or staff member so the external team can test the shared flow without asking for help.",
+  "Başvuru oluşturuldu": "Application created",
+  "İlerletildi": "Advanced",
+  "Recruiter tarafından ilerletildi": "Advanced by recruiter",
+  "Recruiter tarafından reddedildi": "Rejected by recruiter",
+  "Manuel geçiş": "Manual transition",
+  "Ön eleme başlatıldı": "Screening started",
+  "Görüşmeye onaylandı": "Approved for interview",
+  "Görüşme daveti gönderildi": "Interview invitation sent",
+  "Görüşme tamamlandı": "Interview completed"
+});
+
+Object.assign(EN_PHRASE_TRANSLATIONS, {
   "\u26A0\uFE0F Katılmadı": "\u26A0\uFE0F No-show",
   "\u2705 İlerlet": "\u2705 Advance",
   "\u2705 Tamamlandı": "\u2705 Completed",
@@ -4629,4 +4708,106 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "The average confidence score the model assigns based on the evidence coverage when an AI report is generated.",
   "Tahmini kazanç; screening için 8 dk/başvuru, mülakat analizi için 18 dk/oturum ve planlama için 10 dk/oturum varsayımıyla hesaplanır.":
     "Estimated savings are calculated using the assumption of 8 minutes per application for screening, 18 minutes per session for interview analysis, and 10 minutes per session for scheduling."
+});
+
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  "Candit.ai landing sayfası": "Candit.ai landing page",
+  "Sık Sorulan Sorular": "Frequently asked questions",
+  "Fiyatlandırma hakkında merak edilenler": "Questions about pricing",
+  "Karar vermeden önce en sık gelen sorulara göz atın.": "Review the most common questions before you decide.",
+  "Candit Blog": "Candit Blog",
+  "AI destekli işe alım hakkında en son yazılar": "The latest articles on AI-powered hiring",
+  "Sektör trendleri, en iyi uygulamalar ve AI ile işe alım süreçlerinizi nasıl optimize edeceğinizi keşfedin.":
+    "Explore industry trends, best practices, and how to optimize your hiring workflows with AI.",
+  "İlgili Yazılar": "Related articles",
+  "Bunları da okumak isteyebilirsiniz": "You may also want to read these",
+  "AI destekli işe alım ve sektör trendleri hakkında ilgili yazılar.":
+    "Related articles about AI-powered hiring and industry trends.",
+  "AI ile işe alım sürecinizi dönüştürmeye hazır mısınız?":
+    "Ready to transform your hiring process with AI?",
+  "Platformumuzu ücretsiz deneyin ve farkı kendiniz görün.":
+    "Try the platform for free and see the difference for yourself.",
+  "Yardım Merkezi": "Help Center",
+  "Candit ile hızlı başlangıç rehberi": "Quick-start guide for Candit",
+  "Platform kurulumundan ileri düzey kullanıma kadar ihtiyacınız olan tüm bilgiler burada.":
+    "Everything you need, from platform setup to advanced usage, is here.",
+  "Hızlı Başlangıç": "Quick start",
+  "Dakikalar içinde ilk mülakatınızı oluşturun": "Create your first interview in minutes",
+  "Popüler Konular": "Popular topics",
+  "Sık kullanılan konular": "Frequently used topics",
+  SSS: "FAQ",
+  "Başka sorunuz mu var?": "Do you have another question?",
+  "Aradığınızı bulamadınız mı?": "Could not find what you were looking for?",
+  "Ekibimize doğrudan ulaşın, size en kısa sürede yardımcı olalım.":
+    "Reach out to our team directly and we will help you as soon as possible.",
+  Entegrasyonlar: "Integrations",
+  "Candit'i mevcut işe alım akışınıza kontrollü şekilde bağlayın":
+    "Connect Candit to your existing hiring workflow in a controlled way.",
+  "Pilot aşamasında API, webhook ve sınırlı ATS senaryolarıyla ilerliyoruz. Takvim ve Google bağlantıları yalnızca bilinçli olarak açıldığında devreye alınır.":
+    "During the pilot, we are progressing with API, webhook, and limited ATS scenarios. Calendar and Google connections are enabled only when they are intentionally turned on.",
+  "Bugün Hazır": "Ready today",
+  "İlk günden değer üreten entegrasyon yüzeyleri": "Integration surfaces that deliver value from day one",
+  "REST API erişimi": "REST API access",
+  "Aday oluşturma, süreç güncelleme ve recruiter operasyonları için kontrollü API senaryoları ile başlayabilirsiniz.":
+    "Start with controlled API scenarios for candidate creation, process updates, and recruiter operations.",
+  "Webhook akışları": "Webhook flows",
+  "Başvuru, mülakat ve karar olaylarını dış sistemlere taşımak için desteklenen webhook senaryolarını kullanabilirsiniz.":
+    "Use supported webhook scenarios to move application, interview, and decision events into external systems.",
+  "Pilot onboarding": "Pilot onboarding",
+  "Alan eşleme, retry davranışı ve operasyon sahipliği gibi kritik kararları teknik ekip ile birlikte netleştiriyoruz.":
+    "We clarify critical decisions such as field mapping, retry behavior, and operational ownership together with the technical team.",
+  "Launch Sınırı": "Launch boundary",
+  "Hangi entegrasyonlar kontrollü açılıyor?": "Which integrations are opened in a controlled way?",
+  "Hazır senaryolar": "Ready scenarios",
+  "API dokümantasyonu, webhook olayları ve temel ATS veri senkronizasyonu pilot aşamada planlanabilir.":
+    "API documentation, webhook events, and basic ATS data sync can be planned during the pilot.",
+  "Setup ile açılanlar": "Enabled with setup",
+  "Google login, Google Calendar ve Google Meet yalnızca explicit enable ve doğru OAuth kurulumu tamamlandıktan sonra devreye alınır.":
+    "Google login, Google Calendar, and Google Meet are enabled only after explicit enablement and a correct OAuth setup are complete.",
+  "V1 dışı alanlar": "Out-of-scope for V1",
+  "Self-serve marketplace bağlantıları, tek tık third-party onboarding ve desteklenmeyen takvim sağlayıcıları bu launch kapsamına dahil değil.":
+    "Self-serve marketplace connections, one-click third-party onboarding, and unsupported calendar providers are not included in this launch scope.",
+  "Entegrasyon planınızı birlikte netleştirelim": "Let's clarify your integration plan together",
+  "Mevcut ATS, webhook veya raporlama ihtiyacınızı paylaşın; ekibimiz sizin için uygun pilot kapsamını birlikte belirlesin.":
+    "Share your ATS, webhook, or reporting needs, and our team will define the right pilot scope with you.",
+  "API kullanımı hakkında destek mi gerekiyor?": "Need help with API usage?",
+  "Teknik ekibimiz API erişimi ve webhook akışı konusunda size yardımcı olmaya hazır.":
+    "Our technical team is ready to help you with API access and webhook flows.",
+  "Verileriniz Güvende": "Your data is safe",
+  "Kurumsal düzeyde veri güvenliği": "Enterprise-grade data security",
+  "Erişim, denetim izi ve veri yönetişimi kontrollerini kademeli olarak güçlendiren bir güvenlik yaklaşımı benimsiyoruz.":
+    "We follow a security approach that progressively strengthens access, audit trail, and data governance controls.",
+  "Güvenlik hakkında sorularınız mı var?": "Do you have questions about security?",
+  "Veri güvenliği ve uyumluluk konusundaki sorularınızı yanıtlamaktan memnuniyet duyarız.":
+    "We would be happy to answer your questions about data security and compliance.",
+  "Hakkımızda": "About us",
+  "İşe alımı yapay zeka ile yeniden tanımlıyoruz": "We are redefining hiring with AI",
+  "Her büyüklükteki şirketin en doğru adayı en hızlı şekilde bulabilmesi için AI destekli mülakat ve ön eleme çözümleri sunuyoruz.":
+    "We provide AI-assisted interview and pre-screening solutions so companies of every size can find the right candidate faster.",
+  "Hikayemiz": "Our story",
+  "Nereden geldik, nereye gidiyoruz": "Where we came from and where we are going",
+  "İşe alım süreçlerindeki deneyim, yapay zeka ile birleşerek Candit'i ortaya çıkardı.":
+    "Experience in hiring workflows combined with AI led to Candit.",
+  Ekibimiz: "Our team",
+  "Küçük ama tutkulu bir ekip": "A small but passionate team",
+  "Her ürün kararı, her özellik ve her iyileştirme İK ekiplerinin ve adayların ihtiyaçlarından hareketle geliştiriliyor.":
+    "Every product decision, feature, and improvement is shaped by the needs of HR teams and candidates.",
+  "Hikayemizin bir parçası olun": "Be part of our story",
+  "İşe alım süreçlerinizi AI ile dönüştürerek en doğru adayları en hızlı şekilde bulun.":
+    "Transform your hiring workflows with AI and find the right candidates faster.",
+  "İlk Kurulum Kontrol Listesi": "First-run checklist",
+  "Yeni bir recruiter yardım istemeden ilk rapora kadar bu sırayla ilerleyebilmelidir.":
+    "A new recruiter should be able to move from zero to the first report in this order without asking for help.",
+  "İlk AI mülakatını planladığınızda burada aday oturumlarını göreceksiniz.":
+    "You will see candidate sessions here once you schedule your first AI interview.",
+  "İlk mülakatı planla": "Plan the first interview",
+  "Henüz ilan yok. İlk ilanı hazırlayıp yayına aldığınızda aday akışınız burada başlar.":
+    "There are no job posts yet. Your candidate flow will start here once you prepare and publish your first job post.",
+  "İlk İlanı Hazırla": "Prepare the first job post",
+  "İlk Adayı Ekle": "Add the first candidate",
+  "İlk Başvuruyu Aç": "Open the first application",
+  "Demo akışında kullanılan AI bayrakları. `ai.auto_reject.enabled` kural gereği açılamaz.":
+    "AI flags used in the demo flow. `ai.auto_reject.enabled` cannot be enabled by policy.",
+  "Bu alanda sadece hesap sahibi değişiklik yapabilir. Siz salt okunur görünümdesiniz.":
+    "Only the account owner can make changes in this area. You are in read-only mode."
 });

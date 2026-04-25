@@ -359,13 +359,13 @@ export default function AiSupportCenterPage() {
           ) : null}
 
           <section className="panel nested-panel" style={{ marginTop: 16 }}>
-            <h3 style={{ marginTop: 0 }}>Feature Flag Kontrolü</h3>
+            <h3 style={{ marginTop: 0 }}>{t("Feature Flag Kontrolü")}</h3>
             <p className="small" style={{ marginTop: 0 }}>
-              Demo akışında kullanılan AI bayrakları. `ai.auto_reject.enabled` kural gereği açılamaz.
+              {t("Demo akışında kullanılan AI bayrakları. `ai.auto_reject.enabled` kural gereği açılamaz.")}
             </p>
             {!canEditFlags ? (
               <p className="small" style={{ marginTop: 0, color: "var(--text-secondary)" }}>
-                Bu alanda sadece hesap sahibi degisiklik yapabilir. Siz salt okunur gorunumdesiniz.
+                {t("Bu alanda sadece hesap sahibi değişiklik yapabilir. Siz salt okunur görünümdesiniz.")}
               </p>
             ) : null}
             {demoFlags.length === 0 ? (

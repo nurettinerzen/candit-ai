@@ -306,12 +306,12 @@ export default function SettingsPage() {
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <div>
             <h2 style={{ margin: "0 0 6px" }}>
-              {locale === "en" ? "Next setup steps" : "Sonraki kurulum adimlari"}
+              {locale === "en" ? "Next setup steps" : "Sonraki kurulum adımları"}
             </h2>
             <p className="small text-muted" style={{ margin: 0 }}>
               {locale === "en"
                 ? "A new company should be able to complete these surfaces without asking us what comes next."
-                : "Yeni bir firma sonraki adimi bize sormadan bu yuzeylerden ilerleyebilmelidir."}
+                : "Yeni bir firma sonraki adımı bize sormadan bu yüzeylerden ilerleyebilmelidir."}
             </p>
           </div>
           <StatusBadge
@@ -331,11 +331,11 @@ export default function SettingsPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
           <QuickLinkCard
             href={"/team" as Route}
-            title={locale === "en" ? "Team access" : "Ekip erisimi"}
+            title={locale === "en" ? "Team access" : "Ekip erişimi"}
             description={
               locale === "en"
                 ? "Invite at least one teammate and verify role boundaries."
-                : "En az bir ekip arkadasi davet edin ve rol sinirlarini kontrol edin."
+                : "En az bir ekip arkadaşı davet edin ve rol sınırlarını kontrol edin."
             }
           />
           <QuickLinkCard
@@ -344,16 +344,16 @@ export default function SettingsPage() {
             description={
               locale === "en"
                 ? "Review package limits before the pilot company hits a blocker."
-                : "Pilot firma blokaja girmeden once paket limitlerini gozden gecirin."
+                : "Pilot firma blokaja girmeden önce paket limitlerini gözden geçirin."
             }
           />
           <QuickLinkCard
             href={(isInternalAdmin ? "/admin/settings" : "/ai-support") as Route}
-            title={locale === "en" ? "AI defaults" : "AI varsayilanlari"}
+            title={locale === "en" ? "AI defaults" : "AI varsayılanları"}
             description={
               locale === "en"
                 ? "Review prompts, rubrics, and provider readiness from one place."
-                : "Prompt, rubric ve provider hazirligini tek yerden gozden gecirin."
+                : "Prompt, rubric ve provider hazırlığını tek yerden gözden geçirin."
             }
           />
         </div>

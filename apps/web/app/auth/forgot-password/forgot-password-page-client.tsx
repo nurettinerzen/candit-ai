@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
         ) : null}
 
         <label style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Kayıtlı e-posta adresi")}</span>
+          <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>{t("Kayıtlı e-posta adresi")}</span>
           <input
             type="email"
             value={email}
@@ -80,9 +80,9 @@ export default function ForgotPasswordPage() {
 const inputStyle: CSSProperties = {
   width: "100%",
   borderRadius: 16,
-  border: "1px solid rgba(148,163,184,0.18)",
-  background: "rgba(15,23,42,0.9)",
-  color: "#f8fafc",
+  border: "1px solid var(--border)",
+  background: "var(--surface-raised)",
+  color: "var(--text)",
   padding: "14px 16px",
   fontSize: 15,
   outline: "none",
@@ -96,7 +96,7 @@ const primaryButtonStyle: CSSProperties = {
   width: "100%",
   border: "none",
   borderRadius: 16,
-  background: "#5046e5",
+  background: "var(--primary-gradient)",
   color: "#fff",
   fontSize: 15,
   fontWeight: 700,

@@ -61,7 +61,7 @@ function aiRecommendationBanner(rec: string | null): { label: string; color: str
 function stageHistoryLabel(from: string | null, to: string): string {
   const fromLabel = from ? (STAGE_LABELS[from as ApplicationStage] ?? from) : null;
   const toLabel = STAGE_LABELS[to as ApplicationStage] ?? to;
-  if (!fromLabel) return "Basvuru olusturuldu";
+  if (!fromLabel) return "Başvuru oluşturuldu";
   return `${fromLabel} \u2192 ${toLabel}`;
 }
 
@@ -69,16 +69,16 @@ function reasonLabel(code: string | null): string {
   if (!code) return "";
   const map: Record<string, string> = {
     application_created: "Sistem",
-    shortlisted: "Ilerletildi",
-    advanced_by_recruiter: "Recruiter tarafindan ilerletildi",
-    rejected_by_recruiter: "Recruiter tarafindan reddedildi",
+    shortlisted: "İlerletildi",
+    advanced_by_recruiter: "Recruiter tarafından ilerletildi",
+    rejected_by_recruiter: "Recruiter tarafından reddedildi",
     held_by_recruiter: "Bekletildi",
-    manual_stage_transition: "Manuel gecis",
+    manual_stage_transition: "Manuel geçiş",
     manual_recruiter_advance: "Manuel ilerletme",
-    screening_triggered_by_recruiter: "On eleme baslatildi",
-    interview_approved: "Gorusmeye onaylandi",
-    interview_invitation_sent: "Gorusme daveti gonderildi",
-    interview_session_completed: "Gorusme tamamlandi",
+    screening_triggered_by_recruiter: "Ön eleme başlatıldı",
+    interview_approved: "Görüşmeye onaylandı",
+    interview_invitation_sent: "Görüşme daveti gönderildi",
+    interview_session_completed: "Görüşme tamamlandı",
   };
   return map[code] ?? code.replace(/_/g, " ");
 }

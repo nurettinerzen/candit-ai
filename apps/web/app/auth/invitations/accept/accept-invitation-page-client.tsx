@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { CSSProperties, FormEvent } from "react";
 import { Suspense, useEffect, useState } from "react";
+import { AuthNotice, AuthShell } from "../../../../components/auth-shell";
 import { PasswordField, PasswordRequirements } from "../../../../components/password-field";
 import { useUiText } from "../../../../components/site-language-provider";
 import {
@@ -28,11 +29,11 @@ type InvitationView = {
 function statusMessage(status: InvitationView["status"]) {
   switch (status) {
     case "accepted":
-      return "Bu davet daha once kullanilmis.";
+      return "Bu davet daha önce kullanılmış.";
     case "revoked":
-      return "Bu davet iptal edilmis.";
+      return "Bu davet iptal edilmiş.";
     case "expired":
-      return "Bu davetin suresi dolmus.";
+      return "Bu davetin süresi dolmuş.";
     default:
       return "";
   }
@@ -131,33 +132,50 @@ function AcceptInvitationContent() {
   }
 
   return (
-    <main style={{ maxWidth: 520, margin: "40px auto", padding: 16 }}>
-      <h1 style={{ marginBottom: 8 }}>Daveti Kabul Et</h1>
-      <p style={{ marginTop: 0, color: "#666" }}>
-        Hesabinizi aktiflestirmek icin sifrenizi belirleyin.
-      </p>
+    <AuthShell
+      badge={t("Davet")}
+      title={t("Daveti kabul et")}
+      description={t("Hesabını etkinleştirmek için adını ve şifreni belirle.")}
+      footer={
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>
+            {t("Ana sayfa")}
+          </Link>
+          <Link href="/auth/login" style={{ color: "inherit", textDecoration: "none" }}>
+            {t("Giriş ekranı")}
+          </Link>
+        </div>
+      }
+    >
+      <div style={{ display: "grid", gap: 16 }}>
+        {loading ? <AuthNotice tone="info" message={t("Davet bilgisi yükleniyor...")} /> : null}
+        {!loading && error ? <AuthNotice tone="danger" message={error} /> : null}
 
-      <section className="panel">
-        {loading ? (
-          <p style={{ margin: 0 }}>Davet bilgisi yukleniyor...</p>
-        ) : error ? (
-          <p style={{ color: "#c2410c", margin: 0 }}>{error}</p>
-        ) : invitation ? (
+        {!loading && invitation ? (
           <>
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ margin: "0 0 6px" }}>
-                <strong>Sirket:</strong> {invitation.tenantName}
-              </p>
-              <p style={{ margin: "0 0 6px" }}>
-                <strong>E-posta:</strong> {invitation.email}
+            <div
+              style={{
+                display: "grid",
+                gap: 8,
+                padding: "14px 16px",
+                borderRadius: 16,
+                border: "1px solid var(--border)",
+                background: "var(--surface-muted)"
+              }}
+            >
+              <p style={{ margin: 0 }}>
+                <strong>{t("Şirket")}:</strong> {invitation.tenantName}
               </p>
               <p style={{ margin: 0 }}>
-                <strong>Rol:</strong> {getRoleLabel(invitation.role)}
+                <strong>{t("E-posta")}:</strong> {invitation.email}
+              </p>
+              <p style={{ margin: 0 }}>
+                <strong>{t("Rol")}:</strong> {getRoleLabel(invitation.role)}
               </p>
             </div>
 
             {invitation.status !== "pending" ? (
-              <p style={{ color: "#c2410c", margin: 0 }}>{statusMessage(invitation.status)}</p>
+              <AuthNotice tone="danger" message={t(statusMessage(invitation.status))} />
             ) : (
               <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }}>
                 <label style={{ display: "grid", gap: 8 }}>
@@ -165,6 +183,8 @@ function AcceptInvitationContent() {
                   <input
                     value={fullName}
                     onChange={(event) => setFullName(event.target.value)}
+                    autoComplete="name"
+                    name="name"
                     required
                     style={inputStyle}
                   />
@@ -174,6 +194,7 @@ function AcceptInvitationContent() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="new-password"
+                  name="new-password"
                   required
                   minLength={PASSWORD_MIN_LENGTH}
                   inputStyle={inputStyle}
@@ -183,6 +204,7 @@ function AcceptInvitationContent() {
                   value={passwordConfirm}
                   onChange={(event) => setPasswordConfirm(event.target.value)}
                   autoComplete="new-password"
+                  name="confirm-password"
                   required
                   minLength={PASSWORD_MIN_LENGTH}
                   inputStyle={inputStyle}
@@ -190,30 +212,28 @@ function AcceptInvitationContent() {
 
                 <PasswordRequirements password={password} />
 
-                {error ? <p style={{ color: "#c2410c", marginBottom: 8 }}>{error}</p> : null}
+                {error ? <AuthNotice tone="danger" message={error} /> : null}
 
-                <button type="submit" className="button-link" disabled={submitting}>
-                  {submitting ? "Hesap aktiflestiriliyor..." : "Hesabi Aktiflestir"}
+                <button type="submit" disabled={submitting} style={primaryButtonStyle}>
+                  {submitting ? t("Hesap etkinleştiriliyor...") : t("Hesabı etkinleştir")}
                 </button>
               </form>
             )}
           </>
-        ) : (
-          <p style={{ margin: 0 }}>{t("Davet bilgisi bulunamadı.")}</p>
-        )}
-      </section>
+        ) : null}
 
-      <p style={{ marginTop: 14 }}>
-        {t("Giriş ekranına dönmek için")} <Link href="/auth/login">{t("buraya")}</Link> {t("tıklayın.")}
-      </p>
-    </main>
+        {!loading && !invitation && !error ? (
+          <AuthNotice tone="danger" message={t("Davet bilgisi bulunamadı.")} />
+        ) : null}
+      </div>
+    </AuthShell>
   );
 }
 
 export default function AcceptInvitationPage() {
   const locale = getActiveSiteLocale();
   return (
-    <Suspense fallback={<main style={{ maxWidth: 520, margin: "40px auto", padding: 16 }}>{translateUiText("Davet bilgisi yükleniyor...", locale)}</main>}>
+    <Suspense fallback={<main style={{ minHeight: "100vh" }}>{translateUiText("Davet bilgisi yükleniyor...", locale)}</main>}>
       <AcceptInvitationContent />
     </Suspense>
   );
@@ -222,9 +242,9 @@ export default function AcceptInvitationPage() {
 const inputStyle: CSSProperties = {
   width: "100%",
   borderRadius: 16,
-  border: "1px solid rgba(148,163,184,0.18)",
-  background: "rgba(15,23,42,0.9)",
-  color: "#f8fafc",
+  border: "1px solid var(--border)",
+  background: "var(--surface-raised)",
+  color: "var(--text)",
   padding: "14px 16px",
   fontSize: 15,
   outline: "none",
@@ -232,6 +252,19 @@ const inputStyle: CSSProperties = {
 };
 
 const fieldLabelStyle: CSSProperties = {
-  color: "#cbd5e1",
+  color: "var(--text-secondary)",
   fontSize: 14
+};
+
+const primaryButtonStyle: CSSProperties = {
+  width: "100%",
+  border: "none",
+  borderRadius: 16,
+  background: "var(--primary-gradient)",
+  color: "#fff",
+  fontSize: 15,
+  fontWeight: 700,
+  padding: "14px 18px",
+  cursor: "pointer",
+  fontFamily: "inherit"
 };

@@ -14,7 +14,6 @@ const PASSWORD_HASH_OPTIONS: argon2.Options & { raw?: false } = {
 const UPPERCASE_REGEX = /\p{Lu}/u;
 const LOWERCASE_REGEX = /\p{Ll}/u;
 const SPECIAL_CHARACTER_REGEX = /[^\p{L}\p{N}\s]/u;
-
 export function isPasswordPolicySatisfied(password: string) {
   const value = password ?? "";
 

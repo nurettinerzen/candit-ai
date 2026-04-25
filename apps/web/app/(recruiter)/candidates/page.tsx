@@ -302,17 +302,17 @@ export default function CandidatesPage() {
         <EmptyState
           message={
             !query && !stageFilter && !jobFilter && !sourceFilter
-              ? t("Henüz aday yok. Ilk adayi ekleyip basvuru akisini buradan takip edebilirsiniz.")
+              ? t("Henüz aday yok. İlk adayı ekleyip başvuru akışını buradan takip edebilirsiniz.")
               : t("Filtreye uygun sonuç bulunamadı.")
           }
           actions={
             !query && !stageFilter && !jobFilter && !sourceFilter ? (
               <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                 <Link href="/candidates/new" className="button-link">
-                  {t("Ilk Adayi Ekle")}
+                  {t("İlk Adayı Ekle")}
                 </Link>
                 <Link href="/jobs" className="ghost-button" style={{ textDecoration: "none" }}>
-                  {t("Ilk Ilani Kontrol Et")}
+                  {t("İlk İlanı Kontrol Et")}
                 </Link>
               </div>
             ) : undefined

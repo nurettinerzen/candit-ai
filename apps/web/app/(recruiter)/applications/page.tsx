@@ -332,7 +332,7 @@ export default function ApplicationsPage() {
             error={error}
             actions={
               <button type="button" className="ghost-button" onClick={() => void loadPageData()}>
-                Tekrar dene
+                {t("Tekrar dene")}
               </button>
             }
           />
@@ -353,12 +353,12 @@ export default function ApplicationsPage() {
                 <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                   {jobs.length === 0 ? (
                     <Link href="/jobs/new" className="button-link">
-                      {t("Ilk Ilani Hazirla")}
+                      {t("İlk İlanı Hazırla")}
                     </Link>
                   ) : null}
                   {candidates.length === 0 ? (
                     <Link href="/candidates/new" className="button-link">
-                      {t("Ilk Adayi Ekle")}
+                      {t("İlk Adayı Ekle")}
                     </Link>
                   ) : null}
                   {jobs.length > 0 && candidates.length > 0 ? (
@@ -372,7 +372,7 @@ export default function ApplicationsPage() {
                         createForm?.focus();
                       }}
                     >
-                      {t("Ilk Basvuruyu Ac")}
+                      {t("İlk Başvuruyu Aç")}
                     </button>
                   ) : null}
                 </div>

@@ -261,7 +261,7 @@ function SignupPageContent() {
         {error ? <AuthNotice tone="danger" message={error} /> : null}
 
         <label style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Ad Soyad")}</span>
+          <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>{t("Ad Soyad")}</span>
           <input
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
@@ -273,7 +273,7 @@ function SignupPageContent() {
         </label>
 
         <label style={{ display: "grid", gap: 8 }}>
-          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("Şirket adı")}</span>
+          <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>{t("Şirket adı")}</span>
           <input
             value={companyName}
             onChange={(event) => setCompanyName(event.target.value)}
@@ -285,7 +285,7 @@ function SignupPageContent() {
         </label>
 
         <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ color: "#cbd5e1", fontSize: 14 }}>{t("E-posta")}</span>
+          <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>{t("E-posta")}</span>
           <input
             type="email"
             value={email}
@@ -339,13 +339,13 @@ function SignupPageContent() {
               gridTemplateColumns: "1fr auto 1fr",
               alignItems: "center",
               gap: 12,
-              color: "#64748b",
+              color: "var(--text-dim)",
               fontSize: 12
             }}
           >
-            <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
+            <div style={{ height: 1, background: "var(--border)" }} />
             <span>{t("veya")}</span>
-            <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
+            <div style={{ height: 1, background: "var(--border)" }} />
           </div>
 
           <a href={googleUrl} style={secondaryButtonStyle}>
@@ -384,9 +384,9 @@ export default function SignupPage() {
 const inputStyle: CSSProperties = {
   width: "100%",
   borderRadius: 16,
-  border: "1px solid rgba(148,163,184,0.18)",
-  background: "rgba(15,23,42,0.9)",
-  color: "#f8fafc",
+  border: "1px solid var(--border)",
+  background: "var(--surface-raised)",
+  color: "var(--text)",
   padding: "14px 16px",
   fontSize: 15,
   outline: "none",
@@ -400,7 +400,7 @@ const primaryButtonStyle: CSSProperties = {
   width: "100%",
   border: "none",
   borderRadius: 16,
-  background: "#5046e5",
+  background: "var(--primary-gradient)",
   color: "#fff",
   fontSize: 15,
   fontWeight: 700,
@@ -417,9 +417,9 @@ const secondaryButtonStyle: CSSProperties = {
   gap: 10,
   width: "100%",
   borderRadius: 16,
-  border: "1px solid rgba(148,163,184,0.18)",
-  background: "rgba(15,23,42,0.56)",
-  color: "#e2e8f0",
+  border: "1px solid var(--border)",
+  background: "var(--surface-muted)",
+  color: "var(--text)",
   fontSize: 15,
   fontWeight: 600,
   padding: "14px 18px",
