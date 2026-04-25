@@ -188,7 +188,9 @@ test("listAccounts supports tenant id search", async () => {
   assert.equal(result.rows.length, 1);
   assert.equal(result.rows[0]?.tenantId, "ten_launch");
   assert.equal(filtersSeen.length, 1);
-  assert.deepEqual(filtersSeen[0]?.OR?.[0], {
+  const firstOrCondition = (filtersSeen[0]?.OR as Array<unknown> | undefined)?.[0];
+
+  assert.deepEqual(firstOrCondition, {
     id: {
       contains: "ten_launch",
       mode: "insensitive"

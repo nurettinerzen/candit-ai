@@ -348,7 +348,7 @@ export class RuntimeConfigService {
 
   private isSpeechProviderReady(
     provider: string,
-    speechConfig: ReturnType<RuntimeConfigService["speechRuntimeConfig"]>
+    speechConfig: RuntimeConfigService["speechRuntimeConfig"]
   ) {
     switch (provider) {
       case "browser":
