@@ -145,6 +145,12 @@ function SignupPageContent() {
     const verificationEnabled = Boolean(emailVerification?.enabled);
     const verificationRequired = Boolean(emailVerification?.required);
     const verificationDeliveryEnabled = Boolean(emailVerification?.deliveryEnabled);
+    const canResendVerification = Boolean(createdState.email) && (
+      verificationEnabled ||
+      verificationRequired ||
+      verificationDeliveryEnabled ||
+      emailVerification !== undefined
+    );
     const title = verificationEnabled ? t("Hesabınız oluşturuldu") : t("Hesap hazır");
     const description = verificationRequired
       ? locale === "en"
@@ -168,7 +174,9 @@ function SignupPageContent() {
         : locale === "en"
           ? "A verification link was prepared for this account."
           : "Bu hesap için doğrulama bağlantısı hazırlandı.";
-    const infoMessage = verificationEnabled ? t("E-posta kutunuzu kontrol edip doğrulama bağlantısına tıklayın.") : "";
+    const infoMessage = verificationEnabled
+      ? t("E-posta kutunuzu kontrol edin. Mail gelmediyse aşağıdaki butonla doğrulama e-postasını tekrar isteyebilirsiniz.")
+      : "";
 
     return (
       <AuthShell
@@ -215,7 +223,7 @@ function SignupPageContent() {
               {t("Panele devam et")}
             </a>
           ) : null}
-          {verificationEnabled ? (
+          {canResendVerification ? (
             <button
               type="button"
               onClick={handleVerificationResend}
