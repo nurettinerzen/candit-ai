@@ -7,8 +7,6 @@ import { AUTH_SESSION_MODE } from "../lib/auth/runtime";
 import {
   canAccessRoute,
   canPerformAction,
-  getPrimaryRole,
-  getRoleLabel,
   isInternalOnlyRoute,
   isInternalAdminSession,
   type AppPermission
@@ -19,10 +17,12 @@ import {
   resolveSessionFromServer
 } from "../lib/auth/session";
 import type { WebAuthSession } from "../lib/auth/types";
+import { apiClient } from "../lib/api/recruiter-client";
+import { formatBillingPlanLabel } from "../lib/billing-presentation";
+import type { BillingPlanKey } from "../lib/types";
 import { BrandWordmark } from "./brand-wordmark";
 import { useUiText, useSiteLanguage } from "./site-language-provider";
 import { useTheme } from "./theme-provider";
-import { PublicLanding } from "./public-landing";
 
 type NavItem = {
   href:
@@ -363,12 +363,12 @@ function SidebarContent({
   const { t } = useUiText();
   const language = useSiteLanguage();
   const theme = useTheme();
-  const primaryRole = getPrimaryRole(session);
   const activeNavHref = resolveActiveNavHref(pathname);
   const [loggingOut, setLoggingOut] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const [planKey, setPlanKey] = useState<BillingPlanKey | null>(null);
   const [languageMenuStyle, setLanguageMenuStyle] = useState<FloatingMenuStyle | null>(null);
   const [themeMenuStyle, setThemeMenuStyle] = useState<FloatingMenuStyle | null>(null);
   const languageTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -385,11 +385,7 @@ function SidebarContent({
     { mode: "dark" as const, label: t("Koyu") },
     { mode: "system" as const, label: t("Sistem") }
   ];
-  const compactRoleLabels =
-    language.locale === "tr"
-      ? { owner: "Sahip", manager: "Yönetici", staff: "Uzman" }
-      : { owner: "Owner", manager: "Manager", staff: "Staff" };
-  const userRoleLabel = primaryRole ? compactRoleLabels[primaryRole] : session.roles;
+  const userPlanLabel = planKey ? formatBillingPlanLabel(planKey, language.locale) : t("Mevcut plan");
 
   useEffect(() => {
     if (!accountOpen) {
@@ -456,6 +452,30 @@ function SidebarContent({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [accountOpen, languageOpen, themeMenuOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydratePlan() {
+      try {
+        const overview = await apiClient.billingOverview();
+
+        if (!cancelled) {
+          setPlanKey(overview.account.currentPlanKey);
+        }
+      } catch {
+        if (!cancelled) {
+          setPlanKey(null);
+        }
+      }
+    }
+
+    void hydratePlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session.tenantId]);
 
   useEffect(() => {
     if (!languageOpen && !themeMenuOpen) {
@@ -526,7 +546,6 @@ function SidebarContent({
             decorative
             className="sidebar-brand-wordmark"
           />
-          <span className="sidebar-brand-desc">{t("İşe alım işletim paneli")}</span>
         </Link>
       </div>
 
@@ -588,7 +607,7 @@ function SidebarContent({
             <div className="sidebar-user-details">
               <span className="sidebar-user-name">{t(session.userLabel)}</span>
               <div className="sidebar-user-meta">
-                <span className="sidebar-user-badge">{userRoleLabel}</span>
+                <span className="sidebar-user-badge">{userPlanLabel}</span>
               </div>
             </div>
             <svg

@@ -5,13 +5,13 @@
 
 /* ── Light mode (default) ── */
 .lp-landing-page {
-  --lp-primary: #4f46e5;
-  --lp-primary-light: #7c3aed;
-  --lp-accent: #8b5cf6;
-  --lp-info: #6366f1;
+  --lp-primary: var(--brand-pink);
+  --lp-primary-light: var(--brand-violet);
+  --lp-accent: var(--brand-blue);
+  --lp-info: var(--brand-cyan);
   --lp-warning: #f59e0b;
-  --lp-primary-400: #6366f1;
-  --lp-purple: #7c3aed;
+  --lp-primary-400: var(--brand-blue);
+  --lp-purple: var(--brand-violet);
   --bg-deep: #faf5ff;
   --bg-mid: #f3e8ff;
   --text-primary: #0f172a;
@@ -23,22 +23,22 @@
   --border-hover: rgba(0, 0, 0, 0.16);
   --card-bg: rgba(255, 255, 255, 0.7);
   --card-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
-  --card-border-top: rgba(124, 58, 237, 0.16);
-  --card-border-top-end: rgba(139, 92, 246, 0.16);
+  --card-border-top: rgba(164, 69, 255, 0.16);
+  --card-border-top-end: rgba(46, 115, 255, 0.16);
   --hero-inactive: rgba(15, 23, 42, 0.2);
   --manifesto-inactive: rgba(15, 23, 42, 0.16);
   --grid-line: rgba(0, 0, 0, 0.03);
   --glow-opacity: 0.12;
-  --chat-customer-bg: #ede9fe;
-  --chat-customer-border: #ddd6fe;
-  --chat-customer-color: #3b0764;
+  --chat-customer-bg: rgba(242, 85, 213, 0.12);
+  --chat-customer-border: rgba(242, 85, 213, 0.22);
+  --chat-customer-color: #7f145f;
   --chat-bot-bg: #f1f5f9;
   --chat-bot-border: #e2e8f0;
   --chat-bot-color: #334155;
   --dashboard-bg: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(248,250,251,0.95));
   --dashboard-shadow: 0 48px 120px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
   --bar-track-bg: rgba(0, 0, 0, 0.04);
-  --kicker-color: #6366f1;
+  --kicker-color: var(--brand-blue);
   --btn-text: #fff;
   --btn-ghost-text: #0f172a;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -52,9 +52,9 @@
 
 /* ── Dark mode ── */
 :is([data-theme="dark"]) .lp-landing-page {
-  --lp-primary-light: #a78bfa;
-  --lp-primary-400: #7c3aed;
-  --lp-purple: #c4b5fd;
+  --lp-primary-light: #ff9cea;
+  --lp-primary-400: #8f8cff;
+  --lp-purple: #d4a7ff;
   --bg-deep: #020818;
   --bg-mid: #0c0a2a;
   --text-primary: #f7fbff;
@@ -66,22 +66,22 @@
   --border-hover: rgba(255, 255, 255, 0.16);
   --card-bg: rgba(255, 255, 255, 0.04);
   --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --card-border-top: rgba(124, 58, 237, 0.42);
-  --card-border-top-end: rgba(139, 92, 246, 0.42);
+  --card-border-top: rgba(242, 85, 213, 0.42);
+  --card-border-top-end: rgba(164, 69, 255, 0.42);
   --hero-inactive: rgba(255, 255, 255, 0.07);
   --manifesto-inactive: rgba(255, 255, 255, 0.1);
   --grid-line: rgba(255, 255, 255, 0.025);
   --glow-opacity: 0.45;
-  --chat-customer-bg: rgba(76, 52, 130, 0.7);
-  --chat-customer-border: rgba(100, 70, 160, 0.5);
-  --chat-customer-color: #d4c6f0;
+  --chat-customer-bg: rgba(242, 85, 213, 0.18);
+  --chat-customer-border: rgba(242, 85, 213, 0.32);
+  --chat-customer-color: #ffd8f7;
   --chat-bot-bg: rgba(255, 255, 255, 0.08);
   --chat-bot-border: rgba(255, 255, 255, 0.06);
   --chat-bot-color: var(--text-secondary);
   --dashboard-bg: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)), rgba(4,12,18,0.7);
   --dashboard-shadow: 0 48px 120px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
   --bar-track-bg: rgba(255, 255, 255, 0.06);
-  --kicker-color: #c4b5fd;
+  --kicker-color: #9cc6ff;
   --btn-text: #041018;
   --btn-ghost-text: #e8f4fb;
 }
@@ -94,15 +94,15 @@
   position: relative;
   min-height: 100vh;
   background:
-    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(124,58,237,0.10), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(139,92,246,0.07), transparent),
+    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(164, 69, 255, 0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(46, 115, 255, 0.08), transparent),
     linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-mid) 34%, var(--bg-deep) 100%);
   overflow: clip;
 }
 :is([data-theme="dark"]) .lp-page {
   background:
-    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(124,58,237,0.18), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(139,92,246,0.15), transparent),
+    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(242, 85, 213, 0.22), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(46, 115, 255, 0.18), transparent),
     linear-gradient(180deg, #020818 0%, #0c0a2a 34%, #020714 100%);
 }
 
@@ -111,16 +111,16 @@
   border-radius: 999px; filter: blur(90px);
   pointer-events: none; opacity: var(--glow-opacity);
 }
-.lp-glow-l { top: -10rem; left: -10rem; background: rgba(124,58,237,0.22); }
-.lp-glow-r { top: 6rem; right: -14rem; background: rgba(139,92,246,0.18); }
+.lp-glow-l { top: -10rem; left: -10rem; background: rgba(164, 69, 255, 0.22); }
+.lp-glow-r { top: 6rem; right: -14rem; background: rgba(46, 115, 255, 0.2); }
 
 /* --- Shared --- */
 .lp-kicker {
   display: inline-flex; align-items: center;
   min-height: 34px; padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid rgba(139,92,246,0.22);
-  background: rgba(139,92,246,0.08);
+  border: 1px solid rgba(46, 115, 255, 0.22);
+  background: rgba(46, 115, 255, 0.08);
   color: var(--kicker-color); font-size: 12px; font-weight: 700;
   letter-spacing: 0.03em;
 }
@@ -146,10 +146,10 @@
 }
 .lp-btn {
   color: var(--btn-text);
-  background: linear-gradient(135deg, var(--lp-primary) 0%, var(--lp-accent) 100%);
-  box-shadow: 0 18px 44px rgba(124,58,237,0.2);
+  background: var(--brand-gradient);
+  box-shadow: 0 18px 44px rgba(242, 85, 213, 0.22);
 }
-.lp-btn:hover { transform: translateY(-2px); box-shadow: 0 24px 54px rgba(124,58,237,0.3); }
+.lp-btn:hover { transform: translateY(-2px); box-shadow: 0 24px 54px rgba(242, 85, 213, 0.28); }
 .lp-btn-ghost {
   color: var(--btn-ghost-text); background: var(--glass);
   border: 1px solid var(--border);

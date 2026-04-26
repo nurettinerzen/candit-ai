@@ -7,7 +7,7 @@
 }
 
 .publicHeader {
-  --brand-wordmark-width: 165px;
+  --brand-wordmark-width: 150px;
 }
 
 .publicFooter {
@@ -23,5 +23,5 @@
 }
 
 .sidebar {
-  --brand-wordmark-width: 155px;
+  --brand-wordmark-width: 145px;
 }

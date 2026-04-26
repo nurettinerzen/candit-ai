@@ -577,8 +577,8 @@ export function PublicFeaturesPage() {
       <div className={styles.ftPage}>
         {/* ═══ Hero with gradient blobs ═══ */}
         <section className={styles.ftHero}>
-          <div className={styles.ftGlowBlob} style={{ width: 600, height: 600, top: -200, left: '8%', background: '#5046e5' }} aria-hidden="true" />
-          <div className={styles.ftGlowBlob} style={{ width: 450, height: 450, top: -40, right: '5%', background: '#7c3aed' }} aria-hidden="true" />
+          <div className={styles.ftGlowBlob} style={{ width: 600, height: 600, top: -200, left: '8%', background: 'var(--brand-blue)' }} aria-hidden="true" />
+          <div className={styles.ftGlowBlob} style={{ width: 450, height: 450, top: -40, right: '5%', background: 'var(--brand-violet)' }} aria-hidden="true" />
 
           <div className={cn(styles.shell, styles.ftHeroInner)}>
             <span className={styles.ftBadgeShimmer}>
@@ -657,7 +657,7 @@ export function PublicFeaturesPage() {
 
         {/* ═══ Deep Dive - Shimmer Top-Line Cards ═══ */}
         <section className={styles.ftSectionBg}>
-          <div className={styles.ftGlowBlob} style={{ width: 500, height: 500, bottom: -100, left: '50%', marginLeft: -250, background: '#5046e5', opacity: 0.06 }} aria-hidden="true" />
+          <div className={styles.ftGlowBlob} style={{ width: 500, height: 500, bottom: -100, left: '50%', marginLeft: -250, background: 'var(--brand-blue)', opacity: 0.06 }} aria-hidden="true" />
 
           <div className={cn(styles.shell)} style={{ position: 'relative', zIndex: 10 }}>
             <div className={styles.ftSectionHeader}>
@@ -799,8 +799,8 @@ export function PublicSolutionsPage() {
       <div className={styles.solPage}>
         {/* ═══ Hero ═══ */}
         <section className={styles.solHero}>
-          <div className={styles.solGlowBlob} style={{ width: 384, height: 384, top: 80, left: '25%', background: '#5046e5' }} aria-hidden="true" />
-          <div className={styles.solGlowBlob} style={{ width: 288, height: 288, bottom: 0, right: '25%', background: '#7c3aed' }} aria-hidden="true" />
+          <div className={styles.solGlowBlob} style={{ width: 384, height: 384, top: 80, left: '25%', background: 'var(--brand-blue)' }} aria-hidden="true" />
+          <div className={styles.solGlowBlob} style={{ width: 288, height: 288, bottom: 0, right: '25%', background: 'var(--brand-violet)' }} aria-hidden="true" />
 
           <div className={cn(styles.shell, styles.solHeroInner)}>
             <span className={styles.solBadge}>
