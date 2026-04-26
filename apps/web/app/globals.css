@@ -36,12 +36,13 @@
   --text-inverse: #ffffff;
 
   /* ── Brand: Candit ── */
-  --primary: var(--brand-pink);
-  --primary-hover: #e447c9;
-  --primary-light: rgba(242, 85, 213, 0.12);
-  --primary-muted: rgba(242, 85, 213, 0.08);
-  --primary-border: rgba(242, 85, 213, 0.22);
-  --primary-gradient: var(--brand-gradient);
+  --primary: #7346e8;
+  --primary-rgb: 115, 70, 232;
+  --primary-hover: #6238d4;
+  --primary-light: rgba(115, 70, 232, 0.12);
+  --primary-muted: rgba(115, 70, 232, 0.08);
+  --primary-border: rgba(115, 70, 232, 0.22);
+  --primary-gradient: linear-gradient(135deg, #673cdb 0%, #7346e8 48%, #2f4fa8 100%);
 
   /* ── Accent for CTAs ── */
   --accent: var(--brand-blue);
@@ -78,7 +79,7 @@
   --shadow-md: 0 8px 24px rgba(0,0,0,.07), 0 2px 8px rgba(0,0,0,.04);
   --shadow-lg: 0 16px 48px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.04);
   --shadow-xl: 0 24px 64px rgba(0,0,0,.12);
-  --shadow-primary: 0 8px 24px rgba(242, 85, 213, 0.22);
+  --shadow-primary: 0 8px 24px rgba(115, 70, 232, 0.22);
   --shadow-card: 0 1px 3px rgba(0,0,0,.03), 0 0 0 1px rgba(0,0,0,.04);
 
   /* ── Radius ── */
@@ -112,7 +113,7 @@
   --sidebar-text-active: #0f172a;
   --sidebar-hover: rgba(15, 23, 42, 0.045);
   --sidebar-hover-text: #0f172a;
-  --sidebar-active: rgba(242, 85, 213, 0.1);
+  --sidebar-active: rgba(115, 70, 232, 0.1);
   --sidebar-divider: rgba(15, 23, 42, 0.08);
   --sidebar-section-text: rgba(100, 116, 139, 0.88);
   --sidebar-floating-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
@@ -121,30 +122,30 @@
   --sidebar-floating-text: #0f172a;
   --sidebar-floating-hover: rgba(15, 23, 42, 0.05);
   --sidebar-floating-short: #64748b;
-  --sidebar-floating-active-bg: linear-gradient(135deg, rgba(242, 85, 213, 0.92) 0%, rgba(164, 69, 255, 0.92) 38%, rgba(46, 115, 255, 0.92) 100%);
+  --sidebar-floating-active-bg: linear-gradient(135deg, rgba(103, 60, 219, 0.92) 0%, rgba(115, 70, 232, 0.92) 42%, rgba(46, 115, 255, 0.9) 100%);
   --sidebar-floating-active-text: #ffffff;
   --sidebar-card-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
   --sidebar-card-border: rgba(15, 23, 42, 0.08);
-  --sidebar-card-border-open: rgba(242, 85, 213, 0.22);
+  --sidebar-card-border-open: rgba(115, 70, 232, 0.22);
   --sidebar-card-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
   --sidebar-card-shadow-open: 0 8px 18px rgba(15, 23, 42, 0.12);
   --sidebar-trigger-hover: rgba(15, 23, 42, 0.03);
   --sidebar-user-name: #0f172a;
-  --sidebar-user-badge-bg: rgba(242, 85, 213, 0.12);
-  --sidebar-user-badge-text: var(--brand-pink);
-  --sidebar-avatar-bg: var(--brand-pink);
-  --sidebar-avatar-shadow: 0 8px 18px rgba(242, 85, 213, 0.24);
+  --sidebar-user-badge-bg: rgba(115, 70, 232, 0.1);
+  --sidebar-user-badge-text: var(--primary);
+  --sidebar-avatar-bg: var(--primary);
+  --sidebar-avatar-shadow: 0 8px 18px rgba(115, 70, 232, 0.24);
   --sidebar-chevron: #64748b;
-  --sidebar-chevron-active: var(--brand-pink);
+  --sidebar-chevron-active: var(--primary);
   --sidebar-session-panel-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(248, 250, 252, 0.99) 100%);
   --sidebar-session-panel-border: rgba(148, 163, 184, 0.18);
   --sidebar-session-panel-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
   --sidebar-session-action-text: #0f172a;
   --sidebar-session-action-hover: rgba(15, 23, 42, 0.05);
   --sidebar-session-action-hover-border: rgba(148, 163, 184, 0.16);
-  --sidebar-session-action-open-text: var(--brand-pink);
+  --sidebar-session-action-open-text: var(--primary);
   --sidebar-session-action-chevron: #64748b;
-  --sidebar-session-action-chevron-open: var(--brand-pink);
+  --sidebar-session-action-chevron-open: var(--primary);
   --sidebar-session-danger-text: #dc2626;
   --sidebar-session-danger-hover-text: #b91c1c;
 }
@@ -167,12 +168,13 @@
   --text-dim: #555968;
   --text-inverse: #0c0e16;
 
-  --primary: #ff7be3;
-  --primary-hover: #ff95ea;
-  --primary-light: rgba(242, 85, 213, 0.18);
-  --primary-muted: rgba(242, 85, 213, 0.12);
-  --primary-border: rgba(242, 85, 213, 0.3);
-  --primary-gradient: linear-gradient(135deg, #ad56ea 0%, #8064ff 52%, #3658bf 100%);
+  --primary: #8f72ff;
+  --primary-rgb: 143, 114, 255;
+  --primary-hover: #a289ff;
+  --primary-light: rgba(143, 114, 255, 0.18);
+  --primary-muted: rgba(143, 114, 255, 0.12);
+  --primary-border: rgba(143, 114, 255, 0.3);
+  --primary-gradient: linear-gradient(135deg, #815ce8 0%, #6d63ff 52%, #3658bf 100%);
 
   --accent: #61a0ff;
   --accent-hover: #77adff;
@@ -205,7 +207,7 @@
   --shadow-md: 0 8px 24px rgba(0,0,0,.3), 0 2px 8px rgba(0,0,0,.2);
   --shadow-lg: 0 16px 48px rgba(0,0,0,.35), 0 4px 16px rgba(0,0,0,.2);
   --shadow-xl: 0 24px 64px rgba(0,0,0,.4);
-  --shadow-primary: 0 10px 26px rgba(242, 85, 213, 0.24);
+  --shadow-primary: 0 10px 26px rgba(129, 92, 232, 0.24);
   --shadow-card: 0 1px 3px rgba(0,0,0,.15), 0 0 0 1px rgba(255,255,255,.04);
 
   --sidebar-bg: #080a10;
@@ -214,7 +216,7 @@
   --sidebar-text-active: #e4e6ed;
   --sidebar-hover: rgba(255,255,255,.04);
   --sidebar-hover-text: #cbd5e1;
-  --sidebar-active: rgba(242, 85, 213, 0.16);
+  --sidebar-active: rgba(143, 114, 255, 0.16);
   --sidebar-divider: rgba(255,255,255,.05);
   --sidebar-section-text: rgba(255,255,255,.22);
   --sidebar-floating-bg: linear-gradient(180deg, rgba(18, 26, 42, 0.98) 0%, rgba(12, 17, 30, 0.98) 100%);
@@ -223,30 +225,30 @@
   --sidebar-floating-text: #e8edf5;
   --sidebar-floating-hover: rgba(255,255,255,.06);
   --sidebar-floating-short: #8f9cb0;
-  --sidebar-floating-active-bg: linear-gradient(135deg, rgba(242, 85, 213, 0.84) 0%, rgba(164, 69, 255, 0.86) 38%, rgba(46, 115, 255, 0.88) 100%);
+  --sidebar-floating-active-bg: linear-gradient(135deg, rgba(129, 92, 232, 0.84) 0%, rgba(109, 99, 255, 0.86) 42%, rgba(54, 88, 191, 0.88) 100%);
   --sidebar-floating-active-text: #ffffff;
   --sidebar-card-bg: linear-gradient(180deg, rgba(32, 39, 55, 0.88) 0%, rgba(24, 30, 43, 0.92) 100%);
   --sidebar-card-border: rgba(255,255,255,.08);
-  --sidebar-card-border-open: rgba(242, 85, 213, 0.26);
+  --sidebar-card-border-open: rgba(143, 114, 255, 0.26);
   --sidebar-card-shadow: 0 6px 14px rgba(0,0,0,.12);
   --sidebar-card-shadow-open: 0 8px 18px rgba(0,0,0,.16);
   --sidebar-trigger-hover: rgba(255,255,255,.025);
   --sidebar-user-name: #f8fbff;
-  --sidebar-user-badge-bg: rgba(242, 85, 213, 0.16);
-  --sidebar-user-badge-text: #ffd3f7;
-  --sidebar-avatar-bg: var(--brand-pink);
-  --sidebar-avatar-shadow: 0 10px 24px rgba(242, 85, 213, 0.24);
+  --sidebar-user-badge-bg: rgba(143, 114, 255, 0.16);
+  --sidebar-user-badge-text: #ddd2ff;
+  --sidebar-avatar-bg: var(--primary);
+  --sidebar-avatar-shadow: 0 10px 24px rgba(129, 92, 232, 0.24);
   --sidebar-chevron: #9da8bb;
-  --sidebar-chevron-active: #ffd3f7;
+  --sidebar-chevron-active: #ddd2ff;
   --sidebar-session-panel-bg: linear-gradient(180deg, rgba(18, 25, 39, 0.98) 0%, rgba(11, 16, 28, 0.98) 100%);
   --sidebar-session-panel-border: rgba(255,255,255,.1);
   --sidebar-session-panel-shadow: 0 10px 22px rgba(0,0,0,.24);
   --sidebar-session-action-text: #eef2f7;
   --sidebar-session-action-hover: rgba(255,255,255,.05);
   --sidebar-session-action-hover-border: rgba(255,255,255,.06);
-  --sidebar-session-action-open-text: #ffd3f7;
+  --sidebar-session-action-open-text: #ddd2ff;
   --sidebar-session-action-chevron: #94a3b8;
-  --sidebar-session-action-chevron-open: #ffd3f7;
+  --sidebar-session-action-chevron-open: #ddd2ff;
   --sidebar-session-danger-text: #ff8d91;
   --sidebar-session-danger-hover-text: #fca5a5;
 }
@@ -473,7 +475,7 @@ textarea {
 .sidebar-floating-option[data-active="true"] {
   background: var(--sidebar-floating-active-bg);
   color: var(--sidebar-floating-active-text);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 10px 22px rgba(242, 85, 213, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 10px 22px rgba(var(--primary-rgb), 0.2);
 }
 
 .sidebar-floating-option-short {
@@ -3000,6 +3002,23 @@ main {
 .table a.table-action-link.muted,
 .table button.table-action-link.muted {
   color: var(--text-secondary);
+}
+
+.candidate-directory-link {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.12s var(--ease);
+}
+
+.candidate-directory-link:hover {
+  color: var(--primary);
 }
 
 /* ═══════════════════════════════════════════
@@ -5689,7 +5708,7 @@ main {
 .tlx-plan-current {
   border-color: color-mix(in srgb, var(--primary) 60%, var(--border) 40%);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 52%, var(--surface) 48%),
-    0 18px 36px rgba(var(--brand-pink-rgb), 0.14);
+    0 18px 36px rgba(var(--primary-rgb), 0.14);
 }
 
 .tlx-plan-current:hover {
@@ -5713,7 +5732,7 @@ main {
   font-size: 11px;
   font-weight: 700;
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  box-shadow: 0 10px 18px rgba(var(--brand-pink-rgb), 0.12);
+  box-shadow: 0 10px 18px rgba(var(--primary-rgb), 0.12);
   white-space: nowrap;
 }
 

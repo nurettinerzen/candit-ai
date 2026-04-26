@@ -350,7 +350,7 @@ export default function CandidatesPage() {
                     onClick={() => { router.push(linkHref as Route); }}
                   >
                     <td style={{ padding: "12px 16px" }}>
-                      <Link href={linkHref as Route} style={{ fontSize: 13, fontWeight: 600, color: "var(--primary, #7c73fa)", textDecoration: "none" }}>
+                      <Link href={linkHref as Route} className="candidate-directory-link">
                         {row.candidateName}
                       </Link>
                       <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 2 }}>

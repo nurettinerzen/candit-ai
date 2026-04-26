@@ -632,27 +632,8 @@ function NoticeBox({
 }
 
 function StatusBadge({ ready, label }: { ready: boolean; label: string }) {
-  const color = ready ? "34,197,94" : "245,158,11";
-
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "8px 12px",
-        borderRadius: 999,
-        border: `1px solid rgba(${color},0.24)`,
-        background: `rgba(${color},0.12)`,
-        color: ready ? "var(--success, #22c55e)" : "var(--warn, #f59e0b)",
-        fontSize: 12,
-        fontWeight: 700,
-        lineHeight: 1.3,
-        textAlign: "center",
-        whiteSpace: "normal",
-        maxWidth: "100%"
-      }}
-    >
+    <span className={`status-badge status-${ready ? "success" : "brand"}`}>
       {label}
     </span>
   );
