@@ -218,12 +218,21 @@
 .lp-hero-tagline-word.lp-lit { color: var(--text-primary); }
 
 .lp-hero-bottom {
-  position: relative; z-index: 1;
-  margin-top: 36px;
-  opacity: 0; transform: translateY(20px);
+  position: absolute;
+  left: 50%;
+  bottom: clamp(88px, 14vh, 132px);
+  z-index: 1;
+  width: min(100%, calc(100% - 48px));
+  opacity: 0;
+  transform: translate(-50%, 20px);
   transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+  pointer-events: none;
 }
-.lp-hero-bottom.lp-visible { opacity: 1; transform: translateY(0); }
+.lp-hero-bottom.lp-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
 .lp-hero-actions { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
 
 .lp-hero-scroll-cue {
@@ -706,6 +715,7 @@
   .lp-hero-line { font-size: clamp(2.6rem, 12vw, 4rem); }
   .lp-hero-tagline { font-size: clamp(1.2rem, 5vw, 1.8rem); }
   .lp-hero { height: 100vh; height: 100dvh; padding: 70px 16px 40px; }
+  .lp-hero-bottom { width: calc(100% - 32px); bottom: 84px; }
   .lp-cta-panel { padding: 36px 20px; }
   .lp-shield-grid { grid-template-columns: 1fr; }
   .lp-manifesto-text { font-size: clamp(1.4rem, 6vw, 2.4rem); }
