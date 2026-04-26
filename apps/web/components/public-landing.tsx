@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import { BrandWordmark } from "./brand-wordmark";
 import { useUiText } from "./site-language-provider";
 
 const proofStats = [
@@ -508,14 +509,7 @@ export function PublicLanding() {
       <header className="marketing-nav-shell">
         <div className="marketing-shell marketing-nav">
           <Link href="/landing" className="marketing-brand" aria-label={t("Candit.ai landing sayfası")}>
-            <img
-              src="/brand/candit-logo-clean-hybrid-dark.png"
-              alt=""
-              aria-hidden="true"
-              width="144"
-              height="57"
-              className="marketing-brand-logo"
-            />
+            <BrandWordmark variant="marketing" decorative className="marketing-brand-logo" />
           </Link>
 
           <nav className="marketing-nav-links" aria-label={t("Bölümler")}>

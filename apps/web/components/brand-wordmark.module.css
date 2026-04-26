@@ -1,0 +1,27 @@
+.wordmark {
+  display: block;
+  width: var(--brand-wordmark-width);
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.publicHeader {
+  --brand-wordmark-width: 165px;
+}
+
+.publicFooter {
+  --brand-wordmark-width: 165px;
+}
+
+.marketing {
+  --brand-wordmark-width: 165px;
+}
+
+.auth {
+  --brand-wordmark-width: 165px;
+}
+
+.sidebar {
+  --brand-wordmark-width: 165px;
+}

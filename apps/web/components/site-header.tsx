@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandWordmark } from "./brand-wordmark";
 import { useUiText } from "./site-language-provider";
 import styles from "./public-site.module.css";
 import { LanguagePill } from "./language-pill";
@@ -16,22 +17,7 @@ export function SiteHeader({ activeHref }: { activeHref?: string }) {
     <header className={styles.header}>
       <div className={cn(styles.shell, styles.headerInner)}>
         <a href="/" className={styles.brand} aria-label={t("Candit.ai ana sayfa")}>
-          <img
-            src="/brand/candit-logo-clean-color.png"
-            alt=""
-            aria-hidden="true"
-            width="112"
-            height="44"
-            className={cn(styles.brandWordmark, styles.brandWordmarkLight)}
-          />
-          <img
-            src="/brand/candit-logo-clean-hybrid-dark.png"
-            alt=""
-            aria-hidden="true"
-            width="112"
-            height="44"
-            className={cn(styles.brandWordmark, styles.brandWordmarkDark)}
-          />
+          <BrandWordmark variant="publicHeader" decorative />
         </a>
 
         <nav className={styles.nav} aria-label={t("Genel gezinme")}>

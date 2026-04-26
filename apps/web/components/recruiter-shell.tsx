@@ -19,6 +19,7 @@ import {
   resolveSessionFromServer
 } from "../lib/auth/session";
 import type { WebAuthSession } from "../lib/auth/types";
+import { BrandWordmark } from "./brand-wordmark";
 import { useUiText, useSiteLanguage } from "./site-language-provider";
 import { useTheme } from "./theme-provider";
 import { PublicLanding } from "./public-landing";
@@ -519,15 +520,10 @@ function SidebarContent({
   return (
     <>
       <div className="sidebar-header">
-        <div className="sidebar-brand">
-          <div className="sidebar-logo">
-            <img src="/brand/candit-mark.svg" alt="" aria-hidden="true" width="34" height="34" />
-          </div>
-          <div className="sidebar-brand-text">
-            <span className="sidebar-brand-name">Candit.ai</span>
-            <span className="sidebar-brand-desc">{t("İşe alım işletim paneli")}</span>
-          </div>
-        </div>
+        <Link href="/" className="sidebar-brand" aria-label={t("Candit.ai ana sayfa")}>
+          <BrandWordmark variant="sidebar" decorative className="sidebar-brand-wordmark" />
+          <span className="sidebar-brand-desc">{t("İşe alım işletim paneli")}</span>
+        </Link>
       </div>
 
       <nav className="sidebar-nav">

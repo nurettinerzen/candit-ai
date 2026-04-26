@@ -2,13 +2,23 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { JetBrains_Mono, Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
 import type { ReactNode } from "react";
+import { BRAND_THEME_ASSETS } from "../components/brand-assets";
 import { ThemeProvider } from "../components/theme-provider";
+import { ThemeFaviconSync } from "../components/theme-favicon-sync";
 import { SiteLanguageProvider } from "../components/site-language-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Candit.ai",
-  description: "Ön eleme, kaynak bulma ve mülakat süreçlerini AI ile hızlandırın."
+  description: "Ön eleme, kaynak bulma ve mülakat süreçlerini AI ile hızlandırın.",
+  icons: {
+    icon: [
+      { url: BRAND_THEME_ASSETS.light.faviconSvg, type: "image/svg+xml" },
+      { url: BRAND_THEME_ASSETS.light.faviconIco, type: "image/x-icon" }
+    ],
+    shortcut: [BRAND_THEME_ASSETS.light.faviconIco],
+    apple: [BRAND_THEME_ASSETS.light.appleTouch]
+  }
 };
 
 const sansFont = Plus_Jakarta_Sans({
@@ -78,7 +88,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var d=document.documentElement;function c(name){var m=document.cookie.match(new RegExp('(?:^|; )'+name.replace(/([.$?*|{}()\\[\\]\\\\/+^])/g,'\\\\$1')+'=([^;]*)'));return m?decodeURIComponent(m[1]):null}var t=d.getAttribute("data-theme-mode")||c("ai_interviewer_theme")||localStorage.getItem("ai_interviewer_theme")||"system";if(t!=="light"&&t!=="dark"&&t!=="system")t="system";var r=d.getAttribute("data-theme")||c("ai_interviewer_theme_resolved");if(r!=="light"&&r!=="dark"){r=t==="light"||t==="dark"?t:(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light")}d.setAttribute("data-theme",r);d.setAttribute("data-theme-mode",t);d.style.backgroundColor=r==="dark"?"#0b0d14":"#f8f9fb";d.style.colorScheme=r;var l=d.getAttribute("data-locale")||c("ai_interviewer_site_locale")||localStorage.getItem("ai_interviewer_site_locale")||"tr";if(l!=="tr"&&l!=="en")l="tr";d.setAttribute("data-locale",l);d.setAttribute("data-locale-ready","true");d.lang=l;document.cookie="ai_interviewer_theme="+t+"; Path=/; Max-Age=31536000; SameSite=Lax";document.cookie="ai_interviewer_theme_resolved="+r+"; Path=/; Max-Age=31536000; SameSite=Lax";document.cookie="ai_interviewer_site_locale="+l+"; Path=/; Max-Age=31536000; SameSite=Lax";try{localStorage.setItem("ai_interviewer_theme",t);localStorage.setItem("ai_interviewer_site_locale",l)}catch(e){}}catch(e){}})()`,
+            __html: `(function(){try{var d=document.documentElement;function c(name){var m=document.cookie.match(new RegExp('(?:^|; )'+name.replace(/([.$?*|{}()\\[\\]\\\\/+^])/g,'\\\\$1')+'=([^;]*)'));return m?decodeURIComponent(m[1]):null}function u(id,rel,href,type,sizes){var h=document.head;if(!h)return;var link=document.getElementById(id);if(!link){link=document.createElement('link');link.id=id;h.appendChild(link)}link.rel=rel;link.href=href;if(type){link.type=type}else{link.removeAttribute('type')}if(sizes){link.sizes=sizes}else{link.removeAttribute('sizes')}}function m(content){var h=document.head;if(!h)return;var meta=document.getElementById('brand-theme-color');if(!meta){meta=document.createElement('meta');meta.id='brand-theme-color';meta.name='theme-color';h.appendChild(meta)}meta.content=content}var a={light:{svg:'${BRAND_THEME_ASSETS.light.faviconSvg}',ico:'${BRAND_THEME_ASSETS.light.faviconIco}',apple:'${BRAND_THEME_ASSETS.light.appleTouch}',themeColor:'${BRAND_THEME_ASSETS.light.themeColor}'},dark:{svg:'${BRAND_THEME_ASSETS.dark.faviconSvg}',ico:'${BRAND_THEME_ASSETS.dark.faviconIco}',apple:'${BRAND_THEME_ASSETS.dark.appleTouch}',themeColor:'${BRAND_THEME_ASSETS.dark.themeColor}'}};var t=d.getAttribute("data-theme-mode")||c("ai_interviewer_theme")||localStorage.getItem("ai_interviewer_theme")||"system";if(t!=="light"&&t!=="dark"&&t!=="system")t="system";var r=d.getAttribute("data-theme")||c("ai_interviewer_theme_resolved");if(r!=="light"&&r!=="dark"){r=t==="light"||t==="dark"?t:(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light")}d.setAttribute("data-theme",r);d.setAttribute("data-theme-mode",t);d.style.backgroundColor=r==="dark"?"#0b0d14":"#f8f9fb";d.style.colorScheme=r;var l=d.getAttribute("data-locale")||c("ai_interviewer_site_locale")||localStorage.getItem("ai_interviewer_site_locale")||"tr";if(l!=="tr"&&l!=="en")l="tr";d.setAttribute("data-locale",l);d.setAttribute("data-locale-ready","true");d.lang=l;document.cookie="ai_interviewer_theme="+t+"; Path=/; Max-Age=31536000; SameSite=Lax";document.cookie="ai_interviewer_theme_resolved="+r+"; Path=/; Max-Age=31536000; SameSite=Lax";document.cookie="ai_interviewer_site_locale="+l+"; Path=/; Max-Age=31536000; SameSite=Lax";var s=a[r==="dark"?"dark":"light"];u('brand-favicon-svg','icon',s.svg,'image/svg+xml');u('brand-favicon-ico','shortcut icon',s.ico,'image/x-icon');u('brand-apple-touch','apple-touch-icon',s.apple,'image/png','180x180');m(s.themeColor);try{localStorage.setItem("ai_interviewer_theme",t);localStorage.setItem("ai_interviewer_site_locale",l)}catch(e){}}catch(e){}})()`,
           }}
         />
       </head>
@@ -87,6 +97,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           initialMode={initialThemeMode}
           initialResolved={initialResolvedTheme}
         >
+          <ThemeFaviconSync />
           <SiteLanguageProvider initialLocale={initialLocale}>
             {children}
           </SiteLanguageProvider>

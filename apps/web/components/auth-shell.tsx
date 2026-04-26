@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BrandWordmark } from "./brand-wordmark";
 import { useTheme } from "./theme-provider";
 
 type AuthShellProps = {
@@ -34,30 +35,15 @@ export function AuthShell({ title, description, children, footer, badge }: AuthS
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <Link
             href="/"
+            aria-label="Candit.ai ana sayfa"
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 12,
               textDecoration: "none",
               color: "var(--text)"
             }}
           >
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 46,
-                height: 46,
-                borderRadius: 14,
-                background: "linear-gradient(135deg, #5046e5, #7c3aed)",
-                fontWeight: 800,
-                letterSpacing: "-0.04em"
-              }}
-            >
-              C
-            </span>
-            <span style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.03em" }}>Candit.ai</span>
+            <BrandWordmark variant="auth" decorative />
           </Link>
         </div>
 

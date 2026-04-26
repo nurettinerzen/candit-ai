@@ -1,12 +1,9 @@
 "use client";
 
+import { BrandWordmark } from "./brand-wordmark";
 import { useUiText } from "./site-language-provider";
 import styles from "./public-site.module.css";
 import { PUBLIC_FOOTER_COLUMNS } from "../lib/public-site-data";
-
-function cn(...values: Array<string | false | null | undefined>) {
-  return values.filter(Boolean).join(" ");
-}
 
 export function SiteFooter() {
   const { t } = useUiText();
@@ -17,22 +14,7 @@ export function SiteFooter() {
         <div className={styles.footerGrid}>
           <div className={styles.footerBrand}>
             <a href="/" className={styles.brand} aria-label={t("Candit.ai ana sayfa")}>
-              <img
-                src="/brand/candit-logo-clean-color.png"
-                alt=""
-                aria-hidden="true"
-                width="132"
-                height="52"
-                className={cn(styles.brandWordmark, styles.footerBrandWordmark, styles.brandWordmarkLight)}
-              />
-              <img
-                src="/brand/candit-logo-clean-hybrid-dark.png"
-                alt=""
-                aria-hidden="true"
-                width="132"
-                height="52"
-                className={cn(styles.brandWordmark, styles.footerBrandWordmark, styles.brandWordmarkDark)}
-              />
+              <BrandWordmark variant="publicFooter" decorative />
             </a>
             <span className={styles.footerLegal}>&copy; 2026 Candit.ai. {t("Tüm hakları saklıdır")}.</span>
           </div>

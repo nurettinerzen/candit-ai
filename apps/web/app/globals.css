@@ -250,35 +250,10 @@ textarea {
 }
 
 .sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.sidebar-logo {
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
-}
-
-.sidebar-logo img {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.sidebar-brand-text {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  gap: 6px;
   min-width: 0;
-}
-
-.sidebar-brand-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  text-decoration: none;
 }
 
 .sidebar-brand-desc {
@@ -286,6 +261,7 @@ textarea {
   color: var(--sidebar-text);
   letter-spacing: 0;
   line-height: 1.35;
+  padding-left: 2px;
 }
 
 .sidebar-nav {
@@ -4790,7 +4766,8 @@ main {
 
 .marketing-brand-logo {
   display: block;
-  width: 158px;
+  width: auto;
+  max-width: 100%;
   height: auto;
 }
 
@@ -5236,7 +5213,7 @@ main {
 
 @media (max-width: 900px) {
   .marketing-brand-logo {
-    width: 144px;
+    width: auto;
   }
 
   .marketing-shell {
@@ -5269,7 +5246,7 @@ main {
 
 @media (max-width: 640px) {
   .marketing-brand-logo {
-    width: 130px;
+    width: auto;
   }
 
   .marketing-nav {
