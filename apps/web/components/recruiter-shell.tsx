@@ -18,7 +18,7 @@ import {
 } from "../lib/auth/session";
 import type { WebAuthSession } from "../lib/auth/types";
 import { apiClient } from "../lib/api/recruiter-client";
-import { formatBillingPlanLabel, formatBillingTrialPlanLabel } from "../lib/billing-presentation";
+import { formatBillingPlanLabel, formatBillingTrialLabel } from "../lib/billing-presentation";
 import type { BillingPlanKey } from "../lib/types";
 import { BrandWordmark } from "./brand-wordmark";
 import { useUiText, useSiteLanguage } from "./site-language-provider";
@@ -388,7 +388,7 @@ function SidebarContent({
   ];
   const userPlanLabel = planKey
     ? trialActive
-      ? formatBillingTrialPlanLabel(planKey, language.locale)
+      ? formatBillingTrialLabel(language.locale)
       : formatBillingPlanLabel(planKey, language.locale)
     : t("Mevcut plan");
 

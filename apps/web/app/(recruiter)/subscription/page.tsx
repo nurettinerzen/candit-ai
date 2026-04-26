@@ -9,8 +9,9 @@ import { apiClient } from "../../../lib/api-client";
 import { publicContactApi } from "../../../lib/api/public-client";
 import {
   buildBillingPlanCardModel,
+  formatBillingPackageLabel,
   formatBillingPlanLabel,
-  formatBillingTrialPlanLabel
+  formatBillingTrialLabel
 } from "../../../lib/billing-presentation";
 import { formatDateOnly } from "../../../lib/format";
 import { getLocaleTag } from "../../../lib/i18n";
@@ -24,7 +25,7 @@ type BillingQuotaKeyWithAddOns = Exclude<
   BillingOverviewReadModel["addOnCatalog"][number]["quotaKey"],
   undefined | null
 >;
-type PlanActionMode = "current" | "upgrade" | "downgrade";
+type PlanActionMode = "current" | "upgrade" | "downgrade" | "select";
 type EnterpriseQuoteFormState = {
   fullName: string;
   company: string;
@@ -99,7 +100,11 @@ function planOrder(planKey: BillingPlanKey) {
   }
 }
 
-function getPlanActionMode(currentPlanKey: BillingPlanKey, targetPlanKey: BillingPlanKey): PlanActionMode {
+function getPlanActionMode(currentPlanKey: BillingPlanKey | null, targetPlanKey: BillingPlanKey): PlanActionMode {
+  if (!currentPlanKey) {
+    return "select";
+  }
+
   if (currentPlanKey === targetPlanKey) {
     return "current";
   }
@@ -112,10 +117,10 @@ function planActionLabel(
   locale: "tr" | "en"
 ) {
   if (locale === "en") {
-    return mode === "current" ? "Current plan" : mode === "upgrade" ? "Upgrade" : "Downgrade";
+    return mode === "current" ? "Current plan" : mode === "upgrade" ? "Upgrade" : mode === "downgrade" ? "Downgrade" : "Choose";
   }
 
-  return mode === "current" ? "Mevcut Paket" : mode === "upgrade" ? "Yükselt" : "Düşür";
+  return mode === "current" ? "Mevcut Paket" : mode === "upgrade" ? "Yükselt" : mode === "downgrade" ? "Düşür" : "Seç";
 }
 
 function buildEnterpriseQuoteMessage(
@@ -142,7 +147,6 @@ function buildEnterpriseQuoteMessage(
 function formatCheckoutAccessLabel(
   selfServeReady: boolean,
   trialActive: boolean,
-  planKey: BillingPlanKey | null,
   productionRuntime: boolean,
   locale: "tr" | "en"
 ) {
@@ -151,7 +155,7 @@ function formatCheckoutAccessLabel(
   }
 
   if (trialActive) {
-    const trialLabel = planKey ? formatBillingTrialPlanLabel(planKey, locale) : locale === "en" ? "Trial" : "Deneme";
+    const trialLabel = formatBillingTrialLabel(locale);
     return locale === "en" ? `${trialLabel} active` : `${trialLabel} aktif`;
   }
 
@@ -522,9 +526,11 @@ export default function SubscriptionPage() {
     );
   }
 
+  const currentPlanKeyForUi = billing?.trial.isActive ? null : billing?.account.currentPlanKey ?? null;
   const packageLabel = billing ? formatBillingPlanLabel(billing.account.currentPlanKey, locale) : "";
-  const trialPlanLabel = billing ? formatBillingTrialPlanLabel(billing.account.currentPlanKey, locale) : "";
-  const packageSummaryLabel = packageLabel;
+  const packageSummaryLabel = billing
+    ? formatBillingPackageLabel(billing.account.currentPlanKey, locale, { trialActive: billing.trial.isActive })
+    : "";
   const summaryDateLabel =
     billing?.trial.isActive
       ? locale === "en"
@@ -562,6 +568,10 @@ export default function SubscriptionPage() {
     locale === "en"
       ? "Upgrades apply immediately. Downgrades are scheduled for the end of the current period."
       : "Yükseltmeler hemen uygulanır. Düşürmeler geçerli dönem sonunda planlanır.";
+  const trialPlanSectionHint =
+    locale === "en"
+      ? "Your trial is active. When you are ready, you can move to any package from here."
+      : "Denemeniz aktif. Hazır olduğunuzda buradan dilediğiniz pakete geçebilirsiniz.";
   const addOnSectionHint =
     locale === "en"
       ? "Included monthly usage resets every period. Purchased credit packs stay active for 90 days."
@@ -570,7 +580,6 @@ export default function SubscriptionPage() {
   const paymentStatusLabel = formatCheckoutAccessLabel(
     selfServeReady,
     Boolean(billing?.trial.isActive),
-    billing?.account.currentPlanKey ?? null,
     productionRuntime,
     locale
   );
@@ -592,11 +601,7 @@ export default function SubscriptionPage() {
         : locale === "en"
           ? "Not started"
           : "Başlamadı";
-  const trialSectionLabel = billing?.trial.isActive
-    ? trialPlanLabel
-    : locale === "en"
-      ? "Trial"
-      : "Deneme";
+  const trialSectionLabel = formatBillingTrialLabel(locale);
   const paymentActionLabel = locale === "en" ? "Payment soon" : "Ödeme yakında";
 
   return (
@@ -765,14 +770,16 @@ export default function SubscriptionPage() {
                     ? locale === "en"
                       ? "Your trial is active. Package changes will open here as soon as online payments are available."
                       : "Denemeniz aktif. Çevrimiçi ödeme açıldığında paket değişiklikleri bu bölümden yapılacak."
-                    : planSectionHint}
+                    : billing.trial.isActive
+                      ? trialPlanSectionHint
+                      : planSectionHint}
                 </p>
               </div>
             </div>
 
             <div className="tlx-plan-grid">
               {billing.planCatalog.map((plan) => {
-                const actionMode = getPlanActionMode(billing.account.currentPlanKey, plan.key);
+                const actionMode = getPlanActionMode(currentPlanKeyForUi, plan.key);
                 const isCurrent = actionMode === "current";
                 const planCard = buildBillingPlanCardModel(plan, locale, {
                   enterprisePriceLabel: locale === "en" ? "Contact Us" : "İletişime Geçin"

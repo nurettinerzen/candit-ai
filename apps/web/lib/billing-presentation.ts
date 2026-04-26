@@ -71,9 +71,20 @@ export function formatBillingPlanLabel(planKey: BillingPlanKey, locale: SiteLoca
       : "Kurumsal";
 }
 
-export function formatBillingTrialPlanLabel(planKey: BillingPlanKey, locale: SiteLocale) {
-  const planLabel = formatBillingPlanLabel(planKey, locale);
-  return locale === "en" ? `${planLabel} trial` : `${planLabel} denemesi`;
+export function formatBillingTrialLabel(locale: SiteLocale) {
+  return locale === "en" ? "Trial" : "Deneme";
+}
+
+export function formatBillingPackageLabel(
+  planKey: BillingPlanKey,
+  locale: SiteLocale,
+  options: { trialActive?: boolean } = {}
+) {
+  if (options.trialActive) {
+    return locale === "en" ? "Free trial" : "Ücretsiz deneme";
+  }
+
+  return formatBillingPlanLabel(planKey, locale);
 }
 
 export function buildBillingPlanFeatureList(plan: BillingFeaturePlan) {
