@@ -69,10 +69,11 @@ export function ThemeFaviconSync() {
     const assets = getBrandThemeAssets(resolved);
 
     upsertLink({
-      id: "brand-favicon-svg",
+      id: "brand-favicon-png",
       rel: "icon",
-      href: assets.faviconSvg,
-      type: "image/svg+xml"
+      href: assets.faviconPng,
+      type: "image/png",
+      sizes: "512x512"
     });
     upsertLink({
       id: "brand-favicon-ico",
