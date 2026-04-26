@@ -521,7 +521,11 @@ function SidebarContent({
     <>
       <div className="sidebar-header">
         <Link href="/" className="sidebar-brand" aria-label={t("Candit.ai ana sayfa")}>
-          <BrandWordmark variant="sidebar" decorative className="sidebar-brand-wordmark" />
+          <BrandWordmark
+            variant="sidebar"
+            decorative
+            className="sidebar-brand-wordmark"
+          />
           <span className="sidebar-brand-desc">{t("İşe alım işletim paneli")}</span>
         </Link>
       </div>

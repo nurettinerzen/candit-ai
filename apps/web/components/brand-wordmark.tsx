@@ -1,6 +1,6 @@
 "use client";
 
-import { getBrandThemeAssets } from "./brand-assets";
+import { getBrandThemeAssets, type ResolvedBrandTheme } from "./brand-assets";
 import { useTheme } from "./theme-provider";
 import styles from "./brand-wordmark.module.css";
 
@@ -11,14 +11,15 @@ type BrandWordmarkProps = {
   className?: string;
   alt?: string;
   decorative?: boolean;
+  forceTheme?: ResolvedBrandTheme;
 };
 
 const BRAND_DIMENSIONS: Record<BrandWordmarkVariant, { width: number; height: number }> = {
   publicHeader: { width: 165, height: 74 },
   publicFooter: { width: 165, height: 74 },
-  marketing: { width: 165, height: 74 },
+  marketing: { width: 155, height: 70 },
   auth: { width: 165, height: 74 },
-  sidebar: { width: 165, height: 74 }
+  sidebar: { width: 155, height: 70 }
 };
 
 function cn(...values: Array<string | false | null | undefined>) {
@@ -29,10 +30,12 @@ export function BrandWordmark({
   variant,
   className,
   alt = "Candit.ai",
-  decorative = false
+  decorative = false,
+  forceTheme
 }: BrandWordmarkProps) {
   const { resolved } = useTheme();
-  const src = getBrandThemeAssets(resolved).wordmark;
+  const brandTheme = forceTheme ?? resolved;
+  const src = getBrandThemeAssets(brandTheme).wordmark;
   const dimensions = BRAND_DIMENSIONS[variant];
 
   return (

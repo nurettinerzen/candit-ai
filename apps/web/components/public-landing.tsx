@@ -509,7 +509,12 @@ export function PublicLanding() {
       <header className="marketing-nav-shell">
         <div className="marketing-shell marketing-nav">
           <Link href="/landing" className="marketing-brand" aria-label={t("Candit.ai landing sayfası")}>
-            <BrandWordmark variant="marketing" decorative className="marketing-brand-logo" />
+            <BrandWordmark
+              variant="marketing"
+              decorative
+              forceTheme="dark"
+              className="marketing-brand-logo"
+            />
           </Link>
 
           <nav className="marketing-nav-links" aria-label={t("Bölümler")}>
