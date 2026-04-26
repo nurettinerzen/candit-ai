@@ -4788,6 +4788,12 @@ main {
   color: #f7fbff;
 }
 
+.marketing-brand-logo {
+  display: block;
+  width: 158px;
+  height: auto;
+}
+
 .marketing-brand-mark {
   width: 42px;
   height: 42px;
@@ -5229,6 +5235,10 @@ main {
 }
 
 @media (max-width: 900px) {
+  .marketing-brand-logo {
+    width: 144px;
+  }
+
   .marketing-shell {
     width: min(100%, calc(100% - 32px));
   }
@@ -5258,6 +5268,10 @@ main {
 }
 
 @media (max-width: 640px) {
+  .marketing-brand-logo {
+    width: 130px;
+  }
+
   .marketing-nav {
     align-items: flex-start;
     flex-direction: column;

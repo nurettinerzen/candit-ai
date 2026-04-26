@@ -112,11 +112,11 @@ export const PUBLIC_FOOTER_COLUMNS: Array<{ title: string; links: PublicNavLink[
   {
     title: "Çözümler",
     links: [
-      { label: "Teknoloji", href: "/solutions/teknoloji" },
-      { label: "Perakende", href: "/solutions/perakende" },
-      { label: "Sağlık", href: "/solutions/saglik" },
-      { label: "Finans", href: "/solutions/finans" },
-      { label: "Üretim ve Lojistik", href: "/solutions/uretim-lojistik" }
+      { label: "İşe alım akışı", href: "/solutions#capabilities" },
+      { label: "AI Mülakat", href: "/solutions#capabilities" },
+      { label: "Ön Eleme", href: "/solutions#capabilities" },
+      { label: "Aday Yönetimi", href: "/solutions#operations" },
+      { label: "Analitik", href: "/solutions#operations" }
     ]
   },
   {
@@ -600,7 +600,7 @@ export const PUBLIC_BLOG_ARTICLES: PublicBlogArticle[] = [
           "Recruiter ekibi aynı aday bilgisini iki farklı sisteme giriyorsa entegrasyon ihtiyacı doğmuştur. Bu noktada webhook veya temel API senaryosu ciddi zaman kazandırır."
       },
       {
-        title: "Pilotta Tam Kapsam Yerine Kontrollü Senaryo",
+        title: "Tam Kapsam Yerine Kontrollü Senaryo",
         body:
           "İlk entegrasyonun tüm süreçleri kapsaması gerekmez. Aday oluşturma, mülakat sonucu geri yazma veya durum güncelleme gibi tek bir akışla başlamak daha güvenlidir."
       },
@@ -661,7 +661,7 @@ export const PUBLIC_HELP_QUICKSTART: PublicStep[] = [
 export const PUBLIC_HELP_TOPICS: PublicCard[] = [
   {
     title: "Kurulum Desteği",
-    body: "Pilot başlangıcı, onboarding ve ilk akış kurulumu",
+    body: "Başlangıç kurulumu, onboarding ve ilk akış kurulumu",
     href: "/contact",
     actionLabel: "İletişime geçin"
   },

@@ -4811,3 +4811,42 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Bu alanda sadece hesap sahibi değişiklik yapabilir. Siz salt okunur görünümdesiniz.":
     "Only the account owner can make changes in this area. You are in read-only mode."
 });
+
+Object.assign(EN_PHRASE_TRANSLATIONS, {
+  "Sistem aktif": "System active",
+  "Canlı kullanım": "Live usage",
+  "Ön eleme, AI mülakat ve değerlendirme süreçleri aynı akış içinde otomatik yönetilir.":
+    "Pre-screening, AI interviews, and evaluation workflows are managed automatically in the same flow.",
+  "Özellikleri Keşfedin": "Explore Features",
+  "AI ile işe alım deneyiminizi dönüştürün": "Transform your hiring experience with AI",
+  "Tüm özelliklerimizi ücretsiz deneyin. Kurulum dakikalar içinde tamamlanır, teknik bilgi gerekmez.":
+    "Try all our features for free. Setup takes minutes and requires no technical knowledge.",
+  "14 günlük ücretsiz denemeyle başlayın; işe alım hacminiz büyüdükçe ekibinize en uygun planla devam edin.":
+    "Start with a 14-day free trial, then continue with the plan that best fits your team as your hiring volume grows.",
+  "Candit'i mevcut işe alım akışınıza bağlayın":
+    "Connect Candit to your existing hiring workflow.",
+  "API, webhook ve temel veri akışlarıyla mevcut sistemlerinizle güvenli ve ölçeklenebilir entegrasyonlar kurun.":
+    "Build secure and scalable integrations with your existing systems through APIs, webhooks, and core data flows.",
+  "Teknik onboarding": "Technical onboarding",
+  "Alan eşleme, retry davranışı ve operasyon sahipliği gibi kritik kararları teknik ekibinizle netleştirin.":
+    "Clarify critical decisions such as field mapping, retry behavior, and operational ownership with your technical team.",
+  "Entegrasyon kapsamı": "Integration scope",
+  "Hangi entegrasyon yüzeyleri bugün hazır?": "Which integration surfaces are ready today?",
+  "API, webhook, SSO ve takvim bağlantılarını ihtiyacınıza göre aşamalı ya da tam kapsamlı devreye alın.":
+    "Activate API, webhook, SSO, and calendar connections gradually or in full based on your needs.",
+  "Hazır bağlantılar": "Ready connections",
+  "API dokümantasyonu, webhook olayları ve temel ATS veri senkronizasyonu doğrudan planlanabilir.":
+    "API documentation, webhook events, and core ATS data sync can be planned directly.",
+  "Kurulum gerektirenler": "Requires setup",
+  "Google login, Google Calendar ve Google Meet bağlantıları doğru OAuth kurulumu tamamlandıktan sonra devreye alınır.":
+    "Google login, Google Calendar, and Google Meet connections are enabled after the correct OAuth setup is completed.",
+  "Yakında / özel kapsam": "Coming soon / custom scope",
+  "Özel ATS eşlemeleri, ileri provisioning ve kurumunuza özel entegrasyon akışları ekip ile birlikte planlanır.":
+    "Custom ATS mappings, advanced provisioning, and organization-specific integration flows are planned together with the team.",
+  "Mevcut ATS, webhook veya raporlama ihtiyacınızı paylaşın; ekibimiz sizin için en uygun bağlantı kurgusunu birlikte netleştirsin.":
+    "Share your ATS, webhook, or reporting needs, and our team will help define the right integration setup with you.",
+  "İlk akışı çalıştırın": "Run your first workflow",
+  "Başlangıç kurulumu, onboarding ve ilk akış kurulumu":
+    "Initial setup, onboarding, and first workflow setup",
+  "Tam Kapsam Yerine Kontrollü Senaryo": "Controlled Scenario Instead of Full Coverage"
+});

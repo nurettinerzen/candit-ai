@@ -416,17 +416,17 @@ export function LandingHero() {
                 </span>
               ))}
             </span>
+            <div className="lp-hero-scroll-cue" aria-hidden="true">
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M12 5v14m0 0l-6-6m6 6l6-6" />
+              </svg>
+            </div>
           </div>
           <div className="lp-hero-bottom">
             <div className="lp-hero-actions">
               <a href="/auth/signup" className="lp-btn">{t("Ücretsiz Deneyin")}</a>
               <a href="#workflow" className="lp-btn-ghost">{t("Nasıl çalışır?")}</a>
             </div>
-          </div>
-          <div className="lp-hero-scroll-cue" aria-hidden="true">
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path d="M12 5v14m0 0l-6-6m6 6l6-6" />
-            </svg>
           </div>
         </section>
 

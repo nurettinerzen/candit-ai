@@ -239,7 +239,7 @@ function ProductStage() {
         </div>
         <span className={styles.livePill}>
           <i />
-          {t("Pilot ortam")}
+          {t("Sistem aktif")}
         </span>
       </div>
 
@@ -249,8 +249,8 @@ function ProductStage() {
           <h2>{t("Tüm işe alım süreçleri tek panelde buluşur.")}</h2>
         </div>
         <div className={styles.stageScore}>
-          <strong>{t("Pilot hazır")}</strong>
-          <span>{t("temel işe alım akışı")}</span>
+          <strong>{t("Canlı kullanım")}</strong>
+          <span>{t("İşe alım akışı")}</span>
         </div>
       </div>
 
@@ -483,7 +483,7 @@ function DocsEndpoints() {
   -d '{
     "fullName": "Jane Recruiter",
     "email": "jane@example.com",
-    "company": "Candit Pilot",
+    "company": "Candit Demo",
     "message": "${exampleMessage}"
   }'`}</code>
         </pre>
@@ -549,10 +549,6 @@ export function PublicFeaturesPage() {
   const SparklesSvg = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" /></svg>
   );
-  const ArrowRightSvg = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
-  );
-
   /* Icons for feature groups */
   const featureIcons = [
     /* AI Mülakat */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>,
@@ -727,42 +723,6 @@ export function PublicFeaturesPage() {
           </div>
         </section>
 
-        {/* ═══ Sector Solution Cards ═══ */}
-        <section className={styles.ftSection}>
-          <div className={styles.shell}>
-            <div className={styles.ftSectionHeader}>
-              <h2 className={styles.ftSectionTitle}>{t("Farklı sektörler, aynı verimlilik")}</h2>
-              <p className={styles.ftSectionSubtitle}>
-                {t("Teknoloji, perakende, sağlık, finans ve üretim sektörlerine özel mülakat akışları.")}
-              </p>
-            </div>
-            <div className={styles.ftSolutionGrid}>
-              {PUBLIC_SOLUTIONS.map((solution, index) => (
-                <a key={solution.slug} href={`/solutions/${solution.slug}`} className={styles.ftSolutionCard}>
-                  <div className={styles.ftSolutionCardInner}>
-                    <div className={cn(styles.ftSolutionIcon, featureGradients[index % featureGradients.length])}>
-                      {[
-                        <svg key="tech" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>,
-                        <svg key="retail" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>,
-                        <svg key="health" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
-                        <svg key="finance" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
-                        <svg key="mfg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
-                      ][index]}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <h3 className={styles.ftSolutionTitle}>{t(solution.title)}</h3>
-                      <p className={styles.ftSolutionDesc}>{t(solution.shortDescription)}</p>
-                      <span className={styles.ftSolutionLink}>
-                        {t("Çözümü incele")} <ArrowRightSvg />
-                      </span>
-                    </div>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* ═══ FAQ ═══ */}
         <section className={styles.ftSection}>
           <div className={styles.shell}>
@@ -804,9 +764,6 @@ export function PublicFeaturesPage() {
 
 export function PublicSolutionsPage() {
   const { t } = useUiText();
-  const CheckSvg = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-  );
   const SparklesSvg = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" /></svg>
   );
@@ -815,11 +772,10 @@ export function PublicSolutionsPage() {
   );
 
   const solutionIcons = [
-    /* Teknoloji */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>,
-    /* Perakende */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>,
-    /* Sağlık */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
-    /* Finans */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
-    /* Üretim/Lojistik */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+    <svg key="interview" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>,
+    <svg key="screening" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
+    <svg key="management" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+    <svg key="analytics" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
   ];
   const solutionGradients = [
     styles.ftGradBlue, styles.ftGradNavy, styles.ftGradCyan, styles.ftGradDeep
@@ -833,6 +789,10 @@ export function PublicSolutionsPage() {
     /* Ölçeklenebilir */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
     /* Uyum */ <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
   ];
+  const solutionModules = PUBLIC_HOME_CHANNELS.map((channel) => ({
+    ...channel,
+    href: "/features#features-grid"
+  }));
 
   return (
     <PublicSiteFrame activeHref="/solutions">
@@ -848,13 +808,13 @@ export function PublicSolutionsPage() {
               {t("Çözümler")}
             </span>
             <h1 className={styles.solHeroTitle}>
-              {t("Her sektörde doğru adayı daha hızlı bulun")}
+              {t("Tüm işe alım süreçleri tek panelde buluşur.")}
             </h1>
             <p className={styles.solHeroSubtitle}>
-              {t("Teknoloji, perakende, sağlık, finans ve üretim sektörlerine özel AI mülakat ve ön eleme akışları ile hemen başlayın.")}
+              {t("Ön eleme, AI mülakat ve değerlendirme süreçleri aynı akış içinde otomatik yönetilir.")}
             </p>
             <div className={styles.solHeroActions}>
-              <a href="#solutions-grid" className={cn(styles.solGlowBtn, styles.solGlowBtnPrimary)}>
+              <a href="#capabilities" className={cn(styles.solGlowBtn, styles.solGlowBtnPrimary)}>
                 {t("Çözümleri Keşfedin")}
               </a>
               <a href="/contact" className={cn(styles.solGlowBtn, styles.solGlowBtnOutline)}>
@@ -879,32 +839,24 @@ export function PublicSolutionsPage() {
         </section>
 
         {/* ═══ Solutions Grid ═══ */}
-        <section className={styles.solSection} id="solutions-grid">
+        <section className={styles.solSection} id="capabilities">
           <div className={styles.shell}>
             <div className={styles.solSectionHeader}>
-              <h2 className={styles.solSectionTitle}>{t("Sektörünüzü seçin, hemen başlayın")}</h2>
+              <h2 className={styles.solSectionTitle}>{t("Her adımda aynı kalite")}</h2>
               <p className={styles.solSectionSubtitle}>
-                {t("Her çözüm, sektörün ihtiyaçlarına özel AI mülakat akışları, ön eleme kriterleri ve değerlendirme metrikleriyle donatıldı.")}
+                {t("İş ilanı, başvuru toplama, ön eleme ve AI mülakat süreçlerinin hepsi tek platformda yönetilir.")}
               </p>
             </div>
             <div className={styles.solGrid}>
-              {PUBLIC_SOLUTIONS.map((solution, index) => (
-                <a key={solution.slug} href={`/solutions/${solution.slug}`} className={styles.solCard}>
+              {solutionModules.map((solution, index) => (
+                <a key={solution.title} href={solution.href} className={styles.solCard}>
                   <div className={cn(styles.solCardBlur, solutionGradients[index % solutionGradients.length])} aria-hidden="true" />
                   <div className={styles.solCardContent}>
                     <div className={cn(styles.solCardIcon, solutionGradients[index % solutionGradients.length])}>{solutionIcons[index]}</div>
                     <h3 className={styles.solCardTitle}>{t(solution.title)}</h3>
-                    <p className={styles.solCardDesc}>{t(solution.shortDescription)}</p>
-                    <div className={styles.solCheckList}>
-                      {solution.useCases.map((useCase) => (
-                        <div key={useCase} className={styles.solCheckItem}>
-                          <span className={styles.solCheck}><CheckSvg /></span>
-                          <span>{t(useCase)}</span>
-                        </div>
-                      ))}
-                    </div>
+                    <p className={styles.solCardDesc}>{t(solution.body)}</p>
                     <span className={styles.solCardCta}>
-                      {t("Çözümü incele")}
+                      {t("Özellikleri Keşfedin")}
                       <ArrowRightSvg />
                     </span>
                   </div>
@@ -915,7 +867,7 @@ export function PublicSolutionsPage() {
         </section>
 
         {/* ═══ Advantages Bento Grid ═══ */}
-        <section className={styles.solSectionMuted}>
+        <section className={styles.solSectionMuted} id="operations">
           <div className={styles.shell}>
             <div className={styles.solSectionHeader}>
               <h2 className={styles.solSectionTitle}>{t("Neden Candit.ai?")}</h2>
@@ -955,16 +907,16 @@ export function PublicSolutionsPage() {
           <div className={styles.shell}>
             <div className={styles.solCta}>
               <div className={styles.solCtaInner}>
-                <h2 className={styles.solCtaTitle}>{t("Sektörünüze özel AI işe alım çözümünü deneyin")}</h2>
+                <h2 className={styles.solCtaTitle}>{t("AI ile işe alım deneyiminizi dönüştürün")}</h2>
                 <p className={styles.solCtaSubtitle}>
-                  {t("Listede olsun ya da olmasın, sektörünüze uygun mülakat ve ön eleme akışını birlikte tasarlayalım.")}
+                  {t("Tüm özelliklerimizi ücretsiz deneyin. Kurulum dakikalar içinde tamamlanır, teknik bilgi gerekmez.")}
                 </p>
                 <div className={styles.solCtaActions}>
-                  <a href="/contact" className={styles.solCtaBtnWhite}>
-                    {t("İletişime geçin")}
-                  </a>
-                  <a href="/auth/signup" className={styles.solCtaBtnGhost}>
+                  <a href="/auth/signup" className={styles.solCtaBtnWhite}>
                     {t("Ücretsiz deneme")}
+                  </a>
+                  <a href="/contact" className={styles.solCtaBtnGhost}>
+                    {t("İletişime geçin")}
                   </a>
                 </div>
               </div>
@@ -1099,20 +1051,9 @@ export function PublicSolutionDetailPage({ slug }: { slug: string }) {
 
 export function PublicPricingPage() {
   const { t, locale } = useUiText();
-  const pilotAccessLabel = locale === "en" ? "Request pilot access" : "Pilot erişimi iste";
-  const contactLabel = locale === "en" ? "Contact us" : "İletişime geçin";
-  const pricingHeroSubtitle =
-    locale === "en"
-      ? "Start with the free trial, then unlock monthly packages through guided pilot onboarding. Online self-serve billing opens in the next stage."
-      : "14 günlük denemeyle başlayın; aylık paketleri kontrollü pilot onboarding ile açıyoruz. Çevrimiçi self-serve ödeme bir sonraki aşamada devreye alınacak.";
-  const pricingPilotNoticeTitle =
-    locale === "en"
-      ? "Pilot billing access is guided"
-      : "Pilot ödeme erişimi kontrollü ilerliyor";
-  const pricingPilotNoticeBody =
-    locale === "en"
-      ? "Free trial signup is live. Starter, Growth, and add-on activations are opened together with the team during pilot so package changes do not depend on unfinished self-serve billing flows."
-      : "Ücretsiz deneme kaydı açık. Starter, Growth ve ek kredi aktivasyonlarını pilot sürecinde ekiple birlikte açıyoruz; böylece paket değişiklikleri henüz tamamlanmamış self-serve ödeme akışlarına bağlı kalmıyor.";
+  const contactLabel = t("İletişime geçin");
+  const trialLabel = t("Ücretsiz deneme");
+  const pricingHeroSubtitle = t("14 günlük ücretsiz denemeyle başlayın; işe alım hacminiz büyüdükçe ekibinize en uygun planla devam edin.");
   const pricingPlans = buildBillingPlanCatalogCards(locale, {
     enterprisePriceLabel: contactLabel
   }).map((plan) => ({
@@ -1120,8 +1061,8 @@ export function PublicPricingPage() {
     href:
       plan.key === "ENTERPRISE"
         ? "/contact?source=pricing-enterprise"
-        : `/contact?source=pricing-plan&plan=${plan.key.toLowerCase()}`,
-    actionLabel: plan.key === "ENTERPRISE" ? contactLabel : pilotAccessLabel
+        : "/auth/signup",
+    actionLabel: plan.key === "ENTERPRISE" ? contactLabel : trialLabel
   }));
 
   return (
@@ -1148,21 +1089,6 @@ export function PublicPricingPage() {
       {/* ══ Plan Cards ══ */}
       <section className={styles.prPlansSection}>
         <div className={styles.shell}>
-          <div
-            style={{
-              marginBottom: 24,
-              padding: "18px 20px",
-              borderRadius: 24,
-              border: "1px solid var(--border)",
-              background: "color-mix(in srgb, var(--surface-raised) 84%, transparent)",
-              display: "grid",
-              gap: 8
-            }}
-          >
-            <strong style={{ color: "var(--text)", fontSize: 16 }}>{pricingPilotNoticeTitle}</strong>
-            <p style={{ margin: 0, color: "var(--text-secondary)", lineHeight: 1.6 }}>{pricingPilotNoticeBody}</p>
-          </div>
-
           <div className={styles.prCardsGrid}>
             {pricingPlans.map((plan) => {
               return (
@@ -1456,8 +1382,8 @@ export function PublicIntegrationsPage() {
         <div className={styles.shell}>
           <SectionHeader
             eyebrow={t("Entegrasyonlar")}
-            title={t("Candit'i mevcut işe alım akışınıza kontrollü şekilde bağlayın")}
-            subtitle={t("Pilot aşamasında API, webhook ve sınırlı ATS senaryolarıyla ilerliyoruz. Takvim ve Google bağlantıları yalnızca bilinçli olarak açıldığında devreye alınır.")}
+            title={t("Candit'i mevcut işe alım akışınıza bağlayın")}
+            subtitle={t("API, webhook ve temel veri akışlarıyla mevcut sistemlerinizle güvenli ve ölçeklenebilir entegrasyonlar kurun.")}
             align="center"
           />
         </div>
@@ -1481,8 +1407,8 @@ export function PublicIntegrationsPage() {
                 body: t("Başvuru, mülakat ve karar olaylarını dış sistemlere taşımak için desteklenen webhook senaryolarını kullanabilirsiniz.")
               },
               {
-                title: t("Pilot onboarding"),
-                body: t("Alan eşleme, retry davranışı ve operasyon sahipliği gibi kritik kararları teknik ekip ile birlikte netleştiriyoruz.")
+                title: t("Teknik onboarding"),
+                body: t("Alan eşleme, retry davranışı ve operasyon sahipliği gibi kritik kararları teknik ekibinizle netleştirin.")
               }
             ]}
           />
@@ -1492,23 +1418,24 @@ export function PublicIntegrationsPage() {
       <section className={cn(styles.section, styles.sectionMuted)}>
         <div className={styles.shell}>
           <SectionHeader
-            eyebrow={t("Launch Sınırı")}
-            title={t("Hangi entegrasyonlar kontrollü açılıyor?")}
+            eyebrow={t("Entegrasyon kapsamı")}
+            title={t("Hangi entegrasyon yüzeyleri bugün hazır?")}
+            subtitle={t("API, webhook, SSO ve takvim bağlantılarını ihtiyacınıza göre aşamalı ya da tam kapsamlı devreye alın.")}
           />
           <CardGrid
             columns={3}
             cards={[
               {
-                title: t("Hazır senaryolar"),
-                body: t("API dokümantasyonu, webhook olayları ve temel ATS veri senkronizasyonu pilot aşamada planlanabilir.")
+                title: t("Hazır bağlantılar"),
+                body: t("API dokümantasyonu, webhook olayları ve temel ATS veri senkronizasyonu doğrudan planlanabilir.")
               },
               {
-                title: t("Setup ile açılanlar"),
-                body: t("Google login, Google Calendar ve Google Meet yalnızca explicit enable ve doğru OAuth kurulumu tamamlandıktan sonra devreye alınır.")
+                title: t("Kurulum gerektirenler"),
+                body: t("Google login, Google Calendar ve Google Meet bağlantıları doğru OAuth kurulumu tamamlandıktan sonra devreye alınır.")
               },
               {
-                title: t("V1 dışı alanlar"),
-                body: t("Self-serve marketplace bağlantıları, tek tık third-party onboarding ve desteklenmeyen takvim sağlayıcıları bu launch kapsamına dahil değil.")
+                title: t("Yakında / özel kapsam"),
+                body: t("Özel ATS eşlemeleri, ileri provisioning ve kurumunuza özel entegrasyon akışları ekip ile birlikte planlanır.")
               }
             ]}
           />
@@ -1517,7 +1444,7 @@ export function PublicIntegrationsPage() {
 
       <CTASection
         title={t("Entegrasyon planınızı birlikte netleştirelim")}
-        body={t("Mevcut ATS, webhook veya raporlama ihtiyacınızı paylaşın; ekibimiz sizin için uygun pilot kapsamını birlikte belirlesin.")}
+        body={t("Mevcut ATS, webhook veya raporlama ihtiyacınızı paylaşın; ekibimiz sizin için en uygun bağlantı kurgusunu birlikte netleştirsin.")}
         primary={{ label: t("İletişime geçin"), href: "/contact" }}
         secondary={{ label: t("API dokümantasyonu"), href: "/docs/api", tone: "secondary" }}
       />
@@ -1670,27 +1597,6 @@ export function PublicAboutPage() {
 export function PublicContactPage() {
   const { t } = useUiText();
 
-  const MailSvg = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-    </svg>
-  );
-  const ClockSvg = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-    </svg>
-  );
-
-  const contactDetails = [
-    { Icon: MailSvg, label: t("E-posta"), value: "info@candidate.ai" },
-    { Icon: ClockSvg, label: t("Çalışma saatleri"), value: t("Pazartesi - Cuma • 09:00 - 18:00") }
-  ];
-  const contactTopics = [
-    t("Demo talebi"),
-    t("Entegrasyon soruları"),
-    t("Kurulum desteği")
-  ];
-
   return (
     <PublicSiteFrame activeHref="/contact">
       {/* ═══ Hero ═══ */}
@@ -1707,7 +1613,7 @@ export function PublicContactPage() {
 
       {/* ═══ Contact Form + Info ═══ */}
       <section className={styles.section}>
-        <div className={cn(styles.shell, styles.contactLayout)}>
+        <div className={cn(styles.shell, styles.contactFormShell)}>
           <LeadCaptureForm
             eyebrow={null}
             title={t("Bize Mesaj Gönderin")}
@@ -1717,45 +1623,6 @@ export function PublicContactPage() {
             successTitle={t("Mesajınız ulaştı")}
             successBody={t("Ekibimiz kısa süre içinde size dönüş yapacak.")}
           />
-
-          <div className={styles.contactInfoPanel}>
-            <h3 className={styles.contactInfoTitle}>{t("Ekibimizle doğrudan bağlantı kurun")}</h3>
-            <p className={styles.contactInfoBody}>
-              {t("Form üzerinden gönderdiğiniz notlar doğrudan ekibimize ulaşır. Demo, entegrasyon veya işe alım süreçleriyle ilgili sorularınız için size uygun şekilde dönüş yaparız.")}
-            </p>
-
-            <div className={styles.contactMiniGrid}>
-              {contactDetails.map(({ Icon, label, value }) => (
-                <article key={label} className={styles.contactMiniCard}>
-                  <div className={styles.contactDetailIconWrap}>
-                    <Icon />
-                  </div>
-                  <div>
-                    <span className={styles.contactMiniLabel}>{label}</span>
-                    <span className={styles.contactMiniValue}>{value}</span>
-                  </div>
-                </article>
-              ))}
-            </div>
-
-            <div className={styles.contactSupportCard}>
-              <h4>{t("Yardımcı olabileceğimiz başlıklar")}</h4>
-              <div className={styles.contactPillList}>
-                {contactTopics.map((item) => (
-                  <span key={item} className={styles.contactPill}>
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className={styles.contactSupportNote}>
-              <strong>{t("Mesajınıza mümkün olduğunca hızlı döneriz.")}</strong>
-              <p>
-                {t("Mevcut sürecinizi ve neye ihtiyaç duyduğunuzu kısaca paylaşmanız, ilk yanıtı daha hızlı hazırlamamızı sağlar.")}
-              </p>
-            </div>
-          </div>
         </div>
       </section>
     </PublicSiteFrame>
@@ -1857,7 +1724,7 @@ export function PublicWaitlistPage() {
               steps={[
                 { step: "01", title: t("Owner hesabı"), body: t("İlk çalışma alanınızı ve yönetici hesabınızı birkaç dakika içinde oluşturun.") },
                 { step: "02", title: t("Temel ayarlar"), body: t("Takım üyeleri, çalışma alanı ayarları ve ürün yapılandırmasını içeriden yönetin.") },
-                { step: "03", title: t("Pilot başlangıcı"), body: t("İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın.") },
+                { step: "03", title: t("İlk akışı çalıştırın"), body: t("İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın.") },
                 { step: "04", title: t("Destek kanalı"), body: t("Ekibimiz kurulum ve onboarding sürecinde size yardımcı olmaya hazır.") }
               ]}
             />

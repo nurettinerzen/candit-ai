@@ -508,13 +508,14 @@ export function PublicLanding() {
       <header className="marketing-nav-shell">
         <div className="marketing-shell marketing-nav">
           <Link href="/landing" className="marketing-brand" aria-label={t("Candit.ai landing sayfası")}>
-            <span className="marketing-brand-mark">
-              <img src="/brand/candit-mark.svg" alt="" aria-hidden="true" width="42" height="42" />
-            </span>
-            <span className="marketing-brand-copy">
-              <strong>Candit.ai</strong>
-              <span>AI Recruiter</span>
-            </span>
+            <img
+              src="/brand/candit-logo-clean-white.png"
+              alt=""
+              aria-hidden="true"
+              width="144"
+              height="57"
+              className="marketing-brand-logo"
+            />
           </Link>
 
           <nav className="marketing-nav-links" aria-label={t("Bölümler")}>
