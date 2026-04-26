@@ -13,7 +13,7 @@ type AuthShellProps = {
   badge?: string;
 };
 
-export function AuthShell({ title, description, children, footer, badge }: AuthShellProps) {
+export function AuthShell({ title, description, children, footer }: AuthShellProps) {
   const { resolved } = useTheme();
   const dark = resolved === "dark";
 
@@ -66,26 +66,6 @@ export function AuthShell({ title, description, children, footer, badge }: AuthS
                   : "linear-gradient(135deg, rgba(80,70,229,0.1), rgba(124,58,237,0.08))"
             }}
           >
-            {badge ? (
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "7px 12px",
-                  borderRadius: 999,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: "0.01em",
-                  textTransform: "none" as const,
-                  color: "var(--primary)",
-                  background: dark ? "rgba(2,6,23,0.32)" : "rgba(80,70,229,0.08)",
-                  marginBottom: 14
-                }}
-              >
-                {badge}
-              </div>
-            ) : null}
             <h1 style={{ margin: 0, color: "var(--text)", fontSize: 30, lineHeight: 1.1 }}>{title}</h1>
             <p style={{ margin: "10px 0 0", color: "var(--text-secondary)", lineHeight: 1.6 }}>
               {description}
