@@ -770,9 +770,30 @@ export class ApplicantFitScoringTaskService {
       })
     });
 
-    const aiData = aiResult.mode === "deterministic_fallback" || !aiResult.output
-      ? null
-      : this.parseAiOutput(aiResult.output);
+    if (aiResult.mode === "deterministic_fallback" || !aiResult.output) {
+      throw new TaskProcessingError(
+        "FIT_SCORING_REQUIRES_AI_PROVIDER",
+        "Fit scoring deterministic fallback ile calismaz; gecerli AI provider yaniti gereklidir.",
+        true,
+        {
+          providerMode: aiResult.mode,
+          providerKey: aiResult.providerKey
+        }
+      );
+    }
+
+    const aiData = this.parseAiOutput(aiResult.output);
+    if (!aiData) {
+      throw new TaskProcessingError(
+        "FIT_SCORING_AI_OUTPUT_INVALID",
+        "AI fit scoring cikisi parse edilemedi veya zorunlu alanlar eksik.",
+        true,
+        {
+          providerKey: aiResult.providerKey,
+          modelKey: aiResult.modelKey ?? null
+        }
+      );
+    }
 
     let rubricRoleFamily = rubricData.roleFamily;
     let rubricSource: "database" | "default" | "ai_first" = rubric ? "database" : "default";
@@ -796,19 +817,14 @@ export class ApplicantFitScoringTaskService {
       reasoning: string;
     }> = [];
 
-    const mergedScores = aiData
-      ? this.buildAiFirstScores({
-          aiData,
-          deterministicScores,
-          categories: rubricData.categories,
-          locationAnalysis
-        })
-      : this.mergeScores(
-          deterministicScores,
-          undefined,
-          rubricData.categories,
-          locationAnalysis
-        );
+    this.assertAiCategoryCoverage(aiData, rubricData.categories);
+
+    const mergedScores = this.buildAiFirstScores({
+      aiData,
+      deterministicScores,
+      categories: rubricData.categories,
+      locationAnalysis
+    });
     const mergedMissingInfo = this.sanitizeMissingInformation(
       this.uniqueList(mergedScores.missingInformation),
       locationAnalysis
@@ -843,9 +859,8 @@ export class ApplicantFitScoringTaskService {
     }));
 
     overallScore = this.resolveCoherentOverallScore({
-      aiOverallScore: aiData?.overallScore ?? null,
-      categoryScores: sanitizedCategoryScores,
-      categories: rubricData.categories
+      aiOverallScore: aiData.overallScore,
+      categoryScores: sanitizedCategoryScores
     });
     overallConfidence = this.calibrateAssessmentConfidence({
       aiConfidence: aiData?.confidence ?? mergedScores.confidence,
@@ -1075,125 +1090,7 @@ export class ApplicantFitScoringTaskService {
     });
   }
 
-  // ── Merge deterministic + AI ──
-
-  private mergeScores(
-    deterministicScores: Array<{
-      key: string;
-      score: number;
-      signals: string[];
-      strengths?: string[];
-      risks?: string[];
-      reasoning?: string;
-    }>,
-    aiOutput: Record<string, unknown> | undefined,
-    categories: RubricCategory[],
-    locationAnalysis: LocationFitAnalysis
-  ): {
-    categoryScores: Array<{
-      key: string;
-      score: number;
-      confidence: number;
-      deterministicScore: number;
-      aiScore: number;
-      strengths: string[];
-      risks: string[];
-      reasoning: string;
-    }>;
-    overallAssessment: string;
-    fitBand: AiFitScoringOutput["fitBand"] | null;
-    interviewReadiness: AiFitScoringOutput["interviewReadiness"] | null;
-    fitBandReasoning: string | null;
-    missingInformation: string[];
-    confidence: number;
-    uncertaintyReasons: string[];
-  } {
-    const aiData = aiOutput ? this.parseAiOutput(aiOutput) : null;
-    const detWeight = aiData ? 0.45 : 1.0;
-    const aiWeight = aiData ? 0.55 : 0.0;
-
-    const categoryScores = categories.map((category) => {
-      const det = deterministicScores.find((d) => d.key === category.key);
-      const detScore = det?.score ?? 30;
-      const aiCategory = aiData?.categoryScores.find((a) => a.key === category.key);
-      const rawAiScore = aiCategory?.score ?? detScore;
-
-      const blendedScore = Math.round(detScore * detWeight + rawAiScore * aiWeight);
-      const confidence = aiCategory
-        ? toNumberValue(aiCategory.confidence, 0.5)
-        : 0.3;
-
-      const isLocationCategory = this.isLocationCategory(category);
-      const locationScore = isLocationCategory
-        ? guardLocationCategoryScore({
-            aiScore: rawAiScore,
-            deterministicScore: detScore,
-            presenceMode: locationAnalysis.presenceMode,
-            candidateFlexibility: locationAnalysis.candidateFlexibility,
-            mismatchLevel: locationAnalysis.mismatchLevel,
-            commuteSeverity: locationAnalysis.commuteSeverity
-          })
-        : null;
-      const deterministicStrengths = ("strengths" in (det ?? {}))
-        ? ((det as { strengths?: string[] }).strengths ?? det?.signals ?? [])
-        : this.humanizeDeterministicSignals(det?.signals ?? []);
-      const deterministicRisks = ("risks" in (det ?? {}))
-        ? ((det as { risks?: string[] }).risks ?? [])
-        : [];
-      const aiStrengths = this.uniqueList(aiCategory?.strengths ?? []);
-
-      return {
-        key: category.key,
-        score: isLocationCategory ? (locationScore ?? this.clampScore(detScore)) : Math.min(blendedScore, 100),
-        confidence: isLocationCategory ? (aiCategory ? this.clampConfidence(confidence) : locationAnalysis.locationConfidence) : confidence,
-        deterministicScore: detScore,
-        aiScore: rawAiScore,
-        strengths: isLocationCategory
-          ? this.uniqueList([
-              ...aiStrengths,
-              ...deterministicStrengths
-            ])
-          : (aiStrengths.length > 0 ? aiStrengths : this.uniqueList(deterministicStrengths)),
-        risks: isLocationCategory
-          ? this.uniqueList([
-              ...(aiCategory?.risks ?? []),
-              ...deterministicRisks
-            ])
-          : this.uniqueList([...(aiCategory?.risks ?? []), ...deterministicRisks]),
-        reasoning: isLocationCategory
-          ? (
-              aiCategory?.reasoning
-              ?? this.buildLocationCategoryReasoning(locationAnalysis)
-            )
-          : (
-              (
-                aiCategory?.reasoning
-                ?? (("reasoning" in (det ?? {})) ? ((det as { reasoning?: string }).reasoning ?? "") : "")
-              )
-              || "Deterministik sinyal bazli degerlendirme."
-            )
-      };
-    });
-
-    return {
-      categoryScores,
-      overallAssessment: this.composeOverallAssessment(
-        aiData?.overallAssessment ?? "CV profili deterministik sinyallerle degerlendirildi.",
-        locationAnalysis
-      ),
-      fitBand: aiData?.fitBand ?? null,
-      interviewReadiness: aiData?.interviewReadiness ?? null,
-      fitBandReasoning: aiData?.fitBandReasoning ?? null,
-      missingInformation: this.uniqueList([
-        ...(aiData?.missingInformation ?? []),
-        ...locationAnalysis.missingInformation
-      ]),
-      confidence: aiData?.confidence ?? 0.35,
-      uncertaintyReasons: aiData?.uncertainty?.reasons ?? [
-        "AI destegi olmadan sadece deterministik sinyaller kullanildi."
-      ]
-    };
-  }
+  // ── AI-first scoring with guardrails ──
 
   private buildAiFirstScores(input: {
     aiData: AiFitScoringOutput;
@@ -1212,7 +1109,7 @@ export class ApplicantFitScoringTaskService {
       key: string;
       score: number;
       confidence: number;
-      deterministicScore: number;
+      deterministicScore: number | null;
       aiScore: number;
       strengths: string[];
       risks: string[];
@@ -1223,36 +1120,31 @@ export class ApplicantFitScoringTaskService {
     interviewReadiness: AiFitScoringOutput["interviewReadiness"] | null;
     fitBandReasoning: string | null;
     missingInformation: string[];
-    confidence: number;
-    uncertaintyReasons: string[];
+      confidence: number;
+      uncertaintyReasons: string[];
   } {
-    const aiScaleMultiplier = this.resolveAiScoreScaleMultiplier({
-      aiData: input.aiData,
-      deterministicScores: input.deterministicScores,
-      categories: input.categories
-    });
-
     const categoryScores = input.categories.map((category) => {
       const det = input.deterministicScores.find((item) => item.key === category.key);
       const aiCategory = input.aiData.categoryScores.find((item) => item.key === category.key);
+      if (!aiCategory) {
+        throw new TaskProcessingError(
+          "FIT_SCORING_AI_CATEGORY_MISSING",
+          `AI fit scoring cikisinda '${category.key}' kategorisi eksik.`,
+          true,
+          {
+            categoryKey: category.key
+          }
+        );
+      }
       const aiStrengths = this.uniqueList(aiCategory?.strengths ?? []);
       const aiRisks = this.uniqueList(aiCategory?.risks ?? []);
-      const deterministicStrengths = ("strengths" in (det ?? {}))
-        ? ((det as { strengths?: string[] }).strengths ?? det?.signals ?? [])
-        : this.humanizeDeterministicSignals(det?.signals ?? []);
-      const deterministicRisks = ("risks" in (det ?? {}))
-        ? ((det as { risks?: string[] }).risks ?? [])
-        : [];
       const isLocationCategory = this.isLocationCategory(category);
-      const fallbackScore = det?.score ?? (isLocationCategory ? input.locationAnalysis.score : 35);
-      const rawAiScore = aiCategory
-        ? this.clampScore(aiCategory.score * aiScaleMultiplier)
-        : fallbackScore;
-      const deterministicScore = this.clampScore(fallbackScore);
+      const rawAiScore = this.clampScore(aiCategory.score);
+      const guardrailAnchorScore = this.clampScore(det?.score ?? input.locationAnalysis.score);
       const guardedLocationScore = isLocationCategory
         ? guardLocationCategoryScore({
-            aiScore: rawAiScore,
-            deterministicScore,
+          aiScore: rawAiScore,
+            deterministicScore: guardrailAnchorScore,
             presenceMode: input.locationAnalysis.presenceMode,
             candidateFlexibility: input.locationAnalysis.candidateFlexibility,
             mismatchLevel: input.locationAnalysis.mismatchLevel,
@@ -1264,22 +1156,22 @@ export class ApplicantFitScoringTaskService {
         key: category.key,
         score: this.clampScore(guardedLocationScore),
         confidence: isLocationCategory
-          ? aiCategory ? this.clampConfidence(aiCategory.confidence) : input.locationAnalysis.locationConfidence
-          : aiCategory ? this.clampConfidence(aiCategory.confidence) : 0.35,
-        deterministicScore,
+          ? this.clampConfidence(aiCategory.confidence)
+          : this.clampConfidence(aiCategory.confidence),
+        deterministicScore: null,
         aiScore: this.clampScore(rawAiScore),
         strengths: isLocationCategory
           ? this.uniqueList([
               ...aiStrengths,
               ...input.locationAnalysis.strengths
             ])
-          : (aiStrengths.length > 0 ? aiStrengths : this.uniqueList(deterministicStrengths)).slice(0, 4),
+          : aiStrengths.slice(0, 4),
         risks: isLocationCategory
           ? this.uniqueList([
               ...aiRisks,
               ...input.locationAnalysis.risks
             ])
-          : (aiRisks.length > 0 ? aiRisks : this.uniqueList(deterministicRisks)).slice(0, 4),
+          : aiRisks.slice(0, 4),
         reasoning: isLocationCategory
           ? (
               aiCategory?.reasoning
@@ -1308,63 +1200,34 @@ export class ApplicantFitScoringTaskService {
     };
   }
 
-  private resolveAiScoreScaleMultiplier(input: {
-    aiData: AiFitScoringOutput;
-    deterministicScores: Array<{
-      key: string;
-      score: number;
-    }>;
-    categories: RubricCategory[];
-  }) {
-    const nonLocationAiScores = input.categories
-      .filter((category) => !this.isLocationCategory(category))
-      .map((category) => input.aiData.categoryScores.find((item) => item.key === category.key)?.score ?? null)
-      .filter((score): score is number => typeof score === "number" && Number.isFinite(score));
+  private assertAiCategoryCoverage(aiData: AiFitScoringOutput, categories: RubricCategory[]) {
+    const aiCategoryKeys = new Set(aiData.categoryScores.map((item) => item.key));
 
-    if (nonLocationAiScores.length < 3) {
-      return 1;
+    for (const category of categories) {
+      if (!aiCategoryKeys.has(category.key)) {
+        throw new TaskProcessingError(
+          "FIT_SCORING_AI_CATEGORY_MISSING",
+          `AI fit scoring cikisinda '${category.key}' kategorisi eksik.`,
+          true,
+          {
+            categoryKey: category.key
+          }
+        );
+      }
     }
-
-    const maxAiScore = Math.max(...nonLocationAiScores);
-    const averageAiScore = nonLocationAiScores.reduce((sum, score) => sum + score, 0) / nonLocationAiScores.length;
-
-    if (maxAiScore > 10 || averageAiScore > 10) {
-      return 1;
-    }
-
-    const deterministicReferenceScores = input.categories
-      .filter((category) => !this.isLocationCategory(category))
-      .map((category) => input.deterministicScores.find((item) => item.key === category.key)?.score ?? null)
-      .filter((score): score is number => typeof score === "number" && Number.isFinite(score));
-    const deterministicAverage = deterministicReferenceScores.length > 0
-      ? deterministicReferenceScores.reduce((sum, score) => sum + score, 0) / deterministicReferenceScores.length
-      : 0;
-    const aiStrengthCount = this.uniqueList([
-      ...input.aiData.strengths,
-      ...input.aiData.categoryScores.flatMap((item) => item.strengths)
-    ]).length;
-    const fitSuggestsInterviewable = input.aiData.fitBand === "direct_fit"
-      || input.aiData.interviewReadiness === "ready_now"
-      || (input.aiData.fitBand === "adjacent_fit" && input.aiData.interviewReadiness !== "not_for_this_role");
-
-    if (fitSuggestsInterviewable) {
-      return 10;
-    }
-
-    if (deterministicAverage >= 55) {
-      return 10;
-    }
-
-    if (deterministicAverage >= 40 && aiStrengthCount >= 2) {
-      return 10;
-    }
-
-    return 1;
   }
 
   private parseAiOutput(output: Record<string, unknown>): AiFitScoringOutput | null {
     try {
-      const overallScore = this.clampScore(toNumberValue(output.overallScore, 50));
+      const overallScore = toNumberValue(output.overallScore, Number.NaN);
+      const fitBand = this.parseFitBand(output.fitBand);
+      const interviewReadiness = this.parseInterviewReadiness(output.interviewReadiness);
+      const confidence = toNumberValue(output.confidence, Number.NaN);
+
+      if (!Number.isFinite(overallScore) || !fitBand || !interviewReadiness || !Number.isFinite(confidence)) {
+        throw new Error("AI fit scoring output missing required core fields");
+      }
+
       const rawCategoryScores = toArray(output.categoryScores)
         .map((entry) => {
           const rec = toRecord(entry);
@@ -1372,27 +1235,35 @@ export class ApplicantFitScoringTaskService {
           return {
             key: this.slugifyDimensionKey(toStringValue(rec.key, label || "dimension")),
             label: label || "Degerlendirme Boyutu",
-            score: toNumberValue(rec.score, 50),
-            confidence: toNumberValue(rec.confidence, 0.5),
+            score: toNumberValue(rec.score, Number.NaN),
+            confidence: toNumberValue(rec.confidence, Number.NaN),
             strengths: toArray(rec.strengths).filter((s): s is string => typeof s === "string"),
             risks: toArray(rec.risks).filter((s): s is string => typeof s === "string"),
             reasoning: toStringValue(rec.reasoning, "")
           };
         })
         .filter((cs) => cs.label.length > 0);
+
+      if (
+        rawCategoryScores.length === 0
+        || rawCategoryScores.some((item) => !Number.isFinite(item.score) || !Number.isFinite(item.confidence))
+      ) {
+        throw new Error("AI fit scoring output missing valid category scores");
+      }
+
       const categoryScores = this.normalizeAiCategoryScoreScale(rawCategoryScores, overallScore);
 
       return {
-        overallScore,
-        fitBand: this.parseFitBand(output.fitBand),
-        interviewReadiness: this.parseInterviewReadiness(output.interviewReadiness),
+        overallScore: this.clampScore(overallScore),
+        fitBand,
+        interviewReadiness,
         fitBandReasoning: toStringValue(output.fitBandReasoning, ""),
         categoryScores,
         overallAssessment: toStringValue(output.overallAssessment, ""),
         strengths: toArray(output.strengths).filter((s): s is string => typeof s === "string"),
         risks: toArray(output.risks).filter((s): s is string => typeof s === "string"),
         missingInformation: toArray(output.missingInformation).filter((s): s is string => typeof s === "string"),
-        confidence: toNumberValue(output.confidence, 0.5),
+        confidence,
         uncertainty: {
           reasons: toArray(toRecord(output.uncertainty).reasons).filter(
             (s): s is string => typeof s === "string"
@@ -1444,47 +1315,22 @@ export class ApplicantFitScoringTaskService {
     }));
   }
 
-  private parseFitBand(value: unknown): AiFitScoringOutput["fitBand"] {
+  private parseFitBand(value: unknown): AiFitScoringOutput["fitBand"] | null {
     const normalized = toStringValue(value, "").trim().toLocaleLowerCase("tr-TR");
     if (normalized === "direct_fit" || normalized === "adjacent_fit" || normalized === "weak_fit") {
       return normalized;
     }
 
-    return "adjacent_fit";
+    return null;
   }
 
-  private parseInterviewReadiness(value: unknown): AiFitScoringOutput["interviewReadiness"] {
+  private parseInterviewReadiness(value: unknown): AiFitScoringOutput["interviewReadiness"] | null {
     const normalized = toStringValue(value, "").trim().toLocaleLowerCase("tr-TR");
     if (normalized === "ready_now" || normalized === "borderline" || normalized === "not_for_this_role") {
       return normalized;
     }
 
-    return "borderline";
-  }
-
-  // ── Weighted overall score ──
-
-  private calculateWeightedOverall(
-    categoryScores: Array<{ key: string; score: number }>,
-    categories: RubricCategory[]
-  ): number {
-    let totalWeight = 0;
-    let weightedSum = 0;
-
-    for (const category of categories) {
-      if (this.isLocationCategory(category)) {
-        continue;
-      }
-
-      const cs = categoryScores.find((s) => s.key === category.key);
-      if (cs) {
-        weightedSum += cs.score * category.weight;
-        totalWeight += category.weight;
-      }
-    }
-
-    if (totalWeight === 0) return 50;
-    return Math.round(weightedSum / totalWeight);
+    return null;
   }
 
   private resolveCoherentOverallScore(input: {
@@ -1493,9 +1339,19 @@ export class ApplicantFitScoringTaskService {
       key: string;
       score: number;
     }>;
-    categories: RubricCategory[];
   }) {
-    return this.calculateWeightedOverall(input.categoryScores, input.categories);
+    if (typeof input.aiOverallScore === "number" && Number.isFinite(input.aiOverallScore)) {
+      return this.clampScore(input.aiOverallScore);
+    }
+
+    throw new TaskProcessingError(
+      "FIT_SCORING_AI_OVERALL_SCORE_MISSING",
+      "AI fit scoring cikisinda gecerli overall score bulunamadi.",
+      true,
+      {
+        categoryCount: input.categoryScores.length
+      }
+    );
   }
 
   private buildRequirementCoverage(
