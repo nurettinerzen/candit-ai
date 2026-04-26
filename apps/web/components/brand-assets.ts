@@ -1,6 +1,6 @@
 export type ResolvedBrandTheme = "light" | "dark";
 
-const BRAND_ICON_VERSION = "20260426d";
+const BRAND_ICON_VERSION = "20260426e";
 
 function versionedBrandAsset(path: string) {
   return `${path}?v=${BRAND_ICON_VERSION}`;
