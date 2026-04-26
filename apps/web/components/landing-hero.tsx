@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useMemo } from "react";
-import { PUBLIC_SITE_BRAND_SUBTITLE } from "../lib/public-site-data";
 import { useUiText } from "./site-language-provider";
 import "./landing-hero.css";
 
@@ -10,6 +9,7 @@ export function LandingHero() {
   const pageRef = useRef<HTMLDivElement>(null);
   const chatDemoStarted = useRef(false);
   const chatLoopTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heroManifesto = t("Uçtan uca işe alım operasyonu tek panelde.");
   const speakerLabels = useMemo(
     () => ({
       bot: t("Candit Asistan"),
@@ -18,6 +18,11 @@ export function LandingHero() {
     [t]
   );
   const numberFormatLocale = locale === "en" ? "en-US" : "tr-TR";
+
+  const heroManifestoWords = useMemo(
+    () => heroManifesto.split(/\s+/),
+    [heroManifesto]
+  );
 
   /* ── Manifesto: split text into words, mark emphasis ── */
   const manifestoWords = useMemo(() => {
@@ -44,7 +49,7 @@ export function LandingHero() {
     // 1. Hero scroll-driven text
     {
       const lines = root.querySelectorAll(".lp-hero-line");
-      const tagline = root.querySelector(".lp-hero-tagline");
+      const taglineWords = root.querySelectorAll(".lp-hero-tagline-word");
       const heroBottom = root.querySelector(".lp-hero-bottom");
       let ticking = false;
 
@@ -59,8 +64,20 @@ export function LandingHero() {
 
           line.classList.toggle("lp-active", scrolled >= (thresholds[i] ?? 0));
         }
-        tagline?.classList.add("lp-active");
-        heroBottom?.classList.add("lp-visible");
+
+        const taglineStart = 250;
+        const taglineStep = 32;
+        for (let i = 0; i < taglineWords.length; i++) {
+          const word = taglineWords.item(i);
+          if (!word) {
+            continue;
+          }
+
+          word.classList.toggle("lp-lit", scrolled >= taglineStart + i * taglineStep);
+        }
+
+        const heroBottomThreshold = taglineStart + taglineWords.length * taglineStep + 24;
+        heroBottom?.classList.toggle("lp-visible", scrolled >= heroBottomThreshold);
         ticking = false;
       }
 
@@ -391,12 +408,16 @@ export function LandingHero() {
             <span className="lp-hero-line lp-active" data-index="0">{t("Ön Eleme.")}</span>
             <span className="lp-hero-line" data-index="1">{t("Kaynak Bulma.")}</span>
             <span className="lp-hero-line" data-index="2">{t("Mülakat.")}</span>
-            <span className="lp-hero-tagline">{t(PUBLIC_SITE_BRAND_SUBTITLE)}</span>
+            <span className="lp-hero-tagline">
+              {heroManifestoWords.map((word, index) => (
+                <span key={`${word}-${index}`}>
+                  <span className="lp-hero-tagline-word">{word}</span>
+                  {index < heroManifestoWords.length - 1 ? " " : ""}
+                </span>
+              ))}
+            </span>
           </div>
           <div className="lp-hero-bottom">
-            <p className="lp-hero-sub">
-              {t("Adaylarınızı hangi kanaldan ulaşırsa ulaşsın aynı hız, aynı kalite ve aynı profesyonellikle değerlendirin.")}
-            </p>
             <div className="lp-hero-actions">
               <a href="/auth/signup" className="lp-btn">{t("Ücretsiz Deneyin")}</a>
               <a href="#workflow" className="lp-btn-ghost">{t("Nasıl çalışır?")}</a>

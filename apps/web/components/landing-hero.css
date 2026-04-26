@@ -210,9 +210,12 @@
   font-size: clamp(1.6rem, 3.5vw, 3rem);
   font-weight: 800; line-height: 1.08; letter-spacing: -0.05em;
   color: var(--hero-inactive);
-  transition: all 0.35s 0.05s var(--ease);
 }
-.lp-hero-tagline.lp-active { color: var(--text-primary); }
+.lp-hero-tagline-word {
+  display: inline-block;
+  transition: color 0.35s 0.05s var(--ease);
+}
+.lp-hero-tagline-word.lp-lit { color: var(--text-primary); }
 
 .lp-hero-bottom {
   position: relative; z-index: 1;
@@ -221,10 +224,6 @@
   transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
 }
 .lp-hero-bottom.lp-visible { opacity: 1; transform: translateY(0); }
-.lp-hero-sub {
-  font-size: 17px; line-height: 1.7; color: var(--text-secondary);
-  max-width: 520px; margin: 0 auto 28px;
-}
 .lp-hero-actions { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
 
 .lp-hero-scroll-cue {

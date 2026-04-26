@@ -2571,10 +2571,10 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   // Manifesto
   "Her gün yüzlerce CV inceleniyor ama doğru adayı bulmak imkansız hissettiriyor. Candit bunu değiştiriyor.":
     "Hundreds of CVs reviewed every day, yet finding the right candidate feels impossible. Candit changes that.",
+  "Uçtan uca işe alım operasyonu tek panelde.":
+    "End-to-end hiring operations in one panel.",
 
   // Hero sub / buttons
-  "Adaylarınızı hangi kanaldan ulaşırsa ulaşsın aynı hız, aynı kalite ve aynı profesyonellikle değerlendirin.":
-    "Evaluate your candidates with the same speed, quality, and professionalism — no matter how they apply.",
   "Ücretsiz Deneyin": "Try Free",
   "Nasıl çalışır?": "How it works?",
 
