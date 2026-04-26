@@ -68,7 +68,12 @@ export function formatBillingPlanLabel(planKey: BillingPlanKey, locale: SiteLoca
       ? "Başlangıç"
       : planKey === "GROWTH"
         ? "Büyüme"
-        : "Kurumsal";
+      : "Kurumsal";
+}
+
+export function formatBillingTrialPlanLabel(planKey: BillingPlanKey, locale: SiteLocale) {
+  const planLabel = formatBillingPlanLabel(planKey, locale);
+  return locale === "en" ? `${planLabel} trial` : `${planLabel} denemesi`;
 }
 
 export function buildBillingPlanFeatureList(plan: BillingFeaturePlan) {

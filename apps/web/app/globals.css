@@ -1882,11 +1882,11 @@ main {
 
 .small {
   font-family: var(--font-sans);
-  color: var(--muted);
+  color: color-mix(in srgb, var(--text-secondary) 76%, white 24%);
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.55;
-  letter-spacing: -0.008em;
+  letter-spacing: -0.004em;
 }
 
 .tiny-mono {
@@ -2310,8 +2310,9 @@ main {
 
 .page-header p {
   margin: 0;
-  color: var(--text-secondary);
-  font-size: 14px;
+  color: color-mix(in srgb, var(--text-secondary) 88%, white 12%);
+  font-size: 15px;
+  font-weight: 500;
   max-width: 64ch;
   line-height: 1.55;
 }
@@ -2589,6 +2590,16 @@ main {
 
 .status-badge.status-success::before {
   background: var(--success, #22c55e);
+}
+
+.status-badge.status-brand {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.status-badge.status-brand::before {
+  background: var(--primary);
 }
 
 .status-badge.status-warning {
@@ -3194,7 +3205,7 @@ main {
 
 .field-label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 650;
   color: var(--text-secondary);
   letter-spacing: -0.005em;
 }
@@ -5611,8 +5622,9 @@ main {
 }
 
 .subscription-period-meta span {
-  color: var(--muted);
-  font-size: 11px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .subscription-period-meta strong {
@@ -5675,12 +5687,13 @@ main {
 }
 
 .tlx-plan-current {
-  border-color: color-mix(in srgb, var(--primary) 72%, white 0%);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 72%, white 0%), 0 18px 36px rgba(80, 70, 229, 0.12);
+  border-color: color-mix(in srgb, var(--primary) 60%, var(--border) 40%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 52%, var(--surface) 48%),
+    0 18px 36px rgba(var(--brand-pink-rgb), 0.14);
 }
 
 .tlx-plan-current:hover {
-  border-color: color-mix(in srgb, var(--primary) 72%, white 0%);
+  border-color: color-mix(in srgb, var(--primary) 60%, var(--border) 40%);
 }
 
 .tlx-plan-current-label {
@@ -5689,11 +5702,18 @@ main {
   left: 50%;
   transform: translateX(-50%);
   padding: 4px 14px;
-  background: #161b2a;
-  color: #7ea2ff;
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border) 78%);
+  border-top: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary) 16%, var(--surface) 84%) 0%,
+    color-mix(in srgb, var(--brand-violet) 14%, var(--surface) 86%) 100%
+  );
+  color: color-mix(in srgb, var(--primary) 70%, var(--text) 30%);
   font-size: 11px;
   font-weight: 700;
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  box-shadow: 0 10px 18px rgba(var(--brand-pink-rgb), 0.12);
   white-space: nowrap;
 }
 
@@ -5749,13 +5769,16 @@ main {
 }
 
 .subscription-summary-item span {
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.003em;
 }
 
 .subscription-summary-item strong {
   color: var(--text);
   font-size: 15px;
+  letter-spacing: -0.016em;
 }
 
 .subscription-danger-button {

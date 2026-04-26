@@ -9,7 +9,8 @@ import { apiClient } from "../../../lib/api-client";
 import { publicContactApi } from "../../../lib/api/public-client";
 import {
   buildBillingPlanCardModel,
-  formatBillingPlanLabel
+  formatBillingPlanLabel,
+  formatBillingTrialPlanLabel
 } from "../../../lib/billing-presentation";
 import { formatDateOnly } from "../../../lib/format";
 import { getLocaleTag } from "../../../lib/i18n";
@@ -141,6 +142,7 @@ function buildEnterpriseQuoteMessage(
 function formatCheckoutAccessLabel(
   selfServeReady: boolean,
   trialActive: boolean,
+  planKey: BillingPlanKey | null,
   productionRuntime: boolean,
   locale: "tr" | "en"
 ) {
@@ -149,7 +151,8 @@ function formatCheckoutAccessLabel(
   }
 
   if (trialActive) {
-    return locale === "en" ? "Trial active" : "Deneme aktif";
+    const trialLabel = planKey ? formatBillingTrialPlanLabel(planKey, locale) : locale === "en" ? "Trial" : "Deneme";
+    return locale === "en" ? `${trialLabel} active` : `${trialLabel} aktif`;
   }
 
   if (productionRuntime) {
@@ -520,11 +523,8 @@ export default function SubscriptionPage() {
   }
 
   const packageLabel = billing ? formatBillingPlanLabel(billing.account.currentPlanKey, locale) : "";
-  const packageSummaryLabel = billing?.trial.isActive
-    ? locale === "en"
-      ? "Free trial"
-      : "Ücretsiz deneme"
-    : packageLabel;
+  const trialPlanLabel = billing ? formatBillingTrialPlanLabel(billing.account.currentPlanKey, locale) : "";
+  const packageSummaryLabel = packageLabel;
   const summaryDateLabel =
     billing?.trial.isActive
       ? locale === "en"
@@ -570,6 +570,7 @@ export default function SubscriptionPage() {
   const paymentStatusLabel = formatCheckoutAccessLabel(
     selfServeReady,
     Boolean(billing?.trial.isActive),
+    billing?.account.currentPlanKey ?? null,
     productionRuntime,
     locale
   );
@@ -591,6 +592,11 @@ export default function SubscriptionPage() {
         : locale === "en"
           ? "Not started"
           : "Başlamadı";
+  const trialSectionLabel = billing?.trial.isActive
+    ? trialPlanLabel
+    : locale === "en"
+      ? "Trial"
+      : "Deneme";
   const paymentActionLabel = locale === "en" ? "Payment soon" : "Ödeme yakında";
 
   return (
@@ -635,14 +641,14 @@ export default function SubscriptionPage() {
               </div>
               <StatusBadge
                 ready={selfServeReady}
-                variant={selfServeReady ? "success" : billing.trial.isActive ? "warning" : productionRuntime ? "muted" : "warning"}
+                variant={selfServeReady ? "success" : billing.trial.isActive ? "brand" : productionRuntime ? "muted" : "warning"}
                 label={paymentStatusLabel}
               />
             </div>
 
             <div className="subscription-summary-grid">
               <div className="subscription-summary-item">
-                <span>{locale === "en" ? "Trial" : "Deneme"}</span>
+                <span>{trialSectionLabel}</span>
                 <strong>{trialStatusLabel}</strong>
               </div>
               <div className="subscription-summary-item">
@@ -1214,7 +1220,7 @@ function StatusBadge({
 }: {
   ready: boolean;
   label?: string;
-  variant?: "success" | "warning" | "danger" | "muted";
+  variant?: "success" | "warning" | "danger" | "muted" | "brand";
 }) {
   const { t } = useUiText();
   const text = t(label ?? (ready ? "Hazır" : "Sorunlu"));

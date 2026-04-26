@@ -18,7 +18,7 @@ import {
 } from "../lib/auth/session";
 import type { WebAuthSession } from "../lib/auth/types";
 import { apiClient } from "../lib/api/recruiter-client";
-import { formatBillingPlanLabel } from "../lib/billing-presentation";
+import { formatBillingPlanLabel, formatBillingTrialPlanLabel } from "../lib/billing-presentation";
 import type { BillingPlanKey } from "../lib/types";
 import { BrandWordmark } from "./brand-wordmark";
 import { useUiText, useSiteLanguage } from "./site-language-provider";
@@ -369,6 +369,7 @@ function SidebarContent({
   const [languageOpen, setLanguageOpen] = useState(false);
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [planKey, setPlanKey] = useState<BillingPlanKey | null>(null);
+  const [trialActive, setTrialActive] = useState(false);
   const [languageMenuStyle, setLanguageMenuStyle] = useState<FloatingMenuStyle | null>(null);
   const [themeMenuStyle, setThemeMenuStyle] = useState<FloatingMenuStyle | null>(null);
   const languageTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -385,7 +386,11 @@ function SidebarContent({
     { mode: "dark" as const, label: t("Koyu") },
     { mode: "system" as const, label: t("Sistem") }
   ];
-  const userPlanLabel = planKey ? formatBillingPlanLabel(planKey, language.locale) : t("Mevcut plan");
+  const userPlanLabel = planKey
+    ? trialActive
+      ? formatBillingTrialPlanLabel(planKey, language.locale)
+      : formatBillingPlanLabel(planKey, language.locale)
+    : t("Mevcut plan");
 
   useEffect(() => {
     if (!accountOpen) {
@@ -462,10 +467,12 @@ function SidebarContent({
 
         if (!cancelled) {
           setPlanKey(overview.account.currentPlanKey);
+          setTrialActive(overview.trial.isActive);
         }
       } catch {
         if (!cancelled) {
           setPlanKey(null);
+          setTrialActive(false);
         }
       }
     }
