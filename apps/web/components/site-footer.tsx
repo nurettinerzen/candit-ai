@@ -26,7 +26,7 @@ export function SiteFooter() {
                 className={cn(styles.brandWordmark, styles.footerBrandWordmark, styles.brandWordmarkLight)}
               />
               <img
-                src="/brand/candit-logo-clean-white.png"
+                src="/brand/candit-logo-clean-hybrid-dark.png"
                 alt=""
                 aria-hidden="true"
                 width="132"

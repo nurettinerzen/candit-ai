@@ -25,7 +25,7 @@ export function SiteHeader({ activeHref }: { activeHref?: string }) {
             className={cn(styles.brandWordmark, styles.brandWordmarkLight)}
           />
           <img
-            src="/brand/candit-logo-clean-white.png"
+            src="/brand/candit-logo-clean-hybrid-dark.png"
             alt=""
             aria-hidden="true"
             width="112"
