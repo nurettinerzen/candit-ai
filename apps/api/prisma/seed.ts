@@ -25,6 +25,7 @@ const prisma = new PrismaClient();
 const tenantId = "ten_demo";
 const workspaceId = "wrk_demo_ops";
 const recruiterId = "usr_recruiter_demo";
+const internalAdminEmail = (process.env.CANDIT_INTERNAL_ADMIN_EMAIL?.trim() || "info@candit.ai").toLowerCase();
 const sessionAccessTokens = {
   sess_demo_1: "demo_voice_token_sess_1",
   sess_demo_2: "demo_voice_token_sess_2",
@@ -156,33 +157,41 @@ async function upsertUsers() {
   const seedCredentialMode = resolveSeedCredentialMode();
   const passwordHash = await hashPassword(seedCredentialMode.password);
   const passwordSetAt = new Date();
+  const archivedAt = new Date();
 
-  // Legacy duplicate internal-admin kaydini kaldirip owner hesabi info@candit.ai'a tasiyoruz.
-  await prisma.user.delete({
-    where: {
-      id: "usr_internal_admin_demo"
-    }
-  }).catch(() => undefined);
+  // Legacy demo owner hesaplari artik aktif tutulmuyor; abuse riskini azaltmak icin pasifleniyor.
+  for (const [id, email] of [
+    ["usr_internal_admin_demo", "archived+usr_internal_admin_demo@demo.local"],
+    ["usr_admin_demo", "archived+usr_admin_demo@demo.local"]
+  ] as const) {
+    await prisma.user.updateMany({
+      where: { id },
+      data: {
+        email,
+        fullName: "Archived Demo Owner",
+        status: UserStatus.DISABLED,
+        passwordHash: null,
+        passwordSetAt: null,
+        emailVerifiedAt: null,
+        deletedAt: archivedAt
+      }
+    }).catch(() => undefined);
+  }
 
   const users = [
-    {
-      id: "usr_admin_demo",
-      email: "info@candit.ai",
-      fullName: "Candit Super Admin",
-      role: Role.OWNER,
-      emailVerifiedAt: passwordSetAt
-    },
     {
       id: "usr_recruiter_demo",
       email: "manager@demo.local",
       fullName: "Demo Manager",
-      role: Role.MANAGER
+      role: Role.MANAGER,
+      emailVerifiedAt: null
     },
     {
       id: "usr_hm_demo",
       email: "staff@demo.local",
       fullName: "Demo Staff",
-      role: Role.STAFF
+      role: Role.STAFF,
+      emailVerifiedAt: null
     }
   ];
 
@@ -234,7 +243,7 @@ async function upsertDemoBillingAccount() {
   const account = await prisma.tenantBillingAccount.upsert({
     where: { tenantId },
     update: {
-      billingEmail: "info@candit.ai",
+      billingEmail: internalAdminEmail,
       currentPlanKey: BillingPlanKey.STARTER,
       status: BillingAccountStatus.ACTIVE,
       currentPeriodStart,
@@ -256,7 +265,7 @@ async function upsertDemoBillingAccount() {
     create: {
       id: "acc_demo_billing",
       tenantId,
-      billingEmail: "info@candit.ai",
+      billingEmail: internalAdminEmail,
       currentPlanKey: BillingPlanKey.STARTER,
       status: BillingAccountStatus.ACTIVE,
       currentPeriodStart,
@@ -296,7 +305,7 @@ async function upsertDemoBillingAccount() {
       stripePriceId: null,
       stripeCheckoutSessionId: null,
       stripeCustomerId: null,
-      billingEmail: "info@candit.ai",
+      billingEmail: internalAdminEmail,
       periodStart: currentPeriodStart,
       periodEnd: currentPeriodEnd,
       seatsIncluded: starterSnapshot.seatsIncluded,
@@ -320,7 +329,7 @@ async function upsertDemoBillingAccount() {
       stripePriceId: null,
       stripeCheckoutSessionId: null,
       stripeCustomerId: null,
-      billingEmail: "info@candit.ai",
+      billingEmail: internalAdminEmail,
       periodStart: currentPeriodStart,
       periodEnd: currentPeriodEnd,
       seatsIncluded: starterSnapshot.seatsIncluded,
@@ -3829,9 +3838,9 @@ async function seed() {
   console.log("Seed tamamlandi.");
   console.log("Tenant ID:", tenantId);
   console.log("Demo kullanicilar:");
-  console.log("- info@candit.ai (owner + internal super admin)");
   console.log("- manager@demo.local (manager)");
   console.log("- staff@demo.local (staff)");
+  console.log(`Internal admin allowlist e-postasi: ${internalAdminEmail}`);
   const seedCredentialMode = resolveSeedCredentialMode();
   if (seedCredentialMode.enabled) {
     console.log(`Sifre (${seedCredentialMode.source === "env" ? ".env DEV_LOGIN_PASSWORD" : "local default"}): ${seedCredentialMode.password}`);

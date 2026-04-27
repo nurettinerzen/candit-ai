@@ -521,7 +521,7 @@ export class RuntimeConfigService {
     const defaults = ["info@candit.ai"];
 
     if (configured.length > 0) {
-      return Array.from(new Set([...defaults, ...configured]));
+      return Array.from(new Set(configured));
     }
 
     return defaults;

@@ -344,7 +344,11 @@ async function main() {
   const planDefinition = BILLING_PLAN_CATALOG[planKey];
   const planSnapshot = buildPlanSnapshot(planDefinition);
   const billingEmail = readString(args, "billing-email", ownerEmail).toLowerCase();
-  const actorEmail = readString(args, "actor-email", "info@candit.ai").toLowerCase();
+  const actorEmail = readString(
+    args,
+    "actor-email",
+    process.env.CANDIT_INTERNAL_ADMIN_EMAIL?.trim() || "info@candit.ai"
+  ).toLowerCase();
   const websiteUrl = readOptionalString(args, "website");
   const locale = readString(args, "locale", "tr-TR");
   const timezone = readString(args, "timezone", "Europe/Istanbul");

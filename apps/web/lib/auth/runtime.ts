@@ -31,6 +31,15 @@ function toCsvList(value: string | undefined) {
     .filter(Boolean) ?? [];
 }
 
+export function resolveInternalAdminEmailAllowlist(configured: string[] = []) {
+  const defaults = ["info@candit.ai"];
+  if (configured.length > 0) {
+    return Array.from(new Set(configured));
+  }
+
+  return defaults;
+}
+
 export function resolveWebRuntimeMode(raw: string | undefined): WebRuntimeMode {
   const normalized = raw?.trim().toLowerCase();
 
@@ -117,23 +126,19 @@ export const ENABLE_DEMO_SESSION = toBool(
 
 export const DEMO_SESSION_DEFAULTS = {
   tenantId: process.env.NEXT_PUBLIC_DEV_TENANT_ID ?? "ten_demo",
-  userId: process.env.NEXT_PUBLIC_DEV_USER_ID ?? "usr_admin_demo",
-  roles: process.env.NEXT_PUBLIC_DEV_ROLES ?? "owner",
-  userLabel: process.env.NEXT_PUBLIC_DEV_USER_LABEL ?? "Candit Super Admin",
-  email: process.env.NEXT_PUBLIC_DEV_USER_EMAIL ?? "info@candit.ai"
+  userId: process.env.NEXT_PUBLIC_DEV_USER_ID ?? "usr_recruiter_demo",
+  roles: process.env.NEXT_PUBLIC_DEV_ROLES ?? "manager",
+  userLabel: process.env.NEXT_PUBLIC_DEV_USER_LABEL ?? "Demo Manager",
+  email: process.env.NEXT_PUBLIC_DEV_USER_EMAIL ?? "manager@demo.local"
 };
 
 const INTERNAL_ADMIN_EMAIL_ALLOWLIST = (() => {
-  const defaults = ["info@candit.ai"];
   const configured = [
     ...toCsvList(process.env.NEXT_PUBLIC_INTERNAL_ADMIN_EMAIL_ALLOWLIST),
     ...toCsvList(process.env.NEXT_PUBLIC_INTERNAL_BILLING_ADMIN_EMAIL_ALLOWLIST)
   ];
-  if (configured.length > 0) {
-    return Array.from(new Set([...defaults, ...configured]));
-  }
 
-  return defaults;
+  return resolveInternalAdminEmailAllowlist(configured);
 })();
 
 const INTERNAL_ADMIN_DOMAIN_ALLOWLIST = [

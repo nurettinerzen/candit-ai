@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  resolveInternalAdminEmailAllowlist,
   resolveAuthSessionMode,
   resolveAuthTokenTransport,
   resolveWebRuntimeMode
@@ -26,4 +27,11 @@ test("development runtime keeps explicit transport choices", () => {
   assert.equal(resolveAuthSessionMode("jwt", runtimeMode), "jwt");
   assert.equal(resolveAuthTokenTransport("header", runtimeMode, "jwt"), "header");
   assert.equal(resolveAuthTokenTransport(undefined, runtimeMode, "jwt"), "cookie");
+});
+
+test("configured internal admin allowlist overrides default fallback", () => {
+  assert.deepEqual(resolveInternalAdminEmailAllowlist(["nurettinerzen@gmail.com"]), [
+    "nurettinerzen@gmail.com"
+  ]);
+  assert.deepEqual(resolveInternalAdminEmailAllowlist(), ["info@candit.ai"]);
 });

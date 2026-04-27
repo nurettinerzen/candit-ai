@@ -204,3 +204,12 @@ test("providerReadiness marks speech unready when provider-backed speech env is 
     )
   );
 });
+
+test("configured internal admin allowlist overrides default fallback", () => {
+  const runtimeConfig = createRuntimeConfig({
+    INTERNAL_ADMIN_EMAIL_ALLOWLIST: "nurettinerzen@gmail.com"
+  });
+
+  assert.equal(runtimeConfig.isInternalAdmin("nurettinerzen@gmail.com"), true);
+  assert.equal(runtimeConfig.isInternalAdmin("info@candit.ai"), false);
+});

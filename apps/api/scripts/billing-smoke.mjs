@@ -114,11 +114,13 @@ async function login(email) {
 }
 
 async function authenticateInternalAdmin() {
+  const internalAdminEmail = process.env.CANDIT_INTERNAL_ADMIN_EMAIL?.trim() || "info@candit.ai";
+  const internalAdminName = process.env.CANDIT_INTERNAL_ADMIN_NAME?.trim() || "Candit Super Admin";
   try {
-    return await signup("info@candit.ai", "Candit Super Admin");
+    return await signup(internalAdminEmail, internalAdminName);
   } catch (error) {
     try {
-      return await login("info@candit.ai");
+      return await login(internalAdminEmail);
     } catch {
       throw error;
     }
