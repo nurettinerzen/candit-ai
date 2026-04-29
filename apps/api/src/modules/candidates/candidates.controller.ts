@@ -14,6 +14,7 @@ import { Type } from "class-transformer";
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEmail,
   IsOptional,
   IsString,
@@ -48,6 +49,18 @@ class CandidateRecordDto {
   @IsString()
   @IsOptional()
   locationText?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  consentAccepted?: boolean;
+
+  @IsString()
+  @IsOptional()
+  consentNoticeVersion?: string;
+
+  @IsString()
+  @IsOptional()
+  consentPolicyVersion?: string;
 }
 
 class CandidateImportRequest {
@@ -98,7 +111,10 @@ export class CandidatesController {
       phone: body.phone,
       email: body.email,
       source: body.source,
-      locationText: body.locationText
+      locationText: body.locationText,
+      consentAccepted: body.consentAccepted,
+      consentNoticeVersion: body.consentNoticeVersion,
+      consentPolicyVersion: body.consentPolicyVersion
     });
   }
 

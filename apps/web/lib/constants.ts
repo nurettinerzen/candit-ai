@@ -20,6 +20,8 @@ export const JOB_STATUSES: JobStatus[] = ["DRAFT", "PUBLISHED", "ARCHIVED"];
 
 export const APPLICATION_STAGES: ApplicationStage[] = [
   "APPLIED",
+  "TALENT_POOL",
+  "SHORTLISTED",
   "SCREENING",
   "RECRUITER_REVIEW",
   "INTERVIEW_SCHEDULED",
@@ -29,6 +31,8 @@ export const APPLICATION_STAGES: ApplicationStage[] = [
 
 export const STAGE_LABELS: Record<ApplicationStage, string> = {
   APPLIED: "Başvuru Geldi",
+  TALENT_POOL: "Aday Havuzu",
+  SHORTLISTED: "Kısa Liste",
   SCREENING: "AI Ön Eleme",
   INTERVIEW_SCHEDULED: "AI Mülakat",
   INTERVIEW_COMPLETED: "Değerlendirme Hazır",
@@ -53,6 +57,14 @@ export const PIPELINE_STAGE_META: Record<string, { label: string; color: string 
   APPLIED: {
     label: "Başvuru Geldi",
     color: "var(--text-secondary, #94a3b8)"
+  },
+  TALENT_POOL: {
+    label: "Aday Havuzu",
+    color: "var(--text-secondary, #94a3b8)"
+  },
+  SHORTLISTED: {
+    label: "Kısa Liste",
+    color: "var(--primary, #7c73fa)"
   },
   SCREENING: {
     label: "AI Ön Eleme",
@@ -91,6 +103,8 @@ export const PIPELINE_STAGE_META: Record<string, { label: string; color: string 
 
 export const PIPELINE_STAGE_FILTERS: Array<{ value: string; label: string }> = [
   { value: "APPLIED", label: "Başvuru Geldi" },
+  { value: "TALENT_POOL", label: "Aday Havuzu" },
+  { value: "SHORTLISTED", label: "Kısa Liste" },
   { value: "SCREENING", label: "AI Ön Eleme" },
   { value: "RECRUITER_REVIEW", label: "Ön Eleme Tamamlandı" },
   { value: "INTERVIEW_SCHEDULED", label: "AI Mülakat" },
@@ -109,8 +123,16 @@ export function getStageMeta(stage: ApplicationStage): { label: string; color: s
 /** @deprecated — use getStageMeta instead */
 export function getRecruiterStatus(
   stage: ApplicationStage,
-  _humanDecision?: HumanDecision | null
+  humanDecision?: HumanDecision | null
 ): string {
+  if (stage === "TALENT_POOL" || humanDecision === "hold") {
+    return "ON_HOLD";
+  }
+
+  if (stage === "INTERVIEW_COMPLETED" && !humanDecision) {
+    return "DECISION_PENDING";
+  }
+
   return stage;
 }
 
@@ -164,6 +186,20 @@ const REJECT_ACTION: StageAction = {
   color: "var(--danger, #ef4444)"
 };
 
+const MOVE_TO_POOL_ACTION: StageAction = {
+  key: "move_to_pool",
+  label: "Havuza Al",
+  icon: "○",
+  color: "var(--text-secondary, #94a3b8)"
+};
+
+const MOVE_TO_SHORTLIST_ACTION: StageAction = {
+  key: "move_to_shortlist",
+  label: "Kısa Listeye Al",
+  icon: "+",
+  color: "var(--primary, #7c73fa)"
+};
+
 /**
  * Returns available actions for a given stage.
  * Recruiter review points:
@@ -177,11 +213,17 @@ export function getAvailableStageActions(
 ): StageAction[] {
   switch (stage) {
     case "APPLIED":
+      return [MOVE_TO_SHORTLIST_ACTION, MOVE_TO_POOL_ACTION, INVITE_INTERVIEW_ACTION, REJECT_ACTION];
+    case "TALENT_POOL":
+      return [MOVE_TO_SHORTLIST_ACTION, INVITE_INTERVIEW_ACTION, REJECT_ACTION];
+    case "SHORTLISTED":
+      return [MOVE_TO_POOL_ACTION, INVITE_INTERVIEW_ACTION, REJECT_ACTION];
     case "SCREENING":
+      return [MOVE_TO_SHORTLIST_ACTION, MOVE_TO_POOL_ACTION, INVITE_INTERVIEW_ACTION, REJECT_ACTION];
     case "RECRUITER_REVIEW":
-      return [INVITE_INTERVIEW_ACTION, REJECT_ACTION];
+      return [MOVE_TO_SHORTLIST_ACTION, MOVE_TO_POOL_ACTION, INVITE_INTERVIEW_ACTION, REJECT_ACTION];
     case "INTERVIEW_COMPLETED":
-      return [REJECT_ACTION];
+      return [MOVE_TO_POOL_ACTION, REJECT_ACTION];
     case "INTERVIEW_SCHEDULED": {
       const invitation = context.interview?.invitation ?? null;
       const status = context.interview?.status ?? null;

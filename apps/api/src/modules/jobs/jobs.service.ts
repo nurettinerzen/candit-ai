@@ -13,6 +13,30 @@ export type JobRequirementInput = {
   required?: boolean;
 };
 
+export type JobProfileInput = {
+  titleLevel?: string;
+  responsibilities?: string[];
+  competencySets?: {
+    core?: string[];
+    functional?: string[];
+    managerial?: string[];
+  };
+  evaluationCriteria?: {
+    educationLevel?: string;
+    schoolDepartments?: string[];
+    certificates?: string[];
+    minimumExperienceYears?: number;
+    tools?: string[];
+    languages?: string[];
+  };
+  applicantQuestions?: string[];
+  workflow?: {
+    responseSlaDays?: number;
+    hideCompensationOnPosting?: boolean;
+  };
+  notes?: string;
+};
+
 export const JOB_SCREENING_MODES = ["WIDE_POOL", "BALANCED", "STRICT"] as const;
 export type JobScreeningMode = (typeof JOB_SCREENING_MODES)[number];
 
@@ -32,6 +56,30 @@ type TenantDraftProfile = {
   profileSummary: string | null;
 };
 
+type NormalizedJobProfile = {
+  titleLevel: string | null;
+  responsibilities: string[];
+  competencySets: {
+    core: string[];
+    functional: string[];
+    managerial: string[];
+  };
+  evaluationCriteria: {
+    educationLevel: string | null;
+    schoolDepartments: string[];
+    certificates: string[];
+    minimumExperienceYears: number | null;
+    tools: string[];
+    languages: string[];
+  };
+  applicantQuestions: string[];
+  workflow: {
+    responseSlaDays: number | null;
+    hideCompensationOnPosting: boolean;
+  };
+  notes: string | null;
+};
+
 export type CreateJobInput = {
   tenantId: string;
   userId: string;
@@ -46,6 +94,7 @@ export type CreateJobInput = {
   jdText?: string;
   aiDraftText?: string;
   requirements?: JobRequirementInput[];
+  jobProfile?: JobProfileInput;
 };
 
 export type UpdateJobInput = {
@@ -63,6 +112,7 @@ export type UpdateJobInput = {
   aiDraftText?: string;
   screeningMode?: JobScreeningMode;
   requirements?: JobRequirementInput[];
+  jobProfile?: JobProfileInput;
 };
 
 export type GenerateJobDraftInput = {
@@ -75,6 +125,7 @@ export type GenerateJobDraftInput = {
   salaryMax?: number;
   jdText?: string;
   requirements?: JobRequirementInput[];
+  jobProfile?: JobProfileInput;
   existingDraft?: string;
   rewriteInstruction?: string;
 };
@@ -87,6 +138,8 @@ export type GeneratedJobDraft = {
   modelKey: string;
   notice: string | null;
 };
+
+const DEFAULT_RESPONSE_SLA_DAYS = 15;
 
 @Injectable()
 export class JobsService {
@@ -111,7 +164,7 @@ export class JobsService {
           }
         }
       }
-    });
+    }).then((jobs) => jobs.map((job) => this.serializeJob(job)));
   }
 
   async getById(tenantId: string, id: string) {
@@ -131,7 +184,7 @@ export class JobsService {
       throw new NotFoundException("Job bulunamadi.");
     }
 
-    return job;
+    return this.serializeJob(job);
   }
 
   async generateDraft(input: GenerateJobDraftInput): Promise<GeneratedJobDraft> {
@@ -196,6 +249,8 @@ export class JobsService {
       await this.billingService.assertCanPublishJob(input.tenantId);
     }
 
+    const normalizedJobProfile = this.normalizeJobProfile(input.jobProfile);
+
     const job = await this.prisma.job.create({
       data: {
         tenantId: input.tenantId,
@@ -209,6 +264,7 @@ export class JobsService {
         status: input.status,
         jdText: input.jdText,
         aiDraftText: input.aiDraftText,
+        jobProfileJson: normalizedJobProfile as Prisma.InputJsonValue,
         createdBy: input.userId,
         requirements: input.requirements?.length
           ? {
@@ -263,11 +319,12 @@ export class JobsService {
       await this.billingService.recordJobCreditUsage(input.tenantId, job.id);
     }
 
-    return job;
+    return this.serializeJob(job);
   }
 
   async update(input: UpdateJobInput) {
     const current = await this.getById(input.tenantId, input.id);
+    const normalizedJobProfile = this.normalizeJobProfile(input.jobProfile);
 
     if (input.status === JobStatus.PUBLISHED && current.status !== JobStatus.PUBLISHED) {
       await this.billingService.assertCanPublishJob(input.tenantId, { jobId: input.id });
@@ -296,6 +353,7 @@ export class JobsService {
           status: input.status,
           jdText: input.jdText,
           aiDraftText: input.aiDraftText !== undefined ? (input.aiDraftText?.trim() || null) : undefined,
+          jobProfileJson: normalizedJobProfile as Prisma.InputJsonValue,
           requirements: input.requirements?.length
             ? {
                 create: input.requirements.map((requirement) => ({
@@ -336,7 +394,8 @@ export class JobsService {
             salaryMin: input.salaryMin !== undefined,
             salaryMax: input.salaryMax !== undefined,
             jdText: input.jdText !== undefined,
-            requirements: input.requirements !== undefined
+            requirements: input.requirements !== undefined,
+            jobProfile: input.jobProfile !== undefined
           },
           before: {
             status: current.status,
@@ -368,7 +427,7 @@ export class JobsService {
       await this.billingService.recordJobCreditUsage(input.tenantId, job.id);
     }
 
-    return job;
+    return this.serializeJob(job);
   }
 
   async deleteMany(input: { tenantId: string; deletedBy: string; jobIds: string[] }) {
@@ -481,7 +540,8 @@ export class JobsService {
         salaryMin: input.salaryMin ?? null,
         salaryMax: input.salaryMax ?? null,
         jdText: input.jdText?.trim() || null,
-        requirements: this.normalizeRequirementFacts(input.requirements)
+        requirements: this.normalizeRequirementFacts(input.requirements),
+        jobProfile: this.normalizeJobProfile(input.jobProfile)
       },
       existingDraft: input.existingDraft?.trim() || null,
       rewriteInstruction: input.rewriteInstruction?.trim() || null,
@@ -565,6 +625,7 @@ export class JobsService {
   private composeDraftText(input: GenerateJobDraftInput, outline: JobDraftOutline) {
     const lines: string[] = [];
     const detailLines = this.buildDetailLines(input);
+    const jobProfile = this.normalizeJobProfile(input.jobProfile);
 
     lines.push(outline.headline || input.title.trim());
     lines.push("");
@@ -594,6 +655,12 @@ export class JobsService {
       outline.preferredQualifications.forEach((item) => lines.push(`• ${item}`));
     }
 
+    if (jobProfile.applicantQuestions.length > 0) {
+      lines.push("");
+      lines.push("Basvuruda Size Sorulabilecek Ek Sorular");
+      jobProfile.applicantQuestions.forEach((item) => lines.push(`• ${item}`));
+    }
+
     lines.push("");
     lines.push(outline.closingParagraph);
 
@@ -608,6 +675,7 @@ export class JobsService {
   ): GeneratedJobDraft {
     const title = input.title.trim();
     const detailLines = this.buildDetailLines(input);
+    const jobProfile = this.normalizeJobProfile(input.jobProfile);
     const lines: string[] = [title, ""];
     const introParts = [
       `${tenantProfile.companyName} bünyesinde ${title} pozisyonunda görev alacak ekip arkadaşı arıyoruz.`,
@@ -638,8 +706,12 @@ export class JobsService {
       responsibilities.forEach((item) => lines.push(`• ${item}`));
     }
 
-    const required = this.normalizeRequirementFacts(input.requirements).filter((item) => item.required);
-    const preferred = this.normalizeRequirementFacts(input.requirements).filter((item) => !item.required);
+    const mergedRequirements = this.mergeRequirementFacts(
+      this.normalizeRequirementFacts(input.requirements),
+      this.buildProfileRequirementFacts(jobProfile)
+    );
+    const required = mergedRequirements.filter((item) => item.required);
+    const preferred = mergedRequirements.filter((item) => !item.required);
 
     if (required.length > 0) {
       lines.push("");
@@ -651,6 +723,12 @@ export class JobsService {
       lines.push("");
       lines.push("Sizi One Cikarabilecek Ek Deneyimler");
       preferred.forEach((item) => lines.push(`• ${item.value}`));
+    }
+
+    if (jobProfile.applicantQuestions.length > 0) {
+      lines.push("");
+      lines.push("Basvuruda Size Sorulabilecek Ek Sorular");
+      jobProfile.applicantQuestions.forEach((item) => lines.push(`• ${item}`));
     }
 
     lines.push("");
@@ -672,6 +750,11 @@ export class JobsService {
 
   private buildDetailLines(input: GenerateJobDraftInput) {
     const details: string[] = [];
+    const jobProfile = this.normalizeJobProfile(input.jobProfile);
+
+    if (jobProfile.titleLevel) {
+      details.push(`Rol seviyesi: ${jobProfile.titleLevel}`);
+    }
 
     if (input.locationText?.trim()) {
       details.push(`Lokasyon: ${input.locationText.trim()}`);
@@ -681,7 +764,10 @@ export class JobsService {
       details.push(`Çalışma düzeni: ${input.shiftType.trim()}`);
     }
 
-    if (input.salaryMin !== undefined || input.salaryMax !== undefined) {
+    if (
+      !jobProfile.workflow.hideCompensationOnPosting &&
+      (input.salaryMin !== undefined || input.salaryMax !== undefined)
+    ) {
       const min =
         input.salaryMin !== undefined
           ? `${input.salaryMin.toLocaleString("tr-TR")} TL`
@@ -701,12 +787,15 @@ export class JobsService {
   }
 
   private buildFallbackSummary(input: GenerateJobDraftInput) {
+    const jobProfile = this.normalizeJobProfile(input.jobProfile);
+
     if (input.jdText?.trim()) {
       return input.jdText.trim();
     }
 
     const fragments = [
       `${input.title.trim()} rolünde günlük operasyonun kesintisiz ve düzenli ilerlemesine katkıda bulunmanız beklenir.`,
+      jobProfile.notes,
       input.shiftType?.trim()
         ? `Pozisyon, ${input.shiftType.trim()} çalışma düzenine uyum sağlayabilecek bir ekip yaklaşımı gerektirir.`
         : null,
@@ -719,7 +808,12 @@ export class JobsService {
   }
 
   private buildFallbackResponsibilities(input: GenerateJobDraftInput) {
+    const jobProfile = this.normalizeJobProfile(input.jobProfile);
     const bullets = this.extractBulletCandidates(input.jdText);
+
+    if (jobProfile.responsibilities.length > 0) {
+      return jobProfile.responsibilities.slice(0, 6);
+    }
 
     if (bullets.length > 0) {
       return bullets.slice(0, 4);
@@ -767,6 +861,143 @@ export class JobsService {
         };
       })
       .filter((item): item is { key: string; value: string; required: boolean } => Boolean(item));
+  }
+
+  private serializeJob<T extends { jobProfileJson?: Prisma.JsonValue | null }>(job: T) {
+    const { jobProfileJson, ...rest } = job;
+
+    return {
+      ...rest,
+      jobProfile: (jobProfileJson ?? null) as Prisma.JsonValue | null
+    };
+  }
+
+  private mergeRequirementFacts(
+    ...groups: Array<Array<{ key: string; value: string; required: boolean }>>
+  ) {
+    const merged = new Map<string, { key: string; value: string; required: boolean }>();
+
+    for (const group of groups) {
+      for (const item of group) {
+        const normalizedKey = item.value.trim().toLocaleLowerCase("tr-TR");
+        const existing = merged.get(normalizedKey);
+
+        if (!existing) {
+          merged.set(normalizedKey, item);
+          continue;
+        }
+
+        merged.set(normalizedKey, {
+          key: existing.key,
+          value: existing.value,
+          required: existing.required || item.required
+        });
+      }
+    }
+
+    return [...merged.values()];
+  }
+
+  private buildProfileRequirementFacts(profile: NormalizedJobProfile) {
+    const facts: Array<{ key: string; value: string; required: boolean }> = [];
+
+    for (const competency of profile.competencySets.core) {
+      facts.push({ key: competency, value: competency, required: true });
+    }
+
+    for (const competency of profile.competencySets.functional) {
+      facts.push({ key: competency, value: competency, required: true });
+    }
+
+    for (const competency of profile.competencySets.managerial) {
+      facts.push({ key: competency, value: competency, required: false });
+    }
+
+    for (const department of profile.evaluationCriteria.schoolDepartments) {
+      facts.push({
+        key: department,
+        value: `${department} veya benzeri ilgili bölüm mezuniyeti`,
+        required: false
+      });
+    }
+
+    if (profile.evaluationCriteria.educationLevel) {
+      facts.push({
+        key: profile.evaluationCriteria.educationLevel,
+        value: `${profile.evaluationCriteria.educationLevel} eğitim seviyesi`,
+        required: false
+      });
+    }
+
+    if (profile.evaluationCriteria.minimumExperienceYears !== null) {
+      facts.push({
+        key: "minimum_experience_years",
+        value: `Pozisyonla ilgili en az ${profile.evaluationCriteria.minimumExperienceYears} yıl deneyim`,
+        required: true
+      });
+    }
+
+    for (const certificate of profile.evaluationCriteria.certificates) {
+      facts.push({ key: certificate, value: `${certificate} sertifikası`, required: false });
+    }
+
+    for (const tool of profile.evaluationCriteria.tools) {
+      facts.push({ key: tool, value: tool, required: true });
+    }
+
+    for (const language of profile.evaluationCriteria.languages) {
+      facts.push({ key: language, value: `${language} seviyesi`, required: false });
+    }
+
+    return facts;
+  }
+
+  private normalizeJobProfile(input?: JobProfileInput): NormalizedJobProfile {
+    const titleLevel = this.cleanSentence(input?.titleLevel);
+    const notes = this.cleanParagraph(input?.notes);
+    const workflowResponseSla =
+      typeof input?.workflow?.responseSlaDays === "number" && Number.isFinite(input.workflow.responseSlaDays)
+        ? Math.max(1, Math.round(input.workflow.responseSlaDays))
+        : DEFAULT_RESPONSE_SLA_DAYS;
+
+    return {
+      titleLevel,
+      responsibilities: this.normalizeStringList(input?.responsibilities, 10),
+      competencySets: {
+        core: this.normalizeStringList(input?.competencySets?.core, 12),
+        functional: this.normalizeStringList(input?.competencySets?.functional, 16),
+        managerial: this.normalizeStringList(input?.competencySets?.managerial, 12)
+      },
+      evaluationCriteria: {
+        educationLevel: this.cleanSentence(input?.evaluationCriteria?.educationLevel),
+        schoolDepartments: this.normalizeStringList(input?.evaluationCriteria?.schoolDepartments, 12),
+        certificates: this.normalizeStringList(input?.evaluationCriteria?.certificates, 12),
+        minimumExperienceYears:
+          typeof input?.evaluationCriteria?.minimumExperienceYears === "number" &&
+          Number.isFinite(input.evaluationCriteria.minimumExperienceYears)
+            ? Math.max(0, Math.round(input.evaluationCriteria.minimumExperienceYears))
+            : null,
+        tools: this.normalizeStringList(input?.evaluationCriteria?.tools, 16),
+        languages: this.normalizeStringList(input?.evaluationCriteria?.languages, 8)
+      },
+      applicantQuestions: this.normalizeStringList(input?.applicantQuestions, 12),
+      workflow: {
+        responseSlaDays: workflowResponseSla,
+        hideCompensationOnPosting: input?.workflow?.hideCompensationOnPosting !== false
+      },
+      notes
+    };
+  }
+
+  private normalizeStringList(values: string[] | undefined, limit: number) {
+    if (!Array.isArray(values)) {
+      return [];
+    }
+
+    return values
+      .map((value) => this.cleanSentence(value))
+      .filter((value): value is string => Boolean(value))
+      .slice(0, limit);
   }
 
   private async getTenantDraftProfile(tenantId: string): Promise<TenantDraftProfile> {

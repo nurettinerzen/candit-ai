@@ -103,6 +103,17 @@ class DeleteAccountRequest {
   confirmationText!: string;
 }
 
+class CreateManagedCompanyRequest {
+  @IsString()
+  @MinLength(2)
+  companyName!: string;
+}
+
+class SwitchCompanyRequest {
+  @IsString()
+  targetTenantId!: string;
+}
+
 function parseCookieHeader(raw: string | undefined) {
   if (!raw) {
     return {} as Record<string, string>;
@@ -435,6 +446,57 @@ export class AuthController {
       },
       traceId: requestContext?.traceId
     };
+  }
+
+  @Get("companies")
+  listAccessibleCompanies(@CurrentUser() user: RequestUser) {
+    return this.authService.listAccessibleCompanies({
+      userId: user.userId,
+      tenantId: user.tenantId
+    });
+  }
+
+  @Post("companies")
+  createManagedCompany(
+    @CurrentUser() user: RequestUser,
+    @Body() body: CreateManagedCompanyRequest
+  ) {
+    return this.authService.createManagedCompany({
+      currentUserId: user.userId,
+      currentTenantId: user.tenantId,
+      companyName: body.companyName
+    });
+  }
+
+  @Post("switch-company")
+  async switchCompany(
+    @CurrentUser() user: RequestUser,
+    @Body() body: SwitchCompanyRequest,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    const result = await this.authService.switchCompany(
+      {
+        currentUserId: user.userId,
+        currentTenantId: user.tenantId,
+        targetTenantId: body.targetTenantId
+      },
+      {
+        ipAddress: request.ip,
+        userAgent: request.header("user-agent") ?? undefined
+      }
+    );
+
+    if (this.runtimeConfig.authTokenTransport === "cookie") {
+      this.writeAuthCookies(response, result.accessToken, result.refreshToken);
+
+      return {
+        user: result.user,
+        session: result.session
+      };
+    }
+
+    return result;
   }
 
   @Get("invitations/resolve")

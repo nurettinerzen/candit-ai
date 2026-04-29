@@ -49,6 +49,102 @@ class RequirementDto {
   required?: boolean;
 }
 
+class JobProfileCompetencySetsDto {
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  core?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  functional?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  managerial?: string[];
+}
+
+class JobProfileEvaluationCriteriaDto {
+  @IsString()
+  @IsOptional()
+  educationLevel?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  schoolDepartments?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  certificates?: string[];
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  minimumExperienceYears?: number;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  tools?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  languages?: string[];
+}
+
+class JobProfileWorkflowDto {
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @IsOptional()
+  responseSlaDays?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  hideCompensationOnPosting?: boolean;
+}
+
+class JobProfileDto {
+  @IsString()
+  @IsOptional()
+  titleLevel?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  responsibilities?: string[];
+
+  @ValidateNested()
+  @Type(() => JobProfileCompetencySetsDto)
+  @IsOptional()
+  competencySets?: JobProfileCompetencySetsDto;
+
+  @ValidateNested()
+  @Type(() => JobProfileEvaluationCriteriaDto)
+  @IsOptional()
+  evaluationCriteria?: JobProfileEvaluationCriteriaDto;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  applicantQuestions?: string[];
+
+  @ValidateNested()
+  @Type(() => JobProfileWorkflowDto)
+  @IsOptional()
+  workflow?: JobProfileWorkflowDto;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+}
+
 class CreateJobRequest {
   @IsString()
   @MinLength(3)
@@ -103,6 +199,11 @@ class CreateJobRequest {
   @Type(() => RequirementDto)
   @IsOptional()
   requirements?: RequirementDto[];
+
+  @ValidateNested()
+  @Type(() => JobProfileDto)
+  @IsOptional()
+  jobProfile?: JobProfileDto;
 }
 
 class UpdateJobRequest {
@@ -162,6 +263,11 @@ class UpdateJobRequest {
   @Type(() => RequirementDto)
   @IsOptional()
   requirements?: RequirementDto[];
+
+  @ValidateNested()
+  @Type(() => JobProfileDto)
+  @IsOptional()
+  jobProfile?: JobProfileDto;
 }
 
 class GenerateJobDraftRequest {
@@ -206,6 +312,11 @@ class GenerateJobDraftRequest {
   @Type(() => RequirementDto)
   @IsOptional()
   requirements?: RequirementDto[];
+
+  @ValidateNested()
+  @Type(() => JobProfileDto)
+  @IsOptional()
+  jobProfile?: JobProfileDto;
 
   @IsString()
   @IsOptional()
@@ -345,7 +456,8 @@ export class JobsController {
       status: body.status,
       jdText: body.jdText,
       aiDraftText: body.aiDraftText,
-      requirements: body.requirements
+      requirements: body.requirements,
+      jobProfile: body.jobProfile
     });
   }
 
@@ -366,6 +478,7 @@ export class JobsController {
       salaryMax: body.salaryMax,
       jdText: body.jdText,
       requirements: body.requirements,
+      jobProfile: body.jobProfile,
       existingDraft: body.existingDraft,
       rewriteInstruction: body.rewriteInstruction
     });
@@ -396,7 +509,9 @@ export class JobsController {
       status: body.status,
       jdText: body.jdText,
       aiDraftText: body.aiDraftText,
-      requirements: body.requirements
+      screeningMode: body.screeningMode,
+      requirements: body.requirements,
+      jobProfile: body.jobProfile
     });
   }
 

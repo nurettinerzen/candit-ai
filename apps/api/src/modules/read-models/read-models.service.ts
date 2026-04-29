@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, Inject, Logger } from "@nestjs/common";
-import { AiTaskType, type ApplicationStage } from "@prisma/client";
+import { AiTaskType, ApplicationStage, ConsentContext } from "@prisma/client";
 import { AiOrchestrationService } from "../ai-orchestration/ai-orchestration.service";
 import { AnalyticsService } from "../analytics/analytics.service";
 import { AuditService } from "../audit/audit.service";
@@ -35,6 +35,24 @@ function readHumanDecision(metadata: unknown) {
   return decision === "advance" || decision === "hold" || decision === "reject"
     ? decision
     : null;
+}
+
+function readResponseSlaDays(jobProfileJson: unknown) {
+  if (!jobProfileJson || typeof jobProfileJson !== "object" || Array.isArray(jobProfileJson)) {
+    return 15;
+  }
+
+  const workflow = (jobProfileJson as Record<string, unknown>).workflow;
+  if (!workflow || typeof workflow !== "object" || Array.isArray(workflow)) {
+    return 15;
+  }
+
+  const responseSlaDays = (workflow as Record<string, unknown>).responseSlaDays;
+  if (typeof responseSlaDays !== "number" || !Number.isFinite(responseSlaDays)) {
+    return 15;
+  }
+
+  return Math.max(1, Math.round(responseSlaDays));
 }
 
 @Injectable()
@@ -211,7 +229,8 @@ export class ReadModelsService {
           select: {
             id: true,
             title: true,
-            status: true
+            status: true,
+            jobProfileJson: true
           }
         },
         aiReports: {
@@ -329,7 +348,12 @@ export class ReadModelsService {
           createdAt: application.createdAt,
           humanDecisionRequired: application.humanDecisionRequired,
           candidate: application.candidate,
-          job: application.job,
+          job: {
+            id: application.job.id,
+            title: application.job.title,
+            status: application.job.status,
+            responseSlaDays: readResponseSlaDays(application.job.jobProfileJson)
+          },
           ai: {
             hasReport: Boolean(report),
             reportId: report?.id ?? null,
@@ -390,7 +414,7 @@ export class ReadModelsService {
       throw new NotFoundException("Basvuru bulunamadi.");
     }
 
-    const [screeningRuns, reports, recommendations, interviewSessions, aiTaskRuns, auditLogs, sourcingAttachment, applicationDomainEvents] =
+    const [screeningRuns, reports, recommendations, interviewSessions, aiTaskRuns, auditLogs, sourcingAttachment, applicationDomainEvents, referenceChecks, latestDataProcessingConsent] =
       await Promise.all([
         this.screeningService.listByApplication(tenantId, applicationId, 10),
         this.reportsService.listByApplication(tenantId, applicationId, 10),
@@ -456,6 +480,26 @@ export class ReadModelsService {
             createdAt: "desc"
           },
           take: 80
+        }),
+        this.prisma.referenceCheck.findMany({
+          where: {
+            tenantId,
+            applicationId
+          },
+          orderBy: {
+            createdAt: "desc"
+          },
+          take: 30
+        }),
+        this.prisma.consentRecord.findFirst({
+          where: {
+            tenantId,
+            candidateId: baseApplication.candidateId,
+            context: ConsentContext.DATA_PROCESSING
+          },
+          orderBy: {
+            capturedAt: "desc"
+          }
         })
       ]);
 
@@ -673,6 +717,21 @@ export class ReadModelsService {
         source: baseApplication.candidate.source,
         externalSource: baseApplication.candidate.externalSource,
         externalRef: baseApplication.candidate.externalRef,
+        dataProcessingConsent: latestDataProcessingConsent
+          ? {
+              status: latestDataProcessingConsent.withdrawnAt ? "WITHDRAWN" : "GRANTED",
+              noticeVersion: latestDataProcessingConsent.noticeVersion,
+              policyVersion: latestDataProcessingConsent.policyVersion,
+              capturedAt: latestDataProcessingConsent.capturedAt,
+              withdrawnAt: latestDataProcessingConsent.withdrawnAt
+            }
+          : {
+              status: "PENDING",
+              noticeVersion: null,
+              policyVersion: null,
+              capturedAt: null,
+              withdrawnAt: null
+            },
         sourcing: sourcingAttachment
           ? {
               projectId: sourcingAttachment.project.id,
@@ -703,7 +762,8 @@ export class ReadModelsService {
         id: baseApplication.job.id,
         title: baseApplication.job.title,
         roleFamily: baseApplication.job.roleFamily,
-        status: baseApplication.job.status
+        status: baseApplication.job.status,
+        responseSlaDays: readResponseSlaDays(baseApplication.job.jobProfileJson)
       },
       artifacts: {
         screeningRuns,
@@ -726,6 +786,30 @@ export class ReadModelsService {
         auditLogs,
         humanApprovals,
         notificationDeliveries
+      },
+      operations: {
+        referenceChecks: referenceChecks.map((item) => ({
+          id: item.id,
+          referenceName: item.referenceName,
+          companyName: item.companyName,
+          relationship: item.relationship,
+          contactEmail: item.contactEmail,
+          contactPhone: item.contactPhone,
+          status: item.status,
+          openEndedResponses:
+            Array.isArray(item.openEndedResponsesJson)
+              ? item.openEndedResponsesJson
+              : [],
+          closedEndedResponses:
+            Array.isArray(item.closedEndedResponsesJson)
+              ? item.closedEndedResponsesJson
+              : [],
+          summaryText: item.summaryText,
+          createdBy: item.createdBy,
+          completedAt: item.completedAt,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt
+        }))
       },
       timeline: {
         stageHistory: baseApplication.stageHistory,

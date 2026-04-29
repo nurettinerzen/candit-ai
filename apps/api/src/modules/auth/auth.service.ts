@@ -78,6 +78,15 @@ type PublicAuthUser = {
   avatarUrl: string | null;
 };
 
+type AccessibleCompanyView = {
+  tenantId: string;
+  tenantName: string;
+  logoUrl: string | null;
+  role: AppRole;
+  userId: string;
+  status: UserStatus;
+};
+
 type GoogleIdentityProfile = {
   subject: string;
   email: string;
@@ -218,10 +227,9 @@ export class AuthService {
     meta: SessionClientMeta = {}
   ) {
     const normalizedEmail = normalizeEmailAddress(input.email);
-    const user = await this.findUniqueUserByEmail(
+    const user = await this.resolveLoginUserByEmailAndPassword(
       normalizedEmail,
-      "Kullanıcı bulunamadı.",
-      "Bu e-posta birden fazla hesapta kayıtlı. Lütfen destek ekibiyle iletişime geçin."
+      input.password
     ).catch(async (error) => {
       if (error instanceof UnauthorizedException) {
         await this.reportSecurityEvent({
@@ -289,25 +297,6 @@ export class AuthService {
       throw new ForbiddenException("Kullanıcı pasif durumda.");
     }
 
-    const passwordMatches = await verifyPassword(user.passwordHash, input.password);
-
-    if (!passwordMatches) {
-      await this.reportSecurityEvent({
-        tenantId: user.tenantId,
-        userId: user.id,
-        source: "auth.login",
-        code: "auth.login.invalid_password",
-        message: "Hatali sifre ile giris denemesi algilandi.",
-        severity: SecurityEventSeverity.WARNING,
-        ipAddress: meta.ipAddress,
-        userAgent: meta.userAgent,
-        metadata: {
-          email: user.email
-        }
-      });
-      throw new UnauthorizedException("E-posta veya sifre hatali.");
-    }
-
     const emailVerificationState = await this.resolveEmailVerificationState();
 
     if (emailVerificationState.required && !user.emailVerifiedAt) {
@@ -346,6 +335,203 @@ export class AuthService {
     }
 
     return this.issueSessionForUser(user, meta);
+  }
+
+  async listAccessibleCompanies(input: { userId: string; tenantId: string }) {
+    const currentUser = await this.prisma.user.findFirst({
+      where: {
+        id: input.userId,
+        tenantId: input.tenantId,
+        deletedAt: null
+      },
+      select: {
+        email: true
+      }
+    });
+
+    if (!currentUser) {
+      throw new UnauthorizedException("Kullanıcı oturumu bulunamadı.");
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        email: currentUser.email,
+        deletedAt: null
+      },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            logoUrl: true
+          }
+        }
+      },
+      orderBy: [
+        {
+          createdAt: "asc"
+        }
+      ],
+      take: 20
+    });
+
+    return {
+      companies: users.map((user) => ({
+        tenantId: user.tenantId,
+        tenantName: user.tenant.name,
+        logoUrl: user.tenant.logoUrl ?? null,
+        role: this.toAppRole(user.role),
+        userId: user.id,
+        status: user.status
+      }) satisfies AccessibleCompanyView)
+    };
+  }
+
+  async createManagedCompany(input: {
+    currentUserId: string;
+    currentTenantId: string;
+    companyName: string;
+  }) {
+    const currentUser = await this.prisma.user.findFirst({
+      where: {
+        id: input.currentUserId,
+        tenantId: input.currentTenantId,
+        deletedAt: null
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        passwordHash: true,
+        passwordSetAt: true,
+        emailVerifiedAt: true,
+        avatarUrl: true,
+        status: true
+      }
+    });
+
+    if (!currentUser || currentUser.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException("Yeni şirket oluşturmak için aktif oturum gereklidir.");
+    }
+
+    const companyName = input.companyName.trim();
+    if (companyName.length < 2) {
+      throw new BadRequestException("Şirket adı en az 2 karakter olmalıdır.");
+    }
+
+    const tenantId = await this.generateTenantId(companyName);
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
+        data: {
+          id: tenantId,
+          name: companyName
+        },
+        select: {
+          id: true,
+          name: true,
+          logoUrl: true
+        }
+      });
+
+      await tx.workspace.create({
+        data: {
+          tenantId: tenant.id,
+          name: "Ana Calisma Alani"
+        }
+      });
+
+      const user = await tx.user.create({
+        data: {
+          tenantId: tenant.id,
+          email: currentUser.email,
+          fullName: currentUser.fullName,
+          role: "OWNER",
+          status: UserStatus.ACTIVE,
+          passwordHash: currentUser.passwordHash,
+          passwordSetAt: currentUser.passwordSetAt,
+          emailVerifiedAt: currentUser.emailVerifiedAt,
+          avatarUrl: currentUser.avatarUrl
+        },
+        select: {
+          id: true,
+          tenantId: true,
+          role: true,
+          status: true
+        }
+      });
+
+      return {
+        tenant,
+        user
+      };
+    });
+
+    await this.writeAuditLog({
+      tenantId: input.currentTenantId,
+      actorUserId: input.currentUserId,
+      action: "auth.managed_company.created",
+      entityType: "Tenant",
+      entityId: created.tenant.id,
+      metadata: {
+        tenantId: created.tenant.id,
+        tenantName: created.tenant.name,
+        linkedEmail: currentUser.email
+      }
+    });
+
+    return {
+      company: {
+        tenantId: created.tenant.id,
+        tenantName: created.tenant.name,
+        logoUrl: created.tenant.logoUrl ?? null,
+        role: this.toAppRole(created.user.role),
+        userId: created.user.id,
+        status: created.user.status
+      } satisfies AccessibleCompanyView
+    };
+  }
+
+  async switchCompany(
+    input: {
+      currentUserId: string;
+      currentTenantId: string;
+      targetTenantId: string;
+    },
+    meta: SessionClientMeta = {}
+  ) {
+    const currentUser = await this.prisma.user.findFirst({
+      where: {
+        id: input.currentUserId,
+        tenantId: input.currentTenantId,
+        deletedAt: null
+      },
+      select: {
+        email: true
+      }
+    });
+
+    if (!currentUser) {
+      throw new UnauthorizedException("Aktif oturum bulunamadı.");
+    }
+
+    const targetUser = await this.prisma.user.findFirst({
+      where: {
+        tenantId: input.targetTenantId,
+        email: currentUser.email,
+        deletedAt: null,
+        status: UserStatus.ACTIVE
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (!targetUser) {
+      throw new ForbiddenException("Bu şirkete geçiş yetkiniz bulunmuyor.");
+    }
+
+    return this.issueSessionForUserId(targetUser.id, meta);
   }
 
   async signup(
@@ -2454,8 +2640,50 @@ export class AuthService {
       orderBy: {
         createdAt: "asc"
       },
-      take: 2
+      take: 20
     });
+  }
+
+  private async resolveLoginUserByEmailAndPassword(email: string, password: string) {
+    const users = await this.findUsersByEmail(email);
+
+    if (users.length === 0) {
+      throw new UnauthorizedException("Kullanıcı bulunamadı.");
+    }
+
+    const passwordCandidates = users
+      .filter((user) => user.passwordHash && !user.deletedAt)
+      .sort((left, right) => {
+        const score = (status: UserStatus) =>
+          status === UserStatus.ACTIVE ? 0 : status === UserStatus.INVITED ? 1 : 2;
+
+        return score(left.status) - score(right.status);
+      });
+
+    for (const candidate of passwordCandidates) {
+      const passwordMatches = await verifyPassword(candidate.passwordHash!, password);
+
+      if (passwordMatches) {
+        return candidate;
+      }
+    }
+
+    const fallbackUser = users[0];
+    if (fallbackUser) {
+      await this.reportSecurityEvent({
+        tenantId: fallbackUser.tenantId,
+        userId: fallbackUser.id,
+        source: "auth.login",
+        code: "auth.login.invalid_password",
+        message: "Hatali sifre ile giris denemesi algilandi.",
+        severity: SecurityEventSeverity.WARNING,
+        metadata: {
+          email
+        }
+      });
+    }
+
+    throw new UnauthorizedException("E-posta veya sifre hatali.");
   }
 
   private async findUniqueUserByEmail(

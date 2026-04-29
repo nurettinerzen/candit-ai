@@ -55,4 +55,19 @@ export class TenantConfigController {
   ) {
     return this.tenantConfigService.updateProfile(tenantId, body);
   }
+
+  @Get("hiring-settings")
+  @Permissions("user.manage")
+  getHiringSettings(@CurrentTenant() tenantId: string) {
+    return this.tenantConfigService.getHiringSettings(tenantId);
+  }
+
+  @Patch("hiring-settings")
+  @Permissions("user.manage")
+  updateHiringSettings(
+    @CurrentTenant() tenantId: string,
+    @Body() body: Record<string, unknown>
+  ) {
+    return this.tenantConfigService.updateHiringSettings(tenantId, body);
+  }
 }

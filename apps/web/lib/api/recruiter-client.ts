@@ -59,6 +59,7 @@ import type {
   IntegrationConnectionReadModel,
   PublicInterviewSessionView,
   Job,
+  JobProfile,
   JobRequirement,
   ScreeningMode,
   JobStatus,
@@ -66,6 +67,7 @@ import type {
   MemberDirectoryItem,
   QuickActionResult,
   TenantProfileReadModel,
+  TenantHiringSettingsReadModel,
   TenantRuntimeConfigurationReadModel,
   StageTransitionPayload,
   ProviderHealthDashboard,
@@ -85,6 +87,23 @@ type CreateJobPayload = {
   jdText?: string;
   aiDraftText?: string;
   requirements?: Array<Omit<JobRequirement, "id">>;
+  jobProfile?: JobProfile;
+};
+
+type UpdateJobPayload = {
+  title?: string;
+  department?: string;
+  roleFamily?: string;
+  status?: JobStatus;
+  locationText?: string;
+  shiftType?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  jdText?: string;
+  aiDraftText?: string;
+  screeningMode?: ScreeningMode;
+  requirements?: Array<Omit<JobRequirement, "id">>;
+  jobProfile?: JobProfile;
 };
 
 type GenerateJobDraftPayload = {
@@ -101,6 +120,7 @@ type GenerateJobDraftPayload = {
     value: string;
     required: boolean;
   }>;
+  jobProfile?: JobProfile;
   existingDraft?: string;
   rewriteInstruction?: string;
 };
@@ -110,6 +130,9 @@ type CreateCandidatePayload = {
   phone?: string;
   email?: string;
   source?: string;
+  consentAccepted?: boolean;
+  consentNoticeVersion?: string;
+  consentPolicyVersion?: string;
 };
 
 type ScheduleInterviewPayload = {
@@ -204,6 +227,15 @@ export const apiClient = {
   createJob(payload: CreateJobPayload) {
     return request<Job>("jobs", {
       method: "POST",
+      body: payload
+    });
+  },
+  getJob(jobId: string) {
+    return request<Job>(`jobs/${jobId}`);
+  },
+  updateJob(jobId: string, payload: UpdateJobPayload) {
+    return request<Job>(`jobs/${jobId}`, {
+      method: "PATCH",
       body: payload
     });
   },
@@ -669,6 +701,56 @@ export const apiClient = {
   listRecruiterNotes(applicationId: string) {
     return request<RecruiterNote[]>(`applications/${applicationId}/notes`);
   },
+  listReferenceChecks(applicationId: string) {
+    return request<ApplicationDetailReadModel["operations"]["referenceChecks"]>(
+      `applications/${applicationId}/reference-checks`
+    );
+  },
+  createReferenceCheck(
+    applicationId: string,
+    payload: {
+      referenceName: string;
+      companyName?: string;
+      relationship?: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      status?: string;
+      openEndedResponses?: Array<{ question: string; answer: string }>;
+      closedEndedResponses?: Array<{ question: string; answer: string }>;
+      summaryText?: string;
+    }
+  ) {
+    return request<ApplicationDetailReadModel["operations"]["referenceChecks"][number]>(
+      `applications/${applicationId}/reference-checks`,
+      {
+        method: "POST",
+        body: payload
+      }
+    );
+  },
+  updateReferenceCheck(
+    applicationId: string,
+    referenceCheckId: string,
+    payload: {
+      referenceName: string;
+      companyName?: string;
+      relationship?: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      status?: string;
+      openEndedResponses?: Array<{ question: string; answer: string }>;
+      closedEndedResponses?: Array<{ question: string; answer: string }>;
+      summaryText?: string;
+    }
+  ) {
+    return request<ApplicationDetailReadModel["operations"]["referenceChecks"][number]>(
+      `applications/${applicationId}/reference-checks/${referenceCheckId}`,
+      {
+        method: "POST",
+        body: payload
+      }
+    );
+  },
   listIntegrationConnections() {
     return request<IntegrationConnectionReadModel[]>("integrations/connections");
   },
@@ -903,6 +985,9 @@ export const apiClient = {
   getTenantRuntimeConfiguration() {
     return request<TenantRuntimeConfigurationReadModel>("tenant-config/runtime");
   },
+  getTenantHiringSettings() {
+    return request<TenantHiringSettingsReadModel>("tenant-config/hiring-settings");
+  },
   updateTenantProfile(payload: {
     companyName: string;
     websiteUrl?: string;
@@ -910,6 +995,12 @@ export const apiClient = {
     profileSummary?: string;
   }) {
     return request<TenantProfileReadModel>("tenant-config/profile", {
+      method: "PATCH",
+      body: payload
+    });
+  },
+  updateTenantHiringSettings(payload: TenantHiringSettingsReadModel["settings"]) {
+    return request<TenantHiringSettingsReadModel>("tenant-config/hiring-settings", {
       method: "PATCH",
       body: payload
     });

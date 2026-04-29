@@ -1,0 +1,574 @@
+/* ═══ Analytics Dashboard v2 — Modern SaaS Visual Layer ═══ */
+
+/* ─ Page Shell ─────────────────────────────────────────── */
+.analyticsPage {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin: 0 0 4px;
+  background: linear-gradient(135deg, #e8edf4 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.pageSubtitle {
+  font-size: 12.5px;
+  color: #6b7fa0;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ─ KPI Cards Row ───────────────────────────────────────── */
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.kpiCard {
+  position: relative;
+  padding: 18px 20px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: linear-gradient(160deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
+  overflow: hidden;
+  cursor: default;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.kpiCard::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  border-radius: 0 0 16px 16px;
+  opacity: 0.7;
+}
+
+.kpiCard:nth-child(1)::after { background: linear-gradient(90deg, #22d3ee, #06b6d4); }
+.kpiCard:nth-child(2)::after { background: linear-gradient(90deg, #8b5cf6, #6d28d9); }
+.kpiCard:nth-child(3)::after { background: linear-gradient(90deg, #10b981, #059669); }
+.kpiCard:nth-child(4)::after { background: linear-gradient(90deg, #f59e0b, #d97706); }
+
+.kpiCard:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255,255,255,0.12);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+}
+
+.kpiLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7fa0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 10px;
+}
+
+.kpiValue {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: 0 0 14px;
+  color: #e8edf4;
+}
+
+.kpiCard:nth-child(1) .kpiValue { color: #22d3ee; }
+.kpiCard:nth-child(2) .kpiValue { color: #a78bfa; }
+.kpiCard:nth-child(3) .kpiValue { color: #34d399; }
+.kpiCard:nth-child(4) .kpiValue { color: #fbbf24; }
+
+.kpiSparkline {
+  width: 100%;
+  height: 34px;
+  overflow: visible;
+}
+
+.kpiBadge {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kpiCard:nth-child(1) .kpiBadge { background: rgba(34,211,238,0.12); color: #22d3ee; }
+.kpiCard:nth-child(2) .kpiBadge { background: rgba(139,92,246,0.12); color: #a78bfa; }
+.kpiCard:nth-child(3) .kpiBadge { background: rgba(16,185,129,0.12); color: #34d399; }
+.kpiCard:nth-child(4) .kpiBadge { background: rgba(245,158,11,0.12); color: #fbbf24; }
+
+/* ─ Main Charts Row ─────────────────────────────────────── */
+.chartsRow {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 14px;
+}
+
+/* ─ Funnel Chart Panel ──────────────────────────────────── */
+.chartPanel {
+  padding: 22px 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.018));
+}
+
+.chartPanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.chartTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #c8d4e4;
+  margin: 0 0 4px;
+  letter-spacing: -0.02em;
+}
+
+.chartSubtitle {
+  font-size: 11.5px;
+  color: #5a6f8a;
+  margin: 0;
+}
+
+.funnelList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.funnelRow {
+  display: grid;
+  grid-template-columns: 130px 1fr 52px;
+  align-items: center;
+  gap: 12px;
+}
+
+.funnelLabel {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #8fa3bc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.funnelBarTrack {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.05);
+  overflow: hidden;
+  position: relative;
+}
+
+.funnelBarFill {
+  height: 100%;
+  border-radius: 99px;
+  position: relative;
+  transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.funnelCount {
+  font-size: 13px;
+  font-weight: 700;
+  color: #c8d4e4;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Funnel gradient colors by stage position */
+.funnelFill0 { background: linear-gradient(90deg, #22d3ee, #06b6d4); box-shadow: 0 0 8px rgba(34,211,238,0.4); }
+.funnelFill1 { background: linear-gradient(90deg, #8b5cf6, #7c3aed); box-shadow: 0 0 8px rgba(139,92,246,0.4); }
+.funnelFill2 { background: linear-gradient(90deg, #3b82f6, #2563eb); box-shadow: 0 0 8px rgba(59,130,246,0.4); }
+.funnelFill3 { background: linear-gradient(90deg, #10b981, #059669); box-shadow: 0 0 8px rgba(16,185,129,0.4); }
+.funnelFill4 { background: linear-gradient(90deg, #f59e0b, #d97706); box-shadow: 0 0 8px rgba(245,158,11,0.4); }
+.funnelFill5 { background: linear-gradient(90deg, #ef4444, #dc2626); box-shadow: 0 0 8px rgba(239,68,68,0.3); }
+.funnelFill6 { background: linear-gradient(90deg, #ec4899, #db2777); box-shadow: 0 0 8px rgba(236,72,153,0.3); }
+
+/* ─ AI Donut Panel ──────────────────────────────────────── */
+.donutPanel {
+  padding: 22px 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.018));
+  display: flex;
+  flex-direction: column;
+}
+
+.donutWrap {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  margin: 16px auto 0;
+  flex-shrink: 0;
+}
+
+.donutSvg {
+  width: 160px;
+  height: 160px;
+  transform: rotate(-90deg);
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.donutCenterValue {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #e8edf4;
+  line-height: 1;
+}
+
+.donutCenterLabel {
+  font-size: 10px;
+  color: #5a6f8a;
+  margin-top: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.donutLegend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.donutLegendRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.donutLegendLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.donutDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.donutLegendLabel {
+  font-size: 12px;
+  color: #8fa3bc;
+  font-weight: 500;
+}
+
+.donutLegendValue {
+  font-size: 13px;
+  font-weight: 700;
+  color: #c8d4e4;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─ Metrics Panel Grid ──────────────────────────────────── */
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metricPanel {
+  padding: 20px 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.018));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.metricPanelTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #c8d4e4;
+  margin: 0 0 2px;
+  letter-spacing: -0.02em;
+}
+
+.metricPanelSubtitle {
+  font-size: 11px;
+  color: #5a6f8a;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ─ Metric Tile 2x2 ─────────────────────────────────────── */
+.metricTileGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.metricTile {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.metricTileValue {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #e8edf4;
+  display: block;
+  margin-bottom: 4px;
+  line-height: 1;
+}
+
+.metricTileLabel {
+  font-size: 10.5px;
+  color: #5a6f8a;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+/* ─ Detail List ─────────────────────────────────────────── */
+.detailList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.detailRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.detailRow:last-child {
+  border-bottom: none;
+}
+
+.detailLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #7a8fa8;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+}
+
+.detailValue {
+  font-size: 13px;
+  font-weight: 700;
+  color: #c8d4e4;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─ Bottom Row ──────────────────────────────────────────── */
+.bottomRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* ─ Conversion Bar ──────────────────────────────────────── */
+.conversionList {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.conversionRow {
+  display: grid;
+  grid-template-columns: 120px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+}
+
+.conversionLabel {
+  font-size: 11.5px;
+  color: #7a8fa8;
+  font-weight: 500;
+}
+
+.conversionTrack {
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.05);
+  overflow: hidden;
+}
+
+.conversionFill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6);
+  transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.conversionValue {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #c8d4e4;
+  text-align: right;
+}
+
+/* ─ Velocity Cards ──────────────────────────────────────── */
+.velocityGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.velocityCard {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.velocityIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.velocityValue {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #e8edf4;
+  display: block;
+  margin-bottom: 3px;
+  line-height: 1;
+}
+
+.velocityLabel {
+  font-size: 10.5px;
+  color: #5a6f8a;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+/* ─ Wave Area SVG ───────────────────────────────────────── */
+.waveChartWrap {
+  margin-top: 16px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.15);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.waveSvg {
+  width: 100%;
+  height: 80px;
+  display: block;
+}
+
+/* ─ Section Divider Label ───────────────────────────────── */
+.sectionDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 0;
+}
+
+.sectionDividerLine {
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+}
+
+.sectionDividerLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: #3d5268;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+/* ─ Stage chip mini ─────────────────────────────────────── */
+.stageDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─ Responsive ──────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .chartsRow {
+    grid-template-columns: 1fr;
+  }
+  .donutWrap {
+    width: 140px;
+    height: 140px;
+  }
+  .donutSvg {
+    width: 140px;
+    height: 140px;
+  }
+}
+
+@media (max-width: 960px) {
+  .kpiRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .metricsRow {
+    grid-template-columns: 1fr;
+  }
+  .bottomRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .kpiRow {
+    grid-template-columns: 1fr;
+  }
+}

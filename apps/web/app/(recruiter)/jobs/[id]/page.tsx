@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -967,6 +968,15 @@ export default function JobDetailPage() {
             )}
           </div>
           <div className="row-actions job-detail-hero-actions" style={{ gap: 8 }}>
+            {job ? (
+              <Link
+                href={`/jobs/${jobId}/edit` as Route}
+                className="ghost-button"
+                style={{ fontSize: 12, textDecoration: "none" }}
+              >
+                {t("İlanı Düzenle")}
+              </Link>
+            ) : null}
             {job && canViewSourcing ? (
               <button
                 type="button"

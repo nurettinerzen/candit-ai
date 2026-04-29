@@ -33,6 +33,8 @@ enum JobStatus {
 
 enum ApplicationStage {
   APPLIED
+  TALENT_POOL
+  SHORTLISTED
   SCREENING
   INTERVIEW_SCHEDULED
   INTERVIEW_COMPLETED
@@ -353,6 +355,7 @@ model Tenant {
   websiteUrl String?
   logoUrl   String?
   profileSummary String?
+  hiringSettingsJson Json?
   locale    String       @default("tr-TR")
   timezone  String       @default("Europe/Istanbul")
   status    TenantStatus @default(ACTIVE)
@@ -371,6 +374,7 @@ model Tenant {
   aiTaskRuns               AiTaskRun[]
   recommendations          ApplicationRecommendation[]
   humanApprovals           HumanApproval[]
+  referenceChecks          ReferenceCheck[]
   domainEvents             DomainEvent[]
   authSessions             AuthSession[]
   authRefreshTokens        AuthRefreshToken[]
@@ -732,6 +736,7 @@ model Job {
   status       JobStatus @default(DRAFT)
   jdText       String?
   aiDraftText  String?
+  jobProfileJson Json?
   createdBy    String
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -841,10 +846,36 @@ model CandidateApplication {
   recommendations     ApplicationRecommendation[]
   fitScores           ApplicantFitScore[]
   recruiterNotes      RecruiterNote[]
+  referenceChecks     ReferenceCheck[]
   schedulingWorkflows SchedulingWorkflow[]
 
   @@unique([tenantId, candidateId, jobId])
   @@index([tenantId, jobId, currentStage])
+}
+
+model ReferenceCheck {
+  id                      String   @id @default(uuid())
+  tenantId                String
+  applicationId           String
+  referenceName           String
+  companyName             String?
+  relationship            String?
+  contactEmail            String?
+  contactPhone            String?
+  status                  String   @default("DRAFT")
+  openEndedResponsesJson  Json?
+  closedEndedResponsesJson Json?
+  summaryText             String?
+  createdBy               String
+  completedAt             DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  application CandidateApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, applicationId, createdAt(sort: Desc)])
+  @@index([tenantId, status, createdAt(sort: Desc)])
 }
 
 model TalentProfile {

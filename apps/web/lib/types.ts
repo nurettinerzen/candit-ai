@@ -34,6 +34,55 @@ export type TenantProfileReadModel = {
   timezone: string;
 };
 
+export type TenantHiringSettings = {
+  departments: string[];
+  titleLevels: string[];
+  competencyLibrary: {
+    core: string[];
+    functional: string[];
+    managerial: string[];
+  };
+  evaluationPresets: {
+    schoolDepartments: string[];
+    certificates: string[];
+    tools: string[];
+    languages: string[];
+  };
+  referenceCheckTemplate: {
+    closedEndedQuestions: string[];
+    openEndedQuestions: string[];
+  };
+  dataProcessingConsent: {
+    noticeVersion: string;
+    policyVersion: string | null;
+    summary: string;
+    explicitText: string;
+  };
+  approvalFlow: {
+    enabled: boolean;
+    approverRole: "OWNER" | "MANAGER" | "STAFF";
+    stages: string[];
+    notes: string | null;
+  };
+  notificationDefaults: {
+    responseSlaDays: number;
+  };
+};
+
+export type TenantHiringSettingsReadModel = {
+  tenantId: string;
+  settings: TenantHiringSettings;
+};
+
+export type AccessibleCompany = {
+  tenantId: string;
+  tenantName: string;
+  logoUrl: string | null;
+  role: AppUserRole;
+  userId: string;
+  status: MemberStatus;
+};
+
 export type LaunchSupportStatus = "ready" | "pilot" | "setup_required" | "unsupported";
 
 export type TenantRuntimeConfigurationReadModel = {
@@ -126,6 +175,8 @@ export type IntegrationConnectionReadModel = {
 
 export type ApplicationStage =
   | "APPLIED"
+  | "TALENT_POOL"
+  | "SHORTLISTED"
   | "SCREENING"
   | "INTERVIEW_SCHEDULED"
   | "INTERVIEW_COMPLETED"
@@ -180,6 +231,30 @@ export type JobRequirement = {
   required: boolean;
 };
 
+export type JobProfile = {
+  titleLevel: string | null;
+  responsibilities: string[];
+  competencySets: {
+    core: string[];
+    functional: string[];
+    managerial: string[];
+  };
+  evaluationCriteria: {
+    educationLevel: string | null;
+    schoolDepartments: string[];
+    certificates: string[];
+    minimumExperienceYears: number | null;
+    tools: string[];
+    languages: string[];
+  };
+  applicantQuestions: string[];
+  workflow: {
+    responseSlaDays: number | null;
+    hideCompensationOnPosting: boolean;
+  };
+  notes: string | null;
+};
+
 export type Job = {
   id: string;
   title: string;
@@ -192,6 +267,7 @@ export type Job = {
   salaryMax: string | null;
   jdText: string | null;
   aiDraftText: string | null;
+  jobProfile: JobProfile | null;
   createdAt: string;
   requirements: JobRequirement[];
   _count?: {
@@ -1733,6 +1809,13 @@ export type ApplicationDetailReadModel = {
     source: string | null;
     externalSource: string | null;
     externalRef: string | null;
+    dataProcessingConsent: {
+      status: "PENDING" | "GRANTED" | "WITHDRAWN";
+      noticeVersion: string | null;
+      policyVersion: string | null;
+      capturedAt: string | null;
+      withdrawnAt: string | null;
+    };
     sourcing: SourcingAttachmentContextView | null;
     cvFiles: CandidateCvFile[];
   };
@@ -1741,6 +1824,7 @@ export type ApplicationDetailReadModel = {
     title: string;
     roleFamily: string;
     status: JobStatus;
+    responseSlaDays: number | null;
   };
   artifacts: {
     screeningRuns: AiTaskRun[];
@@ -1760,6 +1844,30 @@ export type ApplicationDetailReadModel = {
     auditLogs: AuditLog[];
     humanApprovals: HumanApproval[];
     notificationDeliveries: NotificationDeliveryView[];
+  };
+  operations: {
+    referenceChecks: Array<{
+      id: string;
+      referenceName: string;
+      companyName: string | null;
+      relationship: string | null;
+      contactEmail: string | null;
+      contactPhone: string | null;
+      status: string;
+      openEndedResponses: Array<{
+        question: string;
+        answer: string;
+      }>;
+      closedEndedResponses: Array<{
+        question: string;
+        answer: string;
+      }>;
+      summaryText: string | null;
+      createdBy: string;
+      completedAt: string | null;
+      createdAt: string;
+      updatedAt: string;
+    }>;
   };
   timeline: {
     stageHistory: ApplicationDetail["stageHistory"];
@@ -1786,6 +1894,7 @@ export type RecruiterApplicationsReadModel = {
       id: string;
       title: string;
       status: JobStatus;
+      responseSlaDays: number | null;
     };
     ai: {
       hasReport: boolean;
@@ -1950,6 +2059,8 @@ export type JobInboxReadModel = {
 
 export type QuickActionType =
   | "advance"
+  | "move_to_pool"
+  | "move_to_shortlist"
   | "reject"
   | "hold"
   | "invite_interview"

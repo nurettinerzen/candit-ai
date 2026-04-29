@@ -13,6 +13,7 @@ import {
   setExplicitlyLoggedOut
 } from "./session-store";
 import type { WebAuthSession } from "./types";
+import type { AccessibleCompany } from "../types";
 
 export type AuthEmailVerificationPayload = {
   ok?: boolean;
@@ -815,6 +816,100 @@ export async function resolveSessionFromServer(currentSession: WebAuthSession | 
   }
 
   return hydrateServerSession(response);
+}
+
+export async function listAccessibleCompanies(session: WebAuthSession | null) {
+  if (!session) {
+    throw new Error("Aktif oturum bulunamadı.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/auth/companies`, {
+    method: "GET",
+    headers: {
+      ...buildAuthHeaders(session)
+    },
+    credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as {
+    companies?: AccessibleCompany[];
+    message?: string | string[];
+  };
+
+  if (!response.ok || !payload.companies) {
+    throw new Error(resolveErrorMessage(payload.message, `Şirket listesi alınamadı (${response.status}).`));
+  }
+
+  return payload.companies;
+}
+
+export async function createManagedCompany(
+  session: WebAuthSession | null,
+  input: { companyName: string }
+) {
+  if (!session) {
+    throw new Error("Aktif oturum bulunamadı.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/auth/companies`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...buildAuthHeaders(session)
+    },
+    credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
+    body: JSON.stringify(input),
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as {
+    company?: AccessibleCompany;
+    message?: string | string[];
+  };
+
+  if (!response.ok || !payload.company) {
+    throw new Error(resolveErrorMessage(payload.message, `Şirket oluşturulamadı (${response.status}).`));
+  }
+
+  return payload.company;
+}
+
+export async function switchCompanySession(
+  session: WebAuthSession | null,
+  targetTenantId: string
+): Promise<WebAuthSession> {
+  if (!session) {
+    throw new Error("Aktif oturum bulunamadı.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/auth/switch-company`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...buildAuthHeaders(session)
+    },
+    credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
+    body: JSON.stringify({ targetTenantId }),
+    cache: "no-store"
+  });
+
+  const payload = (await response.json()) as AuthResponsePayload;
+
+  if (!response.ok || !payload.user?.id || !payload.user.tenantId) {
+    throw createAuthError(payload, `Şirket değiştirilemedi (${response.status}).`);
+  }
+
+  const isCookieTransport = AUTH_TOKEN_TRANSPORT === "cookie";
+
+  if (!isCookieTransport && !payload.accessToken) {
+    throw new Error("Şirket değiştirme cevabı access token içermiyor.");
+  }
+
+  const nextSession = buildSessionFromPayload(payload, isCookieTransport ? "jwt_cookie" : "jwt");
+  setExplicitlyLoggedOut(false);
+  persistSession(nextSession);
+  return nextSession;
 }
 
 export function clearAuthSession() {

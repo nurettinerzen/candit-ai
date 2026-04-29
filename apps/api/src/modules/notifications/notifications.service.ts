@@ -410,10 +410,21 @@ export class NotificationsService {
       return this.notifyApplicationDecisionEvent(input);
     }
 
-    if (
-      input.eventType !== "application.stage_transitioned" &&
-      input.eventType !== "interview.session.completed"
-    ) {
+    if (input.eventType === "application.created") {
+      return this.notifyApplicationStageEvent({
+        ...input,
+        stageKind: "application_created"
+      });
+    }
+
+    if (input.eventType === "application.stage_transitioned") {
+      return this.notifyApplicationStageEvent({
+        ...input,
+        stageKind: "stage_transitioned"
+      });
+    }
+
+    if (input.eventType !== "interview.session.completed") {
       return { notified: false };
     }
 
@@ -835,5 +846,141 @@ export class NotificationsService {
           ].join("\n")
         } as const;
     }
+  }
+
+  private async notifyApplicationStageEvent(input: {
+    tenantId: string;
+    eventType: string;
+    aggregateType: string;
+    aggregateId: string;
+    traceId?: string;
+    payload: Record<string, unknown>;
+    stageKind: "application_created" | "stage_transitioned";
+  }) {
+    const [application, tenant] = await Promise.all([
+      this.prisma.candidateApplication.findFirst({
+        where: {
+          tenantId: input.tenantId,
+          id: input.aggregateId
+        },
+        include: {
+          candidate: {
+            select: {
+              fullName: true,
+              email: true
+            }
+          },
+          job: {
+            select: {
+              title: true
+            }
+          }
+        }
+      }),
+      this.prisma.tenant.findUnique({
+        where: {
+          id: input.tenantId
+        },
+        select: {
+          name: true
+        }
+      })
+    ]);
+
+    if (!application) {
+      return {
+        notified: false,
+        reason: "application_not_found"
+      };
+    }
+
+    const recipient = application.candidate.email?.trim() || null;
+
+    if (!recipient) {
+      return {
+        notified: false,
+        reason: "recipient_missing"
+      };
+    }
+
+    const companyName = tenant?.name ?? "Candit.ai";
+    const candidateName = application.candidate.fullName;
+    const jobTitle = application.job.title;
+    const toStage =
+      typeof input.payload.toStage === "string" ? input.payload.toStage.trim().toUpperCase() : null;
+
+    const email =
+      input.stageKind === "application_created"
+        ? {
+            templateKey: "application_received_v1",
+            subject: `${companyName} – Başvurunuz alındı`,
+            body: [
+              `Merhaba ${candidateName},`,
+              ``,
+              `${companyName} bünyesindeki ${jobTitle} pozisyonu için başvurunuz tarafımıza ulaştı.`,
+              ``,
+              `Ekibimiz başvurunuzu değerlendirmeye aldı. Süreçte yeni bir adım olduğunda sizinle tekrar paylaşacağız.`
+            ].join("\n")
+          }
+        : toStage === "TALENT_POOL"
+          ? {
+              templateKey: "application_talent_pool_v1",
+              subject: `${companyName} – Başvurunuz aday havuzunda`,
+              body: [
+                `Merhaba ${candidateName},`,
+                ``,
+                `${companyName} bünyesindeki ${jobTitle} pozisyonu için CV'niz tarafımıza ulaşmıştır ve aday havuzumuzda değerlendirilmektedir.`,
+                ``,
+                `Pozisyona uygun bir eşleşme oluşması halinde ekibimiz sizinle tekrar iletişime geçecektir.`
+              ].join("\n")
+            }
+          : toStage === "SHORTLISTED" || toStage === "RECRUITER_REVIEW"
+            ? {
+                templateKey: "application_shortlisted_v1",
+                subject: `${companyName} – Başvurunuz değerlendirmeye alındı`,
+                body: [
+                  `Merhaba ${candidateName},`,
+                  ``,
+                  `${companyName} bünyesindeki ${jobTitle} pozisyonu için başvurunuz değerlendirme sürecine alınmıştır.`,
+                  ``,
+                  `Pozisyona uygun bulunmanız halinde bir sonraki adım için sizinle iletişime geçeceğiz.`
+                ].join("\n")
+              }
+            : null;
+
+    if (!email) {
+      return {
+        notified: false,
+        reason: "stage_notification_not_supported"
+      };
+    }
+
+    const result = await this.send({
+      tenantId: input.tenantId,
+      channel: "email",
+      to: recipient,
+      subject: email.subject,
+      body: email.body,
+      metadata: {
+        eventType: input.eventType,
+        applicationId: application.id,
+        stage: toStage,
+        infoPosition: jobTitle,
+        showPrimaryCta: false,
+        showSecondaryCta: false
+      },
+      traceId: input.traceId,
+      domainEventId: asString(input.payload.domainEventId) ?? undefined,
+      eventType: input.eventType,
+      templateKey: email.templateKey
+    });
+
+    return {
+      notified: true,
+      channel: "email",
+      deliveryId: result.deliveryId,
+      provider: result.provider,
+      status: result.status
+    };
   }
 }

@@ -30,6 +30,63 @@ type QueueState = {
   priority: number;
 };
 
+type ResponseSlaMeta = {
+  label: string;
+  detail: string;
+  color: string;
+  background: string;
+  priority: number;
+};
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_RESPONSE_SLA_DAYS = 15;
+
+function resolveResponseSlaMeta(
+  application: RecruiterApplicationsReadModel["items"][number]
+): ResponseSlaMeta {
+  if (application.stage === "REJECTED" || application.stage === "HIRED") {
+    return {
+      label: "Kapandı",
+      detail: "Bu başvuru için aktif geri dönüş SLA takibi yok.",
+      color: "var(--text-secondary)",
+      background: "rgba(100,116,139,0.12)",
+      priority: 3
+    };
+  }
+
+  const slaDays = application.job.responseSlaDays ?? DEFAULT_RESPONSE_SLA_DAYS;
+  const dueAt = new Date(application.createdAt).getTime() + slaDays * DAY_IN_MS;
+  const remainingDays = Math.ceil((dueAt - Date.now()) / DAY_IN_MS);
+
+  if (remainingDays < 0) {
+    return {
+      label: `${Math.abs(remainingDays)} gün gecikti`,
+      detail: `Hedef geri dönüş süresi ${slaDays} günü aştı.`,
+      color: "var(--danger, #ef4444)",
+      background: "rgba(239,68,68,0.12)",
+      priority: 0
+    };
+  }
+
+  if (remainingDays <= 3) {
+    return {
+      label: `${remainingDays} gün kaldı`,
+      detail: `Aday geri dönüş SLA süresi yaklaşıyor (${slaDays} gün).`,
+      color: "var(--warn, #f59e0b)",
+      background: "rgba(245,158,11,0.12)",
+      priority: 1
+    };
+  }
+
+  return {
+    label: `${remainingDays} gün kaldı`,
+    detail: `Aday geri dönüş hedefi ${slaDays} gün.`,
+    color: "var(--success, #22c55e)",
+    background: "rgba(34,197,94,0.12)",
+    priority: 2
+  };
+}
+
 function resolveQueueState(application: RecruiterApplicationsReadModel["items"][number]): QueueState {
   const recruiterStatus = getRecruiterStatus(application.stage, application.humanDecision);
   const interviewMeta = getInterviewInvitationMeta(
@@ -189,8 +246,7 @@ export default function ApplicationsPage() {
       if (jobFilter && application.job.id !== jobFilter) return false;
 
       if (stageFilter) {
-        const status = getRecruiterStatus(application.stage, application.humanDecision);
-        if (status !== stageFilter) return false;
+        if (application.stage !== stageFilter) return false;
       }
 
       if (activeCard === "ready") return resolveQueueState(application).key === "feedback";
@@ -202,6 +258,11 @@ export default function ApplicationsPage() {
     return [...filtered].sort((left, right) => {
       const leftState = resolveQueueState(left);
       const rightState = resolveQueueState(right);
+      const leftSla = resolveResponseSlaMeta(left);
+      const rightSla = resolveResponseSlaMeta(right);
+      if (leftSla.priority !== rightSla.priority) {
+        return leftSla.priority - rightSla.priority;
+      }
       if (leftState.priority !== rightState.priority) return leftState.priority - rightState.priority;
       return new Date(right.stageUpdatedAt).getTime() - new Date(left.stageUpdatedAt).getTime();
     });
@@ -388,6 +449,7 @@ export default function ApplicationsPage() {
                   <th>{t("Aday")}</th>
                   <th>{t("İlan")}</th>
                   <th>{t("Durum")}</th>
+                  <th>{t("Geri Dönüş SLA")}</th>
                   <th>{t("Son Güncelleme")}</th>
                 </tr>
               </thead>
@@ -397,12 +459,16 @@ export default function ApplicationsPage() {
                     application.stage,
                     application.humanDecision
                   );
+                  const slaMeta = resolveResponseSlaMeta(application);
 
                   return (
                     <tr
                       key={application.id}
                       onClick={() => { router.push(applicationDetailHref(application.id)); }}
-                      style={{ cursor: "pointer" }}
+                      style={{
+                        cursor: "pointer",
+                        background: slaMeta.priority <= 1 ? slaMeta.background : undefined
+                      }}
                     >
                       <td>
                         <div style={{ fontWeight: 500 }}>{application.candidate.fullName}</div>
@@ -432,6 +498,23 @@ export default function ApplicationsPage() {
                             }}
                           />
                           {t(stageMeta.label)}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          title={slaMeta.detail}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            padding: "5px 9px",
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: slaMeta.color,
+                            background: slaMeta.background
+                          }}
+                        >
+                          {slaMeta.label}
                         </span>
                       </td>
                       <td>{formatDate(application.stageUpdatedAt)}</td>

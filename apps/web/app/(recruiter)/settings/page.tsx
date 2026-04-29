@@ -16,15 +16,58 @@ import {
   getPasswordPolicyStatus
 } from "../../../lib/auth/password-policy";
 import {
+  createManagedCompany,
   changePasswordForCurrentSession,
   deleteCurrentAccount,
+  listAccessibleCompanies,
   resolveActiveSession,
-  resolveSessionFromServer
+  resolveSessionFromServer,
+  switchCompanySession
 } from "../../../lib/auth/session";
-import type { TenantProfileReadModel } from "../../../lib/types";
+import type {
+  AccessibleCompany,
+  TenantHiringSettings,
+  TenantProfileReadModel
+} from "../../../lib/types";
 
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function linesToText(values: string[]) {
+  return values.join("\n");
+}
+
+function textToLines(value: string) {
+  return value
+    .split(/\r?\n/g)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function createHiringSettingsFormState(settings: TenantHiringSettings) {
+  return {
+    departments: linesToText(settings.departments),
+    titleLevels: linesToText(settings.titleLevels),
+    competencyCore: linesToText(settings.competencyLibrary.core),
+    competencyFunctional: linesToText(settings.competencyLibrary.functional),
+    competencyManagerial: linesToText(settings.competencyLibrary.managerial),
+    schoolDepartments: linesToText(settings.evaluationPresets.schoolDepartments),
+    certificates: linesToText(settings.evaluationPresets.certificates),
+    tools: linesToText(settings.evaluationPresets.tools),
+    languages: linesToText(settings.evaluationPresets.languages),
+    referenceClosedEndedQuestions: linesToText(settings.referenceCheckTemplate.closedEndedQuestions),
+    referenceOpenEndedQuestions: linesToText(settings.referenceCheckTemplate.openEndedQuestions),
+    consentNoticeVersion: settings.dataProcessingConsent.noticeVersion,
+    consentPolicyVersion: settings.dataProcessingConsent.policyVersion ?? "",
+    consentSummary: settings.dataProcessingConsent.summary,
+    consentExplicitText: settings.dataProcessingConsent.explicitText,
+    approvalEnabled: settings.approvalFlow.enabled,
+    approverRole: settings.approvalFlow.approverRole,
+    approvalStages: linesToText(settings.approvalFlow.stages),
+    approvalNotes: settings.approvalFlow.notes ?? "",
+    responseSlaDays: String(settings.notificationDefaults.responseSlaDays)
+  };
 }
 
 export default function SettingsPage() {
@@ -44,12 +87,53 @@ export default function SettingsPage() {
   const [profileForm, setProfileForm] = useState({
     companyName: "",
     websiteUrl: "",
+    logoUrl: "",
     profileSummary: ""
   });
+  const [hiringSettings, setHiringSettings] = useState<TenantHiringSettings | null>(null);
+  const [hiringSettingsForm, setHiringSettingsForm] = useState(() =>
+    createHiringSettingsFormState({
+      departments: [],
+      titleLevels: [],
+      competencyLibrary: {
+        core: [],
+        functional: [],
+        managerial: []
+      },
+      evaluationPresets: {
+        schoolDepartments: [],
+        certificates: [],
+        tools: [],
+        languages: []
+      },
+      referenceCheckTemplate: {
+        closedEndedQuestions: [],
+        openEndedQuestions: []
+      },
+      dataProcessingConsent: {
+        noticeVersion: "kvkk_data_processing_tr_v1_2026_04",
+        policyVersion: "policy_v1",
+        summary: "",
+        explicitText: ""
+      },
+      approvalFlow: {
+        enabled: false,
+        approverRole: "MANAGER",
+        stages: ["OFFER", "HIRED"],
+        notes: null
+      },
+      notificationDefaults: {
+        responseSlaDays: 15
+      }
+    })
+  );
+  const [accessibleCompanies, setAccessibleCompanies] = useState<AccessibleCompany[]>([]);
+  const [companyDraft, setCompanyDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyKey, setBusyKey] = useState("");
   const [profileNotice, setProfileNotice] = useState("");
+  const [companyNotice, setCompanyNotice] = useState("");
   const [securityNotice, setSecurityNotice] = useState("");
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -61,7 +145,8 @@ export default function SettingsPage() {
     confirmationText: ""
   });
   const profileLooksComplete = Boolean(
-    profileForm.companyName.trim() && (profileForm.websiteUrl.trim() || profileForm.profileSummary.trim())
+    profileForm.companyName.trim() &&
+      (profileForm.websiteUrl.trim() || profileForm.logoUrl.trim() || profileForm.profileSummary.trim())
   );
 
   const deleteAccountConfirmationPlaceholder =
@@ -83,6 +168,35 @@ export default function SettingsPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!currentSession) {
+      setAccessibleCompanies([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadCompanies() {
+      try {
+        const companies = await listAccessibleCompanies(currentSession);
+
+        if (!cancelled) {
+          setAccessibleCompanies(companies);
+        }
+      } catch {
+        if (!cancelled) {
+          setAccessibleCompanies([]);
+        }
+      }
+    }
+
+    void loadCompanies();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentSession]);
 
   useEffect(() => {
     const requestedTab = searchParams.get("tab");
@@ -114,7 +228,10 @@ export default function SettingsPage() {
       setError("");
 
       try {
-        const nextProfile = await apiClient.getTenantProfile();
+        const [nextProfile, nextHiringSettings] = await Promise.all([
+          apiClient.getTenantProfile(),
+          apiClient.getTenantHiringSettings()
+        ]);
 
         if (cancelled) {
           return;
@@ -124,8 +241,11 @@ export default function SettingsPage() {
         setProfileForm({
           companyName: nextProfile.companyName,
           websiteUrl: nextProfile.websiteUrl ?? "",
+          logoUrl: nextProfile.logoUrl ?? "",
           profileSummary: nextProfile.profileSummary ?? ""
         });
+        setHiringSettings(nextHiringSettings.settings);
+        setHiringSettingsForm(createHiringSettingsFormState(nextHiringSettings.settings));
       } catch (loadError) {
         if (!cancelled) {
           setProfile(null);
@@ -160,6 +280,7 @@ export default function SettingsPage() {
       const nextProfile = await apiClient.updateTenantProfile({
         companyName: profileForm.companyName,
         websiteUrl: profileForm.websiteUrl || undefined,
+        logoUrl: profileForm.logoUrl || undefined,
         profileSummary: profileForm.profileSummary || undefined
       });
 
@@ -167,6 +288,7 @@ export default function SettingsPage() {
       setProfileForm({
         companyName: nextProfile.companyName,
         websiteUrl: nextProfile.websiteUrl ?? "",
+        logoUrl: nextProfile.logoUrl ?? "",
         profileSummary: nextProfile.profileSummary ?? ""
       });
       setProfileNotice(
@@ -179,6 +301,113 @@ export default function SettingsPage() {
         saveError instanceof Error ? saveError.message : t("Şirket profili kaydedilemedi.")
       );
     } finally {
+      setBusyKey("");
+    }
+  }
+
+  async function handleHiringSettingsSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusyKey("hiring-settings:save");
+    setError("");
+    setProfileNotice("");
+
+    try {
+      const payload: TenantHiringSettings = {
+        departments: textToLines(hiringSettingsForm.departments),
+        titleLevels: textToLines(hiringSettingsForm.titleLevels),
+        competencyLibrary: {
+          core: textToLines(hiringSettingsForm.competencyCore),
+          functional: textToLines(hiringSettingsForm.competencyFunctional),
+          managerial: textToLines(hiringSettingsForm.competencyManagerial)
+        },
+        evaluationPresets: {
+          schoolDepartments: textToLines(hiringSettingsForm.schoolDepartments),
+          certificates: textToLines(hiringSettingsForm.certificates),
+          tools: textToLines(hiringSettingsForm.tools),
+          languages: textToLines(hiringSettingsForm.languages)
+        },
+        referenceCheckTemplate: {
+          closedEndedQuestions: textToLines(hiringSettingsForm.referenceClosedEndedQuestions),
+          openEndedQuestions: textToLines(hiringSettingsForm.referenceOpenEndedQuestions)
+        },
+        dataProcessingConsent: {
+          noticeVersion: hiringSettingsForm.consentNoticeVersion.trim() || "kvkk_data_processing_tr_v1_2026_04",
+          policyVersion: hiringSettingsForm.consentPolicyVersion.trim() || null,
+          summary: hiringSettingsForm.consentSummary.trim(),
+          explicitText: hiringSettingsForm.consentExplicitText.trim()
+        },
+        approvalFlow: {
+          enabled: hiringSettingsForm.approvalEnabled,
+          approverRole: hiringSettingsForm.approverRole,
+          stages: textToLines(hiringSettingsForm.approvalStages),
+          notes: hiringSettingsForm.approvalNotes.trim() || null
+        },
+        notificationDefaults: {
+          responseSlaDays: Math.max(1, Number(hiringSettingsForm.responseSlaDays) || 15)
+        }
+      };
+
+      const nextSettings = await apiClient.updateTenantHiringSettings(payload);
+      setHiringSettings(nextSettings.settings);
+      setHiringSettingsForm(createHiringSettingsFormState(nextSettings.settings));
+      setProfileNotice(
+        locale === "en"
+          ? "Hiring settings updated."
+          : "İşe alım ayarları güncellendi."
+      );
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error ? saveError.message : t("İşe alım ayarları kaydedilemedi.")
+      );
+    } finally {
+      setBusyKey("");
+    }
+  }
+
+  async function handleCreateCompany(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!companyDraft.trim()) {
+      setError(locale === "en" ? "Company name is required." : "Şirket adı zorunludur.");
+      return;
+    }
+
+    setBusyKey("company:create");
+    setError("");
+    setCompanyNotice("");
+
+    try {
+      const createdCompany = await createManagedCompany(currentSession, {
+        companyName: companyDraft.trim()
+      });
+      const companies = await listAccessibleCompanies(currentSession);
+      setAccessibleCompanies(companies);
+      setCompanyDraft("");
+      setCompanyNotice(
+        locale === "en"
+          ? `${createdCompany.tenantName} created. You can switch to it below.`
+          : `${createdCompany.tenantName} oluşturuldu. Aşağıdan bu şirkete geçebilirsiniz.`
+      );
+    } catch (createError) {
+      setError(
+        createError instanceof Error ? createError.message : t("Şirket oluşturulamadı.")
+      );
+    } finally {
+      setBusyKey("");
+    }
+  }
+
+  async function handleCompanySwitch(targetTenantId: string) {
+    setBusyKey(`company:switch:${targetTenantId}`);
+    setError("");
+
+    try {
+      await switchCompanySession(currentSession, targetTenantId);
+      window.location.assign("/dashboard");
+    } catch (switchError) {
+      setError(
+        switchError instanceof Error ? switchError.message : t("Şirket değiştirilemedi.")
+      );
       setBusyKey("");
     }
   }
@@ -300,6 +529,7 @@ export default function SettingsPage() {
 
       {error ? <NoticeBox tone="danger" message={error} /> : null}
       {profileNotice ? <NoticeBox tone="success" message={profileNotice} /> : null}
+      {companyNotice ? <NoticeBox tone="success" message={companyNotice} /> : null}
       {securityNotice ? <NoticeBox tone="success" message={securityNotice} /> : null}
 
       <section className="panel" style={{ display: "grid", gap: 14 }}>
@@ -406,6 +636,22 @@ export default function SettingsPage() {
                   : "Yeni ilan taslağı hazırlanırken destekleyici bilgi olarak kullanılır."}
               </span>
             </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <input
+                className="input"
+                value={profileForm.logoUrl}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({ ...prev, logoUrl: event.target.value }))
+                }
+                placeholder={locale === "en" ? "Logo URL" : "Logo bağlantısı"}
+              />
+              <span className="small text-muted">
+                {locale === "en"
+                  ? "Use a hosted logo URL for company-specific branding."
+                  : "Şirkete özel marka görünümü için barındırılan logo bağlantısını kullanın."}
+              </span>
+            </label>
           </div>
 
           <label style={{ display: "grid", gap: 8 }}>
@@ -440,6 +686,26 @@ export default function SettingsPage() {
             }}
           >
             <strong>{locale === "en" ? "Current profile" : "Mevcut profil"}</strong>
+            {profileForm.logoUrl ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <img
+                  src={profileForm.logoUrl}
+                  alt={profileForm.companyName || "Şirket logosu"}
+                  style={{
+                    width: 56,
+                    height: 56,
+                    objectFit: "contain",
+                    padding: 8,
+                    borderRadius: 12,
+                    border: "1px solid var(--border)",
+                    background: "rgba(255,255,255,0.04)"
+                  }}
+                />
+                <span className="small text-muted">
+                  {locale === "en" ? "Logo preview" : "Logo önizlemesi"}
+                </span>
+              </div>
+            ) : null}
             <div className="small text-muted" style={{ display: "grid", gap: 4 }}>
               <span>
                 {locale === "en" ? "Company name" : "Şirket adı"}:{" "}
@@ -455,6 +721,10 @@ export default function SettingsPage() {
                   "—"
                 )}
               </span>
+              <span>
+                {locale === "en" ? "Logo" : "Logo"}:{" "}
+                {profileForm.logoUrl ? profileForm.logoUrl : "—"}
+              </span>
             </div>
           </div>
 
@@ -465,6 +735,494 @@ export default function SettingsPage() {
                 : locale === "en"
                   ? "Save profile"
                   : "Profili kaydet"}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="panel" style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <h2 style={{ margin: "0 0 6px" }}>
+              {locale === "en" ? "Managed companies" : "Yönetilen şirketler"}
+            </h2>
+            <p className="small text-muted" style={{ margin: 0 }}>
+              {locale === "en"
+                ? "Use one account to manage multiple companies, each with its own jobs, candidates, and branding."
+                : "Tek hesapla birden fazla şirket yönetin; her şirket kendi ilanı, adayı ve marka görünümüyle ayrı çalışsın."}
+            </p>
+          </div>
+          <StatusBadge
+            ready={accessibleCompanies.length > 1}
+            label={
+              accessibleCompanies.length > 1
+                ? locale === "en"
+                  ? `${accessibleCompanies.length} companies`
+                  : `${accessibleCompanies.length} şirket`
+                : locale === "en"
+                  ? "Single company"
+                  : "Tek şirket"
+            }
+          />
+        </div>
+
+        <div style={{ display: "grid", gap: 12 }}>
+          {accessibleCompanies.map((company) => {
+            const isActive = company.tenantId === currentSession?.tenantId;
+
+            return (
+              <div
+                key={company.tenantId}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  flexWrap: "wrap",
+                  padding: "14px 16px",
+                  borderRadius: 14,
+                  border: "1px solid var(--border)",
+                  background: isActive ? "rgba(124,115,250,0.08)" : "rgba(255,255,255,0.02)"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                  {company.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={company.logoUrl}
+                      alt=""
+                      style={{
+                        width: 42,
+                        height: 42,
+                        objectFit: "cover",
+                        borderRadius: 12,
+                        border: "1px solid var(--border)"
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 12,
+                        border: "1px solid var(--border)",
+                        display: "grid",
+                        placeItems: "center",
+                        fontWeight: 700,
+                        color: "var(--primary, #7c73fa)"
+                      }}
+                    >
+                      {company.tenantName.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700 }}>{company.tenantName}</div>
+                    <div className="small text-muted">
+                      {company.role} · {company.status}
+                      {isActive ? ` · ${locale === "en" ? "active company" : "aktif şirket"}` : ""}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="ghost-button"
+                  disabled={isActive || busyKey === `company:switch:${company.tenantId}`}
+                  onClick={() => void handleCompanySwitch(company.tenantId)}
+                >
+                  {isActive
+                    ? locale === "en"
+                      ? "Active"
+                      : "Aktif"
+                    : busyKey === `company:switch:${company.tenantId}`
+                      ? t("Hazırlanıyor...")
+                      : locale === "en"
+                        ? "Switch to company"
+                        : "Şirkete geç"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <form
+          style={{
+            display: "grid",
+            gap: 12,
+            padding: 16,
+            borderRadius: 14,
+            border: "1px dashed var(--border)",
+            background: "rgba(255,255,255,0.02)"
+          }}
+          onSubmit={handleCreateCompany}
+        >
+          <div>
+            <strong>{locale === "en" ? "Create another company" : "Yeni şirket oluştur"}</strong>
+            <p className="small text-muted" style={{ margin: "4px 0 0" }}>
+              {locale === "en"
+                ? "A new tenant is created under the same email so jobs, pipeline, and settings stay isolated."
+                : "Aynı e-posta altında yeni bir tenant açılır; ilanlar, pipeline ve ayarlar birbirinden izole kalır."}
+            </p>
+          </div>
+          <div
+            className="inline-grid"
+            style={{ gridTemplateColumns: "minmax(220px, 1fr) auto", gap: 12, alignItems: "start" }}
+          >
+            <input
+              className="input"
+              value={companyDraft}
+              onChange={(event) => setCompanyDraft(event.target.value)}
+              placeholder={locale === "en" ? "New company name" : "Yeni şirket adı"}
+            />
+            <button type="submit" className="ghost-button" disabled={busyKey === "company:create"}>
+              {busyKey === "company:create"
+                ? t("Kaydediliyor...")
+                : locale === "en"
+                  ? "Create company"
+                  : "Şirket oluştur"}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="panel" style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <h2 style={{ margin: "0 0 6px" }}>
+              {locale === "en" ? "Hiring catalog and KVKK" : "İşe alım kataloğu ve KVKK"}
+            </h2>
+            <p className="small text-muted" style={{ margin: 0 }}>
+              {locale === "en"
+                ? "Tenant-specific departments, title ladders, competency libraries, reference questions, and consent text used by job creation and recruiter operations."
+                : "İlan oluşturma ve recruiter operasyonlarında kullanılan departman, unvan seviyesi, yetkinlik kütüphanesi, referans soruları ve KVKK metinlerini tenant bazında yönetin."}
+            </p>
+          </div>
+          <StatusBadge
+            ready={Boolean(hiringSettings?.departments.length || hiringSettings?.titleLevels.length)}
+            label={
+              locale === "en"
+                ? `${hiringSettings?.departments.length ?? 0} departments`
+                : `${hiringSettings?.departments.length ?? 0} departman`
+            }
+          />
+        </div>
+
+        <form style={{ display: "grid", gap: 18 }} onSubmit={handleHiringSettingsSave}>
+          <div
+            className="inline-grid"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}
+          >
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Departments" : "Departmanlar"}</span>
+              <textarea
+                className="input"
+                rows={6}
+                value={hiringSettingsForm.departments}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, departments: event.target.value }))
+                }
+                placeholder={locale === "en" ? "Finance\nOperations\nSoftware" : "Finans\nOperasyon\nYazılım"}
+              />
+              <span className="small text-muted">
+                {locale === "en"
+                  ? "One department per line. Authorized users can curate job departments from here."
+                  : "Her satıra bir departman yazın. Yetkili kullanıcılar ilan departmanlarını buradan yönetir."}
+              </span>
+            </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Title levels" : "Unvan seviyeleri"}</span>
+              <textarea
+                className="input"
+                rows={6}
+                value={hiringSettingsForm.titleLevels}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, titleLevels: event.target.value }))
+                }
+                placeholder={locale === "en" ? "Assistant\nSpecialist\nSenior Specialist\nManager" : "Asistan\nUzman Yardımcısı\nUzman\nKıdemli Uzman\nMüdür"}
+              />
+              <span className="small text-muted">
+                {locale === "en"
+                  ? "These appear as the position seniority ladder in the job form."
+                  : "İlan formunda pozisyon seviyesi olarak bu unvan merdiveni görünür."}
+              </span>
+            </label>
+          </div>
+
+          <div
+            className="inline-grid"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}
+          >
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Core competencies" : "Temel yetkinlikler"}</span>
+              <textarea
+                className="input"
+                rows={6}
+                value={hiringSettingsForm.competencyCore}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, competencyCore: event.target.value }))
+                }
+                placeholder={locale === "en" ? "Communication\nOwnership\nAnalytical thinking" : "İletişim\nSahiplenme\nAnalitik düşünme"}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Functional competencies" : "Fonksiyonel yetkinlikler"}</span>
+              <textarea
+                className="input"
+                rows={6}
+                value={hiringSettingsForm.competencyFunctional}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, competencyFunctional: event.target.value }))
+                }
+                placeholder=".NET\nREST API\nGenel muhasebe"
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Managerial competencies" : "Yönetsel yetkinlikler"}</span>
+              <textarea
+                className="input"
+                rows={6}
+                value={hiringSettingsForm.competencyManagerial}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, competencyManagerial: event.target.value }))
+                }
+                placeholder={locale === "en" ? "Coaching\nTeam leadership\nDecision making" : "Koçluk\nEkip yönetimi\nKarar alma"}
+              />
+            </label>
+          </div>
+
+          <div
+            className="inline-grid"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}
+          >
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Preferred school departments" : "Tercih edilen okul / bölüm"}</span>
+              <textarea
+                className="input"
+                rows={5}
+                value={hiringSettingsForm.schoolDepartments}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, schoolDepartments: event.target.value }))
+                }
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Certificates" : "Sertifikalar"}</span>
+              <textarea
+                className="input"
+                rows={5}
+                value={hiringSettingsForm.certificates}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, certificates: event.target.value }))
+                }
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Tools and programs" : "Programlar ve araçlar"}</span>
+              <textarea
+                className="input"
+                rows={5}
+                value={hiringSettingsForm.tools}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, tools: event.target.value }))
+                }
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Languages" : "Yabancı diller"}</span>
+              <textarea
+                className="input"
+                rows={5}
+                value={hiringSettingsForm.languages}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, languages: event.target.value }))
+                }
+              />
+            </label>
+          </div>
+
+          <div
+            className="inline-grid"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}
+          >
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Closed-ended reference questions" : "Kapalı uçlu referans soruları"}</span>
+              <textarea
+                className="input"
+                rows={5}
+                value={hiringSettingsForm.referenceClosedEndedQuestions}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({
+                    ...prev,
+                    referenceClosedEndedQuestions: event.target.value
+                  }))
+                }
+                placeholder={locale === "en" ? "Would you rehire this person?" : "Bu kişiyi tekrar işe alır mıydınız?"}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Open-ended reference questions" : "Açık uçlu referans soruları"}</span>
+              <textarea
+                className="input"
+                rows={5}
+                value={hiringSettingsForm.referenceOpenEndedQuestions}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({
+                    ...prev,
+                    referenceOpenEndedQuestions: event.target.value
+                  }))
+                }
+                placeholder={locale === "en" ? "What was the strongest contribution?" : "En güçlü katkısı neydi?"}
+              />
+            </label>
+          </div>
+
+          <div
+            className="inline-grid"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}
+          >
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>KVKK notice version</span>
+              <input
+                className="input"
+                value={hiringSettingsForm.consentNoticeVersion}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, consentNoticeVersion: event.target.value }))
+                }
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Policy version" : "Politika versiyonu"}</span>
+              <input
+                className="input"
+                value={hiringSettingsForm.consentPolicyVersion}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, consentPolicyVersion: event.target.value }))
+                }
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Default response SLA (days)" : "Varsayılan geri dönüş SLA (gün)"}</span>
+              <input
+                className="input"
+                type="number"
+                min={1}
+                value={hiringSettingsForm.responseSlaDays}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, responseSlaDays: event.target.value }))
+                }
+              />
+            </label>
+          </div>
+
+          <label style={{ display: "grid", gap: 8 }}>
+            <span>{locale === "en" ? "Consent summary" : "Açık rıza özeti"}</span>
+            <textarea
+              className="input"
+              rows={4}
+              value={hiringSettingsForm.consentSummary}
+              onChange={(event) =>
+                setHiringSettingsForm((prev) => ({ ...prev, consentSummary: event.target.value }))
+              }
+              placeholder={locale === "en" ? "Explain why candidate data is processed." : "Aday verisinin neden işlendiğini özetleyin."}
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 8 }}>
+            <span>{locale === "en" ? "Explicit consent text" : "Açık rıza metni"}</span>
+            <textarea
+              className="input"
+              rows={5}
+              value={hiringSettingsForm.consentExplicitText}
+              onChange={(event) =>
+                setHiringSettingsForm((prev) => ({ ...prev, consentExplicitText: event.target.value }))
+              }
+              placeholder={locale === "en" ? "I consent to the processing of my personal data..." : "Kişisel verilerimin işe alım süreçleri kapsamında işlenmesini kabul ediyorum..."}
+            />
+          </label>
+
+          <div
+            style={{
+              display: "grid",
+              gap: 12,
+              padding: 16,
+              borderRadius: 14,
+              border: "1px solid var(--border)",
+              background: "rgba(255,255,255,0.02)"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={hiringSettingsForm.approvalEnabled}
+                  onChange={(event) =>
+                    setHiringSettingsForm((prev) => ({ ...prev, approvalEnabled: event.target.checked }))
+                  }
+                />
+                <span>{locale === "en" ? "Enable approval flow notes" : "Onay akışı notlarını etkinleştir"}</span>
+              </label>
+
+              <select
+                className="select"
+                value={hiringSettingsForm.approverRole}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, approverRole: event.target.value as "OWNER" | "MANAGER" | "STAFF" }))
+                }
+                style={{ maxWidth: 220 }}
+              >
+                <option value="OWNER">OWNER</option>
+                <option value="MANAGER">MANAGER</option>
+                <option value="STAFF">STAFF</option>
+              </select>
+            </div>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Approval stages" : "Onay aşamaları"}</span>
+              <textarea
+                className="input"
+                rows={3}
+                value={hiringSettingsForm.approvalStages}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, approvalStages: event.target.value }))
+                }
+                placeholder={"OFFER\nHIRED"}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Approval notes" : "Onay akışı notları"}</span>
+              <textarea
+                className="input"
+                rows={3}
+                value={hiringSettingsForm.approvalNotes}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, approvalNotes: event.target.value }))
+                }
+                placeholder={locale === "en" ? "Describe how the hiring approval should run." : "İşe alım onayının nasıl ilerlemesi gerektiğini not edin."}
+              />
+            </label>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <button
+              type="submit"
+              className="ghost-button"
+              disabled={busyKey === "hiring-settings:save"}
+            >
+              {busyKey === "hiring-settings:save"
+                ? t("Kaydediliyor...")
+                : locale === "en"
+                  ? "Save hiring catalog"
+                  : "İşe alım kataloğunu kaydet"}
             </button>
           </div>
         </form>

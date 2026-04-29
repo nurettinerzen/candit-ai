@@ -5,7 +5,7 @@ import {
   NotFoundException
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
-import { AiTaskStatus, AiTaskType, Prisma } from "@prisma/client";
+import { AiTaskStatus, AiTaskType, ConsentContext, Prisma } from "@prisma/client";
 import { AiOrchestrationService } from "../ai-orchestration/ai-orchestration.service";
 import { AuditWriterService } from "../audit/audit-writer.service";
 import { DomainEventsService } from "../domain-events/domain-events.service";
@@ -23,6 +23,9 @@ export type CandidateInput = {
   yearsOfExperience?: number;
   externalRef?: string;
   externalSource?: string;
+  consentAccepted?: boolean;
+  consentNoticeVersion?: string;
+  consentPolicyVersion?: string;
 };
 
 export type CandidateImportInput = {
@@ -258,6 +261,14 @@ export class CandidatesService {
         }
       });
 
+      await this.ensureDataProcessingConsent({
+        tenantId: input.tenantId,
+        candidateId: candidate.id,
+        consentAccepted: input.consentAccepted,
+        noticeVersion: input.consentNoticeVersion,
+        policyVersion: input.consentPolicyVersion
+      });
+
       return {
         deduplicated: true,
         enrichedFields,
@@ -303,6 +314,14 @@ export class CandidatesService {
         }
       })
     ]);
+
+    await this.ensureDataProcessingConsent({
+      tenantId: input.tenantId,
+      candidateId: candidate.id,
+      consentAccepted: input.consentAccepted,
+      noticeVersion: input.consentNoticeVersion,
+      policyVersion: input.consentPolicyVersion
+    });
 
     return {
       deduplicated: false,
@@ -730,6 +749,61 @@ export class CandidatesService {
 
     const digits = phone.replace(/\D/g, "");
     return digits.length > 0 ? digits : undefined;
+  }
+
+  private async ensureDataProcessingConsent(input: {
+    tenantId: string;
+    candidateId: string;
+    consentAccepted?: boolean;
+    noticeVersion?: string;
+    policyVersion?: string;
+  }) {
+    if (!input.consentAccepted) {
+      return;
+    }
+
+    const noticeVersion =
+      normalizeOptionalText(input.noticeVersion) ?? "kvkk_data_processing_tr_v1_2026_04";
+    const policyVersion = normalizeOptionalText(input.policyVersion) ?? "policy_v1";
+
+    const latestConsent = await this.prisma.consentRecord.findFirst({
+      where: {
+        tenantId: input.tenantId,
+        candidateId: input.candidateId,
+        context: ConsentContext.DATA_PROCESSING
+      },
+      orderBy: {
+        capturedAt: "desc"
+      },
+      select: {
+        id: true,
+        consentGiven: true,
+        noticeVersion: true,
+        policyVersion: true,
+        withdrawnAt: true
+      }
+    });
+
+    if (
+      latestConsent &&
+      latestConsent.consentGiven &&
+      !latestConsent.withdrawnAt &&
+      latestConsent.noticeVersion === noticeVersion &&
+      (latestConsent.policyVersion ?? null) === policyVersion
+    ) {
+      return;
+    }
+
+    await this.prisma.consentRecord.create({
+      data: {
+        tenantId: input.tenantId,
+        candidateId: input.candidateId,
+        context: ConsentContext.DATA_PROCESSING,
+        consentGiven: true,
+        noticeVersion,
+        policyVersion
+      }
+    });
   }
 
   private findDuplicate(tenantId: string, email?: string, phone?: string) {

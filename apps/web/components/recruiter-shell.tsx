@@ -12,14 +12,16 @@ import {
   type AppPermission
 } from "../lib/auth/policy";
 import {
+  listAccessibleCompanies,
   logoutCurrentSession,
   resolveActiveSession,
-  resolveSessionFromServer
+  resolveSessionFromServer,
+  switchCompanySession
 } from "../lib/auth/session";
 import type { WebAuthSession } from "../lib/auth/types";
 import { apiClient } from "../lib/api/recruiter-client";
 import { formatBillingPlanLabel, formatBillingTrialLabel } from "../lib/billing-presentation";
-import type { BillingPlanKey } from "../lib/types";
+import type { AccessibleCompany, BillingPlanKey } from "../lib/types";
 import { BrandWordmark } from "./brand-wordmark";
 import { useUiText, useSiteLanguage } from "./site-language-provider";
 import { useTheme } from "./theme-provider";
@@ -372,6 +374,8 @@ function SidebarContent({
   const [trialActive, setTrialActive] = useState(false);
   const [languageMenuStyle, setLanguageMenuStyle] = useState<FloatingMenuStyle | null>(null);
   const [themeMenuStyle, setThemeMenuStyle] = useState<FloatingMenuStyle | null>(null);
+  const [companies, setCompanies] = useState<AccessibleCompany[]>([]);
+  const [switchingTenantId, setSwitchingTenantId] = useState<string | null>(null);
   const languageTriggerRef = useRef<HTMLButtonElement | null>(null);
   const languageMenuRef = useRef<HTMLDivElement | null>(null);
   const accountCardRef = useRef<HTMLDivElement | null>(null);
@@ -391,6 +395,7 @@ function SidebarContent({
       ? formatBillingTrialLabel(language.locale)
       : formatBillingPlanLabel(planKey, language.locale)
     : t("Mevcut plan");
+  const activeCompany = companies.find((company) => company.tenantId === session.tenantId) ?? null;
 
   useEffect(() => {
     if (!accountOpen) {
@@ -485,6 +490,30 @@ function SidebarContent({
   }, [session.tenantId]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateCompanies() {
+      try {
+        const result = await listAccessibleCompanies(session);
+
+        if (!cancelled) {
+          setCompanies(result);
+        }
+      } catch {
+        if (!cancelled) {
+          setCompanies([]);
+        }
+      }
+    }
+
+    void hydrateCompanies();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  useEffect(() => {
     if (!languageOpen && !themeMenuOpen) {
       return;
     }
@@ -541,6 +570,17 @@ function SidebarContent({
       window.location.href = "/auth/login";
     } catch {
       setLoggingOut(false);
+    }
+  }
+
+  async function handleCompanySwitch(targetTenantId: string) {
+    setSwitchingTenantId(targetTenantId);
+
+    try {
+      await switchCompanySession(session, targetTenantId);
+      window.location.href = "/dashboard";
+    } catch {
+      setSwitchingTenantId(null);
     }
   }
 
@@ -615,6 +655,11 @@ function SidebarContent({
               <span className="sidebar-user-name">{t(session.userLabel)}</span>
               <div className="sidebar-user-meta">
                 <span className="sidebar-user-badge">{userPlanLabel}</span>
+                {activeCompany ? (
+                  <span className="sidebar-user-badge" style={{ background: "rgba(124,115,250,0.14)", color: "var(--primary, #7c73fa)" }}>
+                    {activeCompany.tenantName}
+                  </span>
+                ) : null}
               </div>
             </div>
             <svg
@@ -635,6 +680,54 @@ function SidebarContent({
 
           {accountOpen ? (
             <div className="sidebar-session-panel">
+              {companies.length > 1 ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 8,
+                    padding: "0 0 10px",
+                    borderBottom: "1px solid rgba(148,163,184,0.14)",
+                    marginBottom: 10
+                  }}
+                >
+                  <div className="text-xs text-muted">{t("Şirketler")}</div>
+                  {companies.map((company) => {
+                    const isActive = company.tenantId === session.tenantId;
+
+                    return (
+                      <button
+                        key={company.tenantId}
+                        type="button"
+                        className="sidebar-session-action"
+                        disabled={isActive || switchingTenantId !== null}
+                        onClick={() => void handleCompanySwitch(company.tenantId)}
+                      >
+                        <span className="sidebar-session-action-icon" aria-hidden="true">
+                          {company.logoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={company.logoUrl}
+                              alt=""
+                              style={{ width: 18, height: 18, borderRadius: 6, objectFit: "cover" }}
+                            />
+                          ) : (
+                            <span style={{ fontSize: 11, fontWeight: 700 }}>{getInitials(company.tenantName)}</span>
+                          )}
+                        </span>
+                        <span className="sidebar-session-action-label">
+                          {company.tenantName}
+                          {isActive ? ` · ${t("aktif")}` : ""}
+                        </span>
+                        {!isActive ? (
+                          <span className="sidebar-session-action-chevron" aria-hidden="true">
+                            {switchingTenantId === company.tenantId ? "..." : "↗"}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
               <button
                 ref={themeTriggerRef}
                 type="button"

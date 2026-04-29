@@ -25,6 +25,8 @@ import { InterviewsService } from "../interviews/interviews.service";
 
 const APPLICATION_STAGES = [
   "APPLIED",
+  "TALENT_POOL",
+  "SHORTLISTED",
   "SCREENING",
   "INTERVIEW_SCHEDULED",
   "INTERVIEW_COMPLETED",
@@ -75,6 +77,58 @@ class NoteBody {
   noteText!: string;
 }
 
+class ReferenceCheckResponseBody {
+  @IsString()
+  @MinLength(2)
+  question!: string;
+
+  @IsString()
+  @MinLength(1)
+  answer!: string;
+}
+
+class ReferenceCheckBody {
+  @IsString()
+  @MinLength(2)
+  referenceName!: string;
+
+  @IsString()
+  @IsOptional()
+  companyName?: string;
+
+  @IsString()
+  @IsOptional()
+  relationship?: string;
+
+  @IsString()
+  @IsOptional()
+  contactEmail?: string;
+
+  @IsString()
+  @IsOptional()
+  contactPhone?: string;
+
+  @IsString()
+  @IsOptional()
+  status?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ReferenceCheckResponseBody)
+  @IsOptional()
+  openEndedResponses?: ReferenceCheckResponseBody[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ReferenceCheckResponseBody)
+  @IsOptional()
+  closedEndedResponses?: ReferenceCheckResponseBody[];
+
+  @IsString()
+  @IsOptional()
+  summaryText?: string;
+}
+
 class BulkApproveInterviewBody {
   @IsArray()
   @IsString({ each: true })
@@ -114,6 +168,8 @@ class InterviewQuestionDraftItemBody {
 class QuickActionBody {
   @IsIn([
     "shortlist",
+    "move_to_shortlist",
+    "move_to_pool",
     "reject",
     "hold",
     "trigger_screening",
@@ -252,6 +308,12 @@ export class ApplicationsController {
     return this.recruiterNotesService.list(tenantId, applicationId);
   }
 
+  @Get(":id/reference-checks")
+  @Permissions("candidate.read")
+  listReferenceChecks(@Param("id") applicationId: string, @CurrentTenant() tenantId: string) {
+    return this.applicationsService.listReferenceChecks(tenantId, applicationId);
+  }
+
   @Get(":id/interview-questionnaire")
   @Permissions("candidate.read")
   previewInterviewQuestionnaire(
@@ -275,6 +337,56 @@ export class ApplicationsController {
     @Body() body: NoteBody
   ) {
     return this.recruiterNotesService.create(tenantId, applicationId, user.userId, body.noteText);
+  }
+
+  @Post(":id/reference-checks")
+  @Permissions("candidate.create")
+  createReferenceCheck(
+    @Param("id") applicationId: string,
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() user: RequestUser,
+    @Body() body: ReferenceCheckBody
+  ) {
+    return this.applicationsService.createReferenceCheck({
+      tenantId,
+      applicationId,
+      createdBy: user.userId,
+      referenceName: body.referenceName,
+      companyName: body.companyName,
+      relationship: body.relationship,
+      contactEmail: body.contactEmail,
+      contactPhone: body.contactPhone,
+      status: body.status,
+      openEndedResponses: body.openEndedResponses,
+      closedEndedResponses: body.closedEndedResponses,
+      summaryText: body.summaryText
+    });
+  }
+
+  @Post(":id/reference-checks/:referenceCheckId")
+  @Permissions("candidate.create")
+  updateReferenceCheck(
+    @Param("id") applicationId: string,
+    @Param("referenceCheckId") referenceCheckId: string,
+    @CurrentTenant() tenantId: string,
+    @CurrentUser() user: RequestUser,
+    @Body() body: ReferenceCheckBody
+  ) {
+    return this.applicationsService.updateReferenceCheck({
+      tenantId,
+      applicationId,
+      referenceCheckId,
+      createdBy: user.userId,
+      referenceName: body.referenceName,
+      companyName: body.companyName,
+      relationship: body.relationship,
+      contactEmail: body.contactEmail,
+      contactPhone: body.contactPhone,
+      status: body.status,
+      openEndedResponses: body.openEndedResponses,
+      closedEndedResponses: body.closedEndedResponses,
+      summaryText: body.summaryText
+    });
   }
 
   @Post("bulk-delete")
@@ -309,11 +421,32 @@ export class ApplicationsController {
     }
 
     switch (body.action) {
-      // ── Mülakata Davet Et: Ön Eleme Tamamlandı → AI Mülakat ──
+      case "move_to_pool":
+      case "hold":
+        return this.applicationsService.stageTransition({
+          tenantId,
+          applicationId,
+          toStage: ApplicationStage.TALENT_POOL,
+          reasonCode: body.reasonCode ?? "moved_to_talent_pool",
+          changedBy: user.userId,
+          traceId
+        });
+
+      case "move_to_shortlist":
+      case "shortlist":
+        return this.applicationsService.stageTransition({
+          tenantId,
+          applicationId,
+          toStage: ApplicationStage.SHORTLISTED,
+          reasonCode: body.reasonCode ?? "shortlisted_by_recruiter",
+          changedBy: user.userId,
+          traceId
+        });
+
+      // ── Mülakata Davet Et: Recruiter uygun gördüğünde planlı veya on-demand akış açılır ──
       case "invite_interview":
       case "reinvite_interview":
-      case "advance":
-      case "shortlist": {
+      case "advance": {
         const app = await this.applicationsService.getById(tenantId, applicationId);
         const result = await this.applicationAutomationService.onRecruiterApprovedForInterview({
           tenantId,
@@ -349,9 +482,6 @@ export class ApplicationsController {
           traceId
         });
 
-      // ── Legacy actions — backward compatibility ──
-      case "hold":
-        return { status: "ok", action: body.action, applicationId, message: "Beklet aksiyonu kaldırıldı." };
       case "trigger_screening": {
         const app = await this.applicationsService.getById(tenantId, applicationId);
         const taskRun = await this.aiOrchestrationService.createTaskRun({

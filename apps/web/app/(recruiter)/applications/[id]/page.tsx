@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { RecruiterNotesPanel } from "../../../../components/recruiter-notes-panel";
 import { InterviewInviteModal } from "../../../../components/interview-invite-modal";
 import { MatchIndicator } from "../../../../components/match-indicator";
@@ -31,9 +31,12 @@ import type {
   ApplicationDetailReadModel,
   ApplicationStage,
   HumanDecision,
+  InterviewMode,
   JsonValue,
+  MeetingProvider,
   QuickActionType,
-  RecruiterNote
+  RecruiterNote,
+  TenantHiringSettings
 } from "../../../../lib/types";
 
 /* -- helpers -- */
@@ -41,6 +44,9 @@ import type {
 type LatestInterviewTranscript = NonNullable<
   ApplicationDetailReadModel["interview"]["latestSession"]
 >["transcript"];
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_RESPONSE_SLA_DAYS = 15;
 
 function aiRecommendationBanner(rec: string | null): { label: string; color: string } | null {
   if (!rec) return null;
@@ -70,9 +76,11 @@ function reasonLabel(code: string | null): string {
   const map: Record<string, string> = {
     application_created: "Sistem",
     shortlisted: "İlerletildi",
+    shortlisted_by_recruiter: "Kısa listeye alındı",
     advanced_by_recruiter: "Recruiter tarafından ilerletildi",
     rejected_by_recruiter: "Recruiter tarafından reddedildi",
     held_by_recruiter: "Bekletildi",
+    moved_to_talent_pool: "Aday havuzuna alındı",
     manual_stage_transition: "Manuel geçiş",
     manual_recruiter_advance: "Manuel ilerletme",
     screening_triggered_by_recruiter: "Ön eleme başlatıldı",
@@ -139,6 +147,130 @@ function formatDurationLabel(startedAt?: string | null, endedAt?: string | null)
   return minutes > 0 ? `${hours} sa ${minutes} dk` : `${hours} sa`;
 }
 
+function responseSlaMeta(input: {
+  createdAt: string;
+  stage: ApplicationStage;
+  responseSlaDays: number | null;
+}) {
+  if (input.stage === "REJECTED" || input.stage === "HIRED") {
+    return {
+      label: "Kapandı",
+      detail: "Bu başvuru için aktif geri dönüş SLA takibi yok.",
+      color: "var(--text-secondary)",
+      background: "rgba(100,116,139,0.12)"
+    };
+  }
+
+  const slaDays = input.responseSlaDays ?? DEFAULT_RESPONSE_SLA_DAYS;
+  const dueAt = new Date(input.createdAt).getTime() + slaDays * DAY_IN_MS;
+  const remainingDays = Math.ceil((dueAt - Date.now()) / DAY_IN_MS);
+
+  if (remainingDays < 0) {
+    return {
+      label: `${Math.abs(remainingDays)} gün gecikti`,
+      detail: `Aday için hedef geri dönüş süresi ${slaDays} günü aştı.`,
+      color: "var(--danger, #ef4444)",
+      background: "rgba(239,68,68,0.12)"
+    };
+  }
+
+  if (remainingDays <= 3) {
+    return {
+      label: `${remainingDays} gün kaldı`,
+      detail: `Geri dönüş hedefi ${slaDays} gün ve süre yaklaşıyor.`,
+      color: "var(--warn, #f59e0b)",
+      background: "rgba(245,158,11,0.12)"
+    };
+  }
+
+  return {
+    label: `${remainingDays} gün kaldı`,
+    detail: `Bu pozisyon için geri dönüş hedefi ${slaDays} gün.`,
+    color: "var(--success, #22c55e)",
+    background: "rgba(34,197,94,0.12)"
+  };
+}
+
+function padDatePart(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function toDatetimeLocalValue(value: string | Date | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}T${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
+}
+
+function createDefaultScheduleLocalValue() {
+  const date = new Date(Date.now() + DAY_IN_MS);
+  date.setHours(10, 0, 0, 0);
+  return toDatetimeLocalValue(date);
+}
+
+function consentStatusMeta(status: ApplicationDetailReadModel["candidate"]["dataProcessingConsent"]["status"]) {
+  switch (status) {
+    case "GRANTED":
+      return {
+        label: "KVKK onayı alındı",
+        color: "var(--success, #22c55e)",
+        background: "rgba(34,197,94,0.1)"
+      };
+    case "WITHDRAWN":
+      return {
+        label: "KVKK onayı geri çekildi",
+        color: "var(--danger, #ef4444)",
+        background: "rgba(239,68,68,0.12)"
+      };
+    default:
+      return {
+        label: "KVKK onayı bekleniyor",
+        color: "var(--warn, #f59e0b)",
+        background: "rgba(245,158,11,0.12)"
+      };
+  }
+}
+
+function referenceCheckStatusMeta(status: string) {
+  switch (status) {
+    case "COMPLETED":
+      return {
+        label: "Tamamlandı",
+        color: "var(--success, #22c55e)",
+        background: "rgba(34,197,94,0.1)"
+      };
+    case "IN_PROGRESS":
+      return {
+        label: "Devam ediyor",
+        color: "var(--info, #60a5fa)",
+        background: "rgba(96,165,250,0.12)"
+      };
+    default:
+      return {
+        label: "Taslak",
+        color: "var(--text-secondary)",
+        background: "rgba(148,163,184,0.14)"
+      };
+  }
+}
+
+function buildReferenceResponseDrafts(questions: string[]) {
+  return questions
+    .map((question) => question.trim())
+    .filter((question, index, array) => question.length > 0 && array.indexOf(question) === index)
+    .map((question) => ({
+      question,
+      answer: ""
+    }));
+}
+
 function flagLabel(code: string): string {
   return code
     .replace(/^MISSING_/, "")
@@ -163,6 +295,12 @@ function notificationTemplateLabel(templateKey: string | null | undefined) {
       return "Bekletme e-postası";
     case "application_rejected_v1":
       return "Red e-postası";
+    case "application_received_v1":
+      return "Başvuru alındı e-postası";
+    case "application_talent_pool_v1":
+      return "Aday havuzu e-postası";
+    case "application_shortlisted_v1":
+      return "Kısa liste e-postası";
     case "interview_invitation_on_demand_v1":
       return "AI mülakat daveti";
     case "interview_invitation_reminder_v1":
@@ -182,6 +320,10 @@ function notificationEventLabel(eventType: string | null | undefined) {
   switch (eventType) {
     case "application.decision_recorded":
       return "Karar bildirimi";
+    case "application.created":
+      return "Başvuru alındı";
+    case "application.stage_transitioned":
+      return "Aşama bildirimi";
     case "interview.invitation.sent":
       return "Mülakat daveti";
     case "interview.invitation.reminder_sent":
@@ -385,6 +527,10 @@ function buildDecisionSuccessMessage(decision: HumanDecision) {
 
 function buildQuickActionSuccessMessage(action: QuickActionType) {
   switch (action) {
+    case "move_to_pool":
+      return "Aday havuza alındı.";
+    case "move_to_shortlist":
+      return "Aday kısa listeye alındı.";
     case "reject":
       return "Aday reddedildi.";
     case "invite_interview":
@@ -645,6 +791,20 @@ function applicationNextAction(input: {
     };
   }
 
+  if (input.stage === "SHORTLISTED") {
+    return {
+      label: "Mülakat veya ileri değerlendirme",
+      detail: "Aday kısa listede. Planlı görüşme açabilir veya AI mülakata davet edebilirsiniz."
+    };
+  }
+
+  if (input.stage === "TALENT_POOL") {
+    return {
+      label: "Havuzda takip et",
+      detail: "Aday uygun rol açıldığında kısa listeye taşınabilir veya yeniden değerlendirilebilir."
+    };
+  }
+
   if (input.stage === "RECRUITER_REVIEW") {
     return {
       label: "Mülakata Davet Et",
@@ -702,6 +862,29 @@ export default function ApplicationDetailPage() {
   const [inviteAction, setInviteAction] = useState<Extract<QuickActionType, "invite_interview" | "reinvite_interview">>("invite_interview");
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [hiringSettings, setHiringSettings] = useState<TenantHiringSettings | null>(null);
+  const [referenceSubmitting, setReferenceSubmitting] = useState(false);
+  const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
+  const [referenceForm, setReferenceForm] = useState(() => ({
+    referenceName: "",
+    companyName: "",
+    relationship: "",
+    contactEmail: "",
+    contactPhone: "",
+    status: "DRAFT",
+    openEndedResponses: [] as Array<{ question: string; answer: string }>,
+    closedEndedResponses: [] as Array<{ question: string; answer: string }>,
+    summaryText: ""
+  }));
+  const [scheduleForm, setScheduleForm] = useState(() => ({
+    mode: "MEETING_LINK" as InterviewMode,
+    scheduledAt: createDefaultScheduleLocalValue(),
+    interviewerName: "",
+    interviewType: "",
+    scheduleNote: "",
+    contextNote: "",
+    preferredProvider: "" as MeetingProvider | ""
+  }));
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -725,6 +908,76 @@ export default function ApplicationDetailPage() {
   }, [applicationId]);
 
   useEffect(() => { void loadData(); void loadFitScore(); void loadNotes(); }, [loadData, loadFitScore, loadNotes]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadHiringSettings() {
+      try {
+        const result = await apiClient.getTenantHiringSettings();
+
+        if (cancelled) {
+          return;
+        }
+
+        setHiringSettings(result.settings);
+      } catch {
+        if (!cancelled) {
+          setHiringSettings(null);
+        }
+      }
+    }
+
+    void loadHiringSettings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hiringSettings) {
+      return;
+    }
+
+    setReferenceForm((current) => {
+      if (current.openEndedResponses.length > 0 || current.closedEndedResponses.length > 0) {
+        return current;
+      }
+
+      return {
+        ...current,
+        openEndedResponses: buildReferenceResponseDrafts(
+          hiringSettings.referenceCheckTemplate.openEndedQuestions
+        ),
+        closedEndedResponses: buildReferenceResponseDrafts(
+          hiringSettings.referenceCheckTemplate.closedEndedQuestions
+        )
+      };
+    });
+  }, [hiringSettings]);
+
+  useEffect(() => {
+    const activeSession =
+      data?.interview.sessions.find((session) => session.status === "SCHEDULED" || session.status === "RUNNING") ??
+      null;
+
+    if (!activeSession || activeSession.mode === "VOICE") {
+      return;
+    }
+
+    setScheduleForm((current) => ({
+      ...current,
+      mode: activeSession.mode,
+      scheduledAt: activeSession.scheduledAt
+        ? toDatetimeLocalValue(activeSession.scheduledAt)
+        : current.scheduledAt,
+      interviewerName: activeSession.interviewerName ?? current.interviewerName,
+      interviewType: activeSession.interviewType ?? current.interviewType,
+      scheduleNote: activeSession.scheduleNote ?? current.scheduleNote,
+      preferredProvider: activeSession.meetingProvider ?? current.preferredProvider
+    }));
+  }, [data]);
 
   const handleAction = (action: QuickActionType) => {
     if (isInterviewInviteAction(action)) {
@@ -899,6 +1152,156 @@ export default function ApplicationDetailPage() {
   const latestTranscript = latestInterview?.transcript ?? null;
   const transcriptSignal = transcriptGovernanceMeta(latestTranscript);
   const reminderCount = latestInterview?.invitation?.reminderCount ?? 0;
+  const consentSignal = consentStatusMeta(candidate.dataProcessingConsent.status);
+  const responseSla = responseSlaMeta({
+    createdAt: summary.createdAt,
+    stage: summary.stage as ApplicationStage,
+    responseSlaDays: job.responseSlaDays
+  });
+  const activeScheduledInterview =
+    interviewSessions.find((session) => session.status === "SCHEDULED" || session.status === "RUNNING") ??
+    null;
+  const scheduleLockedByAiInvite = activeScheduledInterview?.mode === "VOICE";
+  const referenceChecks = data.operations.referenceChecks;
+
+  async function handleScheduleInterview(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setActionMessage("");
+    setActionError("");
+
+    if (!scheduleForm.scheduledAt) {
+      setActionError("Lütfen görüşme tarihi seçin.");
+      return;
+    }
+
+    if (scheduleLockedByAiInvite) {
+      setActionError("Aktif AI mülakat daveti varken yeni planlı görüşme açılamaz.");
+      return;
+    }
+
+    setScheduleSubmitting(true);
+
+    try {
+      const contextNote = scheduleForm.contextNote.trim();
+      const modeContext =
+        contextNote.length > 0
+          ? scheduleForm.mode === "PHONE"
+            ? { phoneNumber: contextNote }
+            : scheduleForm.mode === "ONSITE"
+              ? { location: contextNote }
+              : { meetingNote: contextNote }
+          : undefined;
+
+      if (activeScheduledInterview && activeScheduledInterview.mode !== "VOICE") {
+        await apiClient.rescheduleInterview(activeScheduledInterview.id, {
+          scheduledAt: new Date(scheduleForm.scheduledAt).toISOString(),
+          scheduleNote: scheduleForm.scheduleNote.trim() || undefined,
+          modeContext,
+          preferredProvider: scheduleForm.preferredProvider || undefined
+        });
+        setActionMessage("Görüşme yeniden planlandı.");
+      } else {
+        await apiClient.scheduleInterview({
+          applicationId,
+          mode: scheduleForm.mode,
+          scheduledAt: new Date(scheduleForm.scheduledAt).toISOString(),
+          interviewerName: scheduleForm.interviewerName.trim() || undefined,
+          interviewType: scheduleForm.interviewType.trim() || undefined,
+          scheduleNote: scheduleForm.scheduleNote.trim() || undefined,
+          modeContext,
+          preferredProvider: scheduleForm.preferredProvider || undefined
+        });
+        setActionMessage("Görüşme planlandı ve aday bildirimi kuyruğa alındı.");
+      }
+
+      await loadData();
+    } catch (scheduleError) {
+      setActionError(
+        scheduleError instanceof Error ? scheduleError.message : "Görüşme planlanamadı."
+      );
+    } finally {
+      setScheduleSubmitting(false);
+    }
+  }
+
+  async function handleCreateReferenceCheck(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setActionMessage("");
+    setActionError("");
+    setReferenceSubmitting(true);
+
+    try {
+      await apiClient.createReferenceCheck(applicationId, {
+        referenceName: referenceForm.referenceName,
+        companyName: referenceForm.companyName || undefined,
+        relationship: referenceForm.relationship || undefined,
+        contactEmail: referenceForm.contactEmail || undefined,
+        contactPhone: referenceForm.contactPhone || undefined,
+        status: referenceForm.status,
+        openEndedResponses: referenceForm.openEndedResponses,
+        closedEndedResponses: referenceForm.closedEndedResponses,
+        summaryText: referenceForm.summaryText || undefined
+      });
+
+      setReferenceForm({
+        referenceName: "",
+        companyName: "",
+        relationship: "",
+        contactEmail: "",
+        contactPhone: "",
+        status: "DRAFT",
+        openEndedResponses: buildReferenceResponseDrafts(
+          hiringSettings?.referenceCheckTemplate.openEndedQuestions ?? []
+        ),
+        closedEndedResponses: buildReferenceResponseDrafts(
+          hiringSettings?.referenceCheckTemplate.closedEndedQuestions ?? []
+        ),
+        summaryText: ""
+      });
+      setActionMessage("Referans araştırması kaydedildi.");
+      await loadData();
+    } catch (referenceError) {
+      setActionError(
+        referenceError instanceof Error ? referenceError.message : "Referans araştırması kaydedilemedi."
+      );
+    } finally {
+      setReferenceSubmitting(false);
+    }
+  }
+
+  async function handleCompleteReferenceCheck(referenceCheckId: string) {
+    const referenceCheck = referenceChecks.find((item) => item.id === referenceCheckId);
+
+    if (!referenceCheck) {
+      return;
+    }
+
+    setActionMessage("");
+    setActionError("");
+    setActionLoading(`reference:${referenceCheckId}`);
+
+    try {
+      await apiClient.updateReferenceCheck(applicationId, referenceCheckId, {
+        referenceName: referenceCheck.referenceName,
+        companyName: referenceCheck.companyName ?? undefined,
+        relationship: referenceCheck.relationship ?? undefined,
+        contactEmail: referenceCheck.contactEmail ?? undefined,
+        contactPhone: referenceCheck.contactPhone ?? undefined,
+        status: "COMPLETED",
+        openEndedResponses: referenceCheck.openEndedResponses,
+        closedEndedResponses: referenceCheck.closedEndedResponses,
+        summaryText: referenceCheck.summaryText ?? undefined
+      });
+      setActionMessage("Referans araştırması tamamlandı olarak işaretlendi.");
+      await loadData();
+    } catch (referenceError) {
+      setActionError(
+        referenceError instanceof Error ? referenceError.message : "Referans araştırması güncellenemedi."
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  }
 
   return (
     <div className="page-grid">
@@ -1391,7 +1794,7 @@ export default function ApplicationDetailPage() {
             <h3 style={{ margin: "0 0 12px" }}>Aday Dosyası</h3>
             <div style={{ display: "grid", gap: 12 }}>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {[emailSignal, phoneSignal, cvSignal].map((signal) => (
+                {[emailSignal, phoneSignal, cvSignal, consentSignal].map((signal) => (
                   <span
                     key={signal.label}
                     style={{
@@ -1471,6 +1874,53 @@ export default function ApplicationDetailPage() {
                     </span>
                   </div>
                 ) : null}
+              </div>
+
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  border: "1px solid var(--border)",
+                  background: "rgba(255,255,255,0.02)",
+                  display: "grid",
+                  gap: 8
+                }}
+              >
+                <div className="text-xs text-muted">KVKK ve veri işleme</div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                  <span className="text-sm text-muted">Açık rıza durumu</span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: "4px 8px",
+                      borderRadius: 999,
+                      color: consentSignal.color,
+                      background: consentSignal.background
+                    }}
+                  >
+                    {consentSignal.label}
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <span className="text-sm text-muted">Notice versiyonu</span>
+                  <strong style={{ fontSize: 13 }}>
+                    {candidate.dataProcessingConsent.noticeVersion ?? "—"}
+                  </strong>
+                </div>
+                {candidate.dataProcessingConsent.policyVersion ? (
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span className="text-sm text-muted">Politika versiyonu</span>
+                    <strong style={{ fontSize: 13 }}>
+                      {candidate.dataProcessingConsent.policyVersion}
+                    </strong>
+                  </div>
+                ) : null}
+                <p className="text-sm text-muted" style={{ margin: 0 }}>
+                  {candidate.dataProcessingConsent.capturedAt
+                    ? `Kayıt tarihi: ${formatDate(candidate.dataProcessingConsent.capturedAt)}`
+                    : "Henüz bu aday için veri işleme onayı kaydı bulunmuyor."}
+                </p>
               </div>
 
               <div
@@ -1661,6 +2111,22 @@ export default function ApplicationDetailPage() {
                 <strong style={{ fontSize: 13 }}>{nextAction.label}</strong>
               </div>
               <p className="text-sm text-muted" style={{ margin: 0 }}>{nextAction.detail}</p>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                <span className="text-sm text-muted">Geri dönüş SLA</span>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: "4px 8px",
+                    borderRadius: 999,
+                    color: responseSla.color,
+                    background: responseSla.background
+                  }}
+                >
+                  {responseSla.label}
+                </span>
+              </div>
+              <p className="text-sm text-muted" style={{ margin: 0 }}>{responseSla.detail}</p>
               {candidate.sourcing ? (
                 <>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
@@ -1715,6 +2181,429 @@ export default function ApplicationDetailPage() {
                   ) : null}
                 </>
               ) : null}
+            </div>
+          </section>
+
+          <section className="panel" style={{ marginBottom: 16 }}>
+            <h3 style={{ margin: "0 0 12px" }}>Takvim ve planlı görüşme</h3>
+            <div style={{ display: "grid", gap: 12 }}>
+              {activeScheduledInterview ? (
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    border: "1px solid var(--border)",
+                    background: "rgba(255,255,255,0.02)",
+                    display: "grid",
+                    gap: 8
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span className="text-sm text-muted">Aktif oturum</span>
+                    <strong style={{ fontSize: 13 }}>
+                      {activeScheduledInterview.mode === "VOICE" ? "AI mülakat daveti" : "Planlı görüşme"}
+                    </strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span className="text-sm text-muted">Tarih</span>
+                    <strong style={{ fontSize: 13 }}>
+                      {activeScheduledInterview.scheduledAt
+                        ? formatDate(activeScheduledInterview.scheduledAt)
+                        : "—"}
+                    </strong>
+                  </div>
+                  {activeScheduledInterview.meetingJoinUrl ? (
+                    <a
+                      href={activeScheduledInterview.meetingJoinUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm"
+                      style={{ color: "var(--primary, #7c73fa)" }}
+                    >
+                      Görüşme bağlantısını aç
+                    </a>
+                  ) : null}
+                  <p className="text-sm text-muted" style={{ margin: 0 }}>
+                    {scheduleLockedByAiInvite
+                      ? "Aktif AI mülakat daveti olduğu için yeni planlı görüşme açılamaz. Gerekirse hatırlatma veya tekrar davet kullanın."
+                      : "Aşağıdaki form ile planlı görüşmeyi yeniden takvime alabilirsiniz."}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted" style={{ margin: 0 }}>
+                  Henüz aday için planlı görüşme oluşturulmadı.
+                </p>
+              )}
+
+              <form style={{ display: "grid", gap: 12 }} onSubmit={handleScheduleInterview}>
+                <div
+                  className="inline-grid"
+                  style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}
+                >
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span>Mod</span>
+                    <select
+                      className="select"
+                      value={scheduleForm.mode}
+                      onChange={(event) =>
+                        setScheduleForm((prev) => ({
+                          ...prev,
+                          mode: event.target.value as InterviewMode
+                        }))
+                      }
+                    >
+                      <option value="MEETING_LINK">MEETING_LINK</option>
+                      <option value="PHONE">PHONE</option>
+                      <option value="ONSITE">ONSITE</option>
+                      <option value="VOICE">VOICE</option>
+                    </select>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span>Tarih</span>
+                    <input
+                      className="input"
+                      type="datetime-local"
+                      value={scheduleForm.scheduledAt}
+                      onChange={(event) =>
+                        setScheduleForm((prev) => ({ ...prev, scheduledAt: event.target.value }))
+                      }
+                      required
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span>Takvim sağlayıcı</span>
+                    <select
+                      className="select"
+                      value={scheduleForm.preferredProvider}
+                      onChange={(event) =>
+                        setScheduleForm((prev) => ({
+                          ...prev,
+                          preferredProvider: event.target.value as MeetingProvider | ""
+                        }))
+                      }
+                    >
+                      <option value="">Seçiniz</option>
+                      <option value="GOOGLE_CALENDAR">GOOGLE_CALENDAR</option>
+                      <option value="MICROSOFT_CALENDAR">MICROSOFT_CALENDAR</option>
+                      <option value="GOOGLE_MEET">GOOGLE_MEET</option>
+                      <option value="ZOOM">ZOOM</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div
+                  className="inline-grid"
+                  style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}
+                >
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span>Görüşmeyi yürüten kişi</span>
+                    <input
+                      className="input"
+                      value={scheduleForm.interviewerName}
+                      onChange={(event) =>
+                        setScheduleForm((prev) => ({ ...prev, interviewerName: event.target.value }))
+                      }
+                      placeholder="İK Ekibi"
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span>Görüşme tipi</span>
+                    <input
+                      className="input"
+                      value={scheduleForm.interviewType}
+                      onChange={(event) =>
+                        setScheduleForm((prev) => ({ ...prev, interviewType: event.target.value }))
+                      }
+                      placeholder="Teknik görüşme / HR interview"
+                    />
+                  </label>
+                </div>
+
+                <label style={{ display: "grid", gap: 8 }}>
+                  <span>
+                    {scheduleForm.mode === "PHONE"
+                      ? "Telefon / çağrı bilgisi"
+                      : scheduleForm.mode === "ONSITE"
+                        ? "Lokasyon bilgisi"
+                        : "Bağlantı veya ek planlama notu"}
+                  </span>
+                  <input
+                    className="input"
+                    value={scheduleForm.contextNote}
+                    onChange={(event) =>
+                      setScheduleForm((prev) => ({ ...prev, contextNote: event.target.value }))
+                    }
+                    placeholder={
+                      scheduleForm.mode === "PHONE"
+                        ? "+90 5xx xxx xx xx"
+                        : scheduleForm.mode === "ONSITE"
+                          ? "Levent ofisi / 4. kat"
+                          : "Adaya iletilecek ek bilgi"
+                    }
+                  />
+                </label>
+
+                <label style={{ display: "grid", gap: 8 }}>
+                  <span>İç planlama notu</span>
+                  <textarea
+                    className="input"
+                    rows={3}
+                    value={scheduleForm.scheduleNote}
+                    onChange={(event) =>
+                      setScheduleForm((prev) => ({ ...prev, scheduleNote: event.target.value }))
+                    }
+                    placeholder="Adaya 15 dk önce hatırlatma geçilecek."
+                  />
+                </label>
+
+                <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                  <button
+                    type="submit"
+                    className="ghost-button"
+                    disabled={scheduleSubmitting || scheduleLockedByAiInvite}
+                  >
+                    {scheduleSubmitting
+                      ? "Kaydediliyor..."
+                      : activeScheduledInterview && activeScheduledInterview.mode !== "VOICE"
+                        ? "Görüşmeyi yeniden planla"
+                        : "Planlı görüşme oluştur"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <section className="panel" style={{ marginBottom: 16 }}>
+            <h3 style={{ margin: "0 0 12px" }}>Referans araştırması</h3>
+            <div style={{ display: "grid", gap: 12 }}>
+              {referenceChecks.length > 0 ? (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {referenceChecks.map((referenceCheck) => {
+                    const statusMeta = referenceCheckStatusMeta(referenceCheck.status);
+
+                    return (
+                      <div
+                        key={referenceCheck.id}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 12,
+                          border: "1px solid var(--border)",
+                          background: "rgba(255,255,255,0.02)",
+                          display: "grid",
+                          gap: 8
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            alignItems: "center",
+                            flexWrap: "wrap"
+                          }}
+                        >
+                          <strong style={{ fontSize: 14 }}>{referenceCheck.referenceName}</strong>
+                          <span
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 700,
+                              padding: "4px 8px",
+                              borderRadius: 999,
+                              color: statusMeta.color,
+                              background: statusMeta.background
+                            }}
+                          >
+                            {statusMeta.label}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted" style={{ display: "grid", gap: 4 }}>
+                          {referenceCheck.companyName ? <span>Şirket: {referenceCheck.companyName}</span> : null}
+                          {referenceCheck.relationship ? <span>İlişki: {referenceCheck.relationship}</span> : null}
+                          {referenceCheck.contactEmail ? <span>E-posta: {referenceCheck.contactEmail}</span> : null}
+                          {referenceCheck.contactPhone ? <span>Telefon: {referenceCheck.contactPhone}</span> : null}
+                          <span>Kayıt: {formatDate(referenceCheck.createdAt)}</span>
+                          {referenceCheck.completedAt ? <span>Tamamlanma: {formatDate(referenceCheck.completedAt)}</span> : null}
+                        </div>
+                        {referenceCheck.summaryText ? (
+                          <p className="text-sm text-muted" style={{ margin: 0 }}>
+                            {referenceCheck.summaryText}
+                          </p>
+                        ) : null}
+                        {(referenceCheck.closedEndedResponses.length > 0 ||
+                          referenceCheck.openEndedResponses.length > 0) ? (
+                          <div style={{ display: "grid", gap: 8 }}>
+                            {referenceCheck.closedEndedResponses.length > 0 ? (
+                              <div style={{ display: "grid", gap: 4 }}>
+                                <div className="text-xs text-muted">Kapalı uçlu cevaplar</div>
+                                {referenceCheck.closedEndedResponses.map((item) => (
+                                  <div key={`${referenceCheck.id}-${item.question}`} className="text-sm text-muted">
+                                    <strong style={{ color: "var(--text-primary)" }}>{item.question}:</strong> {item.answer || "—"}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                            {referenceCheck.openEndedResponses.length > 0 ? (
+                              <div style={{ display: "grid", gap: 4 }}>
+                                <div className="text-xs text-muted">Açık uçlu cevaplar</div>
+                                {referenceCheck.openEndedResponses.map((item) => (
+                                  <div key={`${referenceCheck.id}-${item.question}`} className="text-sm text-muted">
+                                    <strong style={{ color: "var(--text-primary)" }}>{item.question}:</strong> {item.answer || "—"}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {referenceCheck.status !== "COMPLETED" ? (
+                          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                            <button
+                              type="button"
+                              className="ghost-button"
+                              disabled={actionLoading === `reference:${referenceCheck.id}`}
+                              onClick={() => void handleCompleteReferenceCheck(referenceCheck.id)}
+                            >
+                              {actionLoading === `reference:${referenceCheck.id}`
+                                ? "Kaydediliyor..."
+                                : "Tamamlandı olarak işaretle"}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted" style={{ margin: 0 }}>
+                  Henüz bu aday için referans araştırması kaydı açılmadı.
+                </p>
+              )}
+
+              <form style={{ display: "grid", gap: 12 }} onSubmit={handleCreateReferenceCheck}>
+                <div
+                  className="inline-grid"
+                  style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}
+                >
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span>Referans adı</span>
+                    <input
+                      className="input"
+                      value={referenceForm.referenceName}
+                      onChange={(event) =>
+                        setReferenceForm((prev) => ({ ...prev, referenceName: event.target.value }))
+                      }
+                      placeholder="Ayşe Yılmaz"
+                      required
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span>Şirket</span>
+                    <input
+                      className="input"
+                      value={referenceForm.companyName}
+                      onChange={(event) =>
+                        setReferenceForm((prev) => ({ ...prev, companyName: event.target.value }))
+                      }
+                      placeholder="ABC Teknoloji"
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span>İlişki</span>
+                    <input
+                      className="input"
+                      value={referenceForm.relationship}
+                      onChange={(event) =>
+                        setReferenceForm((prev) => ({ ...prev, relationship: event.target.value }))
+                      }
+                      placeholder="Eski yönetici"
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span>Durum</span>
+                    <select
+                      className="select"
+                      value={referenceForm.status}
+                      onChange={(event) =>
+                        setReferenceForm((prev) => ({ ...prev, status: event.target.value }))
+                      }
+                    >
+                      <option value="DRAFT">DRAFT</option>
+                      <option value="IN_PROGRESS">IN_PROGRESS</option>
+                      <option value="COMPLETED">COMPLETED</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div
+                  className="inline-grid"
+                  style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}
+                >
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span>E-posta</span>
+                    <input
+                      className="input"
+                      type="email"
+                      value={referenceForm.contactEmail}
+                      onChange={(event) =>
+                        setReferenceForm((prev) => ({ ...prev, contactEmail: event.target.value }))
+                      }
+                      placeholder="referans@firma.com"
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span>Telefon</span>
+                    <input
+                      className="input"
+                      value={referenceForm.contactPhone}
+                      onChange={(event) =>
+                        setReferenceForm((prev) => ({ ...prev, contactPhone: event.target.value }))
+                      }
+                      placeholder="+90 5xx xxx xx xx"
+                    />
+                  </label>
+                </div>
+
+                <ReferenceResponseListEditor
+                  title="Kapalı uçlu sorular"
+                  values={referenceForm.closedEndedResponses}
+                  onChange={(values) =>
+                    setReferenceForm((prev) => ({ ...prev, closedEndedResponses: values }))
+                  }
+                />
+
+                <ReferenceResponseListEditor
+                  title="Açık uçlu sorular"
+                  values={referenceForm.openEndedResponses}
+                  onChange={(values) =>
+                    setReferenceForm((prev) => ({ ...prev, openEndedResponses: values }))
+                  }
+                />
+
+                <label style={{ display: "grid", gap: 8 }}>
+                  <span>Özet not</span>
+                  <textarea
+                    className="input"
+                    rows={4}
+                    value={referenceForm.summaryText}
+                    onChange={(event) =>
+                      setReferenceForm((prev) => ({ ...prev, summaryText: event.target.value }))
+                    }
+                    placeholder="Referans görüşmesinin kısa özeti"
+                  />
+                </label>
+
+                <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                  <button type="submit" className="ghost-button" disabled={referenceSubmitting}>
+                    {referenceSubmitting ? "Kaydediliyor..." : "Referans araştırmasını kaydet"}
+                  </button>
+                </div>
+              </form>
             </div>
           </section>
 
@@ -1827,7 +2716,7 @@ export default function ApplicationDetailPage() {
             ) : actions.length === 0 ? (
               <p className="text-sm text-muted" style={{ margin: 0 }}>Bu aşamada işlem yapılamaz.</p>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: actions.length > 1 ? "1fr 1fr" : "1fr", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
                 {actions.map((act) => (
                   <button
                     key={act.key}
@@ -1851,6 +2740,10 @@ export default function ApplicationDetailPage() {
                 <h3 style={{ marginBottom: 8, fontSize: 16 }}>
                   {confirmDialog.flow === "decision"
                     ? `${buildDecisionLabel(confirmDialog.action as HumanDecision)} kararını kaydet`
+                    : confirmDialog.action === "move_to_pool"
+                      ? "Adayı Havuzda Tut"
+                      : confirmDialog.action === "move_to_shortlist"
+                        ? "Adayı Kısa Listeye Al"
                     : confirmDialog.action === "send_reminder"
                       ? "Hatırlatma Gönder"
                       : "Adayı Reddet"}
@@ -1860,8 +2753,12 @@ export default function ApplicationDetailPage() {
                     ? confirmDialog.action === "advance"
                       ? "Aday bir sonraki değerlendirme aşamasına taşınacak ve karar audit izi ile kaydedilecek."
                       : confirmDialog.action === "hold"
-                        ? "Aday bekletme kararına alınacak ve mevcut dossier üzerinde takip edilmeye devam edecek."
-                        : "Aday reddedilecek ve karar audit izi ile kaydedilecek."
+                      ? "Aday bekletme kararına alınacak ve mevcut dossier üzerinde takip edilmeye devam edecek."
+                      : "Aday reddedilecek ve karar audit izi ile kaydedilecek."
+                    : confirmDialog.action === "move_to_pool"
+                      ? "Aday havuza alınacak ve uygun rol açıldığında yeniden değerlendirilmek üzere bekletilecek."
+                    : confirmDialog.action === "move_to_shortlist"
+                      ? "Aday kısa listeye alınacak ve ileri değerlendirme için görünür hale gelecek."
                     : confirmDialog.action === "send_reminder"
                       ? "Adaya mevcut AI mülakat linki için hatırlatma e-postası gönderilecek."
                       : "Aday reddedilecek. Bu işlem geri alınamaz."}
@@ -1876,6 +2773,10 @@ export default function ApplicationDetailPage() {
                   >
                     {confirmDialog.flow === "decision"
                       ? buildDecisionLabel(confirmDialog.action as HumanDecision)
+                      : confirmDialog.action === "move_to_pool"
+                        ? "Havuza al"
+                      : confirmDialog.action === "move_to_shortlist"
+                        ? "Kısa listeye al"
                       : confirmDialog.action === "send_reminder"
                         ? "Hatırlat"
                         : "Reddet"}
@@ -1918,3 +2819,95 @@ type StageHistoryEntry = {
   reasonCode: string | null;
   changedBy: string | null;
 };
+
+function ReferenceResponseListEditor({
+  title,
+  values,
+  onChange
+}: {
+  title: string;
+  values: Array<{ question: string; answer: string }>;
+  onChange: (values: Array<{ question: string; answer: string }>) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gap: 10,
+        padding: "12px 14px",
+        borderRadius: 12,
+        border: "1px solid var(--border)",
+        background: "rgba(255,255,255,0.02)"
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+        <strong>{title}</strong>
+        <button
+          type="button"
+          className="ghost-button"
+          style={{ padding: "6px 10px", fontSize: 12 }}
+          onClick={() => onChange([...values, { question: "", answer: "" }])}
+        >
+          Soru ekle
+        </button>
+      </div>
+
+      {values.length === 0 ? (
+        <p className="text-sm text-muted" style={{ margin: 0 }}>
+          Henüz soru eklenmedi.
+        </p>
+      ) : (
+        values.map((item, index) => (
+          <div
+            key={`${title}-${index}`}
+            style={{
+              display: "grid",
+              gap: 8,
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: "1px solid rgba(148,163,184,0.16)",
+              background: "rgba(255,255,255,0.02)"
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+              <span className="text-xs text-muted">Soru {index + 1}</span>
+              <button
+                type="button"
+                className="ghost-button"
+                style={{ padding: "4px 8px", fontSize: 12 }}
+                onClick={() => onChange(values.filter((_, itemIndex) => itemIndex !== index))}
+              >
+                Kaldır
+              </button>
+            </div>
+            <input
+              className="input"
+              value={item.question}
+              onChange={(event) =>
+                onChange(
+                  values.map((entry, itemIndex) =>
+                    itemIndex === index ? { ...entry, question: event.target.value } : entry
+                  )
+                )
+              }
+              placeholder="Soru metni"
+            />
+            <textarea
+              className="input"
+              rows={2}
+              value={item.answer}
+              onChange={(event) =>
+                onChange(
+                  values.map((entry, itemIndex) =>
+                    itemIndex === index ? { ...entry, answer: event.target.value } : entry
+                  )
+                )
+              }
+              placeholder="Yanıt"
+            />
+          </div>
+        ))
+      )}
+    </div>
+  );
+}

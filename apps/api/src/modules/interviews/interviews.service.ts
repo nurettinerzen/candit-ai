@@ -127,6 +127,17 @@ type InterviewQuestionDraftView = {
   reason?: string;
 };
 
+type JobProfileInterviewSignals = {
+  titleLevel: string | null;
+  responsibilities: string[];
+  competencySets: {
+    core: string[];
+    functional: string[];
+    managerial: string[];
+  };
+  applicantQuestions: string[];
+};
+
 type TemplateRecord = {
   id: string;
   name: string;
@@ -517,7 +528,8 @@ export class InterviewsService {
           select: {
             id: true,
             title: true,
-            roleFamily: true
+            roleFamily: true,
+            jobProfileJson: true
           }
         }
       }
@@ -557,7 +569,8 @@ export class InterviewsService {
     ]);
 
     const normalizedTemplate = this.normalizeTemplate(template.templateJson);
-    const questions = normalizedTemplate.blocks.map((block, index) => ({
+    const jobProfileSignals = this.readJobProfileInterviewSignals(application.job.jobProfileJson);
+    const templateQuestions = normalizedTemplate.blocks.map((block, index) => ({
       id: block.key,
       key: block.key,
       questionKey: block.questionKey,
@@ -567,6 +580,13 @@ export class InterviewsService {
       source: "template" as const,
       reason: index === 0 ? "Varsayılan mülakat akışı" : undefined
     }));
+    const profileQuestions = this.buildProfileQuestionDrafts({
+      jobTitle: application.job.title,
+      roleFamily: application.job.roleFamily,
+      profile: jobProfileSignals,
+      existingPrompts: templateQuestions.map((question) => question.prompt)
+    });
+    const questions = [...templateQuestions, ...profileQuestions];
 
     const match = this.buildMatchPresentation(
       fitScore ? Number(fitScore.overallScore) : null,
@@ -589,7 +609,9 @@ export class InterviewsService {
       suggestions: this.buildSuggestedQuestionDrafts({
         fitScore,
         reportJson: latestReport?.reportJson ?? null,
-        existingPrompts: questions.map((question) => question.prompt)
+        existingPrompts: questions.map((question) => question.prompt),
+        profile: jobProfileSignals,
+        jobTitle: application.job.title
       })
     };
   }
@@ -4625,6 +4647,151 @@ export class InterviewsService {
     return { min, max };
   }
 
+  private readJobProfileInterviewSignals(raw: Prisma.JsonValue | null | undefined): JobProfileInterviewSignals {
+    const root = asObject(raw);
+    const competencySets = asObject(root.competencySets);
+
+    return {
+      titleLevel:
+        typeof root.titleLevel === "string" && sanitizeText(root.titleLevel)
+          ? sanitizeText(root.titleLevel)
+          : null,
+      responsibilities: asStringArray(root.responsibilities).slice(0, 4),
+      competencySets: {
+        core: asStringArray(competencySets.core).slice(0, 3),
+        functional: asStringArray(competencySets.functional).slice(0, 4),
+        managerial: asStringArray(competencySets.managerial).slice(0, 3)
+      },
+      applicantQuestions: asStringArray(root.applicantQuestions).slice(0, 4)
+    };
+  }
+
+  private createCompetencyInterviewPrompt(input: {
+    competency: string;
+    family: "core" | "functional" | "managerial";
+    jobTitle: string;
+  }) {
+    const competency = sanitizeText(input.competency).replace(/[.!?]+$/g, "");
+
+    if (input.family === "functional") {
+      return `${competency} konusunda bu rol için kritik olacak bir problemi nasıl çözdüğünüzü somut bir vaka üzerinden anlatır mısınız?`;
+    }
+
+    if (input.family === "managerial") {
+      return `${competency} tarafında ekip veya paydaş yönetimi gerektiren bir durum yaşadığınızda nasıl aksiyon aldığınızı örnekle paylaşır mısınız?`;
+    }
+
+    return `${input.jobTitle} rolünde ${competency} yetkinliğinizi gösteren somut bir örnek paylaşır mısınız?`;
+  }
+
+  private createResponsibilityInterviewPrompt(responsibility: string) {
+    const normalized = sanitizeText(responsibility).replace(/[.!?]+$/g, "");
+    return `Bu rolde beklenen "${normalized}" sorumluluğunu geçmişte nasıl üstlendiniz? Somut sonuçlarıyla anlatır mısınız?`;
+  }
+
+  private buildProfileQuestionDrafts(input: {
+    jobTitle: string;
+    roleFamily: string;
+    profile: JobProfileInterviewSignals;
+    existingPrompts: string[];
+  }): InterviewQuestionDraftView[] {
+    const existing = new Set(
+      input.existingPrompts
+        .map((prompt) => sanitizeText(prompt).toLocaleLowerCase("tr-TR"))
+        .filter(Boolean)
+    );
+    const roleLabel = sanitizeText(input.jobTitle) || formatRoleFamilyLabel(input.roleFamily);
+    const drafts: InterviewQuestionDraftView[] = [];
+
+    const pushDraft = (draft: Omit<InterviewQuestionDraftView, "id">) => {
+      const normalizedPrompt = sanitizeText(draft.prompt).toLocaleLowerCase("tr-TR");
+
+      if (!normalizedPrompt || existing.has(normalizedPrompt)) {
+        return;
+      }
+
+      existing.add(normalizedPrompt);
+      drafts.push({
+        id: `profile_${drafts.length + 1}`,
+        ...draft
+      });
+    };
+
+    input.profile.applicantQuestions.forEach((question) => {
+      pushDraft({
+        key: toSlugKey(question, `profile_question_${drafts.length + 1}`),
+        questionKey: `profile_question_${drafts.length + 1}`,
+        category: "aday_sorusu",
+        prompt: question,
+        followUps: [],
+        source: "suggested",
+        reason: "İlanın aday soru setinden eklendi"
+      });
+    });
+
+    input.profile.responsibilities.forEach((responsibility) => {
+      pushDraft({
+        key: toSlugKey(responsibility, `responsibility_${drafts.length + 1}`),
+        questionKey: `responsibility_question_${drafts.length + 1}`,
+        category: "gorev_tanimi",
+        prompt: this.createResponsibilityInterviewPrompt(responsibility),
+        followUps: [],
+        source: "suggested",
+        reason: "Görev tanımından türetildi"
+      });
+    });
+
+    input.profile.competencySets.functional.forEach((competency) => {
+      pushDraft({
+        key: toSlugKey(competency, `functional_${drafts.length + 1}`),
+        questionKey: `functional_question_${drafts.length + 1}`,
+        category: "fonksiyonel_yetkinlik",
+        prompt: this.createCompetencyInterviewPrompt({
+          competency,
+          family: "functional",
+          jobTitle: roleLabel
+        }),
+        followUps: [],
+        source: "suggested",
+        reason: "Fonksiyonel yetkinlik setinden türetildi"
+      });
+    });
+
+    input.profile.competencySets.managerial.forEach((competency) => {
+      pushDraft({
+        key: toSlugKey(competency, `managerial_${drafts.length + 1}`),
+        questionKey: `managerial_question_${drafts.length + 1}`,
+        category: "yonetsel_yetkinlik",
+        prompt: this.createCompetencyInterviewPrompt({
+          competency,
+          family: "managerial",
+          jobTitle: roleLabel
+        }),
+        followUps: [],
+        source: "suggested",
+        reason: "Yönetsel yetkinlik setinden türetildi"
+      });
+    });
+
+    input.profile.competencySets.core.forEach((competency) => {
+      pushDraft({
+        key: toSlugKey(competency, `core_${drafts.length + 1}`),
+        questionKey: `core_question_${drafts.length + 1}`,
+        category: "temel_yetkinlik",
+        prompt: this.createCompetencyInterviewPrompt({
+          competency,
+          family: "core",
+          jobTitle: roleLabel
+        }),
+        followUps: [],
+        source: "suggested",
+        reason: "Temel yetkinlik setinden türetildi"
+      });
+    });
+
+    return drafts.slice(0, 8);
+  }
+
   private buildQuestionPromptFromSignal(signal: string) {
     const normalized = signal.toLocaleLowerCase("tr-TR");
 
@@ -4678,6 +4845,8 @@ export class InterviewsService {
       | null;
     reportJson: Prisma.JsonValue | null | undefined;
     existingPrompts: string[];
+    profile: JobProfileInterviewSignals;
+    jobTitle: string;
   }): InterviewQuestionDraftView[] {
     const existing = new Set(
       input.existingPrompts
@@ -4695,6 +4864,26 @@ export class InterviewsService {
         signal,
         category: "risk",
         reason: "Risk sinyalinden üretildi"
+      })),
+      ...input.profile.competencySets.functional.map((signal) => ({
+        signal,
+        category: "fonksiyonel_yetkinlik",
+        reason: `${input.jobTitle} için tanımlanan fonksiyonel yetkinlikten üretildi`
+      })),
+      ...input.profile.competencySets.managerial.map((signal) => ({
+        signal,
+        category: "yonetsel_yetkinlik",
+        reason: `${input.jobTitle} için tanımlanan yönetsel yetkinlikten üretildi`
+      })),
+      ...input.profile.competencySets.core.map((signal) => ({
+        signal,
+        category: "temel_yetkinlik",
+        reason: `${input.jobTitle} için tanımlanan temel yetkinlikten üretildi`
+      })),
+      ...input.profile.responsibilities.map((signal) => ({
+        signal,
+        category: "gorev_tanimi",
+        reason: `${input.jobTitle} görev tanımından üretildi`
       })),
       ...this.extractReportQuestionSignals(input.reportJson)
     ];

@@ -53,6 +53,30 @@ type BulkDeleteApplicationsInput = {
   deletedBy: string;
 };
 
+type ReferenceCheckResponseInput = {
+  question: string;
+  answer: string;
+};
+
+type CreateReferenceCheckInput = {
+  tenantId: string;
+  applicationId: string;
+  createdBy: string;
+  referenceName: string;
+  companyName?: string;
+  relationship?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  status?: string;
+  openEndedResponses?: ReferenceCheckResponseInput[];
+  closedEndedResponses?: ReferenceCheckResponseInput[];
+  summaryText?: string;
+};
+
+type UpdateReferenceCheckInput = CreateReferenceCheckInput & {
+  referenceCheckId: string;
+};
+
 @Injectable()
 export class ApplicationsService {
   constructor(
@@ -72,6 +96,20 @@ export class ApplicationsService {
 
   getById(tenantId: string, id: string) {
     return this.applicationQueryService.getById(tenantId, id);
+  }
+
+  async listReferenceChecks(tenantId: string, applicationId: string) {
+    await this.assertJobActionable(tenantId, applicationId);
+
+    return this.prisma.referenceCheck.findMany({
+      where: {
+        tenantId,
+        applicationId
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    });
   }
 
   async assertJobActionable(tenantId: string, applicationId: string) {
@@ -476,6 +514,113 @@ export class ApplicationsService {
     };
   }
 
+  async createReferenceCheck(input: CreateReferenceCheckInput) {
+    const application = await this.assertJobActionable(input.tenantId, input.applicationId);
+    const normalized = this.normalizeReferenceCheckInput(input);
+
+    const referenceCheck = await this.prisma.referenceCheck.create({
+      data: {
+        tenantId: input.tenantId,
+        applicationId: input.applicationId,
+        referenceName: normalized.referenceName,
+        companyName: normalized.companyName,
+        relationship: normalized.relationship,
+        contactEmail: normalized.contactEmail,
+        contactPhone: normalized.contactPhone,
+        status: normalized.status,
+        openEndedResponsesJson: normalized.openEndedResponses as Prisma.InputJsonValue,
+        closedEndedResponsesJson: normalized.closedEndedResponses as Prisma.InputJsonValue,
+        summaryText: normalized.summaryText,
+        createdBy: input.createdBy,
+        completedAt: normalized.status === "COMPLETED" ? new Date() : null
+      }
+    });
+
+    await Promise.all([
+      this.auditWriterService.write({
+        tenantId: input.tenantId,
+        actorUserId: input.createdBy,
+        action: "application.reference_check.created",
+        entityType: "ReferenceCheck",
+        entityId: referenceCheck.id,
+        metadata: {
+          applicationId: input.applicationId,
+          candidateId: application.candidateId,
+          jobId: application.jobId,
+          status: referenceCheck.status,
+          referenceName: referenceCheck.referenceName
+        }
+      }),
+      this.domainEventsService.append({
+        tenantId: input.tenantId,
+        aggregateType: "CandidateApplication",
+        aggregateId: input.applicationId,
+        eventType: "application.reference_check.created",
+        payload: {
+          referenceCheckId: referenceCheck.id,
+          status: referenceCheck.status,
+          referenceName: referenceCheck.referenceName,
+          createdBy: input.createdBy
+        }
+      })
+    ]);
+
+    return referenceCheck;
+  }
+
+  async updateReferenceCheck(input: UpdateReferenceCheckInput) {
+    await this.assertJobActionable(input.tenantId, input.applicationId);
+    const normalized = this.normalizeReferenceCheckInput(input);
+
+    const existing = await this.prisma.referenceCheck.findFirst({
+      where: {
+        tenantId: input.tenantId,
+        applicationId: input.applicationId,
+        id: input.referenceCheckId
+      }
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Referans araştırması bulunamadı.");
+    }
+
+    const referenceCheck = await this.prisma.referenceCheck.update({
+      where: {
+        id: existing.id
+      },
+      data: {
+        referenceName: normalized.referenceName,
+        companyName: normalized.companyName,
+        relationship: normalized.relationship,
+        contactEmail: normalized.contactEmail,
+        contactPhone: normalized.contactPhone,
+        status: normalized.status,
+        openEndedResponsesJson: normalized.openEndedResponses as Prisma.InputJsonValue,
+        closedEndedResponsesJson: normalized.closedEndedResponses as Prisma.InputJsonValue,
+        summaryText: normalized.summaryText,
+        completedAt:
+          normalized.status === "COMPLETED"
+            ? existing.completedAt ?? new Date()
+            : null
+      }
+    });
+
+    await this.auditWriterService.write({
+      tenantId: input.tenantId,
+      actorUserId: input.createdBy,
+      action: "application.reference_check.updated",
+      entityType: "ReferenceCheck",
+      entityId: referenceCheck.id,
+      metadata: {
+        applicationId: input.applicationId,
+        status: referenceCheck.status,
+        referenceName: referenceCheck.referenceName
+      }
+    });
+
+    return referenceCheck;
+  }
+
   private mapDecisionToStage(decision: "advance" | "hold" | "reject") {
     switch (decision) {
       case "advance":
@@ -500,5 +645,36 @@ export class ApplicationsService {
       default:
         return Recommendation.REVIEW;
     }
+  }
+
+  private normalizeReferenceCheckInput(
+    input:
+      | CreateReferenceCheckInput
+      | UpdateReferenceCheckInput
+  ) {
+    const referenceName = input.referenceName.trim();
+    if (referenceName.length < 2) {
+      throw new BadRequestException("Referans adı en az 2 karakter olmalıdır.");
+    }
+
+    const normalizeResponseList = (value: ReferenceCheckResponseInput[] | undefined) =>
+      (value ?? [])
+        .map((item) => ({
+          question: item.question.trim(),
+          answer: item.answer.trim()
+        }))
+        .filter((item) => item.question.length > 0 || item.answer.length > 0);
+
+    return {
+      referenceName,
+      companyName: input.companyName?.trim() || null,
+      relationship: input.relationship?.trim() || null,
+      contactEmail: input.contactEmail?.trim().toLowerCase() || null,
+      contactPhone: input.contactPhone?.trim() || null,
+      status: input.status?.trim().toUpperCase() || "DRAFT",
+      openEndedResponses: normalizeResponseList(input.openEndedResponses),
+      closedEndedResponses: normalizeResponseList(input.closedEndedResponses),
+      summaryText: input.summaryText?.trim() || null
+    };
   }
 }
