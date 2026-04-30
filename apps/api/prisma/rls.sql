@@ -12,6 +12,7 @@ alter table "InterviewSession" enable row level security;
 alter table "Transcript" enable row level security;
 alter table "AiReport" enable row level security;
 alter table "AuditLog" enable row level security;
+alter table "PublicLeadSubmission" enable row level security;
 
 create policy tenant_isolation_workspace on "Workspace"
   using ("tenantId" = current_setting('app.tenant_id', true));

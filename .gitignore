@@ -31,6 +31,7 @@ coverage
 # local services
 data/
 minio/
+artifacts/
 
 # local artifacts
 *.tsbuildinfo
