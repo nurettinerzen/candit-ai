@@ -141,6 +141,52 @@ export type GeneratedJobDraft = {
 
 const DEFAULT_RESPONSE_SLA_DAYS = 15;
 
+const LEGACY_JOB_SELECT = {
+  id: true,
+  title: true,
+  roleFamily: true,
+  status: true,
+  locationText: true,
+  shiftType: true,
+  salaryMin: true,
+  salaryMax: true,
+  jdText: true,
+  createdAt: true,
+  requirements: true,
+  _count: {
+    select: {
+      applications: true
+    }
+  }
+} satisfies Prisma.JobSelect;
+
+type LegacyCompatibleJob = Prisma.JobGetPayload<{
+  select: typeof LEGACY_JOB_SELECT;
+}>;
+
+function isJobReadSchemaDriftError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = (error as { code?: unknown }).code;
+  if (code !== "P2021" && code !== "P2022") {
+    return false;
+  }
+
+  const details = JSON.stringify((error as { meta?: unknown }).meta ?? {});
+  const message = String((error as { message?: unknown }).message ?? "");
+  const haystack = `${details} ${message}`;
+
+  return (
+    haystack.includes("Job") ||
+    haystack.includes("JobRequirement") ||
+    haystack.includes("aiDraftText") ||
+    haystack.includes("screeningMode") ||
+    haystack.includes("jobProfileJson")
+  );
+}
+
 @Injectable()
 export class JobsService {
   constructor(
@@ -153,38 +199,61 @@ export class JobsService {
   ) {}
 
   list(tenantId: string) {
-    return this.prisma.job.findMany({
-      where: { tenantId, archivedAt: null },
-      orderBy: { createdAt: "desc" },
-      include: {
-        requirements: true,
-        _count: {
-          select: {
-            applications: true
+    return this.prisma.job
+      .findMany({
+        where: { tenantId, archivedAt: null },
+        orderBy: { createdAt: "desc" },
+        include: {
+          requirements: true,
+          _count: {
+            select: {
+              applications: true
+            }
           }
         }
-      }
-    }).then((jobs) => jobs.map((job) => this.serializeJob(job)));
+      })
+      .then((jobs) => jobs.map((job) => this.serializeJob(job)))
+      .catch((error) => {
+        if (!isJobReadSchemaDriftError(error)) {
+          throw error;
+        }
+
+        return this.listLegacyCompatible(tenantId);
+      });
   }
 
   async getById(tenantId: string, id: string) {
-    const job = await this.prisma.job.findFirst({
-      where: { id, tenantId },
-      include: {
-        requirements: true,
-        _count: {
-          select: {
-            applications: true
+    try {
+      const job = await this.prisma.job.findFirst({
+        where: { id, tenantId },
+        include: {
+          requirements: true,
+          _count: {
+            select: {
+              applications: true
+            }
           }
         }
+      });
+
+      if (!job) {
+        throw new NotFoundException("Job bulunamadi.");
       }
-    });
 
-    if (!job) {
-      throw new NotFoundException("Job bulunamadi.");
+      return this.serializeJob(job);
+    } catch (error) {
+      if (!isJobReadSchemaDriftError(error)) {
+        throw error;
+      }
+
+      const job = await this.findLegacyCompatibleById(tenantId, id);
+
+      if (!job) {
+        throw new NotFoundException("Job bulunamadi.");
+      }
+
+      return this.serializeLegacyCompatibleJob(job);
     }
-
-    return this.serializeJob(job);
   }
 
   async generateDraft(input: GenerateJobDraftInput): Promise<GeneratedJobDraft> {
@@ -870,6 +939,32 @@ export class JobsService {
       ...rest,
       jobProfile: (jobProfileJson ?? null) as Prisma.JsonValue | null
     };
+  }
+
+  private serializeLegacyCompatibleJob(job: LegacyCompatibleJob) {
+    return {
+      ...job,
+      screeningMode: "BALANCED" as const,
+      aiDraftText: null,
+      jobProfile: null
+    };
+  }
+
+  private async listLegacyCompatible(tenantId: string) {
+    const jobs = await this.prisma.job.findMany({
+      where: { tenantId, archivedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: LEGACY_JOB_SELECT
+    });
+
+    return jobs.map((job) => this.serializeLegacyCompatibleJob(job));
+  }
+
+  private findLegacyCompatibleById(tenantId: string, id: string) {
+    return this.prisma.job.findFirst({
+      where: { id, tenantId },
+      select: LEGACY_JOB_SELECT
+    });
   }
 
   private mergeRequirementFacts(
