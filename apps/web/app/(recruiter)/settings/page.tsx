@@ -26,7 +26,9 @@ import {
 } from "../../../lib/auth/session";
 import type {
   AccessibleCompany,
+  CompetencyDefinition,
   TenantHiringSettings,
+  TenantMessageTemplate,
   TenantProfileReadModel
 } from "../../../lib/types";
 
@@ -45,13 +47,130 @@ function textToLines(value: string) {
     .filter(Boolean);
 }
 
+const COMPETENCY_CATEGORY_LABELS: Record<CompetencyDefinition["category"], string> = {
+  core: "Temel/Davranışsal",
+  functional: "Fonksiyonel",
+  technical: "Teknik",
+  managerial: "Yönetsel"
+};
+
+function competencyDefinitionsToText(values: CompetencyDefinition[]) {
+  return values
+    .map((item) =>
+      [
+        item.category,
+        item.name,
+        item.definition,
+        item.expectedBehavior ?? ""
+      ].join(" | ")
+    )
+    .join("\n");
+}
+
+function textToCompetencyDefinitions(value: string): CompetencyDefinition[] {
+  return value
+    .split(/\r?\n/g)
+    .map((line) => {
+      const [categoryRaw, nameRaw, definitionRaw, expectedRaw] = line.split("|").map((part) => part.trim());
+      const category = categoryRaw as CompetencyDefinition["category"];
+
+      if (
+        !["core", "functional", "technical", "managerial"].includes(category) ||
+        !nameRaw ||
+        !definitionRaw
+      ) {
+        return null;
+      }
+
+      return {
+        category,
+        name: nameRaw,
+        definition: definitionRaw,
+        expectedBehavior: expectedRaw || null
+      };
+    })
+    .filter((item): item is CompetencyDefinition => Boolean(item));
+}
+
+const MESSAGE_TEMPLATE_ORDER = [
+  "application_received_v1",
+  "application_shortlisted_v1",
+  "application_advanced_v1",
+  "application_on_hold_v1",
+  "application_rejected_v1",
+  "interview_invitation_on_demand_v1",
+  "interview_invitation_reminder_v1"
+];
+
+function messageTemplatesToText(values: Record<string, TenantMessageTemplate>) {
+  const orderedKeys = [
+    ...MESSAGE_TEMPLATE_ORDER,
+    ...Object.keys(values).filter((key) => !MESSAGE_TEMPLATE_ORDER.includes(key))
+  ];
+
+  return orderedKeys
+    .filter((key, index, arr) => values[key] && arr.indexOf(key) === index)
+    .map((key) => {
+      const template = values[key];
+      if (!template) {
+        return "";
+      }
+      return [
+        `### ${key}`,
+        `subject: ${template.subject}`,
+        template.ctaLabel ? `cta: ${template.ctaLabel}` : "cta:",
+        "body:",
+        template.body
+      ].join("\n");
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function textToMessageTemplates(value: string): Record<string, TenantMessageTemplate> {
+  const templates: Record<string, TenantMessageTemplate> = {};
+  const blocks = value
+    .split(/^###\s+/gm)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  for (const block of blocks) {
+    const lines = block.split(/\r?\n/g);
+    const key = lines.shift()?.trim();
+    if (!key) {
+      continue;
+    }
+
+    const subjectLineIndex = lines.findIndex((line) => line.toLocaleLowerCase("tr-TR").startsWith("subject:"));
+    const ctaLineIndex = lines.findIndex((line) => line.toLocaleLowerCase("tr-TR").startsWith("cta:"));
+    const bodyLineIndex = lines.findIndex((line) => line.toLocaleLowerCase("tr-TR") === "body:");
+    const subject = subjectLineIndex >= 0 ? (lines[subjectLineIndex] ?? "").replace(/^subject:/i, "").trim() : "";
+    const ctaLabel = ctaLineIndex >= 0 ? (lines[ctaLineIndex] ?? "").replace(/^cta:/i, "").trim() : "";
+    const body = bodyLineIndex >= 0 ? lines.slice(bodyLineIndex + 1).join("\n").trim() : "";
+
+    if (!subject || !body) {
+      continue;
+    }
+
+    templates[key] = {
+      subject,
+      body,
+      ctaLabel: ctaLabel || null
+    };
+  }
+
+  return templates;
+}
+
 function createHiringSettingsFormState(settings: TenantHiringSettings) {
   return {
     departments: linesToText(settings.departments),
     titleLevels: linesToText(settings.titleLevels),
     competencyCore: linesToText(settings.competencyLibrary.core),
     competencyFunctional: linesToText(settings.competencyLibrary.functional),
+    competencyTechnical: linesToText(settings.competencyLibrary.technical),
     competencyManagerial: linesToText(settings.competencyLibrary.managerial),
+    competencyDefinitions: competencyDefinitionsToText(settings.competencyDefinitions),
     schoolDepartments: linesToText(settings.evaluationPresets.schoolDepartments),
     certificates: linesToText(settings.evaluationPresets.certificates),
     tools: linesToText(settings.evaluationPresets.tools),
@@ -66,7 +185,8 @@ function createHiringSettingsFormState(settings: TenantHiringSettings) {
     approverRole: settings.approvalFlow.approverRole,
     approvalStages: linesToText(settings.approvalFlow.stages),
     approvalNotes: settings.approvalFlow.notes ?? "",
-    responseSlaDays: String(settings.notificationDefaults.responseSlaDays)
+    responseSlaDays: String(settings.notificationDefaults.responseSlaDays),
+    messageTemplates: messageTemplatesToText(settings.messageTemplates)
   };
 }
 
@@ -98,8 +218,10 @@ export default function SettingsPage() {
       competencyLibrary: {
         core: [],
         functional: [],
+        technical: [],
         managerial: []
       },
+      competencyDefinitions: [],
       evaluationPresets: {
         schoolDepartments: [],
         certificates: [],
@@ -124,7 +246,8 @@ export default function SettingsPage() {
       },
       notificationDefaults: {
         responseSlaDays: 15
-      }
+      },
+      messageTemplates: {}
     })
   );
   const [accessibleCompanies, setAccessibleCompanies] = useState<AccessibleCompany[]>([]);
@@ -318,8 +441,10 @@ export default function SettingsPage() {
         competencyLibrary: {
           core: textToLines(hiringSettingsForm.competencyCore),
           functional: textToLines(hiringSettingsForm.competencyFunctional),
+          technical: textToLines(hiringSettingsForm.competencyTechnical),
           managerial: textToLines(hiringSettingsForm.competencyManagerial)
         },
+        competencyDefinitions: textToCompetencyDefinitions(hiringSettingsForm.competencyDefinitions),
         evaluationPresets: {
           schoolDepartments: textToLines(hiringSettingsForm.schoolDepartments),
           certificates: textToLines(hiringSettingsForm.certificates),
@@ -344,7 +469,8 @@ export default function SettingsPage() {
         },
         notificationDefaults: {
           responseSlaDays: Math.max(1, Number(hiringSettingsForm.responseSlaDays) || 15)
-        }
+        },
+        messageTemplates: textToMessageTemplates(hiringSettingsForm.messageTemplates)
       };
 
       const nextSettings = await apiClient.updateTenantHiringSettings(payload);
@@ -954,7 +1080,7 @@ export default function SettingsPage() {
             style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}
           >
             <label style={{ display: "grid", gap: 8 }}>
-              <span>{locale === "en" ? "Core competencies" : "Temel yetkinlikler"}</span>
+              <span>{locale === "en" ? "Core / behavioral competencies" : "Temel / davranışsal yetkinlikler"}</span>
               <textarea
                 className="input"
                 rows={6}
@@ -962,8 +1088,13 @@ export default function SettingsPage() {
                 onChange={(event) =>
                   setHiringSettingsForm((prev) => ({ ...prev, competencyCore: event.target.value }))
                 }
-                placeholder={locale === "en" ? "Communication\nOwnership\nAnalytical thinking" : "İletişim\nSahiplenme\nAnalitik düşünme"}
+                placeholder={locale === "en" ? "Communication\nOwnership\nAnalytical thinking" : "İletişim becerisi\nSorumluluk bilinci\nAnalitik düşünme"}
               />
+              <span className="small text-muted">
+                {locale === "en"
+                  ? "Behavioral signals such as communication, planning, ownership, and flexibility."
+                  : "İletişim, planlama, sahiplenme, esneklik gibi davranışsal göstergeler."}
+              </span>
             </label>
 
             <label style={{ display: "grid", gap: 8 }}>
@@ -975,8 +1106,31 @@ export default function SettingsPage() {
                 onChange={(event) =>
                   setHiringSettingsForm((prev) => ({ ...prev, competencyFunctional: event.target.value }))
                 }
-                placeholder=".NET\nREST API\nGenel muhasebe"
+                placeholder={locale === "en" ? "Process management\nStakeholder coordination\nPayroll process" : "Süreç yönetimi\nPaydaş koordinasyonu\nBordro süreci"}
               />
+              <span className="small text-muted">
+                {locale === "en"
+                  ? "Role/function-specific capabilities, separate from tools and technologies."
+                  : "Araç ve teknolojiden ayrı, iş fonksiyonuna özgü kabiliyetler."}
+              </span>
+            </label>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span>{locale === "en" ? "Technical competencies" : "Teknik yetkinlikler"}</span>
+              <textarea
+                className="input"
+                rows={6}
+                value={hiringSettingsForm.competencyTechnical}
+                onChange={(event) =>
+                  setHiringSettingsForm((prev) => ({ ...prev, competencyTechnical: event.target.value }))
+                }
+                placeholder=".NET\nREST API\nMS SQL\nGit"
+              />
+              <span className="small text-muted">
+                {locale === "en"
+                  ? "Tools, technologies, platforms, and hard skills."
+                  : "Araçlar, teknolojiler, platformlar ve ölçülebilir teknik beceriler."}
+              </span>
             </label>
 
             <label style={{ display: "grid", gap: 8 }}>
@@ -992,6 +1146,24 @@ export default function SettingsPage() {
               />
             </label>
           </div>
+
+          <label style={{ display: "grid", gap: 8 }}>
+            <span>{locale === "en" ? "Competency definitions" : "Yetkinlik tanımları"}</span>
+            <textarea
+              className="input"
+              rows={8}
+              value={hiringSettingsForm.competencyDefinitions}
+              onChange={(event) =>
+                setHiringSettingsForm((prev) => ({ ...prev, competencyDefinitions: event.target.value }))
+              }
+              placeholder={"core | Analitik düşünme | Veriyi ve problemi parçalarına ayırarak neden-sonuç kurabilme | Adaydan somut problem çözme örneği beklenir"}
+            />
+            <span className="small text-muted">
+              {locale === "en"
+                ? "One row per competency: category | name | definition | expected behavior. Categories: core, functional, technical, managerial."
+                : `Her satır: kategori | yetkinlik | tanım | beklenen davranış. Kategoriler: ${Object.entries(COMPETENCY_CATEGORY_LABELS).map(([key, label]) => `${key}=${label}`).join(", ")}.`}
+            </span>
+          </label>
 
           <div
             className="inline-grid"
@@ -1147,6 +1319,23 @@ export default function SettingsPage() {
               }
               placeholder={locale === "en" ? "I consent to the processing of my personal data..." : "Kişisel verilerimin işe alım süreçleri kapsamında işlenmesini kabul ediyorum..."}
             />
+          </label>
+
+          <label style={{ display: "grid", gap: 8 }}>
+            <span>{locale === "en" ? "Candidate message templates" : "Adaya iletilecek mesaj şablonları"}</span>
+            <textarea
+              className="input"
+              rows={14}
+              value={hiringSettingsForm.messageTemplates}
+              onChange={(event) =>
+                setHiringSettingsForm((prev) => ({ ...prev, messageTemplates: event.target.value }))
+              }
+            />
+            <span className="small text-muted">
+              {locale === "en"
+                ? "These templates are tenant-specific. Variables: {{candidateName}}, {{companyName}}, {{jobTitle}}, {{interviewLink}}, {{deadline}}."
+                : "Bu şablonlar şirket bazlıdır. Değişkenler: {{candidateName}}, {{companyName}}, {{jobTitle}}, {{interviewLink}}, {{deadline}}."}
+            </span>
           </label>
 
           <div

@@ -19,8 +19,15 @@ export type JobProfileInput = {
   competencySets?: {
     core?: string[];
     functional?: string[];
+    technical?: string[];
     managerial?: string[];
   };
+  competencyDefinitions?: Array<{
+    name?: string;
+    category?: string;
+    definition?: string;
+    expectedBehavior?: string | null;
+  }>;
   evaluationCriteria?: {
     educationLevel?: string;
     schoolDepartments?: string[];
@@ -33,6 +40,10 @@ export type JobProfileInput = {
   workflow?: {
     responseSlaDays?: number;
     hideCompensationOnPosting?: boolean;
+  };
+  branding?: {
+    logoUrl?: string | null;
+    imageUrls?: string[];
   };
   notes?: string;
 };
@@ -62,8 +73,15 @@ type NormalizedJobProfile = {
   competencySets: {
     core: string[];
     functional: string[];
+    technical: string[];
     managerial: string[];
   };
+  competencyDefinitions: Array<{
+    name: string;
+    category: "core" | "functional" | "technical" | "managerial";
+    definition: string;
+    expectedBehavior: string | null;
+  }>;
   evaluationCriteria: {
     educationLevel: string | null;
     schoolDepartments: string[];
@@ -76,6 +94,10 @@ type NormalizedJobProfile = {
   workflow: {
     responseSlaDays: number | null;
     hideCompensationOnPosting: boolean;
+  };
+  branding: {
+    logoUrl: string | null;
+    imageUrls: string[];
   };
   notes: string | null;
 };
@@ -661,6 +683,15 @@ export class JobsService {
       jobProfile.applicantQuestions.forEach((item) => lines.push(`• ${item}`));
     }
 
+    if (jobProfile.branding.logoUrl || jobProfile.branding.imageUrls.length > 0) {
+      lines.push("");
+      lines.push("Gorsel ve Marka Materyalleri");
+      if (jobProfile.branding.logoUrl) {
+        lines.push(`• Logo: ${jobProfile.branding.logoUrl}`);
+      }
+      jobProfile.branding.imageUrls.forEach((url) => lines.push(`• Gorsel: ${url}`));
+    }
+
     lines.push("");
     lines.push(outline.closingParagraph);
 
@@ -729,6 +760,15 @@ export class JobsService {
       lines.push("");
       lines.push("Basvuruda Size Sorulabilecek Ek Sorular");
       jobProfile.applicantQuestions.forEach((item) => lines.push(`• ${item}`));
+    }
+
+    if (jobProfile.branding.logoUrl || jobProfile.branding.imageUrls.length > 0) {
+      lines.push("");
+      lines.push("Gorsel ve Marka Materyalleri");
+      if (jobProfile.branding.logoUrl) {
+        lines.push(`• Logo: ${jobProfile.branding.logoUrl}`);
+      }
+      jobProfile.branding.imageUrls.forEach((url) => lines.push(`• Gorsel: ${url}`));
     }
 
     lines.push("");
@@ -909,6 +949,10 @@ export class JobsService {
       facts.push({ key: competency, value: competency, required: true });
     }
 
+    for (const competency of profile.competencySets.technical) {
+      facts.push({ key: competency, value: competency, required: true });
+    }
+
     for (const competency of profile.competencySets.managerial) {
       facts.push({ key: competency, value: competency, required: false });
     }
@@ -966,8 +1010,10 @@ export class JobsService {
       competencySets: {
         core: this.normalizeStringList(input?.competencySets?.core, 12),
         functional: this.normalizeStringList(input?.competencySets?.functional, 16),
+        technical: this.normalizeStringList(input?.competencySets?.technical, 16),
         managerial: this.normalizeStringList(input?.competencySets?.managerial, 12)
       },
+      competencyDefinitions: this.normalizeCompetencyDefinitions(input?.competencyDefinitions),
       evaluationCriteria: {
         educationLevel: this.cleanSentence(input?.evaluationCriteria?.educationLevel),
         schoolDepartments: this.normalizeStringList(input?.evaluationCriteria?.schoolDepartments, 12),
@@ -985,8 +1031,49 @@ export class JobsService {
         responseSlaDays: workflowResponseSla,
         hideCompensationOnPosting: input?.workflow?.hideCompensationOnPosting !== false
       },
+      branding: {
+        logoUrl: this.cleanUrl(input?.branding?.logoUrl),
+        imageUrls: this.normalizeStringList(input?.branding?.imageUrls, 8)
+      },
       notes
     };
+  }
+
+  private normalizeCompetencyDefinitions(values: JobProfileInput["competencyDefinitions"]) {
+    if (!Array.isArray(values)) {
+      return [];
+    }
+
+    const allowed = new Set(["core", "functional", "technical", "managerial"]);
+    const seen = new Set<string>();
+
+    return values
+      .map((value) => {
+        const name = this.cleanSentence(value.name);
+        const definition = this.cleanParagraph(value.definition);
+        const category = typeof value.category === "string" && allowed.has(value.category)
+          ? (value.category as "core" | "functional" | "technical" | "managerial")
+          : null;
+
+        if (!name || !definition || !category) {
+          return null;
+        }
+
+        const key = `${category}:${name.toLocaleLowerCase("tr-TR")}`;
+        if (seen.has(key)) {
+          return null;
+        }
+        seen.add(key);
+
+        return {
+          name,
+          category,
+          definition,
+          expectedBehavior: this.cleanParagraph(value.expectedBehavior ?? undefined)
+        };
+      })
+      .filter((value): value is NonNullable<typeof value> => Boolean(value))
+      .slice(0, 40);
   }
 
   private normalizeStringList(values: string[] | undefined, limit: number) {
@@ -1052,5 +1139,23 @@ export class JobsService {
       .join(" ");
 
     return normalized.length > 0 ? normalized : null;
+  }
+
+  private cleanUrl(value: unknown) {
+    const text = this.cleanSentence(value);
+    if (!text) {
+      return null;
+    }
+
+    if (!/^https?:\/\//i.test(text)) {
+      return null;
+    }
+
+    try {
+      const url = new URL(text);
+      return url.toString();
+    } catch {
+      return null;
+    }
   }
 }

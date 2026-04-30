@@ -1643,7 +1643,7 @@ export default function CandidateInterviewPage() {
                           Açık rıza ve bilgilendirme
                         </p>
                         <p className="small" style={{ marginTop: 0, color: "rgba(226,232,240,0.74)" }}>
-                          Görüşme başlamadan önce sesiniz işlenir, transcript oluşturulur ve bu kayıt işe alım değerlendirmesi için recruiter ekibiyle paylaşılır.
+                          {view.consent.summary}
                         </p>
 
                         {view.consent.status === "GRANTED" ? (
@@ -1668,7 +1668,7 @@ export default function CandidateInterviewPage() {
                                 style={{ marginTop: 3 }}
                               />
                               <span style={{ fontSize: 14, lineHeight: 1.55, color: "rgba(226,232,240,0.9)" }}>
-                                Ses kaydı alınmasını, transcript üretilmesini ve görüşme çıktılarının değerlendirme amacıyla kullanılmasını kabul ediyorum.
+                                {view.consent.explicitText}
                               </span>
                             </label>
                             <p className="small" style={{ margin: "10px 0 0", color: "rgba(148,163,184,0.8)" }}>

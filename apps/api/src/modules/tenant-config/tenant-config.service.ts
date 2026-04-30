@@ -24,10 +24,34 @@ const DEFAULT_HIRING_SETTINGS = {
     "Müdür"
   ],
   competencyLibrary: {
-    core: ["Analitik düşünme", "Takım çalışması", "Sahiplenme"],
-    functional: [".NET", "REST API", "MS SQL", "Git"],
+    core: ["Analitik düşünme", "İletişim becerisi", "Sorumluluk bilinci", "Organizasyon ve planlama"],
+    functional: ["Süreç yönetimi", "Paydaş koordinasyonu", "Problem çözme"],
+    technical: [".NET", "REST API", "MS SQL", "Git"],
     managerial: ["Karar verme", "Takım koçluğu", "Önceliklendirme"]
   },
+  competencyDefinitions: [
+    {
+      name: "Analitik düşünme",
+      category: "core",
+      definition: "Veriyi, problemi ve bağlamı parçalarına ayırarak neden-sonuç ilişkisi kurabilme.",
+      expectedBehavior:
+        "Adayın belirsiz bir problemi nasıl yapılandırdığını, hangi verileri kullandığını ve kararını nasıl gerekçelendirdiğini somut örnekle anlatması beklenir."
+    },
+    {
+      name: "İletişim becerisi",
+      category: "core",
+      definition: "Bilgiyi doğru kişiye, doğru açıklıkta ve iş birliğini güçlendirecek şekilde aktarabilme.",
+      expectedBehavior:
+        "Adayın zor bir paydaş veya ekip iletişimi örneğinde mesajı nasıl netleştirdiğini ve sonucu nasıl takip ettiğini açıklaması beklenir."
+    },
+    {
+      name: "Sorumluluk bilinci",
+      category: "core",
+      definition: "Sahip olduğu işi takip etme, sonucu üstlenme ve aksiyonları zamanında tamamlama yaklaşımı.",
+      expectedBehavior:
+        "Adayın aksayan bir işte sorumluluk alıp nasıl toparladığını ve sonucu nasıl ölçtüğünü paylaşması beklenir."
+    }
+  ],
   evaluationPresets: {
     schoolDepartments: ["Bilgisayar Mühendisliği", "Yazılım Mühendisliği"],
     certificates: [],
@@ -61,6 +85,32 @@ const DEFAULT_HIRING_SETTINGS = {
   },
   notificationDefaults: {
     responseSlaDays: 15
+  },
+  messageTemplates: {
+    application_received_v1: {
+      subject: "{{companyName}} – Başvurunuz alındı",
+      body:
+        "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonu için başvurunuz tarafımıza ulaştı.\n\nEkibimiz başvurunuzu değerlendirmeye aldı. Süreçte yeni bir adım olduğunda sizinle tekrar paylaşacağız.",
+      ctaLabel: null
+    },
+    application_rejected_v1: {
+      subject: "{{companyName}} – Başvuru güncellemesi",
+      body:
+        "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonu için başvurunuzu değerlendirdik.\n\nBu aşamada sürece sizinle devam edemeyeceğiz.\n\nBaşvurunuz ve zamanınız için teşekkür eder, kariyer yolculuğunuzda başarılar dileriz.",
+      ctaLabel: null
+    },
+    interview_invitation_on_demand_v1: {
+      subject: "{{companyName}} – İlk görüşme davetiniz",
+      body:
+        "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonuna yaptığınız başvuru olumlu değerlendirilmiştir. Sizi ilk görüşmeye davet etmekten memnuniyet duyarız.\n\nGörüşmeyi size uygun bir zamanda aşağıdaki bağlantıdan başlatabilirsiniz.",
+      ctaLabel: "Görüşmeyi Başlat"
+    },
+    interview_invitation_reminder_v1: {
+      subject: "{{companyName}} – Görüşme hatırlatması",
+      body:
+        "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonu için görüşme davetiniz hâlâ geçerlidir.\n\nSüre dolmadan aşağıdaki bağlantıdan görüşmenizi başlatabilirsiniz.",
+      ctaLabel: "Görüşmeyi Başlat"
+    }
   }
 } as const;
 
@@ -129,6 +179,80 @@ function normalizeStringList(value: unknown, maxLength = 120) {
   );
 }
 
+function normalizeCompetencyCategory(value: unknown) {
+  return value === "core" || value === "functional" || value === "technical" || value === "managerial"
+    ? value
+    : null;
+}
+
+function normalizeCompetencyDefinitions(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [...DEFAULT_HIRING_SETTINGS.competencyDefinitions];
+  }
+
+  const seen = new Set<string>();
+  const normalized = value
+    .map((item) => {
+      const row = asObject(item);
+      const category = normalizeCompetencyCategory(row.category);
+      const name = normalizeOptionalString(typeof row.name === "string" ? row.name : undefined, 120);
+      const definition = normalizeOptionalString(
+        typeof row.definition === "string" ? row.definition : undefined,
+        1000
+      );
+
+      if (!category || !name || !definition) {
+        return null;
+      }
+
+      const dedupeKey = `${category}:${name.toLocaleLowerCase("tr-TR")}`;
+      if (seen.has(dedupeKey)) {
+        return null;
+      }
+      seen.add(dedupeKey);
+
+      return {
+        name,
+        category,
+        definition,
+        expectedBehavior: normalizeOptionalString(
+          typeof row.expectedBehavior === "string" ? row.expectedBehavior : undefined,
+          1500
+        )
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  return normalized.length > 0 ? normalized : [...DEFAULT_HIRING_SETTINGS.competencyDefinitions];
+}
+
+function normalizeMessageTemplates(value: unknown) {
+  const templates = asObject(value);
+  const normalized: Record<string, { subject: string; body: string; ctaLabel: string | null }> = {};
+
+  for (const [key, rawTemplate] of Object.entries(templates)) {
+    const safeKey = normalizeOptionalString(key, 120);
+    const row = asObject(rawTemplate);
+    const subject = normalizeOptionalString(typeof row.subject === "string" ? row.subject : undefined, 240);
+    const body = normalizeOptionalString(typeof row.body === "string" ? row.body : undefined, 5000);
+
+    if (!safeKey || !subject || !body) {
+      continue;
+    }
+
+    normalized[safeKey] = {
+      subject,
+      body,
+      ctaLabel: normalizeOptionalString(typeof row.ctaLabel === "string" ? row.ctaLabel : undefined, 80)
+    };
+  }
+
+  return {
+    ...DEFAULT_HIRING_SETTINGS.messageTemplates,
+    ...normalized
+  };
+}
+
 function normalizePositiveInteger(value: unknown, fallback: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return fallback;
@@ -183,11 +307,16 @@ function normalizeHiringSettings(value: unknown) {
         const values = normalizeStringList(competencyLibrary.functional);
         return values.length > 0 ? values : [...DEFAULT_HIRING_SETTINGS.competencyLibrary.functional];
       })(),
+      technical: (() => {
+        const values = normalizeStringList(competencyLibrary.technical);
+        return values.length > 0 ? values : [...DEFAULT_HIRING_SETTINGS.competencyLibrary.technical];
+      })(),
       managerial: (() => {
         const values = normalizeStringList(competencyLibrary.managerial);
         return values.length > 0 ? values : [...DEFAULT_HIRING_SETTINGS.competencyLibrary.managerial];
       })()
     },
+    competencyDefinitions: normalizeCompetencyDefinitions(root.competencyDefinitions),
     evaluationPresets: {
       schoolDepartments: (() => {
         const values = normalizeStringList(evaluationPresets.schoolDepartments);
@@ -266,7 +395,8 @@ function normalizeHiringSettings(value: unknown) {
         notificationDefaults.responseSlaDays,
         DEFAULT_HIRING_SETTINGS.notificationDefaults.responseSlaDays
       )
-    }
+    },
+    messageTemplates: normalizeMessageTemplates(root.messageTemplates)
   };
 }
 

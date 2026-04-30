@@ -305,25 +305,36 @@ function overlapsMissingInformation(risk: string, missingInfo: string[]) {
   });
 }
 
-function riskSummary(applicant: JobInboxApplicant): { count: number; tags: string[] } {
+function riskSummary(applicant: JobInboxApplicant): { count: number; tags: string[]; details: string[] } {
   const tags: string[] = [];
+  const details: string[] = [];
   if (!applicant.cvStatus.hasCv) tags.push("CV Yok");
-  else if (!applicant.cvStatus.isParsed) tags.push("CV İşlenmedi");
+  if (!applicant.cvStatus.hasCv) details.push("Adayın CV dosyası henüz yüklenmemiş.");
+  else if (!applicant.cvStatus.isParsed) {
+    tags.push("CV İşlenmedi");
+    details.push("CV yüklü ancak parse/AI değerlendirme çıktısı henüz hazır değil.");
+  }
   if (applicant.fitScore) {
     const overallScore = applicant.fitScore.overallScore;
     const missingInfo = [...new Set(applicant.fitScore.missingInfo.map(normalizeSignalText).filter(Boolean))];
     const risks = [...new Set(applicant.fitScore.risks.map(normalizeSignalText).filter(Boolean))]
       .filter((item) => !overlapsMissingInformation(item, missingInfo));
-    if (missingInfo.length > 0) tags.push(`${missingInfo.length} Eksik Bilgi`);
+    if (missingInfo.length > 0) {
+      tags.push(`${missingInfo.length} Eksik Bilgi`);
+      details.push(...missingInfo.map((item) => `Eksik bilgi: ${item}`));
+    }
     if (risks.length > 0) {
       tags.push(`${risks.length} Uyarı`);
+      details.push(...risks.map((item) => `Uyarı: ${item}`));
     } else if (overallScore < 30) {
       tags.push("Kritik Uyum Riski");
+      details.push("Genel uyum skoru kritik eşik altında.");
     } else if (overallScore < 50) {
       tags.push("Düşük Uyum Riski");
+      details.push("Genel uyum skoru düşük eşikte.");
     }
   }
-  return { count: tags.length, tags };
+  return { count: tags.length, tags, details };
 }
 
 /** Ön eleme tamamlanmış, recruiter'ın karar vermesi beklenen adaylar */
@@ -1390,20 +1401,31 @@ export default function JobDetailPage() {
                             </td>
                             <td>
                               {risk.count > 0 ? (
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                  {risk.tags.map((tag, index) => (
-                                    <span
-                                      key={tag}
-                                      style={{
-                                        color: "var(--risk)",
-                                        fontSize: 12,
-                                        fontWeight: 600,
-                                        whiteSpace: "nowrap",
-                                      }}
-                                    >
-                                      {translateUiText(tag, locale)}{index < risk.tags.length - 1 ? " ·" : ""}
+                                <div
+                                  style={{ display: "grid", gap: 5 }}
+                                  title={risk.details.length > 0 ? risk.details.join("\n") : undefined}
+                                >
+                                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                    {risk.tags.map((tag, index) => (
+                                      <span
+                                        key={tag}
+                                        style={{
+                                          color: "var(--risk)",
+                                          fontSize: 12,
+                                          fontWeight: 700,
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        {translateUiText(tag, locale)}{index < risk.tags.length - 1 ? " ·" : ""}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  {risk.details.length > 0 ? (
+                                    <span className="text-xs text-muted" style={{ lineHeight: 1.35 }}>
+                                      {translateUiText(risk.details[0] ?? "", locale)}
+                                      {risk.details.length > 1 ? ` +${risk.details.length - 1}` : ""}
                                     </span>
-                                  ))}
+                                  ) : null}
                                 </div>
                               ) : (
                                 <span className="text-muted text-sm">—</span>

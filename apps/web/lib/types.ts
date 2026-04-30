@@ -34,14 +34,31 @@ export type TenantProfileReadModel = {
   timezone: string;
 };
 
+export type CompetencyCategory = "core" | "functional" | "technical" | "managerial";
+
+export type CompetencyDefinition = {
+  name: string;
+  category: CompetencyCategory;
+  definition: string;
+  expectedBehavior: string | null;
+};
+
+export type TenantMessageTemplate = {
+  subject: string;
+  body: string;
+  ctaLabel: string | null;
+};
+
 export type TenantHiringSettings = {
   departments: string[];
   titleLevels: string[];
   competencyLibrary: {
     core: string[];
     functional: string[];
+    technical: string[];
     managerial: string[];
   };
+  competencyDefinitions: CompetencyDefinition[];
   evaluationPresets: {
     schoolDepartments: string[];
     certificates: string[];
@@ -67,6 +84,7 @@ export type TenantHiringSettings = {
   notificationDefaults: {
     responseSlaDays: number;
   };
+  messageTemplates: Record<string, TenantMessageTemplate>;
 };
 
 export type TenantHiringSettingsReadModel = {
@@ -237,8 +255,10 @@ export type JobProfile = {
   competencySets: {
     core: string[];
     functional: string[];
+    technical: string[];
     managerial: string[];
   };
+  competencyDefinitions: CompetencyDefinition[];
   evaluationCriteria: {
     educationLevel: string | null;
     schoolDepartments: string[];
@@ -251,6 +271,10 @@ export type JobProfile = {
   workflow: {
     responseSlaDays: number | null;
     hideCompensationOnPosting: boolean;
+  };
+  branding: {
+    logoUrl: string | null;
+    imageUrls: string[];
   };
   notes: string | null;
 };
@@ -1786,6 +1810,8 @@ export type PublicInterviewSessionView = {
     status: "PENDING" | "GRANTED" | "WITHDRAWN";
     noticeVersion: string;
     policyVersion: string | null;
+    summary: string;
+    explicitText: string;
     grantedAt: string | null;
     withdrawnAt: string | null;
   };

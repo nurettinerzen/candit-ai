@@ -63,7 +63,27 @@ class JobProfileCompetencySetsDto {
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
+  technical?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
   managerial?: string[];
+}
+
+class JobProfileCompetencyDefinitionDto {
+  @IsString()
+  name!: string;
+
+  @IsString()
+  category!: string;
+
+  @IsString()
+  definition!: string;
+
+  @IsString()
+  @IsOptional()
+  expectedBehavior?: string;
 }
 
 class JobProfileEvaluationCriteriaDto {
@@ -110,6 +130,17 @@ class JobProfileWorkflowDto {
   hideCompensationOnPosting?: boolean;
 }
 
+class JobProfileBrandingDto {
+  @IsString()
+  @IsOptional()
+  logoUrl?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  imageUrls?: string[];
+}
+
 class JobProfileDto {
   @IsString()
   @IsOptional()
@@ -125,6 +156,12 @@ class JobProfileDto {
   @IsOptional()
   competencySets?: JobProfileCompetencySetsDto;
 
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => JobProfileCompetencyDefinitionDto)
+  @IsOptional()
+  competencyDefinitions?: JobProfileCompetencyDefinitionDto[];
+
   @ValidateNested()
   @Type(() => JobProfileEvaluationCriteriaDto)
   @IsOptional()
@@ -139,6 +176,11 @@ class JobProfileDto {
   @Type(() => JobProfileWorkflowDto)
   @IsOptional()
   workflow?: JobProfileWorkflowDto;
+
+  @ValidateNested()
+  @Type(() => JobProfileBrandingDto)
+  @IsOptional()
+  branding?: JobProfileBrandingDto;
 
   @IsString()
   @IsOptional()

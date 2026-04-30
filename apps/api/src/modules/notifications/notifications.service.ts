@@ -22,6 +22,32 @@ function asRecord(value: unknown) {
   return value as Record<string, unknown>;
 }
 
+function interpolateTemplate(value: string, variables: Record<string, string>) {
+  return value.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => variables[key] ?? "");
+}
+
+function readTenantMessageTemplate(
+  settings: Prisma.JsonValue | null | undefined,
+  templateKey: string,
+  variables: Record<string, string>
+) {
+  const root = asRecord(settings);
+  const templates = asRecord(root.messageTemplates);
+  const template = asRecord(templates[templateKey]);
+  const subject = asString(template.subject);
+  const body = asString(template.body);
+
+  if (!subject || !body) {
+    return null;
+  }
+
+  return {
+    subject: interpolateTemplate(subject, variables),
+    body: interpolateTemplate(body, variables),
+    ctaLabel: asString(template.ctaLabel)
+  };
+}
+
 class ConsoleNotificationProvider implements NotificationProvider {
   constructor(readonly channel: "email" | "sms" | "in_app") {}
 
@@ -507,7 +533,7 @@ export class NotificationsService {
       }),
       this.prisma.tenant.findUnique({
         where: { id: input.tenantId },
-        select: { name: true }
+        select: { name: true, hiringSettingsJson: true }
       })
     ]);
     const companyName = tenant?.name ?? "Candit.ai";
@@ -640,24 +666,41 @@ export class NotificationsService {
       };
     })();
 
+    const templateOverride = readTenantMessageTemplate(tenant?.hiringSettingsJson, input.templateKey, {
+      candidateName,
+      companyName,
+      jobTitle: title,
+      interviewLink,
+      deadline: deadlineText
+    });
     const extra = (messageByTemplate as { extraMetadata?: Record<string, unknown> }).extraMetadata ?? {};
+    const resolvedMessage = {
+      ...messageByTemplate,
+      subject: templateOverride?.subject ?? messageByTemplate.subject,
+      body: templateOverride?.body ?? messageByTemplate.body,
+      extraMetadata: {
+        ...extra,
+        ...(templateOverride?.ctaLabel ? { primaryCtaLabel: templateOverride.ctaLabel } : {})
+      }
+    };
+    const resolvedExtra = resolvedMessage.extraMetadata as Record<string, unknown>;
 
     const result = await this.send({
       tenantId: input.tenantId,
       channel: "email",
       to: recipient,
-      subject: messageByTemplate.subject,
-      body: messageByTemplate.body,
+      subject: resolvedMessage.subject,
+      body: resolvedMessage.body,
       metadata: {
         ...notificationMetadata,
-        ...extra,
+        ...resolvedExtra,
         sessionId: session.id,
         applicationId: session.applicationId,
         eventType: input.eventType,
         templateKey: input.templateKey,
         interviewLink,
         primaryLink:
-          asString(extra.primaryLink as string | undefined) ??
+          asString(resolvedExtra.primaryLink as string | undefined) ??
           asString(notificationMetadata.primaryLink) ??
           (input.templateKey === "interview_invitation_on_demand_v1" ||
           input.templateKey === "interview_invitation_reminder_v1"
@@ -666,10 +709,10 @@ export class NotificationsService {
               ? interviewLink
               : null),
         primaryCtaLabel:
-          asString(extra.primaryCtaLabel as string | undefined) ??
+          asString(resolvedExtra.primaryCtaLabel as string | undefined) ??
           asString(notificationMetadata.primaryCtaLabel) ??
           "G\u00F6r\u00FC\u015Fmeyi Ba\u015Flat",
-        showPrimaryCta: extra.showPrimaryCta !== undefined ? extra.showPrimaryCta : input.templateKey !== "interview_cancelled_v1",
+        showPrimaryCta: resolvedExtra.showPrimaryCta !== undefined ? resolvedExtra.showPrimaryCta : input.templateKey !== "interview_cancelled_v1",
         showSecondaryCta: false,
         scheduledAt: session.scheduledAt?.toISOString() ?? null,
         deadlineAt: session.candidateAccessExpiresAt?.toISOString() ?? null
@@ -731,7 +774,8 @@ export class NotificationsService {
           id: input.tenantId
         },
         select: {
-          name: true
+          name: true,
+          hiringSettingsJson: true
         }
       })
     ]);
@@ -761,13 +805,20 @@ export class NotificationsService {
       candidateName,
       jobTitle
     });
+    const templateOverride = readTenantMessageTemplate(tenant?.hiringSettingsJson, email.templateKey, {
+      candidateName,
+      companyName,
+      jobTitle,
+      interviewLink: "",
+      deadline: ""
+    });
 
     const result = await this.send({
       tenantId: input.tenantId,
       channel: "email",
       to: recipient,
-      subject: email.subject,
-      body: email.body,
+      subject: templateOverride?.subject ?? email.subject,
+      body: templateOverride?.body ?? email.body,
       metadata: {
         eventType: input.eventType,
         applicationId: application.id,
@@ -882,7 +933,8 @@ export class NotificationsService {
           id: input.tenantId
         },
         select: {
-          name: true
+          name: true,
+          hiringSettingsJson: true
         }
       })
     ]);
@@ -955,12 +1007,20 @@ export class NotificationsService {
       };
     }
 
+    const templateOverride = readTenantMessageTemplate(tenant?.hiringSettingsJson, email.templateKey, {
+      candidateName,
+      companyName,
+      jobTitle,
+      interviewLink: "",
+      deadline: ""
+    });
+
     const result = await this.send({
       tenantId: input.tenantId,
       channel: "email",
       to: recipient,
-      subject: email.subject,
-      body: email.body,
+      subject: templateOverride?.subject ?? email.subject,
+      body: templateOverride?.body ?? email.body,
       metadata: {
         eventType: input.eventType,
         applicationId: application.id,

@@ -133,8 +133,15 @@ type JobProfileInterviewSignals = {
   competencySets: {
     core: string[];
     functional: string[];
+    technical: string[];
     managerial: string[];
   };
+  competencyDefinitions: Array<{
+    name: string;
+    category: "core" | "functional" | "technical" | "managerial";
+    definition: string;
+    expectedBehavior: string | null;
+  }>;
   applicantQuestions: string[];
 };
 
@@ -236,6 +243,32 @@ function asStringArray(value: unknown) {
     .filter((item): item is string => typeof item === "string")
     .map((item) => sanitizeText(item))
     .filter(Boolean);
+}
+
+function asOptionalText(value: unknown, fallback: string | null = null) {
+  return typeof value === "string" && sanitizeText(value) ? sanitizeText(value) : fallback;
+}
+
+function resolveHiringConsentSettings(raw: Prisma.JsonValue | null | undefined) {
+  const settings = asObject(raw);
+  const consent = asObject(settings.dataProcessingConsent);
+
+  return {
+    noticeVersion:
+      asOptionalText(consent.noticeVersion, INTERVIEW_CONSENT_NOTICE_VERSION) ?? INTERVIEW_CONSENT_NOTICE_VERSION,
+    policyVersion: asOptionalText(consent.policyVersion, INTERVIEW_CONSENT_POLICY_VERSION),
+    summary:
+      asOptionalText(
+        consent.summary,
+        "Aday verileri işe alım değerlendirme süreci kapsamında işlenir."
+      ) ?? "Aday verileri işe alım değerlendirme süreci kapsamında işlenir.",
+    explicitText:
+      asOptionalText(
+        consent.explicitText,
+        "Ses kaydı alınmasını, transcript üretilmesini ve görüşme çıktılarının değerlendirme amacıyla kullanılmasını kabul ediyorum."
+      ) ??
+      "Ses kaydı alınmasını, transcript üretilmesini ve görüşme çıktılarının değerlendirme amacıyla kullanılmasını kabul ediyorum."
+  };
 }
 
 function countWords(input: string) {
@@ -381,6 +414,8 @@ type PublicSessionConsentView = {
   status: PublicSessionConsentStatus;
   noticeVersion: string;
   policyVersion: string | null;
+  summary: string;
+  explicitText: string;
   grantedAt: Date | null;
   withdrawnAt: Date | null;
 };
@@ -4205,6 +4240,8 @@ export class InterviewsService {
         status: consent.status,
         noticeVersion: consent.noticeVersion,
         policyVersion: consent.policyVersion,
+        summary: consent.summary,
+        explicitText: consent.explicitText,
         grantedAt: consent.grantedAt,
         withdrawnAt: consent.withdrawnAt
       }
@@ -4214,11 +4251,18 @@ export class InterviewsService {
   private async resolvePublicSessionConsentView(
     session: Pick<PublicSessionRow, "tenantId" | "consentRecordId" | "application">
   ): Promise<PublicSessionConsentView> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: session.tenantId },
+      select: { hiringSettingsJson: true }
+    });
+    const consentSettings = resolveHiringConsentSettings(tenant?.hiringSettingsJson);
     const fallback: PublicSessionConsentView = {
       required: true,
       status: "PENDING",
-      noticeVersion: INTERVIEW_CONSENT_NOTICE_VERSION,
-      policyVersion: INTERVIEW_CONSENT_POLICY_VERSION,
+      noticeVersion: consentSettings.noticeVersion,
+      policyVersion: consentSettings.policyVersion,
+      summary: consentSettings.summary,
+      explicitText: consentSettings.explicitText,
       grantedAt: null,
       withdrawnAt: null
     };
@@ -4255,8 +4299,10 @@ export class InterviewsService {
           : record.consentGiven
             ? "GRANTED"
             : "PENDING",
-      noticeVersion: record.noticeVersion || INTERVIEW_CONSENT_NOTICE_VERSION,
-      policyVersion: record.policyVersion ?? INTERVIEW_CONSENT_POLICY_VERSION,
+      noticeVersion: record.noticeVersion || consentSettings.noticeVersion,
+      policyVersion: record.policyVersion ?? consentSettings.policyVersion,
+      summary: consentSettings.summary,
+      explicitText: consentSettings.explicitText,
       grantedAt: record.consentGiven ? record.capturedAt : null,
       withdrawnAt: record.withdrawnAt
     };
@@ -4267,14 +4313,19 @@ export class InterviewsService {
     traceId?: string;
     source: string;
   }) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: input.session.tenantId },
+      select: { hiringSettingsJson: true }
+    });
+    const consentSettings = resolveHiringConsentSettings(tenant?.hiringSettingsJson);
     const consentRecord = await this.prisma.consentRecord.create({
       data: {
         tenantId: input.session.tenantId,
         candidateId: input.session.application.candidate.id,
         context: ConsentContext.INTERVIEW_RECORDING,
         consentGiven: true,
-        noticeVersion: INTERVIEW_CONSENT_NOTICE_VERSION,
-        policyVersion: INTERVIEW_CONSENT_POLICY_VERSION
+        noticeVersion: consentSettings.noticeVersion,
+        policyVersion: consentSettings.policyVersion
       }
     });
 
@@ -4650,6 +4701,35 @@ export class InterviewsService {
   private readJobProfileInterviewSignals(raw: Prisma.JsonValue | null | undefined): JobProfileInterviewSignals {
     const root = asObject(raw);
     const competencySets = asObject(root.competencySets);
+    const competencyDefinitions = Array.isArray(root.competencyDefinitions)
+      ? root.competencyDefinitions
+          .map((item) => {
+            const row = asObject(item);
+            const category = typeof row.category === "string" ? row.category : "";
+            const name = typeof row.name === "string" ? sanitizeText(row.name) : "";
+            const definition = typeof row.definition === "string" ? sanitizeText(row.definition) : "";
+
+            if (
+              (category !== "core" && category !== "functional" && category !== "technical" && category !== "managerial") ||
+              !name ||
+              !definition
+            ) {
+              return null;
+            }
+
+            return {
+              name,
+              category: category as "core" | "functional" | "technical" | "managerial",
+              definition,
+              expectedBehavior:
+                typeof row.expectedBehavior === "string" && sanitizeText(row.expectedBehavior)
+                  ? sanitizeText(row.expectedBehavior)
+                  : null
+            };
+          })
+          .filter((item): item is NonNullable<typeof item> => Boolean(item))
+          .slice(0, 40)
+      : [];
 
     return {
       titleLevel:
@@ -4660,28 +4740,42 @@ export class InterviewsService {
       competencySets: {
         core: asStringArray(competencySets.core).slice(0, 3),
         functional: asStringArray(competencySets.functional).slice(0, 4),
+        technical: asStringArray(competencySets.technical).slice(0, 4),
         managerial: asStringArray(competencySets.managerial).slice(0, 3)
       },
+      competencyDefinitions,
       applicantQuestions: asStringArray(root.applicantQuestions).slice(0, 4)
     };
   }
 
   private createCompetencyInterviewPrompt(input: {
     competency: string;
-    family: "core" | "functional" | "managerial";
+    family: "core" | "functional" | "technical" | "managerial";
     jobTitle: string;
+    definition?: string | null;
+    expectedBehavior?: string | null;
   }) {
     const competency = sanitizeText(input.competency).replace(/[.!?]+$/g, "");
+    const definition = input.definition
+      ? ` Şirket içi tanım: ${sanitizeText(input.definition).replace(/[.!?]+$/g, "")}.`
+      : "";
+    const expected = input.expectedBehavior
+      ? ` Beklenen gösterge: ${sanitizeText(input.expectedBehavior).replace(/[.!?]+$/g, "")}.`
+      : "";
 
     if (input.family === "functional") {
-      return `${competency} konusunda bu rol için kritik olacak bir problemi nasıl çözdüğünüzü somut bir vaka üzerinden anlatır mısınız?`;
+      return `${competency} konusunda bu rol için kritik olacak bir problemi nasıl çözdüğünüzü somut bir vaka üzerinden anlatır mısınız?${definition}${expected}`;
+    }
+
+    if (input.family === "technical") {
+      return `${competency} teknik yetkinliğini kullandığınız gerçek bir projeyi, aldığınız kararları ve sonucu ile birlikte anlatır mısınız?${definition}${expected}`;
     }
 
     if (input.family === "managerial") {
-      return `${competency} tarafında ekip veya paydaş yönetimi gerektiren bir durum yaşadığınızda nasıl aksiyon aldığınızı örnekle paylaşır mısınız?`;
+      return `${competency} tarafında ekip veya paydaş yönetimi gerektiren bir durum yaşadığınızda nasıl aksiyon aldığınızı örnekle paylaşır mısınız?${definition}${expected}`;
     }
 
-    return `${input.jobTitle} rolünde ${competency} yetkinliğinizi gösteren somut bir örnek paylaşır mısınız?`;
+    return `${input.jobTitle} rolünde ${competency} yetkinliğinizi gösteren somut bir örnek paylaşır mısınız?${definition}${expected}`;
   }
 
   private createResponsibilityInterviewPrompt(responsibility: string) {
@@ -4716,6 +4810,15 @@ export class InterviewsService {
         ...draft
       });
     };
+    const definitionFor = (
+      family: "core" | "functional" | "technical" | "managerial",
+      competency: string
+    ) =>
+      input.profile.competencyDefinitions.find(
+        (definition) =>
+          definition.category === family &&
+          definition.name.toLocaleLowerCase("tr-TR") === competency.toLocaleLowerCase("tr-TR")
+      );
 
     input.profile.applicantQuestions.forEach((question) => {
       pushDraft({
@@ -4742,6 +4845,7 @@ export class InterviewsService {
     });
 
     input.profile.competencySets.functional.forEach((competency) => {
+      const definition = definitionFor("functional", competency);
       pushDraft({
         key: toSlugKey(competency, `functional_${drafts.length + 1}`),
         questionKey: `functional_question_${drafts.length + 1}`,
@@ -4749,7 +4853,9 @@ export class InterviewsService {
         prompt: this.createCompetencyInterviewPrompt({
           competency,
           family: "functional",
-          jobTitle: roleLabel
+          jobTitle: roleLabel,
+          definition: definition?.definition,
+          expectedBehavior: definition?.expectedBehavior
         }),
         followUps: [],
         source: "suggested",
@@ -4757,7 +4863,27 @@ export class InterviewsService {
       });
     });
 
+    input.profile.competencySets.technical.forEach((competency) => {
+      const definition = definitionFor("technical", competency);
+      pushDraft({
+        key: toSlugKey(competency, `technical_${drafts.length + 1}`),
+        questionKey: `technical_question_${drafts.length + 1}`,
+        category: "teknik_yetkinlik",
+        prompt: this.createCompetencyInterviewPrompt({
+          competency,
+          family: "technical",
+          jobTitle: roleLabel,
+          definition: definition?.definition,
+          expectedBehavior: definition?.expectedBehavior
+        }),
+        followUps: [],
+        source: "suggested",
+        reason: "Teknik yetkinlik setinden türetildi"
+      });
+    });
+
     input.profile.competencySets.managerial.forEach((competency) => {
+      const definition = definitionFor("managerial", competency);
       pushDraft({
         key: toSlugKey(competency, `managerial_${drafts.length + 1}`),
         questionKey: `managerial_question_${drafts.length + 1}`,
@@ -4765,7 +4891,9 @@ export class InterviewsService {
         prompt: this.createCompetencyInterviewPrompt({
           competency,
           family: "managerial",
-          jobTitle: roleLabel
+          jobTitle: roleLabel,
+          definition: definition?.definition,
+          expectedBehavior: definition?.expectedBehavior
         }),
         followUps: [],
         source: "suggested",
@@ -4774,6 +4902,7 @@ export class InterviewsService {
     });
 
     input.profile.competencySets.core.forEach((competency) => {
+      const definition = definitionFor("core", competency);
       pushDraft({
         key: toSlugKey(competency, `core_${drafts.length + 1}`),
         questionKey: `core_question_${drafts.length + 1}`,
@@ -4781,7 +4910,9 @@ export class InterviewsService {
         prompt: this.createCompetencyInterviewPrompt({
           competency,
           family: "core",
-          jobTitle: roleLabel
+          jobTitle: roleLabel,
+          definition: definition?.definition,
+          expectedBehavior: definition?.expectedBehavior
         }),
         followUps: [],
         source: "suggested",
@@ -4869,6 +5000,11 @@ export class InterviewsService {
         signal,
         category: "fonksiyonel_yetkinlik",
         reason: `${input.jobTitle} için tanımlanan fonksiyonel yetkinlikten üretildi`
+      })),
+      ...input.profile.competencySets.technical.map((signal) => ({
+        signal,
+        category: "teknik_yetkinlik",
+        reason: `${input.jobTitle} için tanımlanan teknik yetkinlikten üretildi`
       })),
       ...input.profile.competencySets.managerial.map((signal) => ({
         signal,

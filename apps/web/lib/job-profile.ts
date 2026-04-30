@@ -29,14 +29,19 @@ export const TITLE_LEVEL_SUGGESTIONS = [
 export const QUALIFICATION_PRESET_LIBRARY = [
   "Bilgisayar Mühendisliği",
   "Yazılım Mühendisliği",
+  "İleri seviye İngilizce",
+  "B sınıfı ehliyet",
+  "SAP",
+  "Logo Tiger"
+] as const;
+
+export const TECHNICAL_PRESET_LIBRARY = [
   ".NET",
   "ASP.NET Core",
   "MS SQL",
   "REST API",
   "Git",
   "Code review",
-  "İleri seviye İngilizce",
-  "B sınıfı ehliyet",
   "SAP",
   "Logo Tiger"
 ] as const;
@@ -62,8 +67,10 @@ export function createEmptyJobProfile(): JobProfile {
     competencySets: {
       core: [],
       functional: [],
+      technical: [],
       managerial: []
     },
+    competencyDefinitions: [],
     evaluationCriteria: {
       educationLevel: null,
       schoolDepartments: [],
@@ -76,6 +83,10 @@ export function createEmptyJobProfile(): JobProfile {
     workflow: {
       responseSlaDays: DEFAULT_RESPONSE_SLA_DAYS,
       hideCompensationOnPosting: true
+    },
+    branding: {
+      logoUrl: null,
+      imageUrls: []
     },
     notes: null
   };
@@ -90,8 +101,24 @@ export function normalizeJobProfile(profile: Partial<JobProfile> | JobProfile | 
     competencySets: {
       core: normalizeList(profile?.competencySets?.core),
       functional: normalizeList(profile?.competencySets?.functional),
+      technical: normalizeList(profile?.competencySets?.technical),
       managerial: normalizeList(profile?.competencySets?.managerial)
     },
+    competencyDefinitions: Array.isArray(profile?.competencyDefinitions)
+      ? profile.competencyDefinitions
+          .map((definition) => ({
+            name: definition.name.trim(),
+            category: definition.category,
+            definition: definition.definition.trim(),
+            expectedBehavior: cleanText(definition.expectedBehavior)
+          }))
+          .filter(
+            (definition) =>
+              definition.name &&
+              definition.definition &&
+              ["core", "functional", "technical", "managerial"].includes(definition.category)
+          )
+      : [],
     evaluationCriteria: {
       educationLevel: cleanText(profile?.evaluationCriteria?.educationLevel),
       schoolDepartments: normalizeList(profile?.evaluationCriteria?.schoolDepartments),
@@ -110,6 +137,10 @@ export function normalizeJobProfile(profile: Partial<JobProfile> | JobProfile | 
           ? profile.workflow.responseSlaDays
           : empty.workflow.responseSlaDays,
       hideCompensationOnPosting: profile?.workflow?.hideCompensationOnPosting !== false
+    },
+    branding: {
+      logoUrl: cleanText(profile?.branding?.logoUrl),
+      imageUrls: normalizeList(profile?.branding?.imageUrls)
     },
     notes: cleanText(profile?.notes)
   };

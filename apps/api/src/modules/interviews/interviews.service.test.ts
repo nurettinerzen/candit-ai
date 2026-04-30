@@ -99,6 +99,11 @@ function createService() {
         };
       }
     },
+    tenant: {
+      findUnique: async () => ({
+        hiringSettingsJson: null
+      })
+    },
     integrationConnection: {
       findMany: async () => integrationConnections
     }

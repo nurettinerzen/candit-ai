@@ -297,6 +297,13 @@ textarea {
   font-family: inherit;
 }
 
+input,
+select,
+textarea {
+  color: var(--text);
+  background-color: var(--surface);
+}
+
 ::selection {
   background: rgba(80, 70, 229, 0.15);
   color: var(--text);

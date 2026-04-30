@@ -15,10 +15,13 @@ import {
   DEFAULT_RESPONSE_SLA_DAYS,
   normalizeJobProfile,
   QUALIFICATION_PRESET_LIBRARY,
+  TECHNICAL_PRESET_LIBRARY,
   TITLE_LEVEL_SUGGESTIONS
 } from "../lib/job-profile";
 import type {
   BillingOverviewReadModel,
+  CompetencyCategory,
+  CompetencyDefinition,
   Job,
   JobProfile,
   JobStatus,
@@ -99,6 +102,46 @@ function inferWorkSelections(shiftType: string | null | undefined) {
   };
 }
 
+function competencyKey(category: CompetencyCategory, name: string) {
+  return `${category}:${name.trim().toLocaleLowerCase("tr-TR")}`;
+}
+
+function attachSelectedCompetencyDefinitions(
+  profile: JobProfile,
+  hiringSettings: TenantHiringSettings | null
+) {
+  const selected = new Set<string>();
+  const addSelected = (category: CompetencyCategory, values: string[]) => {
+    values.forEach((value) => selected.add(competencyKey(category, value)));
+  };
+
+  addSelected("core", profile.competencySets.core);
+  addSelected("functional", profile.competencySets.functional);
+  addSelected("technical", profile.competencySets.technical);
+  addSelected("managerial", profile.competencySets.managerial);
+
+  const definitions = new Map<string, CompetencyDefinition>();
+
+  for (const definition of profile.competencyDefinitions) {
+    const key = competencyKey(definition.category, definition.name);
+    if (selected.has(key)) {
+      definitions.set(key, definition);
+    }
+  }
+
+  for (const definition of hiringSettings?.competencyDefinitions ?? []) {
+    const key = competencyKey(definition.category, definition.name);
+    if (selected.has(key)) {
+      definitions.set(key, definition);
+    }
+  }
+
+  return {
+    ...profile,
+    competencyDefinitions: [...definitions.values()]
+  };
+}
+
 function StringListEditor({
   title,
   hint,
@@ -124,6 +167,19 @@ function StringListEditor({
       onChange(updated);
     }
     setDraft("");
+  }
+
+  function togglePreset(preset: string) {
+    const selected = values.some(
+      (value) => value.trim().toLocaleLowerCase("tr-TR") === preset.trim().toLocaleLowerCase("tr-TR")
+    );
+
+    if (selected) {
+      onChange(values.filter((value) => value.trim().toLocaleLowerCase("tr-TR") !== preset.trim().toLocaleLowerCase("tr-TR")));
+      return;
+    }
+
+    addValue(preset);
   }
 
   return (
@@ -160,17 +216,28 @@ function StringListEditor({
       </div>
       {presets && presets.length > 0 ? (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {presets.map((preset) => (
+          {presets.map((preset) => {
+            const selected = values.some(
+              (value) => value.trim().toLocaleLowerCase("tr-TR") === preset.trim().toLocaleLowerCase("tr-TR")
+            );
+
+            return (
             <button
               key={preset}
               type="button"
-              className="ghost-button"
-              style={{ fontSize: 12, padding: "4px 10px" }}
-              onClick={() => addValue(preset)}
+              className={selected ? "button-link" : "ghost-button"}
+              style={{
+                fontSize: 12,
+                padding: "4px 10px",
+                boxShadow: selected ? "0 6px 18px rgba(80,70,229,0.18)" : undefined
+              }}
+              onClick={() => togglePreset(preset)}
+              aria-pressed={selected}
             >
-              {preset}
+              {selected ? "✓ " : ""}{preset}{selected ? " ×" : ""}
             </button>
-          ))}
+            );
+          })}
         </div>
       ) : null}
       {values.length > 0 ? (
@@ -181,12 +248,13 @@ function StringListEditor({
               type="button"
               onClick={() => onChange(values.filter((item) => item !== value))}
               style={{
-                border: "1px solid var(--border)",
-                background: "var(--surface)",
-                color: "var(--text-primary)",
+                border: "1px solid color-mix(in srgb, var(--primary, #6366f1) 36%, var(--border) 64%)",
+                background: "linear-gradient(135deg, rgba(99,102,241,0.14), rgba(14,165,233,0.08))",
+                color: "var(--text)",
                 borderRadius: 999,
                 padding: "6px 10px",
                 fontSize: 12,
+                fontWeight: 700,
                 cursor: "pointer"
               }}
               title="Kaldır"
@@ -364,7 +432,10 @@ export function JobEditorForm({ mode, jobId }: JobEditorFormProps) {
     [requirements]
   );
 
-  const normalizedJobProfile = useMemo(() => normalizeJobProfile(jobProfile), [jobProfile]);
+  const normalizedJobProfile = useMemo(
+    () => attachSelectedCompetencyDefinitions(normalizeJobProfile(jobProfile), hiringSettings),
+    [hiringSettings, jobProfile]
+  );
   const departmentSuggestions = useMemo(
     () =>
       Array.from(
@@ -384,8 +455,20 @@ export function JobEditorForm({ mode, jobId }: JobEditorFormProps) {
       Array.from(
         new Set([
           ...(hiringSettings?.competencyLibrary.functional ?? []),
+          "Süreç yönetimi",
+          "Paydaş koordinasyonu",
+          "Problem çözme"
+        ])
+      ),
+    [hiringSettings]
+  );
+  const technicalPresetLibrary = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...(hiringSettings?.competencyLibrary.technical ?? []),
           ...(hiringSettings?.evaluationPresets.tools ?? []),
-          ...QUALIFICATION_PRESET_LIBRARY
+          ...TECHNICAL_PRESET_LIBRARY
         ])
       ),
     [hiringSettings]
@@ -756,10 +839,79 @@ export function JobEditorForm({ mode, jobId }: JobEditorFormProps) {
               placeholder="Örn: Günlük kapanış süreçlerini yürütmek"
             />
 
+            <div className="panel nested-panel">
+              <div className="section-head" style={{ marginBottom: 8 }}>
+                <strong>Aranan Nitelikler</strong>
+                <button type="button" className="ghost-button" onClick={() => addRequirement()}>
+                  + Nitelik Ekle
+                </button>
+              </div>
+              <p className="small text-muted" style={{ marginTop: 0 }}>
+                Görev tanımının hemen altında tutulan nitelikler hem ilan metnini hem de AI screening bağlamını besler.
+              </p>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                {QUALIFICATION_PRESET_LIBRARY.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className="ghost-button"
+                    style={{ fontSize: 12, padding: "4px 10px" }}
+                    onClick={() => addRequirement(preset, true)}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+
+              {requirements.map((item, index) => (
+                <div
+                  key={`req-${index}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 12px",
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    marginBottom: 8
+                  }}
+                >
+                  <input
+                    type="text"
+                    className="input"
+                    value={item.text}
+                    onChange={(event) => updateRequirementText(index, event.target.value)}
+                    placeholder="Nitelik yazın..."
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleRequirementRequired(index)}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "4px 8px",
+                      borderRadius: 999,
+                      border: "1px solid var(--border)",
+                      background: item.required ? "rgba(34,197,94,0.12)" : "rgba(245,158,11,0.12)",
+                      color: item.required ? "var(--success, #22c55e)" : "var(--warn, #f59e0b)"
+                    }}
+                  >
+                    {item.required ? "Zorunlu" : "Tercih Edilen"}
+                  </button>
+                  <button type="button" className="ghost-button" onClick={() => removeRequirement(index)}>
+                    Sil
+                  </button>
+                </div>
+              ))}
+            </div>
+
             <div className="inline-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
               <StringListEditor
-                title="Temel Yetkinlikler"
-                hint="Örn: analitik düşünme, takım çalışması, sahiplenme"
+                title="Temel / Davranışsal Yetkinlikler"
+                hint="Örn: analitik düşünme, iletişim becerisi, organizasyon ve planlama"
                 values={jobProfile.competencySets.core}
                 onChange={(values) =>
                   setProfile({
@@ -767,10 +919,11 @@ export function JobEditorForm({ mode, jobId }: JobEditorFormProps) {
                     competencySets: { ...jobProfile.competencySets, core: values }
                   })
                 }
+                presets={hiringSettings?.competencyLibrary.core ?? ["Analitik düşünme", "İletişim becerisi", "Sorumluluk bilinci"]}
               />
               <StringListEditor
                 title="Fonksiyonel Yetkinlikler"
-                hint="Örn: .NET, muhasebe kapanışı, bordro süreci"
+                hint="Örn: süreç yönetimi, bordro süreci, paydaş koordinasyonu"
                 values={jobProfile.competencySets.functional}
                 onChange={(values) =>
                   setProfile({
@@ -779,6 +932,18 @@ export function JobEditorForm({ mode, jobId }: JobEditorFormProps) {
                   })
                 }
                 presets={functionalPresetLibrary}
+              />
+              <StringListEditor
+                title="Teknik Yetkinlikler"
+                hint="Örn: .NET, REST API, MS SQL, Git"
+                values={jobProfile.competencySets.technical}
+                onChange={(values) =>
+                  setProfile({
+                    ...jobProfile,
+                    competencySets: { ...jobProfile.competencySets, technical: values }
+                  })
+                }
+                presets={technicalPresetLibrary}
               />
               <StringListEditor
                 title="Yönetsel Yetkinlikler"
@@ -790,6 +955,7 @@ export function JobEditorForm({ mode, jobId }: JobEditorFormProps) {
                     competencySets: { ...jobProfile.competencySets, managerial: values }
                   })
                 }
+                presets={hiringSettings?.competencyLibrary.managerial ?? ["Karar verme", "Takım koçluğu", "Önceliklendirme"]}
               />
             </div>
 
@@ -832,7 +998,7 @@ export function JobEditorForm({ mode, jobId }: JobEditorFormProps) {
                     evaluationCriteria: { ...jobProfile.evaluationCriteria, tools: values }
                   })
                 }
-                presets={functionalPresetLibrary}
+                presets={technicalPresetLibrary}
               />
               <StringListEditor
                 title="Yabancı Dil / Dil Seviyesi"
@@ -855,7 +1021,7 @@ export function JobEditorForm({ mode, jobId }: JobEditorFormProps) {
             </div>
 
             <div className="inline-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <Field label="Eğitim Seviyesi" htmlFor="job-education-level">
+              <Field label="Asgari Eğitim Seviyesi" htmlFor="job-education-level" hint="Örn: Lisans ve üstü gibi minimum kabul kriterini yazın.">
                 <TextInput
                   id="job-education-level"
                   value={jobProfile.evaluationCriteria.educationLevel ?? ""}
@@ -908,6 +1074,50 @@ export function JobEditorForm({ mode, jobId }: JobEditorFormProps) {
                 background: "rgba(255,255,255,0.02)"
               }}
             >
+              <strong>Logo ve İlan Görselleri</strong>
+              <Field label="İlan Logo Bağlantısı" htmlFor="job-logo-url" hint="Boş bırakırsanız şirket profilindeki logo kullanılır.">
+                <TextInput
+                  id="job-logo-url"
+                  value={jobProfile.branding.logoUrl ?? ""}
+                  onChange={(event) =>
+                    setProfile({
+                      ...jobProfile,
+                      branding: {
+                        ...jobProfile.branding,
+                        logoUrl: event.target.value || null
+                      }
+                    })
+                  }
+                  placeholder="https://..."
+                />
+              </Field>
+              <StringListEditor
+                title="İlan Metni İçinde Paylaşılacak Görseller"
+                hint="Kariyer platformuna ekleyeceğiniz afiş, kampanya veya ekip görsellerinin bağlantılarını ekleyin."
+                values={jobProfile.branding.imageUrls}
+                onChange={(values) =>
+                  setProfile({
+                    ...jobProfile,
+                    branding: {
+                      ...jobProfile.branding,
+                      imageUrls: values
+                    }
+                  })
+                }
+                placeholder="https://..."
+              />
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gap: 12,
+                padding: "14px 16px",
+                borderRadius: 12,
+                border: "1px solid var(--border)",
+                background: "rgba(255,255,255,0.02)"
+              }}
+            >
               <strong>Operasyon Kuralları</strong>
               <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <input
@@ -946,79 +1156,10 @@ export function JobEditorForm({ mode, jobId }: JobEditorFormProps) {
           </div>
 
           <div className="panel nested-panel">
-            <div className="section-head" style={{ marginBottom: 8 }}>
-              <strong>Aranan Nitelikler</strong>
-              <button type="button" className="ghost-button" onClick={() => addRequirement()}>
-                + Nitelik Ekle
-              </button>
-            </div>
-            <p className="small text-muted" style={{ marginTop: 0 }}>
-              Nitelikler hem ilan metnini hem de AI screening bağlamını besler.
-            </p>
-
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-              {QUALIFICATION_PRESET_LIBRARY.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  className="ghost-button"
-                  style={{ fontSize: 12, padding: "4px 10px" }}
-                  onClick={() => addRequirement(preset, true)}
-                >
-                  {preset}
-                </button>
-              ))}
-            </div>
-
-            {requirements.map((item, index) => (
-              <div
-                key={`req-${index}`}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "8px 12px",
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  marginBottom: 8
-                }}
-              >
-                <input
-                  type="text"
-                  className="input"
-                  value={item.text}
-                  onChange={(event) => updateRequirementText(index, event.target.value)}
-                  placeholder="Nitelik yazın..."
-                  style={{ flex: 1 }}
-                />
-                <button
-                  type="button"
-                  onClick={() => toggleRequirementRequired(index)}
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: "4px 8px",
-                    borderRadius: 999,
-                    border: "1px solid var(--border)",
-                    background: item.required ? "rgba(34,197,94,0.12)" : "rgba(245,158,11,0.12)",
-                    color: item.required ? "var(--success, #22c55e)" : "var(--warn, #f59e0b)"
-                  }}
-                >
-                  {item.required ? "Zorunlu" : "Tercih Edilen"}
-                </button>
-                <button type="button" className="ghost-button" onClick={() => removeRequirement(index)}>
-                  Sil
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <div className="panel nested-panel">
             <Field
-              label="İş Tanımı"
+              label="Rol / İlan Açıklaması"
               htmlFor="job-jd-text"
-              hint="Serbest metin alanı olarak kalır; görev maddeleri ve yetkinliklerle birlikte AI taslağına ek bağlam sağlar."
+              hint="Görev maddelerini tekrar etmek zorunda değilsiniz; rolün amacı, ekip bağlamı veya ilan metninde görünmesini istediğiniz ek açıklamaları yazın."
             >
               <TextArea
                 id="job-jd-text"
@@ -1097,7 +1238,7 @@ export function JobEditorForm({ mode, jobId }: JobEditorFormProps) {
                       borderRadius: 12,
                       border: isActive ? "1px solid var(--primary, #6366f1)" : "1px solid var(--border)",
                       background: isActive ? "rgba(99,102,241,0.12)" : "var(--surface)",
-                      color: isActive ? "var(--primary, #6366f1)" : "var(--text-primary)",
+                      color: isActive ? "var(--primary, #6366f1)" : "var(--text)",
                       opacity: disabled ? 0.55 : 1,
                       cursor: disabled ? "not-allowed" : "pointer"
                     }}
