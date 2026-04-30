@@ -457,8 +457,8 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
     "Company profile updated. New job drafts will use the latest profile context.",
   "Üye listesi": "Team members",
   "Henüz ekip üyesi bulunmuyor.": "There are no team members yet.",
-  "Çalışma alanında tek bir owner bulunur. Menajer operasyonu yönetir, personel günlük akışta çalışır.":
-    "One owner controls the workspace. Managers run operations; staff work in the daily flow.",
+  "Şirket hesabında tek bir owner bulunur. Menajer operasyonu yönetir, personel günlük akışta çalışır.":
+    "One owner controls the company account. Managers run operations; staff work in the daily flow.",
   "Toplam": "Total",
   "Davet": "Invited",
   "Pasif": "Inactive",
@@ -863,7 +863,7 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   "Pipeline Dağılımı": "Pipeline Distribution",
   "Zaman ve Kalite": "Time and Quality",
   "Kullanıcı": "User",
-  Tenant: "Tenant",
+  Tenant: "Company account",
   Roller: "Roles",
   Oturum: "Session",
   Evet: "Yes",
@@ -872,7 +872,7 @@ const EN_PHRASE_TRANSLATIONS: Record<string, string> = {
   Telefon: "Phone",
   "E-posta": "Email",
   Lokasyon: "Location",
-  Workspace: "Workspace",
+  Workspace: "Company account",
   "Vardiya Tipi": "Shift Type",
   "Maaş Min (TRY)": "Salary Min (TRY)",
   "Maaş Max (TRY)": "Salary Max (TRY)",
@@ -1185,11 +1185,11 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Bekleme listesi yerine doğrudan hesap oluşturun": "Create an account directly instead of joining a waitlist",
   "Ücretsiz hesap oluşturun ve AI destekli işe alım platformunu hemen denemeye başlayın.":
     "Create a free account and start trying the AI-powered recruiting platform right away.",
-  "İlk çalışma alanınızı ve yönetici hesabınızı birkaç dakika içinde oluşturun.":
-    "Create your first workspace and admin account in just a few minutes.",
+  "İlk şirket hesabınızı ve yönetici erişimini birkaç dakika içinde oluşturun.":
+    "Create your first company account and admin access in just a few minutes.",
   "Temel ayarlar": "Core setup",
-  "Takım üyeleri, çalışma alanı ayarları ve ürün yapılandırmasını içeriden yönetin.":
-    "Manage teammates, workspace settings, and product configuration from inside the platform.",
+  "Takım üyeleri, şirket hesabı ayarları ve ürün yapılandırmasını içeriden yönetin.":
+    "Manage teammates, company account settings, and product configuration from inside the platform.",
   "Pilot başlangıcı": "Pilot kickoff",
   "İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın.":
     "Run the job, candidate, and interview flows with your real usage scenarios.",
@@ -1236,8 +1236,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Review prompts, rubrics, and provider readiness from one place.",
   "Kullanıcı kotası dolu. Yeni davet göndermeden önce ek koltuk açın.":
     "The user seat quota is full. Open extra seats before sending another invite.",
-  "Şu an bu çalışma alanında tek kişisiniz. Dışarıdaki ekip yardım istemeden ortak akışı test edebilsin diye en az bir manager veya staff davet edin.":
-    "You are currently the only person in this workspace. Invite at least one manager or staff member so the external team can test the shared flow without asking for help.",
+  "Şu an bu şirket hesabında tek kişisiniz. Dışarıdaki ekip yardım istemeden ortak akışı test edebilsin diye en az bir manager veya staff davet edin.":
+    "You are currently the only person in this company account. Invite at least one manager or staff member so the external team can test the shared flow without asking for help.",
   "Başvuru oluşturuldu": "Application created",
   "İlerletildi": "Advanced",
   "Recruiter tarafından ilerletildi": "Advanced by recruiter",
@@ -2375,7 +2375,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Abonelikler": "Subscriptions",
   "Kurumsal": "Enterprise",
   "Seçili hesap": "Selected account",
-  "Tenant": "Tenant",
+  "Tenant": "Company account",
   "Kota özeti": "Quota summary",
   "Eksik kurulum": "Incomplete setup",
   "Özellikler": "Features",
@@ -3140,10 +3140,12 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Özel işe alıştırma + SLA": "Custom onboarding + SLA",
   "Bu e-posta adresi ücretsiz denemeyi daha önce kullandı. Devam etmek için ücretli planla başlayın veya ekip davetiyle giriş yapın.":
     "This email address has already used the free trial. Start with a paid plan or join through a team invitation.",
+  "Şirket hesabı kimliği oluşturulamadı. Lütfen farklı bir şirket adı deneyin.":
+    "Company account identity could not be generated. Please try a different company name.",
   "Tek girişle birden fazla şirket yönetin. Her şirketin aboneliği, limitleri, ilanları, adayları ve marka görünümü ayrı tutulur.":
     "Use one login to manage multiple companies. Each company keeps its own subscription, limits, jobs, candidates, and branding.",
-  "Ayrı faturalandırma sınırına sahip yeni bir şirket çalışma alanı açılır. Mevcut şirketinizin planı ve kredileri yeni şirketle paylaşılmaz.":
-    "This creates a separate company workspace with its own billing boundary. Your existing plan and credits are not shared with the new company.",
+  "Ayrı faturalandırma sınırına sahip yeni bir şirket hesabı açılır. Mevcut şirketinizin planı ve kredileri yeni şirketle paylaşılmaz.":
+    "This creates a separate company account with its own billing boundary. Your existing plan and credits are not shared with the new company.",
   "Seçili şirketin denemesini, paketini ve kullanım durumunu tek yerden takip edin.":
     "Track the selected company's trial, package, and usage from one place.",
   "Değişiklikler yalnızca seçili şirkete uygulanır. Yükseltmeler hemen uygulanır; düşürmeler dönem sonunda planlanır.":
@@ -3686,9 +3688,9 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Öneri ve işe alım uzmanı değerlendirme akışları": "Recommendation and recruiter evaluation workflows",
   "Mülakat çalışma zamanı yedek davranışları": "Interview runtime fallback behaviors",
   "Aralık 2025": "December 2025",
-  "İşe Alım Uzmanı Çalışma Alanı": "Recruiter Workspace",
-  "Kontrol paneli, ilanlar, adaylar, başvurular ve raporlar yüzeyleri tek çalışma alanı altında birleştirildi.":
-    "Dashboard, postings, candidates, applications, and reports surfaces were unified under a single workspace.",
+  "İşe Alım Uzmanı Paneli": "Recruiter Panel",
+  "Kontrol paneli, ilanlar, adaylar, başvurular ve raporlar yüzeyleri tek işe alım paneli altında birleştirildi.":
+    "Dashboard, postings, candidates, applications, and reports surfaces were unified under a single recruiting panel.",
   "Genel bakış kontrol paneli": "Overview dashboard",
   "İlan ve başvuru akışı": "Posting and application flow",
   "Aday havuzu ve profil ekranları": "Candidate pool and profile screens",
@@ -3697,7 +3699,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "İlk Ürün Omurgası": "Initial Product Backbone",
   "Kiracı, üye, kimlik doğrulama ve işe alım alan modelleriyle Candit'in ilk ürün omurgası kuruldu.":
     "Candit's initial product backbone was built with tenant, member, authentication, and hiring domain models.",
-  "Kiracı ve çalışma alanı modeli": "Tenant and workspace model",
+  "Şirket hesabı ve erişim modeli": "Company account and access model",
   "Kayıt / giriş / davet temelleri": "Registration / login / invitation foundations",
   "İlan, aday ve başvuru alan modeli": "Posting, candidate, and application domain model",
   "İlk yönetim omurgası": "Initial admin backbone",
@@ -3708,8 +3710,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Ücretsiz hesap oluşturun ve AI destekli işe alım platformunu hemen denemeye başlayın.":
     "Create a free account and start trying the AI-powered hiring platform right away.",
   "Owner hesabını açın": "Open your owner account",
-  "İlk çalışma alanınızı ve yönetici hesabınızı birkaç dakika içinde oluşturun.":
-    "Create your first workspace and admin account in a few minutes.",
+  "İlk şirket hesabınızı ve yönetici erişimini birkaç dakika içinde oluşturun.":
+    "Create your first company account and admin access in a few minutes.",
   "Temel ayarları tamamlayın": "Complete basic settings",
   "Takım üyeleri, entegrasyonlar ve ürün ayarlarını içeriden yönetin.":
     "Manage team members, integrations, and product settings from within.",
@@ -3731,7 +3733,7 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "With a free account setup, you can try the AI-powered hiring platform. Our team is with you for setup support.",
   "Owner hesabı": "Owner account",
   "E-posta doğrulama": "Email verification",
-  "İlk workspace kurulumu": "First workspace setup",
+  "İlk şirket hesabı kurulumu": "First company account setup",
   "İletişime Geçin": "Contact Us",
 
   // CTA section
@@ -4174,8 +4176,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Processes incoming events from supported webhook providers.",
   "API detaylarını paylaşmak istiyorum.":
     "I want to share API details.",
-  "Takım üyeleri, çalışma alanı ayarları ve ürün yapılandırmasını içeriden yönetin.":
-    "Manage team members, workspace settings, and product configuration from inside the product.",
+  "Takım üyeleri, şirket hesabı ayarları ve ürün yapılandırmasını içeriden yönetin.":
+    "Manage team members, company account settings, and product configuration from inside the product.",
   "Şu an standart bir ATS veya takvim entegrasyonu sunmuyoruz. API ve webhook ihtiyaçlarını ekibinizin kullanım senaryosuna göre birlikte değerlendiriyoruz.":
     "We do not currently offer a standard ATS or calendar integration. We evaluate API and webhook needs together based on your team's use case.",
   "İhtiyacınıza göre API ve webhook seçeneklerini birlikte değerlendirebiliriz. Uygun entegrasyon senaryoları için ekibimizle iletişime geçebilirsiniz.":
@@ -4286,8 +4288,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Veri güvenliği, erişim kontrolleri ve süreç yönetişimi":
     "Data security, access controls, and process governance",
   "Erişim ve Yetkilendirme": "Access and Authorization",
-  "Çalışma alanı, oturum ve rol bazlı erişim sınırlarıyla ekip içi görünürlüğü kontrol altında tutun.":
-    "Keep team visibility under control with workspace, session, and role-based access boundaries.",
+  "Şirket hesabı, oturum ve rol bazlı erişim sınırlarıyla ekip içi görünürlüğü kontrol altında tutun.":
+    "Keep team visibility under control with company account, session, and role-based access boundaries.",
   "Rol bazlı erişim sınırları": "Role-based access boundaries",
   "JWT tabanlı oturum akışı": "JWT-based session flow",
   "Kritik yönetim aksiyonları için denetim izi":
@@ -4642,8 +4644,8 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Şifre sıfırlanamadı.": "Password could not be reset.",
   "Google oturumu": "Google sign-in",
   "Google hesabın bağlanıyor": "Connecting your Google account",
-  "Oturumu tamamlayıp seni çalışma alanına yönlendireceğiz.":
-    "We will finish the sign-in process and redirect you to your workspace.",
+  "Oturumu tamamlayıp seni şirket hesabına yönlendireceğiz.":
+    "We will finish the sign-in process and redirect you to your company account.",
   "Kayıt ekranı": "Sign-up screen",
   "Google profili doğrulanıyor ve oturum hazırlanıyor...":
     "Verifying your Google profile and preparing your session...",

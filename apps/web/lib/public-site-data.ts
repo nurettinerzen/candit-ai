@@ -688,7 +688,7 @@ export const PUBLIC_HELP_TOPICS: PublicCard[] = [
 export const PUBLIC_SECURITY_GROUPS: PublicCard[] = [
   {
     title: "Erişim ve Yetkilendirme",
-    body: "Çalışma alanı, oturum ve rol bazlı erişim sınırlarıyla ekip içi görünürlüğü kontrol altında tutun.",
+    body: "Şirket hesabı, oturum ve rol bazlı erişim sınırlarıyla ekip içi görünürlüğü kontrol altında tutun.",
     bullets: [
       "Rol bazlı erişim sınırları",
       "JWT tabanlı oturum akışı",
@@ -824,9 +824,9 @@ export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
   {
     date: "Aralık 2025",
     version: "v0.2.0",
-    title: "İşe Alım Uzmanı Çalışma Alanı",
+    title: "İşe Alım Uzmanı Paneli",
     body:
-      "Kontrol paneli, ilanlar, adaylar, başvurular ve raporlar yüzeyleri tek çalışma alanı altında birleştirildi.",
+      "Kontrol paneli, ilanlar, adaylar, başvurular ve raporlar yüzeyleri tek işe alım paneli altında birleştirildi.",
     items: [
       "Genel bakış kontrol paneli",
       "İlan ve başvuru akışı",
@@ -841,7 +841,7 @@ export const PUBLIC_CHANGELOG: PublicTimelineEntry[] = [
     body:
       "Kiracı, üye, kimlik doğrulama ve işe alım alan modelleriyle Candit'in ilk ürün omurgası kuruldu.",
     items: [
-      "Kiracı ve çalışma alanı modeli",
+      "Şirket hesabı ve erişim modeli",
       "Kayıt / giriş / davet temelleri",
       "İlan, aday ve başvuru alan modeli",
       "İlk yönetim omurgası"

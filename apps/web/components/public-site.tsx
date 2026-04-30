@@ -1722,8 +1722,8 @@ export function PublicWaitlistPage() {
             />
             <StepsGrid
               steps={[
-                { step: "01", title: t("Owner hesabı"), body: t("İlk çalışma alanınızı ve yönetici hesabınızı birkaç dakika içinde oluşturun.") },
-                { step: "02", title: t("Temel ayarlar"), body: t("Takım üyeleri, çalışma alanı ayarları ve ürün yapılandırmasını içeriden yönetin.") },
+                { step: "01", title: t("Owner hesabı"), body: t("İlk şirket hesabınızı ve yönetici erişimini birkaç dakika içinde oluşturun.") },
+                { step: "02", title: t("Temel ayarlar"), body: t("Takım üyeleri, şirket hesabı ayarları ve ürün yapılandırmasını içeriden yönetin.") },
                 { step: "03", title: t("İlk akışı çalıştırın"), body: t("İlan, aday ve mülakat akışlarını gerçek kullanım senaryolarınızla çalıştırın.") },
                 { step: "04", title: t("Destek kanalı"), body: t("Ekibimiz kurulum ve onboarding sürecinde size yardımcı olmaya hazır.") }
               ]}
@@ -1737,7 +1737,7 @@ export function PublicWaitlistPage() {
             <div className={styles.tagList}>
               <span>{t("Owner hesabı")}</span>
               <span>{t("E-posta doğrulama")}</span>
-              <span>{t("İlk workspace kurulumu")}</span>
+              <span>{t("İlk şirket hesabı kurulumu")}</span>
             </div>
             <div className={styles.ctaActions} style={{ marginTop: 18 }}>
               <ActionLink action={{ label: t("Ücretsiz deneme"), href: "/auth/signup" }} fullWidth />

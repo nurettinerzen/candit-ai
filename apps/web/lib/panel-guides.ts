@@ -355,8 +355,8 @@ export const PANEL_GUIDES: Record<PanelGuideKey, PanelGuideEntry> = {
       en: "Team"
     },
     summary: {
-      tr: "Üye davetlerini, rol değişikliklerini ve çalışma alanı erişimini ayrı bir ekip yüzeyinden yönetirsiniz.",
-      en: "Manage invitations, role changes, and workspace access from a dedicated team surface."
+      tr: "Üye davetlerini, rol değişikliklerini ve şirket hesabı erişimini ayrı bir ekip yüzeyinden yönetirsiniz.",
+      en: "Manage invitations, role changes, and company account access from a dedicated team surface."
     },
     highlights: [
       {
@@ -384,8 +384,8 @@ export const PANEL_GUIDES: Record<PanelGuideKey, PanelGuideEntry> = {
     },
     highlights: [
       {
-        tr: "Şirket profili ve varsayılan çalışma alanı bilgileri",
-        en: "Company profile and default workspace details"
+        tr: "Şirket profili ve varsayılan hesap bilgileri",
+        en: "Company profile and default account details"
       },
       {
         tr: "Şifre ve doğrulama akışları",
@@ -499,13 +499,13 @@ export const PANEL_GUIDES: Record<PanelGuideKey, PanelGuideEntry> = {
       en: "Users"
     },
     summary: {
-      tr: "Tenant ve kullanıcı dağılımını izler, plan segmentlerine göre erişim ve kullanım görünürlüğü elde edersiniz.",
-      en: "Monitor tenant and user distribution and gain access and usage visibility by plan segment."
+      tr: "Şirket hesabı ve kullanıcı dağılımını izler, plan segmentlerine göre erişim ve kullanım görünürlüğü elde edersiniz.",
+      en: "Monitor company account and user distribution and gain access and usage visibility by plan segment."
     },
     highlights: [
       {
-        tr: "Tenant ve kullanıcı segmentasyonu",
-        en: "Tenant and user segmentation"
+        tr: "Şirket hesabı ve kullanıcı segmentasyonu",
+        en: "Company account and user segmentation"
       },
       {
         tr: "Plan bazlı dağılım görünürlüğü",
@@ -934,16 +934,16 @@ const PANEL_GUIDE_STEPS: Record<PanelGuideKey, LocalizedText[]> = {
   ],
   tenantDetail: [
     {
-      tr: "Üstteki durum rozetlerinden çalışma alanı ve abonelik durumunu doğrulayın.",
-      en: "Confirm the workspace and billing state from the status badges at the top."
+      tr: "Üstteki durum rozetlerinden şirket hesabı ve abonelik durumunu doğrulayın.",
+      en: "Confirm the company account and billing state from the status badges at the top."
     },
     {
       tr: "Kullanım, sahip erişimi ve son hareketleri birlikte değerlendirin.",
       en: "Review usage, owner access, and recent activity together."
     },
     {
-      tr: "Gerekliyse plan, kota veya çalışma alanı aksiyonunu bu ekrandan uygulayın.",
-      en: "Apply the required plan, quota, or workspace action from this screen."
+      tr: "Gerekliyse plan, kota veya şirket hesabı aksiyonunu bu ekrandan uygulayın.",
+      en: "Apply the required plan, quota, or company account action from this screen."
     }
   ],
   adminEnterprise: [

@@ -1618,6 +1618,6 @@ export class InternalAdminService {
       suffix += 1;
     }
 
-    throw new BadRequestException("Yeni müşteri kaydı için benzersiz tenant ID üretilemedi.");
+    throw new BadRequestException("Yeni müşteri kaydı için benzersiz şirket hesabı ID üretilemedi.");
   }
 }

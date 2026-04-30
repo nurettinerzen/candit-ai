@@ -281,8 +281,8 @@ export default function TeamPage() {
     if (
       !window.confirm(
         locale === "en"
-          ? `${member.fullName} will be removed from the workspace. Active sessions and pending invitations will also be cleared. Continue?`
-          : `${member.fullName} çalışma alanından silinecek. Aktif oturumları ve bekleyen davetleri de temizlenecek. Devam etmek istiyor musunuz?`
+          ? `${member.fullName} will be removed from this company account. Active sessions and pending invitations will also be cleared. Continue?`
+          : `${member.fullName} şirket hesabından silinecek. Aktif oturumları ve bekleyen davetleri de temizlenecek. Devam etmek istiyor musunuz?`
       )
     ) {
       return;
@@ -296,8 +296,8 @@ export default function TeamPage() {
       await apiClient.deleteMember(member.userId);
       setMemberActionNotice(
         locale === "en"
-          ? "User removed from the workspace."
-          : "Kullanıcı çalışma alanından silindi."
+          ? "User removed from the company account."
+          : "Kullanıcı şirket hesabından silindi."
       );
       await loadAll();
     } catch (deleteError) {
@@ -317,12 +317,12 @@ export default function TeamPage() {
         : "Kullanıcı limiti dolu. Yeni davet için önce planı yükseltin."
       : "";
   const inviteDisabled = busyKey === "invite" || Boolean(inviteBlockedReason);
-  const isSoloWorkspace = members.length <= 1;
+  const isSoloCompanyAccount = members.length <= 1;
   const title = locale === "en" ? "Team" : "Ekip";
   const subtitle =
     locale === "en"
-      ? "Invite teammates, manage roles, and keep workspace access under control."
-      : "Yeni üyeleri davet edin, rolleri yönetin ve çalışma alanı erişimini kontrol altında tutun.";
+      ? "Invite teammates, manage roles, and keep company account access under control."
+      : "Yeni üyeleri davet edin, rolleri yönetin ve şirket hesabı erişimini kontrol altında tutun.";
 
   if (loading) {
     return (
@@ -356,7 +356,7 @@ export default function TeamPage() {
       {memberActionNotice ? <NoticeBox tone="success" message={memberActionNotice} /> : null}
       {billingLoadError ? <NoticeBox tone="danger" message={billingLoadError} /> : null}
 
-      {isSoloWorkspace || inviteBlockedReason ? (
+      {isSoloCompanyAccount || inviteBlockedReason ? (
         <section className="panel" style={{ display: "grid", gap: 12 }}>
           <div>
             <h2 style={{ margin: "0 0 6px" }}>
@@ -368,8 +368,8 @@ export default function TeamPage() {
                   ? "The seat limit is full. Open extra seats before sending a new invite."
                   : "Kullanıcı kotası dolu. Yeni davet göndermeden önce ek koltuk açın."
                 : locale === "en"
-                  ? "You are currently alone in this workspace. Invite one manager or staff member so a new company can test collaboration without asking for help."
-                  : "Şu an bu çalışma alanında tek kişisiniz. Dışarıdaki ekip yardım istemeden ortak akışı test edebilsin diye en az bir manager veya staff davet edin."}
+                  ? "You are currently alone in this company account. Invite one manager or staff member so a new company can test collaboration without asking for help."
+                  : "Şu an bu şirket hesabında tek kişisiniz. Dışarıdaki ekip yardım istemeden ortak akışı test edebilsin diye en az bir manager veya staff davet edin."}
             </p>
           </div>
 
@@ -402,8 +402,8 @@ export default function TeamPage() {
         </h2>
         <p className="small text-muted" style={{ marginBottom: 12 }}>
           {locale === "en"
-            ? "Invite managers or staff to this workspace and keep access under one owner account."
-            : "Bu çalışma alanına menajer veya personel davet edin; hesapta tek bir hesap sahibi bulunsun."}
+            ? "Invite managers or staff to this company account and keep access under one owner account."
+            : "Bu şirket hesabına menajer veya personel davet edin; hesapta tek bir hesap sahibi bulunsun."}
         </p>
 
         {inviteBlockedReason ? <NoticeBox tone="danger" message={inviteBlockedReason} /> : null}
@@ -473,7 +473,7 @@ export default function TeamPage() {
             <h2 style={{ margin: 0 }}>{locale === "en" ? "User list" : "Kullanıcı listesi"}</h2>
             <p className="small text-muted" style={{ marginTop: 4 }}>
               {locale === "en"
-                ? "One owner controls the workspace. Managers run operations; staff work in the daily flow. Role changes are saved automatically."
+                ? "One owner controls the company account. Managers run operations; staff work in the daily flow. Role changes are saved automatically."
                 : "Tek bir hesap sahibi bulunur. Menajer operasyonu yönetir, personel günlük akışta çalışır. Rol değişiklikleri otomatik kaydedilir."}
             </p>
           </div>

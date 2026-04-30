@@ -587,8 +587,8 @@ export default function SettingsPage() {
     if (!isOwner) {
       setError(
         locale === "en"
-          ? "Only the account owner can delete the workspace."
-          : "Çalışma alanını yalnızca hesap sahibi silebilir."
+          ? "Only the account owner can delete the company account."
+          : "Şirket hesabını yalnızca hesap sahibi silebilir."
       );
       return;
     }
@@ -596,8 +596,8 @@ export default function SettingsPage() {
     if (
       !window.confirm(
         locale === "en"
-          ? "This will permanently delete the entire workspace, all members, candidates, interviews, uploaded CVs, and billing data. Continue?"
-          : "Bu işlem tüm çalışma alanını, üyeleri, adayları, mülakatları, yüklenen CV dosyalarını ve faturalandırma verilerini kalıcı olarak silecek. Devam etmek istiyor musunuz?"
+          ? "This will permanently delete the entire company account, all members, candidates, interviews, uploaded CVs, and billing data. Continue?"
+          : "Bu işlem tüm şirket hesabını, üyeleri, adayları, mülakatları, yüklenen CV dosyalarını ve faturalandırma verilerini kalıcı olarak silecek. Devam etmek istiyor musunuz?"
       )
     ) {
       return;
@@ -720,8 +720,8 @@ export default function SettingsPage() {
           <h2 style={{ margin: "0 0 6px" }}>{locale === "en" ? "General" : "Genel"}</h2>
           <p className="small text-muted" style={{ margin: 0 }}>
             {locale === "en"
-              ? "Set the company information used across the workspace and in new job draft preparation."
-              : "Çalışma alanında ve yeni ilan taslağı hazırlığında kullanılan şirket bilgilerini yönetin."}
+              ? "Set the company information used across this company account and in new job draft preparation."
+              : "Şirket hesabında ve yeni ilan taslağı hazırlığında kullanılan şirket bilgilerini yönetin."}
           </p>
         </div>
 
@@ -742,8 +742,8 @@ export default function SettingsPage() {
               />
               <span className="small text-muted">
                 {locale === "en"
-                  ? "Appears as the default company name in the workspace."
-                  : "Çalışma alanında varsayılan şirket adı olarak görünür."}
+                  ? "Appears as the default company name in this company account."
+                  : "Şirket hesabında varsayılan şirket adı olarak görünür."}
               </span>
             </label>
 
@@ -986,8 +986,8 @@ export default function SettingsPage() {
             <strong>{locale === "en" ? "Create another company" : "Yeni şirket oluştur"}</strong>
             <p className="small text-muted" style={{ margin: "4px 0 0" }}>
               {locale === "en"
-                ? "This creates a separate company workspace with its own billing boundary. Your existing plan and credits are not shared with the new company."
-                : "Ayrı faturalandırma sınırına sahip yeni bir şirket çalışma alanı açılır. Mevcut şirketinizin planı ve kredileri yeni şirketle paylaşılmaz."}
+                ? "This creates a separate company account with its own billing boundary. Your existing plan and credits are not shared with the new company."
+                : "Ayrı faturalandırma sınırına sahip yeni bir şirket hesabı açılır. Mevcut şirketinizin planı ve kredileri yeni şirketle paylaşılmaz."}
             </p>
           </div>
           <div
@@ -1019,8 +1019,8 @@ export default function SettingsPage() {
             </h2>
             <p className="small text-muted" style={{ margin: 0 }}>
               {locale === "en"
-                ? "Tenant-specific departments, title ladders, competency libraries, reference questions, and consent text used by job creation and recruiter operations."
-                : "İlan oluşturma ve recruiter operasyonlarında kullanılan departman, unvan seviyesi, yetkinlik kütüphanesi, referans soruları ve KVKK metinlerini tenant bazında yönetin."}
+                ? "Company-specific departments, title ladders, competency libraries, reference questions, and consent text used by job creation and recruiter operations."
+                : "İlan oluşturma ve recruiter operasyonlarında kullanılan departman, unvan seviyesi, yetkinlik kütüphanesi, referans soruları ve KVKK metinlerini şirket bazında yönetin."}
             </p>
           </div>
           <StatusBadge
@@ -1491,12 +1491,12 @@ export default function SettingsPage() {
         <section className="panel" style={{ display: "grid", gap: 16, borderColor: "rgba(239,68,68,0.24)" }}>
           <div>
             <h2 style={{ margin: "0 0 6px", color: "var(--danger, #ef4444)" }}>
-              {locale === "en" ? "Delete workspace" : "Hesabı sil"}
+              {locale === "en" ? "Delete company account" : "Hesabı sil"}
             </h2>
             <p className="small text-muted" style={{ margin: 0 }}>
               {locale === "en"
-                ? "This permanently removes the full workspace, members, uploaded files, interviews, and billing records from the application."
-                : "Bu işlem tüm çalışma alanını, üyeleri, yüklenen dosyaları, mülakatları ve uygulamadaki faturalandırma kayıtlarını kalıcı olarak siler."}
+                ? "This permanently removes the full company account, members, uploaded files, interviews, and billing records from the application."
+                : "Bu işlem tüm şirket hesabını, üyeleri, yüklenen dosyaları, mülakatları ve uygulamadaki faturalandırma kayıtlarını kalıcı olarak siler."}
             </p>
             <p className="small text-muted" style={{ margin: "8px 0 0" }}>
               {locale === "en"

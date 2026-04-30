@@ -154,8 +154,8 @@ function SignupPageContent() {
     const title = verificationEnabled ? t("Hesabınız oluşturuldu") : t("Hesap hazır");
     const description = verificationRequired
       ? locale === "en"
-        ? "Verify your email address to unlock workspace access."
-        : "Çalışma alanı erişimini açmak için e-posta adresinizi doğrulayın."
+        ? "Verify your email address to unlock company account access."
+        : "Şirket hesabı erişimini açmak için e-posta adresinizi doğrulayın."
       : verificationEnabled
         ? locale === "en"
           ? "Your account is ready. You can optionally verify your email now."

@@ -2423,7 +2423,7 @@ export class AuthService {
     const fallbackCompanyName =
       input.companyName && input.companyName.length >= 2
         ? input.companyName
-        : `${input.fullName.split(" ")[0] || input.email.split("@")[0] || "Yeni"} Workspace`;
+        : `${input.fullName.split(" ")[0] || input.email.split("@")[0] || "Yeni"} Şirket Hesabı`;
     const tenantId = await this.generateTenantId(fallbackCompanyName);
     const now = new Date();
 
@@ -2743,7 +2743,7 @@ export class AuthService {
       }
     }
 
-    throw new BadRequestException("Tenant kimligi olusturulamadi. Lutfen farkli bir sirket adi deneyin.");
+    throw new BadRequestException("Şirket hesabı kimliği oluşturulamadı. Lütfen farklı bir şirket adı deneyin.");
   }
 
   private toAppRoles(role: PrismaRole): AppRole[] {

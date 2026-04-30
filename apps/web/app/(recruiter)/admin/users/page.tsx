@@ -54,7 +54,7 @@ function normalizePlanKey(raw: string | null): "ALL" | BillingPlanKey {
   return raw === "FLEX" || raw === "STARTER" || raw === "GROWTH" || raw === "ENTERPRISE" ? raw : "ALL";
 }
 
-function normalizeWorkspaceStatus(raw: string | null): "ALL" | "ACTIVE" {
+function normalizeCompanyStatus(raw: string | null): "ALL" | "ACTIVE" {
   return raw === "ACTIVE" ? raw : "ALL";
 }
 
@@ -189,7 +189,7 @@ export default function InternalAdminUsersPage() {
 
   const initialQuery = searchParams.get("query") ?? "";
   const initialPlanKey = normalizePlanKey(searchParams.get("planKey"));
-  const initialStatus = normalizeWorkspaceStatus(searchParams.get("status"));
+  const initialStatus = normalizeCompanyStatus(searchParams.get("status"));
   const initialSegment = normalizeSegment(searchParams.get("segment"));
 
   const [data, setData] = useState<InternalAdminAccountListReadModel | null>(null);
@@ -234,7 +234,7 @@ export default function InternalAdminUsersPage() {
   useEffect(() => {
     const nextQuery = searchParams.get("query") ?? "";
     const nextPlanKey = normalizePlanKey(searchParams.get("planKey"));
-    const nextStatus = normalizeWorkspaceStatus(searchParams.get("status"));
+    const nextStatus = normalizeCompanyStatus(searchParams.get("status"));
     const nextSegment = normalizeSegment(searchParams.get("segment"));
 
     setSearch((current) => (current === nextQuery ? current : nextQuery));
@@ -460,9 +460,6 @@ export default function InternalAdminUsersPage() {
                             <div key={row.tenantId} className="admin-owner-company-row">
                               <div className="admin-table-cell-stack">
                                 <strong>{row.tenantName}</strong>
-                                <span className="small">
-                                  {locale === "en" ? "Tenant" : "Tenant"}: {row.tenantId}
-                                </span>
                               </div>
                               <div className="admin-table-cell-stack">
                                 <strong>{getPlanLabel(row, locale, copy)}</strong>

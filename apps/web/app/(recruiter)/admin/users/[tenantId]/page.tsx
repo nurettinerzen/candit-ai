@@ -307,7 +307,7 @@ export default function InternalAdminAccountDetailPage() {
       : "Bu müşteri, Starter limitleri üzerinde deneme yaşam döngüsünü kullanıyor."
     : "";
   const accountCardTitle = locale === "en" ? "Account" : "Hesap";
-  const accountCardSubtitle = locale === "en" ? "Customer workspace and owner details." : "Müşteri hesabı ve sahip bilgileri.";
+  const accountCardSubtitle = locale === "en" ? "Customer company account and owner details." : "Müşteri şirket hesabı ve sahip bilgileri.";
   const billingSummaryTitle = locale === "en" ? "Subscription Summary" : "Abonelik Özeti";
   const billingSummarySubtitle = isTrial
     ? locale === "en"

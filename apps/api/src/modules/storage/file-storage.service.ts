@@ -170,7 +170,7 @@ export class FileStorageService {
   async removeTenantArtifacts(tenantId: string) {
     const normalizedTenantId = tenantId.trim().replace(/\\/g, "/").replace(/^\/+/, "");
     if (!normalizedTenantId) {
-      throw new BadRequestException("Tenant kimligi zorunludur.");
+      throw new BadRequestException("Şirket hesabı kimliği zorunludur.");
     }
 
     const absolutePath = resolve(this.storageRoot, normalizedTenantId);
@@ -182,7 +182,7 @@ export class FileStorageService {
       await rm(absolutePath, { recursive: true, force: true });
     } catch (error) {
       throw new InternalServerErrorException(
-        `Tenant dosyalari silinemedi: ${(error as Error).message}`
+        `Şirket hesabı dosyaları silinemedi: ${(error as Error).message}`
       );
     }
   }

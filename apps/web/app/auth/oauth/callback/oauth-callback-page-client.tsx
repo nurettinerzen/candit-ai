@@ -76,7 +76,7 @@ function OauthCallbackPageContent() {
     <AuthShell
       badge={t("Google oturumu")}
       title={t("Google hesabın bağlanıyor")}
-      description={t("Oturumu tamamlayıp seni çalışma alanına yönlendireceğiz.")}
+      description={t("Oturumu tamamlayıp seni şirket hesabına yönlendireceğiz.")}
       footer={
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <Link href="/auth/login" style={{ color: "inherit", textDecoration: "none" }}>
