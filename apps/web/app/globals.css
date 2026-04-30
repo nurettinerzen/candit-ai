@@ -6678,6 +6678,48 @@ a.admin-distribution-card:hover {
   white-space: nowrap;
 }
 
+.admin-owner-companies-cell {
+  padding: 8px;
+}
+
+.admin-owner-company-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-owner-company-row {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 1.25fr)
+    minmax(110px, 0.7fr)
+    minmax(150px, 0.9fr)
+    minmax(210px, 1.2fr)
+    minmax(80px, 0.55fr)
+    minmax(96px, 0.55fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-muted) 78%, transparent);
+}
+
+.admin-owner-company-row > * {
+  min-width: 0;
+}
+
+.admin-inline-pill {
+  display: inline-flex;
+  width: max-content;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .admin-usage-stack .small {
   white-space: normal;
   line-height: 1.45;

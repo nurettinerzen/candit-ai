@@ -31,6 +31,12 @@ type CustomerSegment =
 
 type PlanCardKey = "TRIAL" | BillingPlanKey;
 
+type CustomerOwnerGroup = {
+  key: string;
+  owner: InternalAdminCustomerRow["owner"];
+  rows: InternalAdminCustomerRow[];
+};
+
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
@@ -111,6 +117,33 @@ function getStartDate(row: InternalAdminCustomerRow) {
 
 function getEndDate(row: InternalAdminCustomerRow) {
   return row.billing.trial.endsAt ?? row.billing.currentPeriodEnd;
+}
+
+function getOwnerGroupKey(row: InternalAdminCustomerRow) {
+  const email = row.owner?.email.trim().toLowerCase();
+  return email ? `owner:${email}` : `tenant:${row.tenantId}`;
+}
+
+function groupRowsByOwner(rows: InternalAdminCustomerRow[]) {
+  const groups = new Map<string, CustomerOwnerGroup>();
+
+  for (const row of rows) {
+    const key = getOwnerGroupKey(row);
+    const group = groups.get(key);
+
+    if (group) {
+      group.rows.push(row);
+      continue;
+    }
+
+    groups.set(key, {
+      key,
+      owner: row.owner,
+      rows: [row]
+    });
+  }
+
+  return Array.from(groups.values());
 }
 
 function getActiveFilterLabel(
@@ -239,6 +272,8 @@ export default function InternalAdminUsersPage() {
     return data.rows.filter((row) => matchesPlanKey(row, planKey) && matchesSegment(row, segment));
   }, [data, planKey, segment]);
 
+  const groupedRows = useMemo(() => groupRowsByOwner(filteredRows), [filteredRows]);
+
   const cardCounts = useMemo(() => {
     const rows = data?.rows ?? [];
 
@@ -264,11 +299,11 @@ export default function InternalAdminUsersPage() {
   const listDescription =
     segment === "TRIAL"
       ? locale === "en"
-        ? `${summary.total} accounts shown. ${summary.trialActive} active trial and ${summary.trialExpired} expired trial.`
-        : `${summary.total} hesap gösteriliyor. ${summary.trialActive} aktif deneme ve ${summary.trialExpired} süresi dolmuş deneme var.`
+        ? `${groupedRows.length} users / ${summary.total} companies shown. ${summary.trialActive} active trial and ${summary.trialExpired} expired trial.`
+        : `${groupedRows.length} kullanıcı / ${summary.total} şirket gösteriliyor. ${summary.trialActive} aktif deneme ve ${summary.trialExpired} süresi dolmuş deneme var.`
       : locale === "en"
-        ? `${summary.total} accounts shown. Active filter: ${activeFilterLabel}.`
-        : `${summary.total} hesap gösteriliyor. Aktif filtre: ${activeFilterLabel}.`;
+        ? `${groupedRows.length} users / ${summary.total} companies shown. Active filter: ${activeFilterLabel}.`
+        : `${groupedRows.length} kullanıcı / ${summary.total} şirket gösteriliyor. Aktif filtre: ${activeFilterLabel}.`;
 
   const planCards = [
     { key: "TRIAL" as const, label: copy.segmentTrial, count: cardCounts.trial, tone: "warning" },
@@ -399,13 +434,18 @@ export default function InternalAdminUsersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRows.map((row) => (
-                    <tr key={row.tenantId}>
+                  {groupedRows.map((group) => (
+                    <tr key={group.key}>
                       <td>
-                        {row.owner ? (
+                        {group.owner ? (
                           <div className="admin-table-cell-stack">
-                            <strong>{row.owner.fullName}</strong>
-                            <span className="small">{row.owner.email}</span>
+                            <strong>{group.owner.fullName}</strong>
+                            <span className="small">{group.owner.email}</span>
+                            {group.rows.length > 1 ? (
+                              <span className="admin-inline-pill">
+                                {locale === "en" ? `${group.rows.length} companies` : `${group.rows.length} şirket`}
+                              </span>
+                            ) : null}
                           </div>
                         ) : (
                           <div className="admin-table-cell-stack">
@@ -414,45 +454,53 @@ export default function InternalAdminUsersPage() {
                           </div>
                         )}
                       </td>
-                      <td>
-                        <div className="admin-table-cell-stack">
-                          <strong>{row.tenantName}</strong>
+                      <td colSpan={7} className="admin-owner-companies-cell">
+                        <div className="admin-owner-company-list">
+                          {group.rows.map((row) => (
+                            <div key={row.tenantId} className="admin-owner-company-row">
+                              <div className="admin-table-cell-stack">
+                                <strong>{row.tenantName}</strong>
+                                <span className="small">
+                                  {locale === "en" ? "Tenant" : "Tenant"}: {row.tenantId}
+                                </span>
+                              </div>
+                              <div className="admin-table-cell-stack">
+                                <strong>{getPlanLabel(row, locale, copy)}</strong>
+                                <span className="small">{row.billing.status}</span>
+                              </div>
+                              <div className="admin-table-cell-stack">
+                                <span className="small">
+                                  {copy.startDate}: {formatDateOnly(getStartDate(row))}
+                                </span>
+                                <span className="small">
+                                  {copy.endDate}: {formatDateOnly(getEndDate(row))}
+                                </span>
+                              </div>
+                              <div className="admin-table-cell-stack admin-usage-stack">
+                                <span className="small">
+                                  {locale === "en" ? "Seats" : "Koltuk"} {row.usage.seats?.used ?? 0}/{row.usage.seats?.limit ?? 0}
+                                  {" · "}
+                                  {locale === "en" ? "Jobs" : "İlan"} {row.usage.activeJobs?.used ?? 0}/{row.usage.activeJobs?.limit ?? 0}
+                                </span>
+                                <span className="small">
+                                  {locale === "en" ? "Candidates" : "Aday"} {row.usage.candidateProcessing?.used ?? 0}/
+                                  {row.usage.candidateProcessing?.limit ?? 0}
+                                  {" · "}
+                                  {locale === "en" ? "AI Interviews" : "AI mülakat"} {row.usage.aiInterviews?.used ?? 0}/
+                                  {row.usage.aiInterviews?.limit ?? 0}
+                                </span>
+                              </div>
+                              <div className="admin-table-cell-stack">
+                                <span className={`admin-inline-status tone-${statusVariant(row.tenantStatus)}`}>
+                                  {formatTenantStatus(row.tenantStatus, locale)}
+                                </span>
+                              </div>
+                              <Link href={`/admin/users/${row.tenantId}`} className="ghost-button">
+                                {copy.viewDetails}
+                              </Link>
+                            </div>
+                          ))}
                         </div>
-                      </td>
-                      <td>
-                        <div className="admin-table-cell-stack">
-                          <strong>{getPlanLabel(row, locale, copy)}</strong>
-                        </div>
-                      </td>
-                      <td>{formatDateOnly(getStartDate(row))}</td>
-                      <td>{formatDateOnly(getEndDate(row))}</td>
-                      <td>
-                        <div className="admin-table-cell-stack admin-usage-stack">
-                          <span className="small">
-                            {locale === "en" ? "Seats" : "Koltuk"} {row.usage.seats?.used ?? 0}/{row.usage.seats?.limit ?? 0}
-                            {" · "}
-                            {locale === "en" ? "Jobs" : "İlan"} {row.usage.activeJobs?.used ?? 0}/{row.usage.activeJobs?.limit ?? 0}
-                          </span>
-                          <span className="small">
-                            {locale === "en" ? "Candidates" : "Aday"} {row.usage.candidateProcessing?.used ?? 0}/
-                            {row.usage.candidateProcessing?.limit ?? 0}
-                            {" · "}
-                            {locale === "en" ? "AI Interviews" : "AI mülakat"} {row.usage.aiInterviews?.used ?? 0}/
-                            {row.usage.aiInterviews?.limit ?? 0}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="admin-table-cell-stack">
-                          <span className={`admin-inline-status tone-${statusVariant(row.tenantStatus)}`}>
-                            {formatTenantStatus(row.tenantStatus, locale)}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <Link href={`/admin/users/${row.tenantId}`} className="ghost-button">
-                          {copy.viewDetails}
-                        </Link>
                       </td>
                     </tr>
                   ))}
