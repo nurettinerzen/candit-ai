@@ -9,7 +9,7 @@ import {
 } from "@prisma/client";
 import { AuthService } from "./auth.service";
 
-function createService(runtimeOverrides: Record<string, unknown> = {}) {
+function createService() {
   const audits: Array<Record<string, unknown>> = [];
   const notifications: Array<Record<string, unknown>> = [];
   const securityEvents: Array<Record<string, unknown>> = [];
@@ -43,9 +43,6 @@ function createService(runtimeOverrides: Record<string, unknown> = {}) {
         return data;
       }
     },
-    user: {
-      findFirst: async () => null
-    },
     $transaction: async <T>(callback: (client: typeof tx) => Promise<T>) => callback(tx)
   };
 
@@ -53,9 +50,7 @@ function createService(runtimeOverrides: Record<string, unknown> = {}) {
     passwordResetTtlHours: 2,
     emailVerificationTtlHours: 24,
     publicWebBaseUrl: "https://app.candit.ai",
-    isProduction: false,
-    isInternalAdmin: () => false,
-    ...runtimeOverrides
+    isProduction: false
   };
 
   const notificationsService = {
@@ -91,47 +86,11 @@ function createService(runtimeOverrides: Record<string, unknown> = {}) {
 
   return {
     service,
-    prisma,
     audits,
     notifications,
     securityEvents
   };
 }
-
-test("createManagedCompany blocks self-service tenant creation for non-internal users", async () => {
-  const { service, prisma, securityEvents } = createService();
-  let transactionCalled = false;
-
-  (prisma.user as { findFirst: () => Promise<unknown> }).findFirst = async () => ({
-    id: "usr_pilot",
-    email: "pilot@example.com",
-    fullName: "Pilot User",
-    passwordHash: "hashed-password",
-    passwordSetAt: new Date("2026-04-30T10:00:00.000Z"),
-    emailVerifiedAt: new Date("2026-04-30T10:00:00.000Z"),
-    avatarUrl: null,
-    status: UserStatus.ACTIVE
-  });
-
-  prisma.$transaction = async () => {
-    transactionCalled = true;
-    throw new Error("transaction should not be called");
-  };
-
-  await assert.rejects(
-    () =>
-      service.createManagedCompany({
-        currentUserId: "usr_pilot",
-        currentTenantId: "ten_pilot",
-        companyName: "Extra Workspace"
-      }),
-    /yalnızca Candit iç yönetim ekibi/i
-  );
-
-  assert.equal(transactionCalled, false);
-  assert.equal(securityEvents.length, 1);
-  assert.equal(securityEvents[0]?.code, "auth.managed_company.self_service_blocked");
-});
 
 test("requestPasswordReset records an audit trail for active users", async () => {
   const { service, audits, notifications } = createService();

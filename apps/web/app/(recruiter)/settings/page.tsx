@@ -874,8 +874,8 @@ export default function SettingsPage() {
             </h2>
             <p className="small text-muted" style={{ margin: 0 }}>
               {locale === "en"
-                ? "Switch between companies assigned to your account; each company keeps its own jobs, candidates, and branding."
-                : "Hesabınıza atanmış şirketler arasında geçiş yapın; her şirketin ilanları, adayları ve marka görünümü ayrı tutulur."}
+                ? "Use one account to manage multiple companies, each with its own jobs, candidates, and branding."
+                : "Tek hesapla birden fazla şirket yönetin; her şirket kendi ilanı, adayı ve marka görünümüyle ayrı çalışsın."}
             </p>
           </div>
           <StatusBadge
@@ -971,64 +971,44 @@ export default function SettingsPage() {
           })}
         </div>
 
-        {isInternalAdmin ? (
-          <form
-            style={{
-              display: "grid",
-              gap: 12,
-              padding: 16,
-              borderRadius: 14,
-              border: "1px dashed var(--border)",
-              background: "rgba(255,255,255,0.02)"
-            }}
-            onSubmit={handleCreateCompany}
-          >
-            <div>
-              <strong>{locale === "en" ? "Create another company" : "Yeni şirket oluştur"}</strong>
-              <p className="small text-muted" style={{ margin: "4px 0 0" }}>
-                {locale === "en"
-                  ? "Internal admins can create an isolated tenant under the same email when multi-company access is intentional."
-                  : "İç adminler, çoklu şirket erişimi bilinçli olarak gerektiğinde aynı e-posta altında izole bir tenant açabilir."}
-              </p>
-            </div>
-            <div
-              className="inline-grid"
-              style={{ gridTemplateColumns: "minmax(220px, 1fr) auto", gap: 12, alignItems: "start" }}
-            >
-              <input
-                className="input"
-                value={companyDraft}
-                onChange={(event) => setCompanyDraft(event.target.value)}
-                placeholder={locale === "en" ? "New company name" : "Yeni şirket adı"}
-              />
-              <button type="submit" className="ghost-button" disabled={busyKey === "company:create"}>
-                {busyKey === "company:create"
-                  ? t("Kaydediliyor...")
-                  : locale === "en"
-                    ? "Create company"
-                    : "Şirket oluştur"}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gap: 8,
-              padding: 16,
-              borderRadius: 14,
-              border: "1px solid var(--border)",
-              background: "rgba(255,255,255,0.02)"
-            }}
-          >
-            <strong>{locale === "en" ? "Company creation is admin-controlled" : "Yeni şirket açılışı admin kontrollü"}</strong>
-            <p className="small text-muted" style={{ margin: 0 }}>
+        <form
+          style={{
+            display: "grid",
+            gap: 12,
+            padding: 16,
+            borderRadius: 14,
+            border: "1px dashed var(--border)",
+            background: "rgba(255,255,255,0.02)"
+          }}
+          onSubmit={handleCreateCompany}
+        >
+          <div>
+            <strong>{locale === "en" ? "Create another company" : "Yeni şirket oluştur"}</strong>
+            <p className="small text-muted" style={{ margin: "4px 0 0" }}>
               {locale === "en"
-                ? "If you need access to another company, Candit support will add it to this account."
-                : "Başka bir şirkete erişim gerekiyorsa Candit destek ekibi bu hesabı ilgili şirkete atar."}
+                ? "A new tenant is created under the same email so jobs, pipeline, and settings stay isolated."
+                : "Aynı e-posta altında yeni bir tenant açılır; ilanlar, pipeline ve ayarlar birbirinden izole kalır."}
             </p>
           </div>
-        )}
+          <div
+            className="inline-grid"
+            style={{ gridTemplateColumns: "minmax(220px, 1fr) auto", gap: 12, alignItems: "start" }}
+          >
+            <input
+              className="input"
+              value={companyDraft}
+              onChange={(event) => setCompanyDraft(event.target.value)}
+              placeholder={locale === "en" ? "New company name" : "Yeni şirket adı"}
+            />
+            <button type="submit" className="ghost-button" disabled={busyKey === "company:create"}>
+              {busyKey === "company:create"
+                ? t("Kaydediliyor...")
+                : locale === "en"
+                  ? "Create company"
+                  : "Şirket oluştur"}
+            </button>
+          </div>
+        </form>
       </section>
 
       <section className="panel" style={{ display: "grid", gap: 16 }}>
