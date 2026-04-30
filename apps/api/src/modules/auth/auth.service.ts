@@ -419,6 +419,25 @@ export class AuthService {
       throw new BadRequestException("Şirket adı en az 2 karakter olmalıdır.");
     }
 
+    if (!this.runtimeConfig.isInternalAdmin(currentUser.email)) {
+      await this.reportSecurityEvent({
+        tenantId: input.currentTenantId,
+        userId: input.currentUserId,
+        source: "auth.managed_company.create",
+        code: "auth.managed_company.self_service_blocked",
+        message: "Kullanıcının kendi kendine yeni şirket oluşturma denemesi engellendi.",
+        severity: SecurityEventSeverity.WARNING,
+        metadata: {
+          email: currentUser.email,
+          requestedCompanyName: companyName
+        }
+      });
+
+      throw new ForbiddenException(
+        "Yeni şirket oluşturma yalnızca Candit iç yönetim ekibi tarafından yapılabilir. Lütfen destek ekibinden şirket erişimi isteyin."
+      );
+    }
+
     const tenantId = await this.generateTenantId(companyName);
 
     const created = await this.prisma.$transaction(async (tx) => {
