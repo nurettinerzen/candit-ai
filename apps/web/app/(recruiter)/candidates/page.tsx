@@ -10,7 +10,6 @@ import { EmptyState, ErrorState, LoadingState } from "../../../components/ui-sta
 import { apiClient } from "../../../lib/api-client";
 import {
   getRecruiterStageMeta,
-  getRecruiterStatus,
   RECRUITER_STATUS_FILTERS
 } from "../../../lib/constants";
 import {
@@ -112,8 +111,7 @@ export default function CandidatesPage() {
           if (!name.includes(q) && !email.includes(q)) return false;
         }
         if (stageFilter) {
-          const status = getRecruiterStatus(app.stage, app.humanDecision);
-          if (status !== stageFilter) return false;
+          if (app.stage !== stageFilter) return false;
         }
         if (jobFilter && app.job.id !== jobFilter) return false;
         return true;

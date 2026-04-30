@@ -213,3 +213,33 @@ test("configured internal admin allowlist overrides default fallback", () => {
   assert.equal(runtimeConfig.isInternalAdmin("nurettinerzen@gmail.com"), true);
   assert.equal(runtimeConfig.isInternalAdmin("info@candit.ai"), false);
 });
+
+test("public lead notifications stay unconfigured when explicit recipients are missing", () => {
+  const runtimeConfig = createRuntimeConfig({
+    INTERNAL_ADMIN_EMAIL_ALLOWLIST: "ops@candit.ai,team@candit.ai"
+  });
+
+  assert.deepEqual(runtimeConfig.publicLeadNotificationRecipients, []);
+  assert.ok(
+    runtimeConfig
+      .getProviderConfigurationWarnings()
+      .some((warning) => warning.includes("NOTIFICATION_DEFAULT_EMAIL_TO missing"))
+  );
+});
+
+test("configured public lead recipients suppress the missing recipient warning", () => {
+  const runtimeConfig = createRuntimeConfig({
+    NOTIFICATION_DEFAULT_EMAIL_TO: "ops@candit.ai,sales@candit.ai"
+  });
+
+  assert.deepEqual(runtimeConfig.publicLeadNotificationRecipients, [
+    "ops@candit.ai",
+    "sales@candit.ai"
+  ]);
+  assert.equal(
+    runtimeConfig
+      .getProviderConfigurationWarnings()
+      .some((warning) => warning.includes("NOTIFICATION_DEFAULT_EMAIL_TO missing")),
+    false
+  );
+});

@@ -534,6 +534,11 @@ export class RuntimeConfigService {
     ].map((domain) => domain.replace(/^@+/, ""));
   }
 
+  get publicLeadNotificationRecipients() {
+    const configured = toCsvList(this.configService.get<string>("NOTIFICATION_DEFAULT_EMAIL_TO"));
+    return Array.from(new Set(configured));
+  }
+
   isInternalAdmin(email?: string | null) {
     const normalizedEmail = email?.trim().toLowerCase();
     if (!normalizedEmail) {
@@ -761,6 +766,12 @@ export class RuntimeConfigService {
 
     if (this.isProduction && email.provider === "console") {
       warnings.push("EMAIL_PROVIDER=console in production; candidate-facing emails will not be delivered.");
+    }
+
+    if (!toOptionalString(this.configService.get<string>("NOTIFICATION_DEFAULT_EMAIL_TO"))) {
+      warnings.push(
+        "NOTIFICATION_DEFAULT_EMAIL_TO missing; public contact ops bildirimleri missing-recipient olarak isaretlenecek."
+      );
     }
 
     if (!readiness.notifications.ready) {
