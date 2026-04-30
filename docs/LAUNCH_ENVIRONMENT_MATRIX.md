@@ -88,7 +88,7 @@ Amac pilot, staging ve launch runtime'larinda hangi ayarin neden var oldugunu te
 - `RESEND_API_KEY`: Resend API key. Pilot/launch: email delivery icin zorunlu.
 - `RESEND_API_BASE_URL`: Resend API base URL. Genelde default.
 - `EMAIL_FROM`: giden email sender adresi. Pilot/launch: dogrulanmis domain.
-- `NOTIFICATION_DEFAULT_EMAIL_TO`: ops fallback inbox. Opsiyonel ama onerilir.
+- `NOTIFICATION_DEFAULT_EMAIL_TO`: ops fallback inbox. Opsiyonel; yoksa public contact bildirimleri ilk internal admin inbox'una duser. Launch icin yine de acik tanimlanmasi onerilir.
 
 ## Billing
 

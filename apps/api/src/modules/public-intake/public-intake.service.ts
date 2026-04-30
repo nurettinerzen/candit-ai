@@ -13,6 +13,7 @@ import {
   Prisma,
   PublicLeadStatus
 } from "@prisma/client";
+import { RuntimeConfigService } from "../../config/runtime-config.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { SecurityEventsService } from "../security-events/security-events.service";
 
@@ -122,6 +123,7 @@ function isSchemaDriftError(error: unknown) {
 export class PublicIntakeService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(RuntimeConfigService) private readonly runtimeConfig: RuntimeConfigService,
     @Inject(SecurityEventsService)
     private readonly securityEventsService: SecurityEventsService
   ) {}
@@ -363,10 +365,7 @@ export class PublicIntakeService {
     },
     traceId?: string
   ): Promise<OpsDispatchResult> {
-    const recipients = (process.env.NOTIFICATION_DEFAULT_EMAIL_TO ?? "")
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean);
+    const recipients = this.runtimeConfig.publicLeadNotificationRecipients;
 
     if (recipients.length === 0) {
       return {

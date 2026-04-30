@@ -1,4 +1,5 @@
 import { Body, Controller, ForbiddenException, Get, Inject, Param, Patch, Post, Query } from "@nestjs/common";
+import { Type } from "class-transformer";
 import {
   IsBoolean,
   IsEmail,
@@ -45,8 +46,9 @@ class AdminAccountQuery {
   status?: "ALL" | "ACTIVE" | "SUSPENDED" | "DELETED";
 }
 
-class RedAlertQuery {
+export class RedAlertQuery {
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(30)
