@@ -3064,6 +3064,18 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
     "Try 1 job credit, candidate evaluation, and AI interview flows for 14 days. No credit card required.",
   "1 kullanıcı": "1 user",
   "2 kullanıcı": "2 users",
+  "Bu şirket için 1 kullanıcı": "1 user for this company",
+  "Bu şirket için 2 kullanıcı": "2 users for this company",
+  "Bu şirket için 2 ilan kredisi": "2 job credits for this company",
+  "Bu şirket için 10 ilan kredisi": "10 job credits for this company",
+  "Bu şirket için 100 aday değerlendirme kredisi": "100 candidate evaluation credits for this company",
+  "Bu şirket için 500 aday değerlendirme kredisi": "500 candidate evaluation credits for this company",
+  "Bu şirket için 15 AI mülakat kredisi": "15 AI interview credits for this company",
+  "Bu şirket için 50 AI mülakat kredisi": "50 AI interview credits for this company",
+  "Bu şirket için özel kullanıcı limiti": "Custom user limit for this company",
+  "Bu şirket için özel ilan kredisi": "Custom job credits for this company",
+  "Bu şirket için özel aday değerlendirme kredisi": "Custom candidate evaluation credits for this company",
+  "Bu şirket için özel AI mülakat kredisi": "Custom AI interview credits for this company",
   "Kredi bazlı kullanım": "Credit-based usage",
   "1 ilan kredisi": "1 job credit",
   "2 ilan kredisi": "2 job credits",
@@ -3126,6 +3138,24 @@ Object.assign(EN_PHRASE_TRANSLATIONS, {
   "Özel aday işleme": "Custom candidate processing",
   "Özel AI mülakat": "Custom AI interviews",
   "Özel işe alıştırma + SLA": "Custom onboarding + SLA",
+  "Bu e-posta adresi ücretsiz denemeyi daha önce kullandı. Devam etmek için ücretli planla başlayın veya ekip davetiyle giriş yapın.":
+    "This email address has already used the free trial. Start with a paid plan or join through a team invitation.",
+  "Tek girişle birden fazla şirket yönetin. Her şirketin aboneliği, limitleri, ilanları, adayları ve marka görünümü ayrı tutulur.":
+    "Use one login to manage multiple companies. Each company keeps its own subscription, limits, jobs, candidates, and branding.",
+  "Ayrı faturalandırma sınırına sahip yeni bir şirket çalışma alanı açılır. Mevcut şirketinizin planı ve kredileri yeni şirketle paylaşılmaz.":
+    "This creates a separate company workspace with its own billing boundary. Your existing plan and credits are not shared with the new company.",
+  "Seçili şirketin denemesini, paketini ve kullanım durumunu tek yerden takip edin.":
+    "Track the selected company's trial, package, and usage from one place.",
+  "Değişiklikler yalnızca seçili şirkete uygulanır. Yükseltmeler hemen uygulanır; düşürmeler dönem sonunda planlanır.":
+    "Changes apply only to the selected company. Upgrades apply immediately; downgrades are scheduled for the period end.",
+  "Bu şirkete ait aylık kullanım her dönemde sıfırlanır. Satın aldığınız kredi paketleri 90 gün geçerlidir.":
+    "Included monthly usage resets every period for this company. Purchased credit packs stay active for 90 days.",
+  "Bu şirkete ait plan değişikliği, ek kredi ve faturalandırma güncellemeleri bu bölümden yönetilir.":
+    "Plan changes, extra credits, and billing updates are available for this company from this section.",
+  "Bu abonelik durumu yalnızca seçili şirkete aittir. Diğer şirketlerin paketleri ve kredileri ayrı kalır.":
+    "This billing state belongs only to the currently selected company. Other companies keep their own packages and credits.",
+  "Bu şirketin kullanım durumu": "Usage for this company",
+  "Plan gerekli": "Plan required",
   "Ücretsiz Deneyin": "Try Free",
   "Bize Ulaşın": "Contact Us",
   "Kredi kartı gerekmez. Hesap açın ve ilk akışınızı gerçek kullanımda görün.":

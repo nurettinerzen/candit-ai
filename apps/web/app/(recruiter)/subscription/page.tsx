@@ -148,10 +148,15 @@ function formatCheckoutAccessLabel(
   selfServeReady: boolean,
   trialActive: boolean,
   productionRuntime: boolean,
-  locale: "tr" | "en"
+  locale: "tr" | "en",
+  options: { accessAllowed?: boolean; trialEligible?: boolean } = {}
 ) {
   if (selfServeReady) {
     return locale === "en" ? "Payment ready" : "Ödeme hazır";
+  }
+
+  if (options.accessAllowed === false || options.trialEligible === false) {
+    return locale === "en" ? "Plan required" : "Plan gerekli";
   }
 
   if (trialActive) {
@@ -226,9 +231,13 @@ export default function SubscriptionPage() {
   const productionRuntime = runtimeConfig?.runtime.appMode === "production";
   const selfServeBlocked = productionRuntime && !selfServeReady;
   const billingBlockedMessage =
-    locale === "en"
-      ? "Your trial continues normally. Package changes and extra credit purchases will appear here when online payments are enabled."
-      : "Denemeniz normal şekilde devam ediyor. Paket değişikliği ve ek kredi satın alma adımları çevrimiçi ödeme açıldığında burada görünecek.";
+    billing?.access.isAllowed === false && billing.access.blockReason
+      ? billing.access.blockReason
+      : billing?.trial.isEligible === false && billing.trial.blockReason
+        ? billing.trial.blockReason
+        : locale === "en"
+          ? "Package changes and extra credit purchases will appear here when online payments are enabled."
+          : "Paket değişikliği ve ek kredi satın alma adımları çevrimiçi ödeme açıldığında burada görünecek.";
 
   const activeQuotaAddOns =
     billing?.addOnCatalog.filter((addOn) => addOn.quotaKey === activeAddOnQuotaKey) ?? [];
@@ -559,35 +568,41 @@ export default function SubscriptionPage() {
   );
   const pageSubtitle =
     locale === "en"
-      ? "Track your trial, package, and usage from one place."
-      : "Denemenizi, paketinizi ve kullanım durumunuzu tek yerden takip edin.";
+      ? "Track the selected company's trial, package, and usage from one place."
+      : "Seçili şirketin denemesini, paketini ve kullanım durumunu tek yerden takip edin.";
   const packageHeading = locale === "en" ? "Package" : "Paket";
   const plansHeading = locale === "en" ? "Packages" : "Paketler";
   const addOnsHeading = locale === "en" ? "Credit Packs" : "Kredi Paketleri";
   const planSectionHint =
     locale === "en"
-      ? "Upgrades apply immediately. Downgrades are scheduled for the end of the current period."
-      : "Yükseltmeler hemen uygulanır. Düşürmeler geçerli dönem sonunda planlanır.";
+      ? "Changes apply only to the selected company. Upgrades apply immediately; downgrades are scheduled for the period end."
+      : "Değişiklikler yalnızca seçili şirkete uygulanır. Yükseltmeler hemen uygulanır; düşürmeler dönem sonunda planlanır.";
   const trialPlanSectionHint =
     locale === "en"
       ? "Your trial is active. When you are ready, you can move to any package from here."
       : "Denemeniz aktif. Hazır olduğunuzda buradan dilediğiniz pakete geçebilirsiniz.";
   const addOnSectionHint =
     locale === "en"
-      ? "Included monthly usage resets every period. Purchased credit packs stay active for 90 days."
-      : "Paket içindeki aylık kullanım her dönemde sıfırlanır. Satın aldığınız kredi paketleri 90 gün geçerlidir.";
+      ? "Included monthly usage resets every period for this company. Purchased credit packs stay active for 90 days."
+      : "Bu şirkete ait aylık kullanım her dönemde sıfırlanır. Satın aldığınız kredi paketleri 90 gün geçerlidir.";
   const enterpriseCta = t("Kurumsal Teklif İste");
   const paymentStatusLabel = formatCheckoutAccessLabel(
     selfServeReady,
     Boolean(billing?.trial.isActive),
     productionRuntime,
-    locale
+    locale,
+    {
+      accessAllowed: billing?.access.isAllowed,
+      trialEligible: billing?.trial.isEligible
+    }
   );
   const paymentStatusDescription =
-    selfServeReady
+    billing?.access.isAllowed === false && billing.access.blockReason
+      ? billing.access.blockReason
+      : selfServeReady
       ? locale === "en"
-        ? "Plan changes, extra credits, and billing updates are available from this section."
-        : "Plan değişikliği, ek kredi ve faturalandırma güncellemeleri bu bölümden yönetilir."
+        ? "Plan changes, extra credits, and billing updates are available for this company from this section."
+        : "Bu şirkete ait plan değişikliği, ek kredi ve faturalandırma güncellemeleri bu bölümden yönetilir."
       : billingBlockedMessage;
   const trialStatusLabel =
     billing?.trial.isActive
@@ -625,6 +640,9 @@ export default function SubscriptionPage() {
       ) : null}
       {actionNotice ? <NoticeBox tone="success" message={actionNotice} /> : null}
       {error && billing ? <NoticeBox tone="danger" message={error} /> : null}
+      {billing?.warnings.map((warning) => (
+        <NoticeBox key={warning} tone="warning" message={warning} />
+      ))}
 
       {!billing ? (
         <section className="panel">
@@ -640,8 +658,8 @@ export default function SubscriptionPage() {
                 </h2>
                 <p className="small text-muted" style={{ margin: "6px 0 0" }}>
                   {locale === "en"
-                    ? "Follow your trial and see when package changes become available here."
-                    : "Deneme durumunuzu ve paket değişikliklerinin ne zaman açılacağını buradan takip edin."}
+                    ? "This billing state belongs only to the currently selected company. Other companies keep their own packages and credits."
+                    : "Bu abonelik durumu yalnızca seçili şirkete aittir. Diğer şirketlerin paketleri ve kredileri ayrı kalır."}
                 </p>
               </div>
               <StatusBadge
@@ -709,7 +727,9 @@ export default function SubscriptionPage() {
 
           <section className="panel">
             <div className="tlx-section-header">
-              <h3 className="tlx-section-title">{t("Kullanım Durumu")}</h3>
+              <h3 className="tlx-section-title">
+                {locale === "en" ? "Usage for this company" : "Bu şirketin kullanım durumu"}
+              </h3>
             </div>
 
             <div className="tlx-usage-list">
@@ -1210,7 +1230,7 @@ function QuotaRow({
   );
 }
 
-function NoticeBox({ message, tone }: { message: string; tone: "success" | "danger" }) {
+function NoticeBox({ message, tone }: { message: string; tone: "success" | "warning" | "danger" }) {
   const { t } = useUiText();
   return (
     <div className={`notice-box notice-${tone}`}>

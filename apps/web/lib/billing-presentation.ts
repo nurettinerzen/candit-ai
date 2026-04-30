@@ -90,7 +90,7 @@ export function formatBillingPackageLabel(
 export function buildBillingPlanFeatureList(plan: BillingFeaturePlan) {
   if (plan.key === "FLEX") {
     return [
-      "1 kullanıcı",
+      "Bu şirket için 1 kullanıcı",
       "İhtiyaca göre ilan kredisi",
       "İhtiyaca göre aday değerlendirme",
       "İhtiyaca göre AI mülakat",
@@ -105,10 +105,10 @@ export function buildBillingPlanFeatureList(plan: BillingFeaturePlan) {
 
   if (plan.key === "ENTERPRISE") {
     return [
-      "Özel kullanıcı limiti",
-      "Özel ilan kredisi",
-      "Özel aday değerlendirme kredisi",
-      "Özel AI mülakat kredisi",
+      "Bu şirket için özel kullanıcı limiti",
+      "Bu şirket için özel ilan kredisi",
+      "Bu şirket için özel aday değerlendirme kredisi",
+      "Bu şirket için özel AI mülakat kredisi",
       "CV analizi + fit score",
       "AI rapor + öneri çıktıları",
       "İnsan onaylı karar akışı",
@@ -122,10 +122,10 @@ export function buildBillingPlanFeatureList(plan: BillingFeaturePlan) {
   }
 
   const basePlanFeatures = [
-    `${plan.seatsIncluded} kullanıcı`,
-    `${plan.activeJobsIncluded} ilan kredisi`,
-    `${plan.candidateProcessingIncluded} aday değerlendirme kredisi`,
-    `${plan.aiInterviewsIncluded} AI mülakat kredisi`,
+    `Bu şirket için ${plan.seatsIncluded} kullanıcı`,
+    `Bu şirket için ${plan.activeJobsIncluded} ilan kredisi`,
+    `Bu şirket için ${plan.candidateProcessingIncluded} aday değerlendirme kredisi`,
+    `Bu şirket için ${plan.aiInterviewsIncluded} AI mülakat kredisi`,
     "CV analizi + fit score",
     "AI rapor + öneri çıktıları",
     "İnsan onaylı karar akışı",

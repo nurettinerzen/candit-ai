@@ -874,8 +874,8 @@ export default function SettingsPage() {
             </h2>
             <p className="small text-muted" style={{ margin: 0 }}>
               {locale === "en"
-                ? "Use one account to manage multiple companies, each with its own jobs, candidates, and branding."
-                : "Tek hesapla birden fazla şirket yönetin; her şirket kendi ilanı, adayı ve marka görünümüyle ayrı çalışsın."}
+                ? "Use one login to manage multiple companies. Each company keeps its own subscription, limits, jobs, candidates, and branding."
+                : "Tek girişle birden fazla şirket yönetin. Her şirketin aboneliği, limitleri, ilanları, adayları ve marka görünümü ayrı tutulur."}
             </p>
           </div>
           <StatusBadge
@@ -986,8 +986,8 @@ export default function SettingsPage() {
             <strong>{locale === "en" ? "Create another company" : "Yeni şirket oluştur"}</strong>
             <p className="small text-muted" style={{ margin: "4px 0 0" }}>
               {locale === "en"
-                ? "A new tenant is created under the same email so jobs, pipeline, and settings stay isolated."
-                : "Aynı e-posta altında yeni bir tenant açılır; ilanlar, pipeline ve ayarlar birbirinden izole kalır."}
+                ? "This creates a separate company workspace with its own billing boundary. Your existing plan and credits are not shared with the new company."
+                : "Ayrı faturalandırma sınırına sahip yeni bir şirket çalışma alanı açılır. Mevcut şirketinizin planı ve kredileri yeni şirketle paylaşılmaz."}
             </p>
           </div>
           <div

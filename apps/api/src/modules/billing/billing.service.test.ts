@@ -304,6 +304,127 @@ test("resolveBillingState rolls FLEX accounts to the active calendar month windo
   );
 });
 
+test("ensureBillingAccount starts the first company trial for an owner email", async () => {
+  const createdAccounts: any[] = [];
+  const createdSubscriptions: any[] = [];
+  const trialClaims: any[] = [];
+  const service = createService({
+    prisma: {
+      tenantBillingAccount: {
+        findUnique: async () => null,
+        findFirst: async () => null,
+        create: async (args: any) => {
+          createdAccounts.push(args.data);
+          return {
+            id: "acc_first",
+            ...args.data
+          };
+        }
+      },
+      tenantBillingSubscription: {
+        create: async (args: any) => {
+          createdSubscriptions.push(args.data);
+          return {
+            id: "sub_first",
+            ...args.data
+          };
+        }
+      },
+      billingTrialClaim: {
+        findUnique: async () => null,
+        upsert: async (args: any) => {
+          trialClaims.push(args);
+          return {
+            id: "claim_first",
+            ...args.create
+          };
+        }
+      },
+      user: {
+        findFirst: async (args: any) =>
+          args.where.tenantId === "ten_first"
+            ? {
+                id: "usr_first",
+                email: "owner@example.com"
+              }
+            : null
+      }
+    }
+  });
+
+  const account = await (service as any).ensureBillingAccount("ten_first");
+
+  assert.equal(account.status, BillingAccountStatus.TRIALING);
+  assert.equal(createdAccounts[0].tenantId, "ten_first");
+  assert.equal(createdAccounts[0].billingEmail, "owner@example.com");
+  assert.equal(createdSubscriptions[0].seatsIncluded, FREE_TRIAL_DEFINITION.seatsIncluded);
+  assert.equal(createdSubscriptions[0].activeJobsIncluded, FREE_TRIAL_DEFINITION.activeJobsIncluded);
+  assert.equal(trialClaims.length, 1);
+  assert.equal(trialClaims[0].create.firstTenantId, "ten_first");
+});
+
+test("ensureBillingAccount keeps additional companies on a separate paid billing boundary", async () => {
+  const createdAccounts: any[] = [];
+  const createdSubscriptions: any[] = [];
+  const trialClaims: any[] = [];
+  const service = createService({
+    prisma: {
+      tenantBillingAccount: {
+        findUnique: async () => null,
+        create: async (args: any) => {
+          createdAccounts.push(args.data);
+          return {
+            id: "acc_second",
+            ...args.data
+          };
+        }
+      },
+      tenantBillingSubscription: {
+        create: async (args: any) => {
+          createdSubscriptions.push(args.data);
+          return {
+            id: "sub_second",
+            ...args.data
+          };
+        }
+      },
+      billingTrialClaim: {
+        findUnique: async () => ({
+          id: "claim_first",
+          normalizedEmail: "owner@example.com",
+          firstTenantId: "ten_first"
+        }),
+        upsert: async (args: any) => {
+          trialClaims.push(args);
+          return args.create;
+        }
+      },
+      user: {
+        findFirst: async () => ({
+          id: "usr_second",
+          email: "owner@example.com"
+        })
+      }
+    }
+  });
+
+  const account = await (service as any).ensureBillingAccount("ten_second");
+
+  assert.equal(account.status, BillingAccountStatus.INCOMPLETE);
+  assert.equal(createdAccounts[0].tenantId, "ten_second");
+  assert.equal(createdAccounts[0].billingEmail, "owner@example.com");
+  assert.equal(createdSubscriptions[0].seatsIncluded, 0);
+  assert.equal(createdSubscriptions[0].activeJobsIncluded, 0);
+  assert.equal(createdSubscriptions[0].candidateProcessingIncluded, 0);
+  assert.equal(createdSubscriptions[0].aiInterviewsIncluded, 0);
+  assert.equal(createdSubscriptions[0].metadataJson.bootstrap, "trial_ineligible");
+  assert.match(
+    String(createdSubscriptions[0].metadataJson.trialBlockedReason),
+    /ücretsiz denemeyi daha önce kullandı/i
+  );
+  assert.equal(trialClaims.length, 0);
+});
+
 test("createPlanCheckoutSession schedules downgrades for the end of the current period", async () => {
   const updates: any[] = [];
   const service = createService({

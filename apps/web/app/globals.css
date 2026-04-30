@@ -2765,6 +2765,12 @@ main {
   color: var(--success, #22c55e);
 }
 
+.notice-box.notice-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  color: var(--warn-text, #f59e0b);
+}
+
 .notice-box.notice-danger {
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.2);
