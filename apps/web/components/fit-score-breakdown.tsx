@@ -1,106 +1,117 @@
+"use client";
+
 import { normalizeFitCategories, toConfidencePercent, toFitScorePercent } from "../lib/fit-score";
+import { getFitScoreCopy, type FitScoreCopy } from "../lib/fit-score-copy";
 import type { ApplicantFitScoreCategory, ApplicantFitScoreView } from "../lib/types";
 import { FitScoreBar } from "./fit-score-bar";
+import { useUiText } from "./site-language-provider";
 
-function SubScoreRow({ sub }: { sub: ApplicantFitScoreCategory }) {
+function SubScoreRow({
+  sub,
+  copy
+}: {
+  sub: ApplicantFitScoreCategory;
+  copy: FitScoreCopy;
+}) {
   const isInformational = typeof sub.weight === "number" && sub.weight <= 0;
 
   return (
     <div className="fit-sub-row">
       <div className="fit-sub-label-group">
         <span className="fit-sub-label">{sub.label}</span>
-        {isInformational && <span className="fit-sub-badge">Bilgilendirici</span>}
+        {isInformational && <span className="fit-sub-badge">{copy.informational}</span>}
       </div>
       <FitScoreBar score={sub.score} confidence={sub.confidence} size="sm" />
       <span className="fit-sub-reason">
-        {sub.reasoning || "Bu kategori için ek açıklama yok."}
-        {isInformational && " Bu alt skor genel uyum skoruna dahil edilmez; recruiter kararı için ek bağlam sağlar."}
+        {sub.reasoning || copy.noCategoryReason}
+        {isInformational && ` ${copy.informationalReason}`}
       </span>
     </div>
   );
 }
 
-function getConfidenceInterpretation(confidence: number): { text: string; color: string } {
-  if (confidence > 0.8) return { text: "AI bu değerlendirmeden emin", color: "var(--color-success)" };
-  if (confidence >= 0.5) return { text: "AI orta düzeyde emin", color: "var(--color-warning)" };
-  return { text: "AI bu değerlendirmeden emin değil — dikkatli inceleyin", color: "var(--color-danger)" };
+function getConfidenceInterpretation(confidence: number, copy: FitScoreCopy) {
+  if (confidence > 0.8) return { text: copy.confidenceHigh, tone: "success" };
+  if (confidence >= 0.5) return { text: copy.confidenceMedium, tone: "warning" };
+  return { text: copy.confidenceLow, tone: "danger" };
 }
 
 export function FitScoreBreakdown({ fitScore }: { fitScore: ApplicantFitScoreView }) {
+  const { locale } = useUiText();
+  const copy = getFitScoreCopy(locale);
   const categories = normalizeFitCategories(fitScore.subScores);
   const overallScore = toFitScorePercent(fitScore.overallScore) ?? 0;
   const confidence = toConfidencePercent(fitScore.confidence) ?? 0;
-  const confidenceInfo = getConfidenceInterpretation(fitScore.confidence);
+  const confidenceInfo = getConfidenceInterpretation(fitScore.confidence, copy);
   const hasInformationalCategory = categories.some((category) => typeof category.weight === "number" && category.weight <= 0);
 
   return (
     <div className="fit-breakdown">
       <div className="fit-breakdown-header">
-        <strong>Genel Uyum Skoru: {overallScore}/100</strong>
-        <span className="text-muted"> (Değerlendirme Güvenilirliği: {confidence}%)</span>
-        <div style={{ fontSize: "0.85rem", color: confidenceInfo.color, marginTop: "0.25rem" }}>
+        <strong>{copy.overallScore}: {overallScore}/100</strong>
+        <span className="text-muted"> ({copy.confidenceLabel}: {confidence}%)</span>
+        <div className={`fit-confidence fit-confidence-${confidenceInfo.tone}`}>
           {confidenceInfo.text}
         </div>
         {hasInformationalCategory && (
           <div className="fit-breakdown-note">
-            Bazı alt skorlar bilgilendiricidir. Özellikle lokasyon ve çalışma modeli gibi alanlar genel uyum skoruna
-            doğrudan eklenmez; recruiter kararına bağlam sağlamak için ayrı gösterilir.
+            {copy.informationalNote}
           </div>
         )}
       </div>
 
       {categories.length > 0 && (
         <div className="fit-sub-scores">
-          <h4>Detaylı Skorlar</h4>
+          <h4>{copy.detailedScores}</h4>
           {categories.map((category) => (
-            <SubScoreRow key={category.key} sub={category} />
+            <SubScoreRow key={category.key} sub={category} copy={copy} />
           ))}
         </div>
       )}
 
       {fitScore.strengths.length > 0 && (
         <div className="fit-section">
-          <h4>Güçlü Yönler</h4>
+          <h4>{copy.strengths}</h4>
           <ul>{fitScore.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
         </div>
       )}
 
       {fitScore.risks.length > 0 && (
         <div className="fit-section">
-          <h4>Uyarılar</h4>
+          <h4>{copy.risks}</h4>
           <ul>{fitScore.risks.map((r, i) => <li key={i}>{r}</li>)}</ul>
         </div>
       )}
 
       {fitScore.missingInfo.length > 0 && (
         <div className="fit-section">
-          <h4>Eksik Bilgiler</h4>
+          <h4>{copy.missingInfo}</h4>
           <ul>{fitScore.missingInfo.map((m, i) => <li key={i}>{m}</li>)}</ul>
         </div>
       )}
 
       {fitScore.reasoning && (
         <div className="fit-section">
-          <h4>AI Açıklaması</h4>
+          <h4>{copy.reasoning}</h4>
           <p className="text-muted">{fitScore.reasoning}</p>
         </div>
       )}
 
       {(fitScore.strengths.length > 0 || fitScore.risks.length > 0) && (
-        <div className="fit-section" style={{ borderTop: "1px solid var(--color-border, #e0e0e0)", paddingTop: "0.75rem", marginTop: "0.75rem" }}>
-          <h4>Neden bu skor?</h4>
-          <p className="text-muted" style={{ fontSize: "0.9rem", lineHeight: 1.5 }}>
-            Bu aday {overallScore} puan aldı.
+        <div className="fit-section fit-breakdown-footer">
+          <h4>{copy.whyScore}</h4>
+          <p className="text-muted">
+            {copy.scoreIntro} {overallScore} {copy.scoreSuffix}
             {fitScore.strengths.length > 0 && (
-              <> Adayın {fitScore.strengths.length} güçlü yönü tespit edildi.</>
+              <> {fitScore.strengths.length} {copy.strengthsDetected}</>
             )}
             {fitScore.risks.length > 0 && (
-              <> Bununla birlikte {fitScore.risks.length} dikkat edilmesi gereken uyarı bulunuyor.</>
+              <> {fitScore.risks.length} {copy.risksDetected}</>
             )}
             {fitScore.missingInfo.length > 0 && (
-              <> Ayrıca {fitScore.missingInfo.length} eksik bilgi mevcut; bunlar takip sorularıyla tamamlanabilir.</>
+              <> {fitScore.missingInfo.length} {copy.missingDetected}</>
             )}
-            {" "}Detaylar için yukarıdaki bölümleri inceleyin.
+            {" "}{copy.reviewDetails}
           </p>
         </div>
       )}

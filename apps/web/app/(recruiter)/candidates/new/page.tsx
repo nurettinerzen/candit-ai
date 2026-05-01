@@ -153,17 +153,7 @@ export default function NewCandidatePage() {
           />
         </Field>
 
-        <div
-          style={{
-            gridColumn: "1 / -1",
-            display: "grid",
-            gap: 12,
-            padding: "14px 16px",
-            borderRadius: 14,
-            border: "1px solid var(--border)",
-            background: "rgba(255,255,255,0.02)"
-          }}
-        >
+        <div className="consent-card">
           <div>
             <strong>{t("KVKK açık rıza kaydı")}</strong>
             <p className="small text-muted" style={{ margin: "6px 0 0" }}>
@@ -172,15 +162,7 @@ export default function NewCandidatePage() {
           </div>
 
           {consentMeta.explicitText ? (
-            <div
-              className="small text-muted"
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid var(--border)"
-              }}
-            >
+            <div className="small text-muted consent-copy">
               {consentMeta.explicitText}
             </div>
           ) : null}
@@ -190,12 +172,11 @@ export default function NewCandidatePage() {
             {consentMeta.policyVersion ? ` · ${consentMeta.policyVersion}` : ""}
           </div>
 
-          <label style={{ display: "inline-flex", alignItems: "flex-start", gap: 10 }}>
+          <label className="consent-check">
             <input
               type="checkbox"
               checked={consentAccepted}
               onChange={(event) => setConsentAccepted(event.target.checked)}
-              style={{ marginTop: 3 }}
             />
             <span>
               {t("Adaydan KVKK açık rızası alınmıştır ve sistemde kaydedilmesi onaylanmıştır.")}

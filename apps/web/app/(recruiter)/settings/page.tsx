@@ -31,6 +31,13 @@ import type {
   TenantMessageTemplate,
   TenantProfileReadModel
 } from "../../../lib/types";
+import {
+  TENANT_MESSAGE_TEMPLATE_VARIABLES,
+  createEmptyTenantMessageTemplate,
+  getOrderedTenantMessageTemplateKeys,
+  getTenantMessageTemplateDefinition,
+  normalizeCustomTemplateKey
+} from "../../../lib/tenant-message-templates";
 
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -92,74 +99,17 @@ function textToCompetencyDefinitions(value: string): CompetencyDefinition[] {
     .filter((item): item is CompetencyDefinition => Boolean(item));
 }
 
-const MESSAGE_TEMPLATE_ORDER = [
-  "application_received_v1",
-  "application_shortlisted_v1",
-  "application_advanced_v1",
-  "application_on_hold_v1",
-  "application_rejected_v1",
-  "interview_invitation_on_demand_v1",
-  "interview_invitation_reminder_v1"
-];
-
-function messageTemplatesToText(values: Record<string, TenantMessageTemplate>) {
-  const orderedKeys = [
-    ...MESSAGE_TEMPLATE_ORDER,
-    ...Object.keys(values).filter((key) => !MESSAGE_TEMPLATE_ORDER.includes(key))
-  ];
-
-  return orderedKeys
-    .filter((key, index, arr) => values[key] && arr.indexOf(key) === index)
-    .map((key) => {
-      const template = values[key];
-      if (!template) {
-        return "";
+function cloneMessageTemplates(values: Record<string, TenantMessageTemplate>) {
+  return Object.fromEntries(
+    Object.entries(values).map(([key, template]) => [
+      key,
+      {
+        subject: template.subject,
+        body: template.body,
+        ctaLabel: template.ctaLabel
       }
-      return [
-        `### ${key}`,
-        `subject: ${template.subject}`,
-        template.ctaLabel ? `cta: ${template.ctaLabel}` : "cta:",
-        "body:",
-        template.body
-      ].join("\n");
-    })
-    .filter(Boolean)
-    .join("\n\n");
-}
-
-function textToMessageTemplates(value: string): Record<string, TenantMessageTemplate> {
-  const templates: Record<string, TenantMessageTemplate> = {};
-  const blocks = value
-    .split(/^###\s+/gm)
-    .map((block) => block.trim())
-    .filter(Boolean);
-
-  for (const block of blocks) {
-    const lines = block.split(/\r?\n/g);
-    const key = lines.shift()?.trim();
-    if (!key) {
-      continue;
-    }
-
-    const subjectLineIndex = lines.findIndex((line) => line.toLocaleLowerCase("tr-TR").startsWith("subject:"));
-    const ctaLineIndex = lines.findIndex((line) => line.toLocaleLowerCase("tr-TR").startsWith("cta:"));
-    const bodyLineIndex = lines.findIndex((line) => line.toLocaleLowerCase("tr-TR") === "body:");
-    const subject = subjectLineIndex >= 0 ? (lines[subjectLineIndex] ?? "").replace(/^subject:/i, "").trim() : "";
-    const ctaLabel = ctaLineIndex >= 0 ? (lines[ctaLineIndex] ?? "").replace(/^cta:/i, "").trim() : "";
-    const body = bodyLineIndex >= 0 ? lines.slice(bodyLineIndex + 1).join("\n").trim() : "";
-
-    if (!subject || !body) {
-      continue;
-    }
-
-    templates[key] = {
-      subject,
-      body,
-      ctaLabel: ctaLabel || null
-    };
-  }
-
-  return templates;
+    ])
+  ) as Record<string, TenantMessageTemplate>;
 }
 
 function createHiringSettingsFormState(settings: TenantHiringSettings) {
@@ -186,7 +136,7 @@ function createHiringSettingsFormState(settings: TenantHiringSettings) {
     approvalStages: linesToText(settings.approvalFlow.stages),
     approvalNotes: settings.approvalFlow.notes ?? "",
     responseSlaDays: String(settings.notificationDefaults.responseSlaDays),
-    messageTemplates: messageTemplatesToText(settings.messageTemplates)
+    messageTemplates: cloneMessageTemplates(settings.messageTemplates)
   };
 }
 
@@ -258,6 +208,7 @@ export default function SettingsPage() {
   const [profileNotice, setProfileNotice] = useState("");
   const [companyNotice, setCompanyNotice] = useState("");
   const [securityNotice, setSecurityNotice] = useState("");
+  const [newTemplateKey, setNewTemplateKey] = useState("");
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -470,7 +421,7 @@ export default function SettingsPage() {
         notificationDefaults: {
           responseSlaDays: Math.max(1, Number(hiringSettingsForm.responseSlaDays) || 15)
         },
-        messageTemplates: textToMessageTemplates(hiringSettingsForm.messageTemplates)
+        messageTemplates: hiringSettingsForm.messageTemplates
       };
 
       const nextSettings = await apiClient.updateTenantHiringSettings(payload);
@@ -488,6 +439,67 @@ export default function SettingsPage() {
     } finally {
       setBusyKey("");
     }
+  }
+
+  function updateMessageTemplate(
+    key: string,
+    field: keyof TenantMessageTemplate,
+    value: string
+  ) {
+    setHiringSettingsForm((prev) => {
+      const current = prev.messageTemplates[key] ?? createEmptyTenantMessageTemplate();
+
+      return {
+        ...prev,
+        messageTemplates: {
+          ...prev.messageTemplates,
+          [key]: {
+            ...current,
+            [field]: field === "ctaLabel" ? value.trim() || null : value
+          }
+        }
+      };
+    });
+  }
+
+  function handleAddCustomTemplate() {
+    const key = normalizeCustomTemplateKey(newTemplateKey);
+
+    if (!key) {
+      setError(locale === "en" ? "Template key is required." : "Şablon anahtarı zorunludur.");
+      return;
+    }
+
+    if (hiringSettingsForm.messageTemplates[key]) {
+      setError(locale === "en" ? "This template key already exists." : "Bu şablon anahtarı zaten var.");
+      return;
+    }
+
+    setHiringSettingsForm((prev) => ({
+      ...prev,
+      messageTemplates: {
+        ...prev.messageTemplates,
+        [key]: createEmptyTenantMessageTemplate()
+      }
+    }));
+    setNewTemplateKey("");
+    setError("");
+  }
+
+  function handleRemoveCustomTemplate(key: string) {
+    if (getTenantMessageTemplateDefinition(key)) {
+      return;
+    }
+
+    setHiringSettingsForm((prev) => {
+      const nextTemplates = { ...prev.messageTemplates };
+      delete nextTemplates[key];
+
+      return {
+        ...prev,
+        messageTemplates: nextTemplates
+      };
+    });
   }
 
   async function handleCreateCompany(event: FormEvent<HTMLFormElement>) {
@@ -624,6 +636,72 @@ export default function SettingsPage() {
     locale === "en"
       ? "Manage company profile and security settings."
       : "Şirket profili ve güvenlik ayarlarını yönetin.";
+  const orderedTemplateKeys = getOrderedTenantMessageTemplateKeys(hiringSettingsForm.messageTemplates);
+  const standardTemplateKeys = orderedTemplateKeys.filter((key) => Boolean(getTenantMessageTemplateDefinition(key)));
+  const customTemplateKeys = orderedTemplateKeys.filter((key) => !getTenantMessageTemplateDefinition(key));
+
+  function renderMessageTemplateEditor(key: string) {
+    const definition = getTenantMessageTemplateDefinition(key);
+    const template = hiringSettingsForm.messageTemplates[key] ?? createEmptyTenantMessageTemplate();
+    const titleText = definition?.label[locale] ?? key;
+    const descriptionText =
+      definition?.description[locale] ??
+      (locale === "en"
+        ? "Custom company-specific message template."
+        : "Şirkete özel mesaj şablonu.");
+
+    return (
+      <article key={key} className="settings-message-card">
+        <div className="settings-message-card-header">
+          <div>
+            <strong>{titleText}</strong>
+            <div className="settings-message-key">{key}</div>
+            <p className="small text-muted" style={{ margin: "6px 0 0" }}>
+              {descriptionText}
+            </p>
+          </div>
+          {definition ? (
+            <span className="badge info">{locale === "en" ? "System" : "Sistem"}</span>
+          ) : (
+            <button type="button" className="ghost-button" onClick={() => handleRemoveCustomTemplate(key)}>
+              {locale === "en" ? "Remove" : "Sil"}
+            </button>
+          )}
+        </div>
+
+        <label className="settings-field">
+          <span>{locale === "en" ? "Subject" : "Konu"}</span>
+          <input
+            className="input"
+            value={template.subject}
+            onChange={(event) => updateMessageTemplate(key, "subject", event.target.value)}
+            placeholder={locale === "en" ? "Email subject" : "E-posta konusu"}
+          />
+        </label>
+
+        <label className="settings-field">
+          <span>{locale === "en" ? "CTA label" : "Buton etiketi"}</span>
+          <input
+            className="input"
+            value={template.ctaLabel ?? ""}
+            onChange={(event) => updateMessageTemplate(key, "ctaLabel", event.target.value)}
+            placeholder={locale === "en" ? "Optional button label" : "Opsiyonel buton etiketi"}
+          />
+        </label>
+
+        <label className="settings-field">
+          <span>{locale === "en" ? "Message body" : "Mesaj içeriği"}</span>
+          <textarea
+            className="input"
+            rows={7}
+            value={template.body}
+            onChange={(event) => updateMessageTemplate(key, "body", event.target.value)}
+            placeholder={locale === "en" ? "Write the message body..." : "Mesaj içeriğini yazın..."}
+          />
+        </label>
+      </article>
+    );
+  }
 
   if (loading) {
     return (
@@ -801,31 +879,14 @@ export default function SettingsPage() {
             </span>
           </label>
 
-          <div
-            style={{
-              display: "grid",
-              gap: 10,
-              padding: 14,
-              borderRadius: 14,
-              border: "1px solid var(--border)",
-              background: "rgba(255,255,255,0.02)"
-            }}
-          >
+          <div className="settings-card">
             <strong>{locale === "en" ? "Current profile" : "Mevcut profil"}</strong>
             {profileForm.logoUrl ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div className="settings-brand-preview">
                 <img
                   src={profileForm.logoUrl}
                   alt={profileForm.companyName || "Şirket logosu"}
-                  style={{
-                    width: 56,
-                    height: 56,
-                    objectFit: "contain",
-                    padding: 8,
-                    borderRadius: 12,
-                    border: "1px solid var(--border)",
-                    background: "rgba(255,255,255,0.04)"
-                  }}
+                  className="settings-logo-preview"
                 />
                 <span className="small text-muted">
                   {locale === "en" ? "Logo preview" : "Logo önizlemesi"}
@@ -835,7 +896,7 @@ export default function SettingsPage() {
             <div className="small text-muted" style={{ display: "grid", gap: 4 }}>
               <span>
                 {locale === "en" ? "Company name" : "Şirket adı"}:{" "}
-                <strong style={{ color: "var(--text)" }}>{profileForm.companyName || "—"}</strong>
+                <strong>{profileForm.companyName || "—"}</strong>
               </span>
               <span>
                 {locale === "en" ? "Website" : "Web sitesi"}:{" "}
@@ -899,17 +960,7 @@ export default function SettingsPage() {
             return (
               <div
                 key={company.tenantId}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 16,
-                  flexWrap: "wrap",
-                  padding: "14px 16px",
-                  borderRadius: 14,
-                  border: "1px solid var(--border)",
-                  background: isActive ? "rgba(124,115,250,0.08)" : "rgba(255,255,255,0.02)"
-                }}
+                className={`settings-card-row settings-card${isActive ? " settings-card-active" : ""}`}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                   {company.logoUrl ? (
@@ -917,27 +968,10 @@ export default function SettingsPage() {
                     <img
                       src={company.logoUrl}
                       alt=""
-                      style={{
-                        width: 42,
-                        height: 42,
-                        objectFit: "cover",
-                        borderRadius: 12,
-                        border: "1px solid var(--border)"
-                      }}
+                      className="settings-company-avatar"
                     />
                   ) : (
-                    <div
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 12,
-                        border: "1px solid var(--border)",
-                        display: "grid",
-                        placeItems: "center",
-                        fontWeight: 700,
-                        color: "var(--primary, #7c73fa)"
-                      }}
-                    >
+                    <div className="settings-company-avatar">
                       {company.tenantName.slice(0, 2).toUpperCase()}
                     </div>
                   )}
@@ -972,13 +1006,9 @@ export default function SettingsPage() {
         </div>
 
         <form
+          className="settings-card settings-card-dashed"
           style={{
-            display: "grid",
-            gap: 12,
-            padding: 16,
-            borderRadius: 14,
-            border: "1px dashed var(--border)",
-            background: "rgba(255,255,255,0.02)"
+            display: "grid"
           }}
           onSubmit={handleCreateCompany}
         >
@@ -1255,99 +1285,143 @@ export default function SettingsPage() {
             </label>
           </div>
 
-          <div
-            className="inline-grid"
-            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}
-          >
-            <label style={{ display: "grid", gap: 8 }}>
-              <span>KVKK notice version</span>
-              <input
+          <div className="settings-card">
+            <div>
+              <strong>{locale === "en" ? "KVKK and candidate consent" : "KVKK ve aday açık rıza metinleri"}</strong>
+              <p className="small text-muted" style={{ margin: "6px 0 0" }}>
+                {locale === "en"
+                  ? "These values are company-specific and are shown on candidate-facing consent surfaces."
+                  : "Bu değerler şirket bazlıdır ve aday ekranındaki açık rıza yüzeylerinde gösterilir."}
+              </p>
+            </div>
+
+            <div className="settings-grid-sm">
+              <label className="settings-field">
+                <span>{locale === "en" ? "KVKK notice version" : "KVKK metin versiyonu"}</span>
+                <input
+                  className="input"
+                  value={hiringSettingsForm.consentNoticeVersion}
+                  onChange={(event) =>
+                    setHiringSettingsForm((prev) => ({ ...prev, consentNoticeVersion: event.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="settings-field">
+                <span>{locale === "en" ? "Policy version" : "Politika versiyonu"}</span>
+                <input
+                  className="input"
+                  value={hiringSettingsForm.consentPolicyVersion}
+                  onChange={(event) =>
+                    setHiringSettingsForm((prev) => ({ ...prev, consentPolicyVersion: event.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="settings-field">
+                <span>{locale === "en" ? "Default response SLA (days)" : "Varsayılan geri dönüş SLA (gün)"}</span>
+                <input
+                  className="input"
+                  type="number"
+                  min={1}
+                  value={hiringSettingsForm.responseSlaDays}
+                  onChange={(event) =>
+                    setHiringSettingsForm((prev) => ({ ...prev, responseSlaDays: event.target.value }))
+                  }
+                />
+              </label>
+            </div>
+
+            <label className="settings-field">
+              <span>{locale === "en" ? "Consent summary" : "Açık rıza özeti"}</span>
+              <textarea
                 className="input"
-                value={hiringSettingsForm.consentNoticeVersion}
+                rows={4}
+                value={hiringSettingsForm.consentSummary}
                 onChange={(event) =>
-                  setHiringSettingsForm((prev) => ({ ...prev, consentNoticeVersion: event.target.value }))
+                  setHiringSettingsForm((prev) => ({ ...prev, consentSummary: event.target.value }))
                 }
+                placeholder={locale === "en" ? "Explain why candidate data is processed." : "Aday verisinin neden işlendiğini özetleyin."}
               />
             </label>
 
-            <label style={{ display: "grid", gap: 8 }}>
-              <span>{locale === "en" ? "Policy version" : "Politika versiyonu"}</span>
-              <input
+            <label className="settings-field">
+              <span>{locale === "en" ? "Explicit consent text" : "Açık rıza metni"}</span>
+              <textarea
                 className="input"
-                value={hiringSettingsForm.consentPolicyVersion}
+                rows={5}
+                value={hiringSettingsForm.consentExplicitText}
                 onChange={(event) =>
-                  setHiringSettingsForm((prev) => ({ ...prev, consentPolicyVersion: event.target.value }))
+                  setHiringSettingsForm((prev) => ({ ...prev, consentExplicitText: event.target.value }))
                 }
-              />
-            </label>
-
-            <label style={{ display: "grid", gap: 8 }}>
-              <span>{locale === "en" ? "Default response SLA (days)" : "Varsayılan geri dönüş SLA (gün)"}</span>
-              <input
-                className="input"
-                type="number"
-                min={1}
-                value={hiringSettingsForm.responseSlaDays}
-                onChange={(event) =>
-                  setHiringSettingsForm((prev) => ({ ...prev, responseSlaDays: event.target.value }))
-                }
+                placeholder={locale === "en" ? "I consent to the processing of my personal data..." : "Kişisel verilerimin işe alım süreçleri kapsamında işlenmesini kabul ediyorum..."}
               />
             </label>
           </div>
 
-          <label style={{ display: "grid", gap: 8 }}>
-            <span>{locale === "en" ? "Consent summary" : "Açık rıza özeti"}</span>
-            <textarea
-              className="input"
-              rows={4}
-              value={hiringSettingsForm.consentSummary}
-              onChange={(event) =>
-                setHiringSettingsForm((prev) => ({ ...prev, consentSummary: event.target.value }))
-              }
-              placeholder={locale === "en" ? "Explain why candidate data is processed." : "Aday verisinin neden işlendiğini özetleyin."}
-            />
-          </label>
+          <div className="settings-card">
+            <div className="settings-card-row">
+              <div>
+                <strong>{locale === "en" ? "Candidate message templates" : "Adaya iletilecek mesaj şablonları"}</strong>
+                <p className="small text-muted" style={{ margin: "6px 0 0" }}>
+                  {locale === "en"
+                    ? "All automatic candidate messages are managed here per company. The send actions use these templates."
+                    : "Adaya giden otomatik mesajların tamamı şirket bazında buradan yönetilir. Mesaj gönder aksiyonları bu şablonları kullanır."}
+                </p>
+              </div>
+              <span className="status-badge status-brand">
+                {locale === "en" ? `${orderedTemplateKeys.length} templates` : `${orderedTemplateKeys.length} şablon`}
+              </span>
+            </div>
 
-          <label style={{ display: "grid", gap: 8 }}>
-            <span>{locale === "en" ? "Explicit consent text" : "Açık rıza metni"}</span>
-            <textarea
-              className="input"
-              rows={5}
-              value={hiringSettingsForm.consentExplicitText}
-              onChange={(event) =>
-                setHiringSettingsForm((prev) => ({ ...prev, consentExplicitText: event.target.value }))
-              }
-              placeholder={locale === "en" ? "I consent to the processing of my personal data..." : "Kişisel verilerimin işe alım süreçleri kapsamında işlenmesini kabul ediyorum..."}
-            />
-          </label>
+            <div className="settings-template-variables">
+              {TENANT_MESSAGE_TEMPLATE_VARIABLES.map((variable) => (
+                <code key={variable}>{variable}</code>
+              ))}
+            </div>
 
-          <label style={{ display: "grid", gap: 8 }}>
-            <span>{locale === "en" ? "Candidate message templates" : "Adaya iletilecek mesaj şablonları"}</span>
-            <textarea
-              className="input"
-              rows={14}
-              value={hiringSettingsForm.messageTemplates}
-              onChange={(event) =>
-                setHiringSettingsForm((prev) => ({ ...prev, messageTemplates: event.target.value }))
-              }
-            />
-            <span className="small text-muted">
-              {locale === "en"
-                ? "These templates are tenant-specific. Variables: {{candidateName}}, {{companyName}}, {{jobTitle}}, {{interviewLink}}, {{deadline}}."
-                : "Bu şablonlar şirket bazlıdır. Değişkenler: {{candidateName}}, {{companyName}}, {{jobTitle}}, {{interviewLink}}, {{deadline}}."}
-            </span>
-          </label>
+            <div>
+              <h3 className="settings-section-title">{locale === "en" ? "System messages" : "Hazır mesajlar"}</h3>
+              <div className="settings-message-grid">
+                {standardTemplateKeys.map((key) => renderMessageTemplateEditor(key))}
+              </div>
+            </div>
 
-          <div
-            style={{
-              display: "grid",
-              gap: 12,
-              padding: 16,
-              borderRadius: 14,
-              border: "1px solid var(--border)",
-              background: "rgba(255,255,255,0.02)"
-            }}
-          >
+            <div>
+              <div className="settings-card-row">
+                <div>
+                  <h3 className="settings-section-title">{locale === "en" ? "Custom messages" : "Özel mesajlar"}</h3>
+                  <p className="small text-muted" style={{ margin: 0 }}>
+                    {locale === "en"
+                      ? "Add company-specific templates for manual or future automation flows."
+                      : "Manuel veya ileride otomasyona bağlanacak şirket özelinde mesaj şablonları ekleyin."}
+                  </p>
+                </div>
+                <div className="settings-message-actions">
+                  <input
+                    className="input"
+                    value={newTemplateKey}
+                    onChange={(event) => setNewTemplateKey(event.target.value)}
+                    placeholder={locale === "en" ? "custom_template_key" : "ozel_sablon_anahtari"}
+                  />
+                  <button type="button" className="ghost-button" onClick={handleAddCustomTemplate}>
+                    {locale === "en" ? "Add" : "Ekle"}
+                  </button>
+                </div>
+              </div>
+              {customTemplateKeys.length > 0 ? (
+                <div className="settings-message-grid" style={{ marginTop: 12 }}>
+                  {customTemplateKeys.map((key) => renderMessageTemplateEditor(key))}
+                </div>
+              ) : (
+                <p className="small text-muted" style={{ marginBottom: 0 }}>
+                  {locale === "en" ? "No custom message yet." : "Henüz özel mesaj eklenmedi."}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="settings-card">
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                 <input
@@ -1488,9 +1562,9 @@ export default function SettingsPage() {
       </section>
 
       {isOwner ? (
-        <section className="panel" style={{ display: "grid", gap: 16, borderColor: "rgba(239,68,68,0.24)" }}>
+        <section className="panel settings-danger-panel" style={{ display: "grid", gap: 16 }}>
           <div>
-            <h2 style={{ margin: "0 0 6px", color: "var(--danger, #ef4444)" }}>
+            <h2 className="settings-danger-title">
               {locale === "en" ? "Delete company account" : "Hesabı sil"}
             </h2>
             <p className="small text-muted" style={{ margin: 0 }}>
@@ -1560,19 +1634,9 @@ function NoticeBox({
   tone: "success" | "danger";
 }) {
   const { t } = useUiText();
-  const color = tone === "success" ? "34,197,94" : "239,68,68";
 
   return (
-    <div
-      style={{
-        padding: "12px 16px",
-        background: `rgba(${color},0.08)`,
-        border: `1px solid rgba(${color},0.2)`,
-        borderRadius: 8,
-        color: tone === "success" ? "var(--success, #22c55e)" : "var(--danger, #ef4444)",
-        fontSize: 14
-      }}
-    >
+    <div className={`notice-box notice-${tone}`}>
       {t(message)}
     </div>
   );

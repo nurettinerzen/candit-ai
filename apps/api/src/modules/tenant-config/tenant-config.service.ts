@@ -93,10 +93,52 @@ const DEFAULT_HIRING_SETTINGS = {
         "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonu için başvurunuz tarafımıza ulaştı.\n\nEkibimiz başvurunuzu değerlendirmeye aldı. Süreçte yeni bir adım olduğunda sizinle tekrar paylaşacağız.",
       ctaLabel: null
     },
+    application_shortlisted_v1: {
+      subject: "{{companyName}} – Ön değerlendirme olumlu",
+      body:
+        "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonu için başvurunuz ön değerlendirmede olumlu ilerledi.\n\nSüreçteki sonraki adımı ayrıca paylaşacağız.",
+      ctaLabel: null
+    },
+    application_advanced_v1: {
+      subject: "{{companyName}} – Başvurunuz ilerledi",
+      body:
+        "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonu için değerlendirme süreciniz bir sonraki aşamaya taşındı.\n\nYeni adım netleştiğinde sizinle iletişime geçeceğiz.",
+      ctaLabel: null
+    },
+    application_on_hold_v1: {
+      subject: "{{companyName}} – Değerlendirme devam ediyor",
+      body:
+        "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonu için değerlendirmeniz devam ediyor.\n\nSüreçte kısa bir bekleme oluştu. Yeni gelişme olduğunda sizi bilgilendireceğiz.",
+      ctaLabel: null
+    },
+    application_talent_pool_v1: {
+      subject: "{{companyName}} – Yetenek havuzu bilgilendirmesi",
+      body:
+        "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonu için mevcut aşamada ilerleyemiyoruz; ancak profilinizi uygun fırsatlar için yetenek havuzumuzda değerlendirmek isteriz.\n\nUygun bir pozisyon oluştuğunda sizinle tekrar iletişime geçebiliriz.",
+      ctaLabel: null
+    },
     application_rejected_v1: {
       subject: "{{companyName}} – Başvuru güncellemesi",
       body:
         "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonu için başvurunuzu değerlendirdik.\n\nBu aşamada sürece sizinle devam edemeyeceğiz.\n\nBaşvurunuz ve zamanınız için teşekkür eder, kariyer yolculuğunuzda başarılar dileriz.",
+      ctaLabel: null
+    },
+    interview_scheduled_v1: {
+      subject: "{{companyName}} – Görüşmeniz planlandı",
+      body:
+        "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonu için görüşmeniz planlandı.\n\nGörüşme detaylarını ve bağlantıyı aşağıda bulabilirsiniz.",
+      ctaLabel: "Görüşme Detaylarını Aç"
+    },
+    interview_rescheduled_v1: {
+      subject: "{{companyName}} – Görüşmeniz güncellendi",
+      body:
+        "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonu için görüşme planınız güncellendi.\n\nYeni görüşme detaylarını aşağıdaki bağlantıdan inceleyebilirsiniz.",
+      ctaLabel: "Görüşme Detaylarını Aç"
+    },
+    interview_cancelled_v1: {
+      subject: "{{companyName}} – Görüşme iptal edildi",
+      body:
+        "Merhaba {{candidateName}},\n\n{{companyName}} bünyesindeki {{jobTitle}} pozisyonu için planlanan görüşme iptal edilmiştir.\n\nSüreçle ilgili yeni bir gelişme olursa sizinle ayrıca iletişime geçeceğiz.",
       ctaLabel: null
     },
     interview_invitation_on_demand_v1: {

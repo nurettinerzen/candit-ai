@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { DOCUMENT_THEME_COLORS } from "../lib/design-tokens";
 
 export type ThemeMode = "system" | "light" | "dark";
 
@@ -74,7 +75,7 @@ function persistTheme(mode: ThemeMode, resolved: "light" | "dark") {
 
   document.documentElement.setAttribute("data-theme", resolved);
   document.documentElement.setAttribute("data-theme-mode", mode);
-  document.documentElement.style.backgroundColor = resolved === "dark" ? "#0b0d14" : "#f8f9fb";
+  document.documentElement.style.backgroundColor = DOCUMENT_THEME_COLORS[resolved].background;
   document.documentElement.style.colorScheme = resolved;
 
   try {
