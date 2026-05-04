@@ -155,6 +155,7 @@ type EmailVerificationDispatchResult = EmailVerificationFlowState & {
 };
 
 const REFRESH_TOKEN_ROTATED_REASON = "rotated";
+const REFRESH_TOKEN_CONCURRENCY_GRACE_MS = 30_000;
 const EMAIL_VERIFICATION_LABEL = "Email adresini dogrula";
 const EMAIL_VERIFICATION_REQUIRED_CODE = "EMAIL_VERIFICATION_REQUIRED";
 const AUTH_EMAIL_VERIFICATION_REQUIRED_FLAG = "auth.email_verification.required";
@@ -173,6 +174,22 @@ function addHours(base: Date, hours: number) {
 
 function isExpired(date: Date) {
   return date.getTime() <= Date.now();
+}
+
+function isRecentRefreshRotation(input: {
+  lastUsedAt: Date | null;
+  replacedByTokenId: string | null;
+  revokedReason: string | null;
+}) {
+  if (
+    input.revokedReason !== REFRESH_TOKEN_ROTATED_REASON ||
+    !input.replacedByTokenId ||
+    !input.lastUsedAt
+  ) {
+    return false;
+  }
+
+  return Date.now() - input.lastUsedAt.getTime() <= REFRESH_TOKEN_CONCURRENCY_GRACE_MS;
 }
 
 function normalizeSlugPart(value: string) {
@@ -821,6 +838,24 @@ export class AuthService {
     }
 
     if (tokenRecord.replacedByTokenId) {
+      if (isRecentRefreshRotation(tokenRecord)) {
+        await this.reportSecurityEvent({
+          tenantId: tokenRecord.tenantId,
+          userId: tokenRecord.userId,
+          sessionId: tokenRecord.sessionId,
+          source: "auth.refresh",
+          code: "auth.refresh.concurrent_rotation",
+          message: "Es zamanli refresh token yenileme denemesi oturum kapatmadan reddedildi.",
+          severity: SecurityEventSeverity.WARNING,
+          ipAddress: meta.ipAddress,
+          userAgent: meta.userAgent
+        });
+        throw new ConflictException({
+          code: "REFRESH_TOKEN_ALREADY_ROTATED",
+          message: "Refresh token zaten yenilenmis; son oturum bilgisi ile tekrar deneyin."
+        });
+      }
+
       await this.reportSecurityEvent({
         tenantId: tokenRecord.tenantId,
         userId: tokenRecord.userId,
@@ -911,8 +946,13 @@ export class AuthService {
 
     const roles = this.toAppRoles(tokenRecord.user.role);
 
-    const rotatedToken = await this.prisma.$transaction(async (tx) => {
+    const refreshResult = await this.prisma.$transaction(async (tx) => {
       const now = new Date();
+      const nextSessionExpiresAt = addDays(now, this.runtimeConfig.sessionTtlDays);
+      const sessionExpiresAt =
+        session.expiresAt.getTime() > nextSessionExpiresAt.getTime()
+          ? session.expiresAt
+          : nextSessionExpiresAt;
 
       await tx.authRefreshToken.update({
         where: { id: tokenRecord.id },
@@ -942,13 +982,17 @@ export class AuthService {
           id: session.id
         },
         data: {
+          expiresAt: sessionExpiresAt,
           lastSeenAt: now,
           ipAddress: meta.ipAddress ?? session.ipAddress,
           userAgent: meta.userAgent ?? session.userAgent
         }
       });
 
-      return nextRefresh;
+      return {
+        refreshToken: nextRefresh,
+        sessionExpiresAt
+      };
     });
 
     return {
@@ -961,11 +1005,11 @@ export class AuthService {
         sid: session.id,
         tokenType: "access"
       }),
-      refreshToken: rotatedToken.rawToken,
+      refreshToken: refreshResult.refreshToken.rawToken,
       session: {
         id: session.id,
         authMode: "jwt",
-        expiresAt: session.expiresAt.toISOString()
+        expiresAt: refreshResult.sessionExpiresAt.toISOString()
       }
     };
   }

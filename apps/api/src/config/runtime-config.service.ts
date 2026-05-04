@@ -37,6 +37,11 @@ function toBool(value: string | undefined, fallback: boolean) {
   return fallback;
 }
 
+function toPositiveNumber(value: string | undefined, fallback: number) {
+  const raw = Number(value ?? fallback);
+  return Number.isFinite(raw) && raw > 0 ? raw : fallback;
+}
+
 function toCsvList(value: string | undefined) {
   return value
     ?.split(",")
@@ -164,18 +169,15 @@ export class RuntimeConfigService {
   }
 
   get accessTokenTtlMinutes() {
-    const raw = Number(this.configService.get<string>("AUTH_ACCESS_TTL_MINUTES") ?? "15");
-    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 15;
+    return toPositiveNumber(this.configService.get<string>("AUTH_ACCESS_TTL_MINUTES"), 15);
   }
 
   get refreshTokenTtlDays() {
-    const raw = Number(this.configService.get<string>("AUTH_REFRESH_TTL_DAYS") ?? "14");
-    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 14;
+    return toPositiveNumber(this.configService.get<string>("AUTH_REFRESH_TTL_DAYS"), 30);
   }
 
   get sessionTtlDays() {
-    const raw = Number(this.configService.get<string>("AUTH_SESSION_TTL_DAYS") ?? "14");
-    return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 14;
+    return toPositiveNumber(this.configService.get<string>("AUTH_SESSION_TTL_DAYS"), 30);
   }
 
   get invitationTtlHours() {

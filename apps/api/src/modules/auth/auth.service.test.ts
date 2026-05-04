@@ -92,6 +92,98 @@ function createService() {
   };
 }
 
+test("refresh treats immediate rotated token reuse as a concurrency race without revoking the session", async () => {
+  const securityEvents: Array<Record<string, unknown>> = [];
+  let transactionCalled = false;
+
+  const prisma = {
+    authRefreshToken: {
+      findUnique: async () => ({
+        id: "rt_old",
+        sessionId: "sess_launch",
+        tenantId: "ten_launch",
+        userId: "usr_owner",
+        tokenHash: "hashed",
+        parentTokenId: null,
+        replacedByTokenId: "rt_new",
+        issuedAt: new Date("2026-05-01T00:00:00.000Z"),
+        expiresAt: new Date(Date.now() + 60_000),
+        lastUsedAt: new Date(),
+        revokedAt: new Date(),
+        revokedReason: "rotated",
+        session: {
+          id: "sess_launch",
+          tenantId: "ten_launch",
+          userId: "usr_owner",
+          status: AuthSessionStatus.ACTIVE,
+          authMode: "jwt",
+          expiresAt: new Date(Date.now() + 60_000),
+          lastSeenAt: new Date(),
+          ipAddress: "127.0.0.1",
+          userAgent: "test",
+          revokedAt: null,
+          revokedReason: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        user: {
+          id: "usr_owner",
+          tenantId: "ten_launch",
+          email: "owner@candit.ai",
+          fullName: "Launch Owner",
+          role: Role.OWNER,
+          status: UserStatus.ACTIVE,
+          deletedAt: null,
+          emailVerifiedAt: new Date(),
+          avatarUrl: null
+        }
+      }),
+      updateMany: async () => ({ count: 1 })
+    },
+    authSession: {
+      updateMany: async () => ({ count: 1 })
+    },
+    $transaction: async () => {
+      transactionCalled = true;
+      return [];
+    }
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    {} as never,
+    new ConfigService({}),
+    {} as never,
+    {
+      isGlobalEnabled: async () => false
+    } as never,
+    {} as never,
+    {
+      recordSecurityEvent: async (input: Record<string, unknown>) => {
+        securityEvents.push(input);
+        return { id: "security_1" };
+      }
+    } as never,
+    {} as never
+  );
+
+  await assert.rejects(
+    () => service.refresh("refresh-token-with-enough-length"),
+    (error: unknown) => {
+      assert.equal((error as { getStatus?: () => number }).getStatus?.(), 409);
+      assert.deepEqual((error as { getResponse?: () => unknown }).getResponse?.(), {
+        code: "REFRESH_TOKEN_ALREADY_ROTATED",
+        message: "Refresh token zaten yenilenmis; son oturum bilgisi ile tekrar deneyin."
+      });
+      return true;
+    }
+  );
+
+  assert.equal(transactionCalled, false);
+  assert.equal(securityEvents.length, 1);
+  assert.equal(securityEvents[0]?.code, "auth.refresh.concurrent_rotation");
+});
+
 test("requestPasswordReset records an audit trail for active users", async () => {
   const { service, audits, notifications } = createService();
 

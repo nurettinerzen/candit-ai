@@ -137,6 +137,60 @@ function isStoredJwtSession(session: WebAuthSession | null) {
   return session.authMode === "jwt";
 }
 
+let cookieRefreshInFlight: Promise<boolean> | null = null;
+let headerRefreshInFlight: Promise<WebAuthSession | null> | null = null;
+
+async function readRefreshConflictCode(response: Response) {
+  if (response.status !== 409) {
+    return null;
+  }
+
+  try {
+    const payload = (await response.clone().json()) as { code?: string };
+    return payload.code ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function isAlreadyRotatedRefresh(response: Response) {
+  return readRefreshConflictCode(response).then((code) => code === "REFRESH_TOKEN_ALREADY_ROTATED");
+}
+
+async function refreshCookieTransportSession(headers: Record<string, string>) {
+  if (cookieRefreshInFlight) {
+    return cookieRefreshInFlight;
+  }
+
+  cookieRefreshInFlight = (async () => {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...headers
+      },
+      credentials: "include",
+      body: JSON.stringify({}),
+      cache: "no-store"
+    });
+
+    if (response.ok) {
+      return true;
+    }
+
+    if (await isAlreadyRotatedRefresh(response)) {
+      return true;
+    }
+
+    clearStoredSession();
+    return false;
+  })().finally(() => {
+    cookieRefreshInFlight = null;
+  });
+
+  return cookieRefreshInFlight;
+}
+
 export function resolveActiveSession(): WebAuthSession | null {
   const stored = readStoredSession();
 
@@ -667,19 +721,9 @@ export function getGoogleCalendarIntegrationAuthorizeUrl() {
 
 export async function refreshJwtSession(session: WebAuthSession): Promise<WebAuthSession | null> {
   if (session.authMode === "jwt_cookie") {
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...buildAuthHeaders(session)
-      },
-      credentials: "include",
-      body: JSON.stringify({}),
-      cache: "no-store"
-    });
+    const refreshed = await refreshCookieTransportSession(buildAuthHeaders(session));
 
-    if (!response.ok) {
-      clearStoredSession();
+    if (!refreshed) {
       return null;
     }
 
@@ -695,40 +739,55 @@ export async function refreshJwtSession(session: WebAuthSession): Promise<WebAut
     return null;
   }
 
-  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json"
-    },
-    credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
-    body: JSON.stringify({
-      refreshToken: session.refreshToken
-    }),
-    cache: "no-store"
-  });
-
-  if (!response.ok) {
-    clearStoredSession();
-    return null;
+  if (headerRefreshInFlight) {
+    return headerRefreshInFlight;
   }
 
-  const payload = (await response.json()) as {
-    accessToken?: string;
-    refreshToken?: string;
-    session?: {
-      id?: string;
+  headerRefreshInFlight = (async () => {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      credentials: AUTH_TOKEN_TRANSPORT === "cookie" ? "include" : "same-origin",
+      body: JSON.stringify({
+        refreshToken: session.refreshToken
+      }),
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      if (await isAlreadyRotatedRefresh(response)) {
+        const latest = readStoredSession();
+        return isStoredJwtSession(latest) ? latest : null;
+      }
+
+      clearStoredSession();
+      return null;
+    }
+
+    const payload = (await response.json()) as {
+      accessToken?: string;
+      refreshToken?: string;
+      session?: {
+        id?: string;
+      };
     };
-  };
 
-  const next = {
-    ...session,
-    accessToken: payload.accessToken ?? session.accessToken,
-    refreshToken: payload.refreshToken ?? session.refreshToken,
-    sessionId: payload.session?.id ?? session.sessionId
-  };
+    const next = {
+      ...session,
+      accessToken: payload.accessToken ?? session.accessToken,
+      refreshToken: payload.refreshToken ?? session.refreshToken,
+      sessionId: payload.session?.id ?? session.sessionId
+    };
 
-  persistSession(next);
-  return next;
+    persistSession(next);
+    return next;
+  })().finally(() => {
+    headerRefreshInFlight = null;
+  });
+
+  return headerRefreshInFlight;
 }
 
 export async function resolveSessionFromServer(currentSession: WebAuthSession | null) {
@@ -797,18 +856,9 @@ export async function resolveSessionFromServer(currentSession: WebAuthSession | 
   let response = await readServerSession();
 
   if (!response.ok && AUTH_TOKEN_TRANSPORT === "cookie" && (response.status === 401 || response.status === 403)) {
-    const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...cookieSessionHeaders
-      },
-      credentials: "include",
-      body: JSON.stringify({}),
-      cache: "no-store"
-    });
+    const refreshed = await refreshCookieTransportSession(cookieSessionHeaders);
 
-    if (refreshResponse.ok) {
+    if (refreshed) {
       response = await readServerSession();
     } else {
       clearStoredSession();

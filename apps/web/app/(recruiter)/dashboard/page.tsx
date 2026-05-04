@@ -12,6 +12,8 @@ import { applicationDetailHref } from "../../../lib/entity-routes";
 import { formatDate } from "../../../lib/format";
 import { getInterviewInvitationMeta } from "../../../lib/interview-invitation";
 import type {
+  ApplicationStage,
+  Candidate,
   InterviewSessionView,
   RecruiterApplicationsReadModel,
   RecruiterOverviewReadModel
@@ -22,6 +24,60 @@ type QueueState = {
   priority: number;
   helper: string;
 };
+
+const DASHBOARD_FUNNEL_STAGES: ApplicationStage[] = [
+  "APPLIED",
+  "SCREENING",
+  "RECRUITER_REVIEW",
+  "INTERVIEW_SCHEDULED",
+  "INTERVIEW_COMPLETED",
+  "TALENT_POOL",
+  "SHORTLISTED",
+  "HIRING_MANAGER_REVIEW",
+  "OFFER",
+  "HIRED",
+  "REJECTED"
+];
+
+function sourceLabel(raw: string | null | undefined): string {
+  const map: Record<string, string> = {
+    kariyer_net: "Kariyer.net",
+    eleman_net: "Eleman.net",
+    csv_import: "CSV Aktarım",
+    manual: "Manuel Giriş",
+    referral: "Referans",
+    walk_in: "Doğrudan Başvuru",
+    phone: "Telefon",
+    email: "E-posta",
+    agency: "Ajans",
+    kariyer_portali: "Kariyer Portalı"
+  };
+
+  if (!raw) {
+    return "Kaynak belirtilmedi";
+  }
+
+  return map[raw] ?? raw;
+}
+
+function resolveApplicationConfidenceScore(
+  application: RecruiterApplicationsReadModel["items"][number]
+): number | null {
+  const raw = application.ai.reportConfidence ?? application.ai.latestRecommendation?.confidence ?? null;
+
+  if (raw === null || raw === undefined || raw === "") {
+    return null;
+  }
+
+  const numeric = Number(raw);
+
+  if (Number.isNaN(numeric)) {
+    return null;
+  }
+
+  const normalized = numeric <= 1 ? numeric * 100 : numeric;
+  return Math.max(0, Math.min(100, Math.round(normalized)));
+}
 
 function resolveQueueState(
   application: RecruiterApplicationsReadModel["items"][number]
@@ -96,6 +152,7 @@ export default function RecruiterOverviewPage() {
   const { t, locale } = useUiText();
   const [data, setData] = useState<RecruiterOverviewReadModel | null>(null);
   const [applications, setApplications] = useState<RecruiterApplicationsReadModel["items"]>([]);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [interviews, setInterviews] = useState<InterviewSessionView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -105,17 +162,19 @@ export default function RecruiterOverviewPage() {
     setError("");
 
     try {
-      const [overview, applicationRows, interviewRows] = await Promise.all([
+      const [overview, applicationRows, interviewRows, candidateRows] = await Promise.all([
         apiClient.recruiterOverviewReadModel(),
         apiClient
           .recruiterApplicationsReadModel()
           .catch(() => ({ total: 0, items: [] as RecruiterApplicationsReadModel["items"] })),
-        apiClient.listInterviewSessions().catch(() => [] as InterviewSessionView[])
+        apiClient.listInterviewSessions().catch(() => [] as InterviewSessionView[]),
+        apiClient.listCandidates().catch(() => [] as Candidate[])
       ]);
 
       setData(overview);
       setApplications(applicationRows.items);
       setInterviews(interviewRows);
+      setCandidates(candidateRows);
     } catch (loadError) {
       setError(
         loadError instanceof Error ? loadError.message : "Genel bakış verileri yüklenemedi."
@@ -185,6 +244,165 @@ export default function RecruiterOverviewPage() {
   );
 
   const actionableCount = decisionWaitingCount + feedbackWaitingCount;
+
+  const funnelRows = useMemo(() => {
+    const total = applications.length;
+
+    return DASHBOARD_FUNNEL_STAGES
+      .map((stage) => {
+        const count = applications.filter((application) => application.stage === stage).length;
+        const stageMeta = getRecruiterStageMeta(stage);
+
+        return {
+          stage,
+          label: stageMeta.label,
+          color: stageMeta.color,
+          count,
+          share: total > 0 ? Math.round((count / total) * 100) : 0
+        };
+      })
+      .filter((row) => row.count > 0)
+      .sort((left, right) => right.count - left.count);
+  }, [applications]);
+
+  const hiringStatus = useMemo(() => {
+    const total = applications.length;
+    const hired = applications.filter((application) => application.stage === "HIRED").length;
+    const rejected = applications.filter(
+      (application) => application.stage === "REJECTED" || application.humanDecision === "reject"
+    ).length;
+    const onHold = applications.filter(
+      (application) => application.stage === "TALENT_POOL" || application.humanDecision === "hold"
+    ).length;
+    const active = Math.max(total - hired - rejected - onHold, 0);
+
+    return {
+      total,
+      hired,
+      rate: total > 0 ? Math.round((hired / total) * 100) : 0,
+      segments: [
+        { key: "hired", label: "İşe alındı", detail: "Tamamlanan", count: hired, color: "var(--success, #10b981)" },
+        { key: "active", label: "Süreçte", detail: "Aktif akış", count: active, color: "var(--info, #3b82f6)" },
+        { key: "hold", label: "Havuzda", detail: "Bekletiliyor", count: onHold, color: "var(--warn, #f59e0b)" },
+        { key: "rejected", label: "Olumsuz", detail: "Kapanan", count: rejected, color: "var(--danger, #ef4444)" }
+      ]
+    };
+  }, [applications]);
+
+  const sourcePerformance = useMemo(() => {
+    const candidateSourceById = new Map(candidates.map((candidate) => [candidate.id, candidate.source]));
+    const totals = new Map<string, { key: string; label: string; count: number; ready: number; advanced: number }>();
+
+    if (applications.length === 0) {
+      candidates.forEach((candidate) => {
+        const key = candidate.source ?? "unknown";
+        const current = totals.get(key) ?? {
+          key,
+          label: sourceLabel(candidate.source),
+          count: 0,
+          ready: 0,
+          advanced: 0
+        };
+
+        current.count += 1;
+        totals.set(key, current);
+      });
+    } else {
+      applications.forEach((application) => {
+        const source = candidateSourceById.get(application.candidate.id);
+        const key = source ?? "unknown";
+        const current = totals.get(key) ?? {
+          key,
+          label: sourceLabel(source),
+          count: 0,
+          ready: 0,
+          advanced: 0
+        };
+
+        current.count += 1;
+        if (application.ai.hasReport || application.stage === "INTERVIEW_COMPLETED") {
+          current.ready += 1;
+        }
+        if (
+          application.stage === "SHORTLISTED" ||
+          application.stage === "INTERVIEW_SCHEDULED" ||
+          application.stage === "INTERVIEW_COMPLETED" ||
+          application.stage === "OFFER" ||
+          application.stage === "HIRED"
+        ) {
+          current.advanced += 1;
+        }
+        totals.set(key, current);
+      });
+    }
+
+    return Array.from(totals.values())
+      .sort((left, right) => right.count - left.count)
+      .slice(0, 6)
+      .map((source) => ({
+        ...source,
+        readyRate: source.count > 0 ? Math.round((source.ready / source.count) * 100) : 0,
+        advancedRate: source.count > 0 ? Math.round((source.advanced / source.count) * 100) : 0
+      }));
+  }, [applications, candidates]);
+
+  const positionBenchmark = useMemo(() => {
+    const candidateSourceById = new Map(candidates.map((candidate) => [candidate.id, candidate.source]));
+    const groups = new Map<
+      string,
+      {
+        key: string;
+        title: string;
+        count: number;
+        scoreTotal: number;
+        scoreCount: number;
+        sourceCounts: Map<string, number>;
+        stageCounts: Map<ApplicationStage, number>;
+      }
+    >();
+
+    applications.forEach((application) => {
+      const key = application.job.id;
+      const current = groups.get(key) ?? {
+        key,
+        title: application.job.title,
+        count: 0,
+        scoreTotal: 0,
+        scoreCount: 0,
+        sourceCounts: new Map<string, number>(),
+        stageCounts: new Map<ApplicationStage, number>()
+      };
+      const score = resolveApplicationConfidenceScore(application);
+      const sourceKey = candidateSourceById.get(application.candidate.id) ?? "unknown";
+
+      current.count += 1;
+      if (score !== null) {
+        current.scoreTotal += score;
+        current.scoreCount += 1;
+      }
+      current.sourceCounts.set(sourceKey, (current.sourceCounts.get(sourceKey) ?? 0) + 1);
+      current.stageCounts.set(application.stage, (current.stageCounts.get(application.stage) ?? 0) + 1);
+      groups.set(key, current);
+    });
+
+    return Array.from(groups.values())
+      .sort((left, right) => right.count - left.count)
+      .slice(0, 6)
+      .map((group) => {
+        const bestSource = Array.from(group.sourceCounts.entries()).sort((left, right) => right[1] - left[1])[0];
+        const commonStage = Array.from(group.stageCounts.entries()).sort((left, right) => right[1] - left[1])[0];
+        const stageMeta = commonStage ? getRecruiterStageMeta(commonStage[0]) : null;
+
+        return {
+          key: group.key,
+          title: group.title,
+          count: group.count,
+          avgScore: group.scoreCount > 0 ? Math.round(group.scoreTotal / group.scoreCount) : null,
+          bestSource: bestSource ? sourceLabel(bestSource[0]) : "-",
+          commonStage: stageMeta?.label ?? "-"
+        };
+      });
+  }, [applications, candidates]);
 
   const actionItems = useMemo(
     () =>
@@ -502,6 +720,187 @@ export default function RecruiterOverviewPage() {
               </Link>
             ))}
           </div>
+
+          {/* Funnel + Hiring Status */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))",
+              gap: 14,
+              alignItems: "stretch"
+            }}
+          >
+            <section className="panel">
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+                <div>
+                  <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("Aday Hunisi")}</h3>
+                  <p className="small" style={{ margin: 0, color: "var(--text-dim)" }}>
+                    {t("Adayların süreç aşamalarına göre yoğunluğu.")}
+                  </p>
+                </div>
+                <strong style={{ fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
+                  {applications.length} {t("başvuru")}
+                </strong>
+              </div>
+
+              {funnelRows.length === 0 ? (
+                <EmptyState
+                  message={
+                    shouldShowOnboarding
+                      ? t("İlk başvuru açıldığında huni yoğunluğu burada oluşacak.")
+                      : t("Huni için gösterilecek başvuru bulunmuyor.")
+                  }
+                />
+              ) : (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {funnelRows.map((row) => (
+                    <FunnelRow key={row.stage} label={t(row.label)} count={row.count} share={row.share} color={row.color} />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="panel">
+              <div style={{ marginBottom: 14 }}>
+                <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("İşe Alım Durumu")}</h3>
+                <p className="small" style={{ margin: 0, color: "var(--text-dim)" }}>
+                  {t("Filtrelenmiş başvuruların güncel sonuç dağılımı.")}
+                </p>
+              </div>
+
+              <div
+                style={{
+                  borderRadius: 14,
+                  padding: "18px 18px 16px",
+                  background: "linear-gradient(135deg, rgba(16,185,129,0.16), rgba(59,130,246,0.12))",
+                  border: "1px solid rgba(16,185,129,0.16)",
+                  marginBottom: 12
+                }}
+              >
+                <strong style={{ display: "block", fontSize: 34, lineHeight: 1, color: "var(--success, #10b981)" }}>
+                  {hiringStatus.rate}%
+                </strong>
+                <span style={{ display: "block", marginTop: 8, fontSize: 12, fontWeight: 700 }}>
+                  {t("İşe alım oranı")}
+                </span>
+                <span className="small" style={{ color: "var(--text-dim)" }}>
+                  {hiringStatus.total > 0
+                    ? `${hiringStatus.hired} / ${hiringStatus.total} ${t("başvuru")}`
+                    : t("Henüz sonuç yok")}
+                </span>
+              </div>
+
+              <div
+                aria-hidden="true"
+                style={{
+                  display: "flex",
+                  height: 10,
+                  overflow: "hidden",
+                  borderRadius: 999,
+                  background: "var(--surface-muted)",
+                  border: "1px solid var(--border)",
+                  marginBottom: 12
+                }}
+              >
+                {hiringStatus.segments.map((segment) => (
+                  <span
+                    key={segment.key}
+                    style={{
+                      width: `${hiringStatus.total > 0 ? Math.max((segment.count / hiringStatus.total) * 100, segment.count > 0 ? 4 : 0) : 0}%`,
+                      background: segment.color
+                    }}
+                  />
+                ))}
+              </div>
+
+              <div style={{ display: "grid", gap: 8 }}>
+                {hiringStatus.segments
+                  .filter((segment) => segment.count > 0 || segment.key !== "active")
+                  .map((segment) => (
+                    <StatusSummaryRow
+                      key={segment.key}
+                      label={t(segment.label)}
+                      detail={t(segment.detail)}
+                      count={segment.count}
+                      color={segment.color}
+                    />
+                  ))}
+              </div>
+            </section>
+          </div>
+
+          <section className="panel">
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+              <div>
+                <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("Kanal Performansı")}</h3>
+                <p className="small" style={{ margin: 0, color: "var(--text-dim)" }}>
+                  {t("Başvuru kaynaklarının hacim ve değerlendirme üretimi.")}
+                </p>
+              </div>
+              <Link href="/candidates" className="ghost-button" style={{ fontSize: 12 }}>
+                {t("Aday Havuzu")}
+              </Link>
+            </div>
+
+            {sourcePerformance.length === 0 ? (
+              <EmptyState message={t("Kaynak verisi oluştuğunda kanal performansı burada görünecek.")} />
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+                  gap: 10
+                }}
+              >
+                {sourcePerformance.map((source) => (
+                  <SourcePerformanceCard
+                    key={source.key}
+                    label={t(source.label)}
+                    count={source.count}
+                    readyRate={source.readyRate}
+                    advancedRate={source.advancedRate}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="panel">
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+              <div>
+                <h3 style={{ margin: "0 0 4px", fontSize: 15 }}>{t("Pozisyon Benchmark")}</h3>
+                <p className="small" style={{ margin: 0, color: "var(--text-dim)" }}>
+                  {t("Pozisyon bazında hacim, ortalama AI güveni, en güçlü kaynak ve sık görülen aşama.")}
+                </p>
+              </div>
+              <Link href="/reports" className="ghost-button" style={{ fontSize: 12 }}>
+                {t("Raporlar")}
+              </Link>
+            </div>
+
+            {positionBenchmark.length === 0 ? (
+              <EmptyState message={t("Başvuru verisi oluştukça pozisyon benchmarkı burada görünecek.")} />
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 10
+                }}
+              >
+                {positionBenchmark.map((position) => (
+                  <PositionBenchmarkCard
+                    key={position.key}
+                    title={position.title}
+                    count={position.count}
+                    avgScore={position.avgScore}
+                    bestSource={t(position.bestSource)}
+                    commonStage={t(position.commonStage)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
 
           {/* Action Items + Upcoming Interviews */}
           <div
@@ -860,6 +1259,218 @@ function InterviewStat({
         {label}
       </div>
       <strong style={{ fontSize: 20, fontWeight: 700, color: current.color }}>{value}</strong>
+    </div>
+  );
+}
+
+function FunnelRow({
+  label,
+  count,
+  share,
+  color
+}: {
+  label: string;
+  count: number;
+  share: number;
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(110px, 0.34fr) minmax(0, 1fr) 42px",
+        gap: 10,
+        alignItems: "center"
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <strong style={{ display: "block", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {label}
+        </strong>
+        <span className="small" style={{ color: "var(--text-dim)" }}>
+          %{share} pay
+        </span>
+      </div>
+      <div
+        style={{
+          height: 34,
+          borderRadius: 8,
+          overflow: "hidden",
+          background: "var(--surface-muted)",
+          border: "1px solid var(--border)",
+          position: "relative"
+        }}
+      >
+        <span
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: `${Math.max(share, count > 0 ? 7 : 0)}%`,
+            background: `linear-gradient(90deg, ${color}, color-mix(in srgb, ${color} 12%, transparent))`
+          }}
+        />
+      </div>
+      <strong style={{ textAlign: "right", fontSize: 20, color }}>{count}</strong>
+    </div>
+  );
+}
+
+function StatusSummaryRow({
+  label,
+  detail,
+  count,
+  color
+}: {
+  label: string;
+  detail: string;
+  count: number;
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 12,
+        padding: "9px 10px",
+        borderRadius: 8,
+        border: "1px solid var(--border)",
+        background: "var(--surface-muted)"
+      }}
+    >
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <span style={{ width: 6, height: 28, borderRadius: 999, background: color, flexShrink: 0 }} />
+        <span style={{ minWidth: 0 }}>
+          <strong style={{ display: "block", fontSize: 12 }}>{label}</strong>
+          <span className="small" style={{ color: "var(--text-dim)" }}>{detail}</span>
+        </span>
+      </span>
+      <strong style={{ fontSize: 18, color: "var(--text)" }}>{count}</strong>
+    </div>
+  );
+}
+
+function SourcePerformanceCard({
+  label,
+  count,
+  readyRate,
+  advancedRate
+}: {
+  label: string;
+  count: number;
+  readyRate: number;
+  advancedRate: number;
+}) {
+  return (
+    <div
+      style={{
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        padding: "13px 14px",
+        background: "var(--surface-muted)"
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+        <strong style={{ fontSize: 13, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {label}
+        </strong>
+        <strong style={{ color: "var(--primary, #7346e8)" }}>{count}</strong>
+      </div>
+      <div
+        aria-hidden="true"
+        style={{
+          height: 8,
+          borderRadius: 999,
+          overflow: "hidden",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          marginBottom: 8
+        }}
+      >
+        <span
+          style={{
+            display: "block",
+            height: "100%",
+            width: `${Math.max(advancedRate, count > 0 ? 5 : 0)}%`,
+            background: "linear-gradient(90deg, var(--primary, #7346e8), var(--success, #10b981))"
+          }}
+        />
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+        <span className="small" style={{ color: "var(--text-dim)" }}>%{advancedRate} ilerleme</span>
+        <span className="small" style={{ color: "var(--text-dim)" }}>%{readyRate} rapor</span>
+      </div>
+    </div>
+  );
+}
+
+function PositionBenchmarkCard({
+  title,
+  count,
+  avgScore,
+  bestSource,
+  commonStage
+}: {
+  title: string;
+  count: number;
+  avgScore: number | null;
+  bestSource: string;
+  commonStage: string;
+}) {
+  return (
+    <div
+      style={{
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        padding: "14px 15px",
+        background: "var(--surface-muted)"
+      }}
+    >
+      <h4
+        style={{
+          margin: "0 0 10px",
+          fontSize: 14,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis"
+        }}
+      >
+        {title}
+      </h4>
+      <BenchmarkMetric label="Aday" value={String(count)} />
+      <BenchmarkMetric label="Ort. AI güveni" value={avgScore === null ? "-" : String(avgScore)} />
+      <BenchmarkMetric label="En güçlü kaynak" value={bestSource} />
+      <BenchmarkMetric label="Sık aşama" value={commonStage} />
+    </div>
+  );
+}
+
+function BenchmarkMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 12,
+        padding: "7px 0",
+        borderTop: "1px solid var(--border)"
+      }}
+    >
+      <span className="small" style={{ color: "var(--text-dim)" }}>{label}</span>
+      <strong
+        style={{
+          fontSize: 12,
+          textAlign: "right",
+          maxWidth: "55%",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis"
+        }}
+      >
+        {value}
+      </strong>
     </div>
   );
 }

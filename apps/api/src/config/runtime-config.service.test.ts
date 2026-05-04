@@ -41,6 +41,24 @@ test("assertProductionSafety accepts hardened production settings", () => {
   assert.doesNotThrow(() => runtimeConfig.assertProductionSafety());
 });
 
+test("auth ttl defaults support persistent sessions and fractional overrides", () => {
+  const defaults = createRuntimeConfig({});
+
+  assert.equal(defaults.accessTokenTtlMinutes, 15);
+  assert.equal(defaults.refreshTokenTtlDays, 30);
+  assert.equal(defaults.sessionTtlDays, 30);
+
+  const fractional = createRuntimeConfig({
+    AUTH_ACCESS_TTL_MINUTES: "2.5",
+    AUTH_REFRESH_TTL_DAYS: "0.5",
+    AUTH_SESSION_TTL_DAYS: "1.5"
+  });
+
+  assert.equal(fractional.accessTokenTtlMinutes, 2.5);
+  assert.equal(fractional.refreshTokenTtlDays, 0.5);
+  assert.equal(fractional.sessionTtlDays, 1.5);
+});
+
 test("launchBoundaries expose pilot, setup-required, and unsupported providers clearly", () => {
   const runtimeConfig = createRuntimeConfig({
     AUTH_SESSION_MODE: "jwt",
